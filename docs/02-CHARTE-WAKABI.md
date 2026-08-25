@@ -91,6 +91,74 @@ texte courant.
 
 ---
 
+## 2 bis. Logo & filigrane
+
+### Ce que le logo est
+
+Un **lockup à trois étages**, tout en bleu de marque :
+
+1. **Le symbole** — un pin de localisation qui forme le **W** de Wakabi, avec un anneau
+   évidé en son centre. Le double sens (pin de carte / lettre W) est l'idée forte du logo.
+2. **Le mot** — « WAKABI » dans un sans géométrique où les **A sont des triangles pleins**
+   (Δ) et le **B** a un dessin ouvert particulier. Ce n'est ni Bricolage Grotesque ni Plus
+   Jakarta Sans : c'est un lettrage propre au logo — vraisemblablement *Absolut Pro*,
+   cohérent avec le `@font-face` trouvé dans `wakabi.css`.
+3. **La signature** — « LE GUIDE DES BONS PLANS », capitales fines très espacées, en noir.
+
+> ⚠️ **Incohérence de signature à trancher.** Le logo dit « LE GUIDE DES BONS **PLANS** ».
+> Le site écrit « bons **coins** » **13 fois** — dont le `<title>` de la page d'accueil,
+> « Wakabi – Le Guide des Bons Coins » — et « bons plans » 5 fois. Les deux formules
+> coexistent. Il faut en choisir une avant de l'incruster sur des milliers de visuels
+> partagés : c'est exactement le genre de détail qu'un filigrane rend définitif.
+
+### Le problème pratique
+
+**Aucun SVG n'existe.** Le seul fichier repéré est
+`v3.1.wakabileguide.com/wp-content/uploads/2026/04/logo-w.png`, et l'archive fournie ne
+contient aucune image. Or un filigrane incrusté dans un export **2048 px** a besoin d'une
+source nette : un PNG basse définition remonté en taille produit un logo baveux sur chaque
+visuel partagé — l'inverse de l'effet recherché.
+
+### Ce qu'il faut obtenir, par ordre de préférence
+
+| Option | Qualité | Effort |
+|---|---|---|
+| **Le fichier source** (AI, EPS, Figma, PDF vectoriel) chez qui a dessiné le logo | Parfaite | Un e-mail |
+| **Un PNG à alpha d'au moins 2000 px de large** | Suffisante | Un export, si la source existe |
+| **Une vectorisation** du meilleur bitmap disponible | Bonne, mais à faire valider | Quelques heures de graphiste |
+| **Le repli texte** *(voir ci-dessous)* | Correcte, sans logo | Zéro |
+
+> Je n'ai volontairement **pas** redessiné le logo à partir de l'image. Une reconstruction
+> approximative de la marque finirait par être publiée par inadvertance sur des milliers
+> de visuels. C'est un travail de graphiste, avec validation.
+
+### Les trois variantes de filigrane
+
+Un lockup à trois étages devient illisible en petit — c'est la raison pour laquelle toute
+marque possède une version réduite. Le schéma prévoit donc `watermark.variant` :
+
+| Variante | Contenu | Quand |
+|---|---|---|
+| `lockup` | Pin + WAKABI + signature | Filigrane large uniquement (> ~320 px). En dessous, la signature devient une bouillie grise. |
+| **`wordmark`** *(défaut)* | Pin + WAKABI | Le bon compromis dans presque tous les cas. |
+| `text` | « wakabileguide.com » en Bricolage Grotesque | **Aucun fichier requis.** Permet de développer J0 et J1 sans attendre l'asset, et reste un repli honnête si le bitmap est trop pauvre. |
+
+### Règles de composition
+
+- **Taille** : largeur du filigrane = **18 % de la largeur du canevas**, jamais moins de
+  120 px à l'export. Proportionnel, donc identique en 1:1 et en 9:16.
+- **Marge** : 4 % du petit côté, sur les deux axes.
+- **Lisibilité sur photo quelconque** : le logo bleu disparaît sur un ciel bleu. Le
+  filigrane est donc posé en **blanc** sur un voile sombre local
+  (`--wk-decor-scrim`), ou en bleu de marque sur une pastille blanche — jamais en bleu
+  nu sur la photo.
+- **Opacité** : 0,9 par défaut. En dessous de 0,3 le filigrane ne remplit plus son rôle,
+  et le schéma le refuse.
+- **Zone réservée** : le contrôle `watermark-clear` du pré-vol vérifie qu'aucun cadre de
+  partenaire ne vient le recouvrir (voir [`04-MODERATION.md`](./04-MODERATION.md) §4).
+
+---
+
 ## 3. Iconographie
 
 Les icônes viennent de **icons8**, en trois familles mélangées :
@@ -203,9 +271,24 @@ dans l'admin déjà en place, exposé via `wakabi/v1/decors`. Bénéfices imméd
 - aucun fournisseur supplémentaire, aucune authentification en double&nbsp;;
 - les compteurs tiennent dans un `wakabi/v1/decors/{id}/count`.
 
-### Ce qui reste inconnu
+### Ce que l'API sert réellement — précision du 25/08/2026
 
-Le site ne consomme que `cities`, `partners` et `posts`. **Aucun endpoint `events` ou
-`places` n'apparaît** — alors que l'app mobile expose manifestement des événements et des
-établissements. Il faut donc obtenir la liste complète des routes de
-`admin.wakabileguide.com/wp-json` avant de figer le modèle d'ancrage.
+**Le WordPress est le back-end éditorial, pas la base du produit.** Confirmé par l'équipe :
+`admin.wakabileguide.com/wp-json` sert à **gérer les articles**. Les endpoints `cities` et
+`partners` existent — le site les appelle depuis `villes.html` et `partenaires.html` — mais
+il n'y a **ni `events` ni `places`**. Les établissements et les événements que l'app mobile
+affiche vivent dans son propre back-end, hors de portée pour l'instant.
+
+**Conséquence sur l'ancrage — et bonne nouvelle.** L'ancrage ne se fera pas par résolution
+d'identifiant vers une API, mais par **URL** : `share.redirectUrl`. C'est déjà ce que le
+schéma prévoit. Concrètement, l'équipe ou le partenaire colle le lien de la fiche Wakabi
+au moment de créer le décor, et le badge y renvoie au téléchargement.
+
+C'est **plus simple, indépendant de toute API, et disponible dès la v1**. Les champs
+`partnerId`, `placeId` et `eventId` restent dans le schéma comme métadonnées descriptives —
+prêts à devenir de vraies jointures le jour où le back-end de l'app s'ouvrira, sans casser
+les décors déjà publiés.
+
+**Ce que cela ne change pas :** le catalogue de décors a toujours sa place dans ce
+WordPress. C'est le CMS que l'équipe utilise déjà, et il offre gratuitement tout le circuit
+de modération (voir [`04-MODERATION.md`](./04-MODERATION.md) §3).

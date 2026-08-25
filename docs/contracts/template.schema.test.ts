@@ -45,12 +45,16 @@ check('filtre retiré du périmètre v1', { ...base, filters: ['none', 'vintage'
 /* ---- Modération ------------------------------------------------------ */
 const T0 = '2026-08-25T10:00:00Z';
 check('partenaire publié SANS relecture',
-  { ...base, createdBy: 'partner', status: 'published', publishedAt: T0 }, false);
-check('partenaire publié APRÈS relecture',
   { ...base, createdBy: 'partner', status: 'published', publishedAt: T0,
+    share: { redirectUrl: 'https://wakabileguide.com/p/le-maquis' } }, false);
+const WK = { redirectUrl: 'https://wakabileguide.com/p/le-maquis' };
+check('partenaire publié APRÈS relecture',
+  { ...base, createdBy: 'partner', status: 'published', publishedAt: T0, share: WK,
     moderation: { reviewedBy: 'wp_12', reviewedAt: T0 } }, true);
 check('équipe Wakabi publie directement',
-  { ...base, createdBy: 'wakabi-team', status: 'published', publishedAt: T0 }, true);
+  { ...base, createdBy: 'wakabi-team', status: 'published', publishedAt: T0, share: WK }, true);
+check('décor publié SANS redirection',
+  { ...base, status: 'published', publishedAt: T0 }, false);
 check('refus sans motif', { ...base, status: 'rejected' }, false);
 check('refus avec motif',
   { ...base, status: 'rejected', moderation: { reviewNote: 'Visuel non libre de droits.' } }, true);
@@ -102,4 +106,5 @@ console.log('  text.font/size    =', (ok.layers[2] as any).font, (ok.layers[2] a
 console.log('  watermark         =', JSON.stringify(ok.watermark));
 console.log('  redirectLabel     =', ok.share.redirectLabel);
 console.log('  createdBy         =', ok.createdBy);
+console.log('  watermark.variant =', ok.watermark.variant);
 console.log('  allowRotation     =', (ok.layers[0] as any).allowRotation);

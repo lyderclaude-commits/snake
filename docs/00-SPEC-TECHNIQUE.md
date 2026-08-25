@@ -1,5 +1,5 @@
 # Wakabi Studio — Générateur de décors & visuels personnalisés
-### Spécification technique & architecture — v0.4 (document de travail)
+### Spécification technique & architecture — v0.5 (document de travail)
 
 ---
 
@@ -58,6 +58,11 @@ Quatre niveaux : 🌱 Découvreur (0–200) · 🌟 Explorateur (201–500) · �
 `wakabi/v1/contact`), plus une **application Android** publiée
 (`com.wakabi.wakabimobile`).
 
+> **Précision de l'équipe :** ce WordPress est le **back-end éditorial**, pas la base du
+> produit — il sert à gérer les articles. Il n'expose **ni événements ni établissements** ;
+> ces données vivent dans le back-end de l'app mobile. L'ancrage se fera donc par **URL**
+> et non par jointure — voir §1.3.
+
 > **Le mot « badge » est déjà dans le produit.** L'app affiche un « Badge *Explorateur
 > Gold* ». C'est le pont le plus court vers mougni : plutôt que d'inventer une mécanique,
 > le générateur peut produire **le visuel partageable d'un statut déjà gagné**.
@@ -91,8 +96,18 @@ mougni produit un badge **générique et orphelin** : une fois créé, il ne mè
 Wakabi possède ce que mougni n'a pas — un catalogue de lieux, d'événements et de
 partenaires réels, et une audience déjà constituée.
 
-> **Chaque visuel généré est rattaché à une entité réelle du catalogue Wakabi** — un lieu,
-> un événement, un partenaire — et **renvoie vers sa fiche** au téléchargement.
+> **Chaque visuel généré renvoie vers une page Wakabi** — la fiche d'un lieu, d'un
+> événement, d'un partenaire — **au moment du téléchargement**.
+
+**Le mécanisme est une URL, pas une jointure.** Le WordPress ne servant que le contenu
+éditorial, l'ancrage passe par `share.redirectUrl` : l'équipe ou le partenaire colle le
+lien de la fiche au moment de créer le décor. C'est plus simple, indépendant de toute API,
+et disponible dès la v1. Le schéma va jusqu'à **refuser un décor publié sans
+redirection** — sans elle, le badge ne ramène personne, et toute la stratégie tombe.
+
+Les champs `partnerId`, `placeId` et `eventId` restent dans le schéma comme métadonnées
+descriptives, prêts à devenir de vraies jointures le jour où le back-end de l'app
+s'ouvrira, sans casser les décors déjà publiés.
 
 **Le Kori étant désactivé**, la v0.1 avait tort d'en faire l'atout maître. L'analyse de
 mougni en fournit un meilleur, et immédiatement actionnable :
@@ -153,7 +168,8 @@ décoratives : chaque décision de la section 3 y renvoie.
 | **Icônes** | **Phosphor** ou Lucide, embarquées en SVG | Remplace les appels CDN vers icons8, dans le même style linéaire fin ; zéro requête réseau **C2** |
 | **État éditeur** | **Zustand** | ~1 Ko, store sérialisable — c'est exactement le `RenderSpec` (§4) |
 | **Validation** | **Zod** | Un seul schéma pour le back-office, l'API et l'éditeur (§5) |
-| **Données & back-office** | **Le WordPress existant** — `decor_template` en custom post type, exposé via `wakabi/v1/decors` | L'équipe publie depuis l'admin qu'elle utilise déjà **C5** ; un décor référence nativement un `partner` ou une `city` ; aucun fournisseur ni compte supplémentaires |
+| **Données & back-office** | **Le WordPress existant** — `decor_template` en custom post type, exposé via `wakabi/v1/decors` | L'équipe publie depuis l'admin qu'elle utilise déjà **C5**, et le circuit de modération est natif (§6.3) ; aucun fournisseur ni compte supplémentaires |
+| **Ancrage** | **Une URL** (`share.redirectUrl`), pas une jointure d'API | Le WordPress ne sert que l'éditorial : ni événements ni établissements. L'URL fonctionne dès la v1 et ne dépend de rien |
 | **PWA / offline** | **Serwist** (`@serwist/next`) | Installable, modèles en cache — répond directement à C2 |
 | **Cache client** | **IndexedDB** (via `idb`) | Cadres PNG et photos récentes mis en cache : deuxième création = zéro data |
 | **Analytics** | **Plausible ou Umami** + événements custom | Léger, sans cookie, sans bandeau de consentement |
@@ -436,12 +452,15 @@ L'archive a répondu à tout le bloc A (charte) et à l'essentiel du bloc B (éc
 Ce qui reste est dans [`docs/01-QUESTIONS.md`](./01-QUESTIONS.md). Les trois points
 bloquants restants :
 
-1. **La liste complète des routes de `admin.wakabileguide.com/wp-json`.** Le site ne
-   consomme que `cities`, `partners` et `posts` — mais l'app mobile expose manifestement
-   des événements et des établissements. Sans cette liste, le modèle d'ancrage (§1.3)
-   ne peut pas être figé.
-2. **Les fonctionnalités réelles de mougni.com** — captures ou liste écrite, à verser
-   dans la grille §8.
-3. **Le périmètre de la v1** (§9). *Le point « qui crée les décors » est tranché :
-   équipe Wakabi **et** partenaires, avec modération Wakabi — voir
-   [`docs/04-MODERATION.md`](./04-MODERATION.md).*
+1. **Le logo dans une définition exploitable** — source vectorielle, ou à défaut un PNG à
+   alpha d'au moins 2000 px de large. Le filigrane est incrusté dans chaque export 2048 px.
+   *Non bloquant* : la variante `text` du filigrane permet de développer J0 et J1 sans
+   attendre (voir [`02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) §2 bis).
+2. **« Bons coins » ou « bons plans » ?** Le logo dit « BONS PLANS », le site écrit
+   « bons coins » 13 fois — dont le `<title>` de l'accueil. À trancher avant d'incruster
+   la formule sur des milliers de visuels partagés.
+3. **Le périmètre de la v1** (§9)  — combien de modèles au lancement, et avec quelle
+   première campagne réelle.
+
+*Tranchés : la charte (§2 du doc dédié), l'analyse mougni (§8), et la création partagée
+équipe + partenaires avec modération Wakabi (§6.3).*

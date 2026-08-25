@@ -159,7 +159,17 @@ export const DecorTemplate = z
     /* -- rattachement au catalogue Wakabi : c'est ce qui rend le décor
           « ancré » plutôt qu'orphelin. Voir SPEC §1.3. -- */
     campaignId: z.string().optional(),
-    /** ID du custom post type `partners` du WordPress existant. */
+    /**
+     * ATTENTION — ces identifiants sont des MÉTADONNÉES DESCRIPTIVES, pas des
+     * jointures vivantes. Le WordPress de Wakabi sert le contenu éditorial
+     * (articles, villes, partenaires) ; il n'expose ni événements ni
+     * établissements — ces données vivent dans le back-end de l'app mobile,
+     * hors de portée pour l'instant.
+     *
+     * L'ancrage réel passe donc par `share.redirectUrl` (une URL), et non
+     * par une résolution d'identifiant. C'est plus simple, ça ne dépend
+     * d'aucune API, et ça fonctionne dès la v1.
+     */
     partnerId: z.string().optional(),
     placeId: z.string().optional(),
     eventId: z.string().optional(),
@@ -283,8 +293,29 @@ export const DecorTemplate = z
           .enum(['bottom-right', 'bottom-left', 'bottom-center'])
           .default('bottom-right'),
         opacity: z.number().min(0.3).max(1).default(0.9),
+        /**
+         * Le logo Wakabi n'existe qu'en bitmap (`logo-w.png`) — pas de SVG
+         * disponible. Trois variantes, par ordre de préférence :
+         *
+         *  - `lockup`   : pin + « WAKABI » + signature. Illisible sous ~320 px
+         *                 de large : à réserver aux décors où le filigrane
+         *                 est grand.
+         *  - `wordmark` : pin + « WAKABI », sans la signature. Le défaut —
+         *                 c'est la réduction standard d'un logo à trois
+         *                 étages, et elle reste lisible en petit.
+         *  - `text`     : « wakabileguide.com » composé en Bricolage
+         *                 Grotesque. AUCUN fichier requis : permet de
+         *                 développer J0/J1 sans attendre l'asset, et reste
+         *                 un repli honnête si le bitmap est trop pauvre.
+         */
+        variant: z.enum(['wordmark', 'lockup', 'text']).default('wordmark'),
       })
-      .default({ enabled: true, position: 'bottom-right', opacity: 0.9 }),
+      .default({
+        enabled: true,
+        position: 'bottom-right',
+        opacity: 0.9,
+        variant: 'wordmark',
+      }),
   })
   /* -- invariants structurels -- */
   .superRefine((tpl, ctx) => {
@@ -367,6 +398,18 @@ export const DecorTemplate = z
         code: z.ZodIssueCode.custom,
         path: ['publishedAt'],
         message: 'Un décor publié doit porter publishedAt.',
+      });
+    }
+
+    // Toute la stratégie tient à ce que le badge ramène du monde sur
+    // Wakabi (SPEC §1.3). Un décor publié qui ne renvoie nulle part est un
+    // visuel offert sans contrepartie.
+    if (tpl.status === 'published' && !tpl.share.redirectUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['share', 'redirectUrl'],
+        message:
+          'Un décor publié doit définir share.redirectUrl : sans redirection, le badge ne ramène personne sur Wakabi.',
       });
     }
 
