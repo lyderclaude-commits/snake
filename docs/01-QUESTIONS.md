@@ -1,8 +1,10 @@
 # Questions pour affiner le cahier des charges
 
-**Mis à jour le 25/08/2026, après dépouillement de l'archive du site.**
-Le bloc A est **entièrement résolu**, le bloc B l'est aux trois quarts. Ce qui reste
-est signalé 🔴 quand c'est bloquant.
+**Mis à jour le 25/08/2026**, après dépouillement de l'archive du site **et** de la page
+d'accueil mougni. Les blocs A, D et E sont résolus, le bloc B l'est aux trois quarts.
+Ce qui reste est signalé 🔴 quand c'est bloquant.
+
+**Rappel :** le programme **Kori est désactivé** — il passe au jalon J5, gelé.
 
 Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a été extrait.
 
@@ -20,9 +22,11 @@ Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a ét�
 
 **Deux points restent à trancher :**
 
-6. **Le logo doit-il apparaître sur chaque visuel exporté ?** Filigrane systématique, ou
-   seulement quand le modèle le prévoit ? *Un filigrane systématique donne de la
-   visibilité, mais réduit le partage sur les comptes soignés.*
+6. ✅ **Le logo sur chaque visuel exporté — tranché.** L'analyse de mougni referme la
+   question : chez eux, retirer le watermark est la première raison de payer. Notre outil
+   étant gratuit et servant l'offre partenaire, le filigrane Wakabi est **systématique**.
+   Pure visibilité, aucun arbitrage commercial. Implémenté dans le schéma
+   (`watermark.enabled` à `true` par défaut).
 7. **Le pied de page vouvoie** (« Explorez. Découvrez. Connectez. ») alors que tout le
    reste tutoie. Je pars sur le **tutoiement** pour le générateur, sauf avis contraire.
 
@@ -70,26 +74,32 @@ Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a ét�
 
 ---
 
-## D. UX / parcours
+## D. UX / parcours — ✅ RÉSOLU par l'analyse mougni
 
-16. **Format prioritaire.** Je pars du principe que le **statut WhatsApp (9:16)** est au moins
-    aussi important que le carré. À confirmer — cela change la conception des cadres.
-17. **Les filtres photo sont-ils vraiment souhaités en v1 ?** Ils allongent le parcours et
-    entrent en tension avec l'objectif « 30 secondes ». Un unique filtre signature Wakabi,
-    activable d'un geste, serait peut-être plus juste.
-18. **Quels champs de texte l'utilisateur peut-il saisir ?** Prénom ? Ville ? Un message libre ?
-    Le texte libre implique une **modération** dès qu'un mur public existe.
-19. **Un mur public des créations est-il souhaité ?** Excellent levier social, mais il impose
-    une chaîne de modération avant ouverture.
-20. **Langues.** Français uniquement, ou anglais également (Abidjan / audience internationale) ?
+| # | Question | Réponse |
+|---|---|---|
+| 17 | Les filtres en v1 ? | **Non.** mougni n'en a aucun et domine la catégorie. `<FilterRail>` retiré, ainsi que rotation et miroir. Il reste un filtre signature Wakabi, activable d'un geste. |
+| 18 | Champs de texte éditables | Prénom et ville. Le message libre attend un mur public, donc une modération. |
+| 19 | Mur public des créations | **Différé.** Les deux compteurs publics (⬇ / 👁) donnent la preuve sociale sans exiger de modération. |
+
+**Reste à trancher :**
+
+16. **Format prioritaire.** Je pars du principe que le **statut WhatsApp 9:16** est au
+    moins aussi important que le carré — et qu'un modèle vaut **un format**, plutôt qu'une
+    bascule multi-ratios dans l'éditeur (mougni ne propose pas de bascule). À confirmer.
+20. **Langues.** Le site Wakabi est en français uniquement, mougni propose FR/EN.
+    Français seul pour la v1, ou anglais dès le départ pour Abidjan ?
 
 ---
 
-## E. mougni.com
+## E. mougni.com — ✅ RÉSOLU
 
-21. **Transmettez-moi ce que vous avez** : captures d'écran du parcours complet, une vidéo de
-    l'écran, ou simplement la liste écrite des fonctionnalités. Je verse le tout dans la grille
-    d'analyse (SPEC §8) et nous en sortons des verdicts
-    `ADOPTER` / `REMIXER` / `ÉCARTER` / `DIFFÉRER`.
-22. **Y a-t-il un point précis de mougni qui vous a marqué ?** Une chose que vous avez trouvée
-    particulièrement réussie — ou au contraire ratée, et que vous voulez éviter ?
+Page d'accueil complète reçue et analysée. Voir
+[`docs/03-ANALYSE-MOUGNI.md`](./03-ANALYSE-MOUGNI.md) : modèle économique, périmètre réel
+de l'éditeur, implémentation, et grille de décision sur 16 points.
+
+**Une seule question subsiste :**
+
+21. **Y a-t-il un point de mougni que vous trouvez particulièrement réussi — ou raté ?**
+    Mon analyse porte sur la page d'accueil ; vous avez peut-être utilisé le parcours de
+    création lui-même, ce que je n'ai pas pu faire.

@@ -37,6 +37,10 @@ check('ratio incohérent', { ...base, canvas: { ratio: '9:16', width: 1080, heig
 check('événement sans expiration', { ...base, eventId: 'evt_42' }, false);
 check('événement avec expiration', { ...base, eventId: 'evt_42', expiresAt: '2026-12-01T00:00:00Z' }, true);
 check('slug invalide (majuscules)', { ...base, slug: 'Festival Lome' }, false);
+check('partenaire sans redirection', { ...base, partnerId: 'ptn_7' }, false);
+check('partenaire avec redirection',
+  { ...base, partnerId: 'ptn_7', share: { redirectUrl: 'https://wakabileguide.com/p/le-maquis' } }, true);
+check('filtre retiré du périmètre v1', { ...base, filters: ['none', 'vintage'] }, false);
 
 // Vérifie que les valeurs par défaut sont bien appliquées.
 const ok = DecorTemplate.parse(base);
@@ -49,3 +53,7 @@ console.log('  status            =', ok.status);
 console.log('  photoSlot.fit     =', (ok.layers[0] as any).fit);
 console.log('  photoSlot.mask    =', JSON.stringify((ok.layers[0] as any).mask));
 console.log('  text.font/size    =', (ok.layers[2] as any).font, (ok.layers[2] as any).size);
+console.log('  watermark         =', JSON.stringify(ok.watermark));
+console.log('  redirectLabel     =', ok.share.redirectLabel);
+console.log('  createdBy         =', ok.createdBy);
+console.log('  allowRotation     =', (ok.layers[0] as any).allowRotation);

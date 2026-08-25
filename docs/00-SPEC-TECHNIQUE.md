@@ -1,5 +1,5 @@
 # Wakabi Studio — Générateur de décors & visuels personnalisés
-### Spécification technique & architecture — v0.1 (document de travail)
+### Spécification technique & architecture — v0.3 (document de travail)
 
 ---
 
@@ -15,7 +15,7 @@ dépouillée : 12 pages HTML de production, `blog/assets/wakabi.css` (80 Ko) et 
 | Ton éditorial & lexique | ✅ **Vérifié** | Contenu des pages |
 | Économie Kori & niveaux | ✅ **Vérifié** | `kori.html` |
 | Architecture technique | ✅ **Vérifié** | Clients API embarqués dans chaque page |
-| Fonctionnalités mougni.com | ⚠️ **Non vérifié** | Résultats de recherche uniquement — domaine toujours inaccessible |
+| Fonctionnalités mougni.com | ✅ **Vérifié** | Page d'accueil complète fournie (118 Ko) — voir [`docs/03-ANALYSE-MOUGNI.md`](./03-ANALYSE-MOUGNI.md) |
 
 Le détail complet de l'audit est dans [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md).
 
@@ -26,7 +26,10 @@ Le détail complet de l'audit est dans [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-
 > **(2)** Wakabi tourne déjà sur un **WordPress headless** avec une API custom. La
 > proposition Supabase de la v0.1 est retirée — voir §3.
 
-Seul le volet mougni reste marqué **`[À CONFIRMER]`**.
+**Rappel de contexte produit :** le programme **Kori est actuellement désactivé** côté
+Wakabi. Cela déplace l'angle de différenciation de la v1 — voir §1.3.
+
+Plus aucun volet du document ne repose sur des hypothèses.
 
 ---
 
@@ -59,43 +62,63 @@ Quatre niveaux : 🌱 Découvreur (0–200) · 🌟 Explorateur (201–500) · �
 > Gold* ». C'est le pont le plus court vers mougni : plutôt que d'inventer une mécanique,
 > le générateur peut produire **le visuel partageable d'un statut déjà gagné**.
 
-### 1.2 Ce que je sais de mougni.com
+### 1.2 mougni.com, d'après sa page d'accueil
 
-mougni.com est un **générateur de badges « J'y serai »** pour concerts, festivals et matchs. Ses
-arguments affichés :
+**mougni n'est pas un générateur de badges.** C'est une **plateforme SaaS de mobilisation
+de communauté** pour l'Afrique francophone, articulant trois canaux : **WhatsApp**
+(diffusion, chatbots, rappels J-1 et H-2), **« J'y serai »** (le générateur de badges) et
+**Web Push**. Plus un quatrième produit : la **publicité native dans les badges**.
 
-- **« Créez votre badge en 30 secondes »** — la promesse est la *vitesse*
-- **« Gratuit et sans inscription »** — friction zéro, aucun compte
-- **« +10 000 badges créés »** — preuve sociale chiffrée en page d'accueil
-- **« Partagez sur WhatsApp instantanément »** — un canal de partage prioritaire, pas générique
+Quatre paliers mensuels en FCFA — Découverte 0 (avec watermark), Impact 5 000, Croissance
+10 000, Mouvement 30 000 — et des crédits WhatsApp vendus à part à **2,21 FCFA le message**.
 
-C'est le **même genre de produit que le vôtre**. Ce n'est pas une source d'inspiration lointaine,
-c'est un concurrent direct sur un marché adjacent. La question n'est donc pas « que copier »,
-mais « **quel est notre avantage structurel qu'il ne peut pas répliquer** ».
+> **Le badge n'est pas le produit, c'est l'appât.** L'argent est dans l'abonnement et les
+> crédits WhatsApp. Le badge attire les organisateurs, qui achètent ensuite du message.
 
-### 1.3 L'angle de remix : le décor ancré
+**L'éditeur se limite à « zoom, position ».** C'est écrit dans leur FAQ. Pas de rotation,
+pas de filtres, pas de calques. Le leader de la catégorie tient avec **deux gestes** —
+c'est un enseignement direct sur notre propre périmètre (§7).
+
+**Deux frictions distinctes :** le participant crée son badge **sans compte** ; seul
+l'**organisateur** doit se connecter pour publier une campagne. Bon arbitrage, à reprendre.
+
+Analyse complète, grille de décision sur 16 points et recommandations de retrait :
+[`docs/03-ANALYSE-MOUGNI.md`](./03-ANALYSE-MOUGNI.md).
+
+### 1.3 L'angle de remix : le générateur comme argument de vente
 
 mougni produit un badge **générique et orphelin** : une fois créé, il ne mène nulle part.
+Wakabi possède ce que mougni n'a pas — un catalogue de lieux, d'événements et de
+partenaires réels, et une audience déjà constituée.
 
-Wakabi possède une chose que mougni n'a pas : **une base de lieux, d'événements, de partenaires
-réels, et une économie (Koris)**. D'où la thèse produit que je propose :
+> **Chaque visuel généré est rattaché à une entité réelle du catalogue Wakabi** — un lieu,
+> un événement, un partenaire — et **renvoie vers sa fiche** au téléchargement.
 
-> **Chaque visuel généré est rattaché à une entité réelle du catalogue Wakabi** — un lieu, un
-> événement, un partenaire, une campagne — et devient un point d'entrée vers ce contenu.
+**Le Kori étant désactivé**, la v0.1 avait tort d'en faire l'atout maître. L'analyse de
+mougni en fournit un meilleur, et immédiatement actionnable :
 
-Trois conséquences concrètes :
+> **Les clients de mougni sont exactement les partenaires de Wakabi.** Associations,
+> organisateurs, restaurants, paroisses, marques locales. mougni leur facture **5 000 à
+> 30 000 FCFA par mois** pour leurs badges.
+>
+> **Le générateur n'est donc pas un produit à vendre : c'est un argument de vente pour
+> l'offre partenaire.** Wakabi inclut les visuels de campagne dans la Carte Partenaire —
+> et y ajoute ce que mougni ne peut pas fournir : **son audience**. Un organisateur qui
+> passe par mougni doit amener sa propre communauté ; celui qui passe par Wakabi est exposé
+> aux explorateurs de sa ville.
 
-1. **Le visuel devient une affiche cliquable.** Le partage WhatsApp embarque un lien
-   `wakabi.../decor/{slug}` dont l'aperçu (OG image) est le décor lui-même. Le destinataire ne voit
-   pas juste une image : il voit l'événement, et peut le retrouver dans Wakabi.
-2. **Le visuel devient une transaction.** Créer et partager un décor de campagne peut créditer des
-   **Koris**. C'est un levier d'acquisition que mougni ne peut pas offrir. **`[À CONFIRMER]`**
-3. **Le visuel devient un inventaire vendable.** Un restaurant ou un festival partenaire peut
-   commander son décor sponsorisé. C'est un produit publicitaire natif.
+Trois conséquences opérationnelles :
 
-**Nom de travail : Wakabi Studio.** `[À CONFIRMER]`
+1. **Le générateur devient un outil de l'équipe commerciale**, démontrable en rendez-vous
+   partenaire — pas seulement un gadget grand public.
+2. **Le filigrane Wakabi devient évident.** L'outil est gratuit, donc le logo est
+   systématique : pure visibilité, sans l'arbitrage commercial que mougni doit faire
+   (chez eux, retirer le watermark est la première raison de payer).
+3. **La redirection après téléchargement est la brique centrale**, pas une option. mougni
+   la facture dès 5 000 FCFA ; chez nous elle est gratuite et structurante.
 
----
+Le Kori redevient ce qu'il aurait dû rester : **un jalon ultérieur**, à activer le jour où
+le programme de fidélité sera rallumé.
 
 ## 2. Contraintes structurantes
 
@@ -260,7 +283,10 @@ app/decor/[slug]/page.tsx                 (RSC — charge le DecorTemplate, gén
     │   ├── <TemplateGallery>             grille filtrable (campagne / ville / rubrique)
     │   │   ├── <TemplateCard>            vignette + badge « nouveau » / « expire bientôt »
     │   │   └── <TemplateFilters>         chips ville, rubrique, événement
-    │   └── <CampaignHero>                titre, pitch, <CounterBadge/> (preuve sociale)
+    │   └── <CampaignHero>                titre, pitch, <CampaignStats/>
+    │       └── <CampaignStats>           ⬇ téléchargements · 👁 vues — deux compteurs
+    │                                     publics par campagne, comme mougni. Le
+    │                                     rapport des deux dit le taux de conversion.
     │
     ├── ÉTAPE 2 — IMPORTER
     │   ├── <PhotoDropzone>               <input type="file" accept="image/*"> + drag & drop
@@ -283,12 +309,16 @@ app/decor/[slug]/page.tsx                 (RSC — charge le DecorTemplate, gén
     │
     └── ÉTAPE 4 — EXPORTER
         ├── <PreviewSheet>                aperçu plein écran avant validation
-        └── <ExportBar>
-            ├── <ShareButton>             Web Share API L2 — chemin **principal** sur mobile
-            ├── <DownloadButton>          toBlob + <a download> — chemin de repli
-            ├── <SaveHintSheet>           « appui long pour enregistrer » (webviews iOS, §7)
-            ├── <CopyLinkButton>          lien de campagne + UTM
-            └── <QualityPicker>           HD 2048 · Statut · Web léger
+        ├── <ExportBar>
+        │   ├── <ShareButton>         Web Share API L2 — chemin **principal** sur mobile
+        │   ├── <DownloadButton>      toBlob + <a download> — chemin de repli
+        │   ├── <SaveHintSheet>       « appui long pour enregistrer » (webviews iOS, §7)
+        │   └── <CopyLinkButton>      lien de campagne + UTM
+        └── <RedirectAfterDownload>   ← LA BRIQUE D'ANCRAGE. Renvoi vers la fiche
+                                      Wakabi du partenaire ou de l'événement. mougni
+                                      la facture dès 5 000 FCFA/mois ; chez nous elle
+                                      est gratuite et structurante. C'est le seul
+                                      moment où l'attention est totale.
 ```
 
 ### 6.2 Modules hors React (le cœur métier)
@@ -299,7 +329,8 @@ app/decor/[slug]/page.tsx                 (RSC — charge le DecorTemplate, gén
 | `core/exportWorker.ts` | Worker : `OffscreenCanvas` → rendu HD → `Blob`. |
 | `core/imagePipeline.ts` | `createImageBitmap` (EXIF), downscale, garde-fou mémoire (§7). |
 | `core/fitPhoto.ts` | Calcul de cadrage initial « cover » dans le `photoSlot`. |
-| `core/filters.ts` | Filtres déterministes, identiques aperçu ↔ export. |
+| `core/filters.ts` | Filtre signature unique, déterministe, identique aperçu ↔ export. |
+| `core/watermark.ts` | Filigrane Wakabi, incrusté dans `renderScene`. Systématique : l'outil est gratuit, le logo voyage. |
 | `core/templateSchema.ts` | Schéma Zod partagé back-office / API / éditeur. |
 | `store/useRenderSpec.ts` | Store Zustand = `RenderSpec` (§4). |
 | `lib/share.ts` | Détection de capacité + arbre de décision de partage (§7). |
@@ -338,67 +369,36 @@ au partage sur data payante (C2).
 
 ---
 
-## 8. Grille d'analyse de mougni.com
+## 8. Analyse de mougni.com
 
-Vous m'avez proposé de me transmettre les spécificités de mougni. Voici la **grille dans laquelle
-je vous propose de les verser**, pour que l'analyse produise des décisions plutôt qu'une liste.
+L'analyse complète — modèle économique, périmètre réel de l'éditeur, implémentation, et
+une **grille de décision sur 16 points** (`ADOPTER` / `REMIXER` / `ÉCARTER` / `DIFFÉRER`)
+— est dans [`docs/03-ANALYSE-MOUGNI.md`](./03-ANALYSE-MOUGNI.md).
 
-### 8.1 Les dix axes à relever
+Les quatre conclusions qui portent :
 
-Pour chaque axe, la question est : *qu'est-ce que mougni fait, et pourquoi ?*
+| Constat | Conséquence pour nous |
+|---|---|
+| **Le badge est l'appât, pas le produit.** L'argent est dans les crédits WhatsApp (2,21 FCFA/message) et l'abonnement. | Nous n'avons pas à monétiser l'outil : il finance la Carte Partenaire (§1.3). |
+| **L'éditeur se limite à zoom + position.** Pas de rotation, pas de filtres. | Retirer `<FilterRail>`, la rotation et le miroir de la v1 (§7 du doc dédié). |
+| **La redirection après téléchargement est vendue dès 5 000 FCFA.** | C'est notre brique d'ancrage, et elle est gratuite. |
+| **Le watermark est ce qu'on paie pour retirer.** | L'outil étant gratuit, le filigrane Wakabi est systématique. Question A2 refermée. |
 
-| # | Axe | Ce qu'il faut observer |
-|---|---|---|
-| 1 | **Friction d'entrée** | Combien d'écrans avant le premier résultat ? Compte obligatoire ou non ? |
-| 2 | **Catalogue de modèles** | Combien ? Taxonomie ? Qui les crée ? À quelle fréquence ? |
-| 3 | **Manipulations offertes** | Zoom/pan seulement, ou rotation, filtres, calques, stickers ? |
-| 4 | **Personnalisation texte** | Champs libres ? Longueur max ? Choix de police ? |
-| 5 | **Export & partage** | Formats, résolutions, canaux, présence d'un filigrane |
-| 6 | **Preuve sociale** | Le compteur « +10 000 » — réel ou décoratif ? Mur public des créations ? |
-| 7 | **Boucle virale** | Lien de campagne, aperçu OG, parrainage, UTM |
-| 8 | **Monétisation** | Sponsors, marques, premium, retrait de filigrane |
-| 9 | **Back-office** | Self-service pour un organisateur, ou création interne ? |
-| 10 | **Données & analytics** | Que mesurent-ils ? Que gardent-ils ? |
-
-### 8.2 La grille de décision
-
-Chaque fonctionnalité relevée passe ensuite par ce tableau, et **doit** en ressortir avec un verdict :
-
-| Fonctionnalité | Valeur user | Effet viral | Cohérence Wakabi | Coût (S/M/L) | Backend requis | Verdict |
-|---|---|---|---|---|---|---|
-
-**Verdicts possibles :** `ADOPTER` (tel quel) · `REMIXER` (l'idée, exécutée à la sauce Wakabi) ·
-`ÉCARTER` (contraire à notre positionnement) · `DIFFÉRER` (bon, mais pas en v1).
-
-### 8.3 Premier passage — à partir de ce que j'ai pu vérifier
-
-| Fonctionnalité mougni | Valeur | Viral | Cohérence | Coût | Backend | Verdict proposé |
-|---|---|---|---|---|---|---|
-| Sans inscription | ★★★ | ★★★ | ★★★ | S | non | **ADOPTER** — l'auth n'apparaît qu'aux Koris |
-| « En 30 secondes » | ★★★ | ★★☆ | ★★★ | M | non | **ADOPTER** comme *contrainte de conception* : c'est un budget temps, pas un slogan |
-| Partage WhatsApp direct | ★★★ | ★★★ | ★★★ | S | non | **ADOPTER** — Web Share API L2 (§7) |
-| Compteur « +10 000 créés » | ★★☆ | ★★★ | ★★☆ | S | oui | **REMIXER** — compteur **par campagne**, honnête, temps réel |
-| Badge « J'y serai » | ★★★ | ★★★ | ★★☆ | S | non | **REMIXER** — « J'y serai » → décor **rattaché à un événement réel du catalogue** (§1.3) |
-| Badge générique orphelin | — | — | ★☆☆ | — | — | **ÉCARTER** — c'est précisément notre différence |
-| Mur public des créations | ★★☆ | ★★☆ | ★★★ | M | oui + modération | **DIFFÉRER** — fort, mais exige une modération avant ouverture |
-| Décors sponsorisés partenaires | ★★☆ | ★★☆ | ★★★ | M | oui | **DIFFÉRER v2** — modèle de revenu natif, adossé aux partenaires existants |
-| Récompense en Koris | ★★★ | ★★★ | ★★★ | L | oui + auth | **REMIXER — l'atout maître.** Aucune contrepartie possible chez mougni |
-
-> **La ligne à retenir :** les trois premières lignes sont ce qui rend le produit *utilisé*. La
-> dernière est ce qui le rend *défendable*. Les deux doivent être dans la feuille de route, mais
-> pas dans le même jalon.
-
----
+Deux choses à ne pas reprendre : les **copies des badges** livrées à l'organisateur —
+elles supposent l'upload des photos côté serveur, ce qui viole C6 — et un
+`aggregateRating` JSON-LD de 4,8/150 sans aucun avis réel sur la page, qui expose à une
+pénalité manuelle Google.
 
 ## 9. Découpage proposé
 
 | Jalon | Contenu | Sortie |
 |---|---|---|
 | **J0 — Socle** | Tokens de marque, `renderScene`, schéma `DecorTemplate`, 1 modèle codé en dur | Un visuel exportable de bout en bout |
-| **J1 — Éditeur** | Upload, gestes, recadrage, export HD, partage | Produit utilisable, mono-campagne |
-| **J2 — Catalogue** | Supabase, back-office modèles, galerie, compteurs, OG images | L'équipe publie sans développeur |
-| **J3 — Ancrage** | Rattachement lieux/événements, UTM, analytics, PWA offline | La boucle virale est fermée |
-| **J4 — Koris** | Auth, attribution des Koris, décors sponsorisés | Différenciation & revenu |
+| **J1 — Éditeur** | Upload, zoom, déplacement, export HD, partage, redirection | Produit utilisable, mono-campagne |
+| **J2 — Catalogue** | Custom post type `decor_template`, endpoints `wakabi/v1/decors`, galerie, compteurs, OG images | L'équipe publie depuis son WordPress |
+| **J3 — Ancrage** | Rattachement aux `partners`/`cities`, compteurs publics, UTM, PWA offline | La boucle virale est fermée |
+| **J4 — Partenaires** | Rôle organisateur, décors sponsorisés, démo commerciale | L'offre partenaire a son argument |
+| **J5 — Koris** *(gelé)* | Attribution des Koris sur création et partage | **À activer quand le programme de fidélité sera rallumé** |
 
 ---
 

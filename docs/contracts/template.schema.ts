@@ -50,13 +50,16 @@ export const ColorRef = z.union([
 
 export const AspectRatio = z.enum(['1:1', '4:5', '9:16', '16:9']);
 
+/**
+ * Filtres. Volontairement réduits : mougni, qui domine la catégorie, n'en
+ * propose AUCUN — son éditeur se limite à zoom + position. Les filtres
+ * allongent le parcours et contredisent le budget des 30 secondes.
+ * On garde une signature Wakabi activable d'un geste, et c'est tout.
+ * Voir docs/03-ANALYSE-MOUGNI.md §3 et §7.
+ */
 export const FilterId = z.enum([
   'none',
   'wakabi-blue',   // signature froide, calée sur --wk-primary #2563EB
-  'noir',
-  'vintage',
-  'vibrant',
-  'soft',
 ]);
 
 /* ------------------------------------------------------------------ */
@@ -83,8 +86,11 @@ export const PhotoSlotLayer = z.object({
     .default({ kind: 'rect', radius: 0 }),
   minScale: z.number().positive().default(0.5),
   maxScale: z.number().positive().default(4),
-  /** Autoriser l'utilisateur à faire pivoter sa photo. */
-  allowRotation: z.boolean().default(true),
+  /**
+   * Autoriser la rotation. Désactivé par défaut : mougni ne l'offre pas, et
+   * chaque geste supplémentaire coûte sur le budget des 30 secondes.
+   */
+  allowRotation: z.boolean().default(false),
 });
 
 /**
@@ -143,8 +149,17 @@ export const DecorTemplate = z
     /* -- rattachement au catalogue Wakabi : c'est ce qui rend le décor
           « ancré » plutôt qu'orphelin. Voir SPEC §1.3. -- */
     campaignId: z.string().optional(),
+    /** ID du custom post type `partners` du WordPress existant. */
+    partnerId: z.string().optional(),
     placeId: z.string().optional(),
     eventId: z.string().optional(),
+    /**
+     * Qui a créé ce modèle. Le participant crée son badge SANS compte ;
+     * seul l'organisateur doit être authentifié pour publier une campagne.
+     * Deux rôles, deux niveaux de friction — l'arbitrage de mougni, et il
+     * est juste.
+     */
+    createdBy: z.enum(['wakabi-team', 'partner']).default('wakabi-team'),
     city: z.enum(['lome', 'cotonou', 'abidjan', 'all']).default('all'),
     rubrique: z
       .enum(['gastronomie', 'evenements', 'hebergements', 'culture', 'campagne'])
@@ -169,7 +184,7 @@ export const DecorTemplate = z
     layers: z.array(Layer).min(1),
 
     /* -- options offertes à l'utilisateur -- */
-    filters: z.array(FilterId).default(['none', 'wakabi-blue', 'noir']),
+    filters: z.array(FilterId).default(['none', 'wakabi-blue']),
 
     /* -- export -- */
     export: z.object({
@@ -184,7 +199,32 @@ export const DecorTemplate = z
       defaultCaption: z.string().max(280).default(''),
       hashtags: z.array(z.string()).max(8).default([]),
       utm: z.record(z.string()).default({}),
+      /**
+       * Redirection après téléchargement — la brique d'ancrage.
+       * mougni facture cette fonctionnalité dès 5 000 FCFA/mois ; chez nous
+       * elle est gratuite et structurante : chaque badge téléchargé renvoie
+       * vers la fiche Wakabi du partenaire ou de l'événement.
+       * C'est le seul moment où l'attention de l'utilisateur est totale.
+       */
+      redirectUrl: z.string().url().optional(),
+      redirectLabel: z.string().max(60).default('Découvrir sur Wakabi'),
     }),
+
+    /**
+     * Filigrane Wakabi. Systématique par défaut : l'outil est gratuit, donc
+     * le logo voyage sur chaque partage — pure visibilité, sans l'arbitrage
+     * commercial que mougni doit faire (son watermark est ce qu'on paie pour
+     * retirer). Ne peut être levé que sur décision explicite.
+     */
+    watermark: z
+      .object({
+        enabled: z.boolean().default(true),
+        position: z
+          .enum(['bottom-right', 'bottom-left', 'bottom-center'])
+          .default('bottom-right'),
+        opacity: z.number().min(0.3).max(1).default(0.9),
+      })
+      .default({ enabled: true, position: 'bottom-right', opacity: 0.9 }),
   })
   /* -- invariants structurels -- */
   .superRefine((tpl, ctx) => {
@@ -219,6 +259,17 @@ export const DecorTemplate = z
         code: z.ZodIssueCode.custom,
         path: ['canvas'],
         message: `width/height (${actual.toFixed(3)}) ne correspond pas au ratio ${tpl.canvas.ratio} (${expected.toFixed(3)}).`,
+      });
+    }
+
+    // La redirection est la brique d'ancrage : un décor rattaché à un
+    // partenaire qui ne renvoie nulle part perd tout son intérêt.
+    if (tpl.partnerId && !tpl.share.redirectUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['share', 'redirectUrl'],
+        message:
+          'Un modèle rattaché à un partenaire doit définir share.redirectUrl (fiche Wakabi).',
       });
     }
 
