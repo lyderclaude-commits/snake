@@ -1,0 +1,89 @@
+/**
+ * Wakabi Studio — Tokens de marque
+ * ==================================================================
+ *  ⚠️  VALEURS PROVISOIRES — NE PAS CONSIDÉRER COMME LA CHARTE WAKABI.
+ *
+ *  L'accès à wakabileguide.com a été refusé par le proxy réseau de la
+ *  session ; aucune couleur ni police officielle n'a pu être extraite.
+ *  Les valeurs ci-dessous sont des PLACEHOLDERS destinés à faire tourner
+ *  le produit, choisis dans une tonalité ouest-africaine chaleureuse.
+ *
+ *  ⇒ CE FICHIER EST LE SEUL ENDROIT OÙ UNE COULEUR EST ÉCRITE.
+ *    Remplacer ces valeurs = rebrander l'application entière.
+ *    Aucun composant ne doit contenir un hex en dur. Jamais.
+ * ==================================================================
+ */
+
+:root {
+  /* --- Couleurs de marque -------------------------------- [À CONFIRMER] */
+  --wk-primary:        #E8590C;   /* orange terre cuite — accent principal */
+  --wk-primary-soft:   #FFF0E6;
+  --wk-secondary:      #0B7A75;   /* vert lagune — contrepoint             */
+  --wk-accent:         #F2B705;   /* jaune soleil — surlignage, badges     */
+
+  /* --- Neutres ------------------------------------------- [À CONFIRMER] */
+  --wk-ink:            #1A1614;   /* texte principal / fond sombre         */
+  --wk-ink-muted:      #6B615B;
+  --wk-paper:          #FFFBF7;   /* fond clair légèrement chaud           */
+  --wk-line:           #E7DDD5;
+
+  /* --- Sémantique ------------------------------------------------------ */
+  --wk-success:        #1E9E5A;
+  --wk-warning:        #D98200;
+  --wk-danger:         #C92A2A;
+
+  /* --- Typographie --------------------------------------- [À CONFIRMER] */
+  /* Trois rôles seulement. Les modèles de décor référencent ces rôles
+     (`display` | `heading` | `body`), jamais un nom de police brut :
+     changer de fonte ne doit pas invalider les décors déjà publiés.      */
+  --wk-font-display: 'Bricolage Grotesque', 'Poppins', system-ui, sans-serif;
+  --wk-font-heading: 'Poppins', system-ui, sans-serif;
+  --wk-font-body:    'Inter', system-ui, -apple-system, sans-serif;
+
+  /* --- Échelle typographique (ratio 1.25) ------------------------------ */
+  --wk-text-xs:   0.75rem;
+  --wk-text-sm:   0.875rem;
+  --wk-text-base: 1rem;
+  --wk-text-lg:   1.25rem;
+  --wk-text-xl:   1.563rem;
+  --wk-text-2xl:  1.953rem;
+  --wk-text-3xl:  2.441rem;
+
+  /* --- Formes -------------------------------------------- [À CONFIRMER] */
+  /* Le rayon dit beaucoup du ton d'une marque : généreux = chaleureux,
+     ce qui semble cohérent avec le positionnement Wakabi. À valider.     */
+  --wk-radius-sm:   8px;
+  --wk-radius-md:   14px;
+  --wk-radius-lg:   22px;
+  --wk-radius-pill: 999px;
+
+  /* --- Élévation ------------------------------------------------------- */
+  --wk-shadow-sm: 0 1px 2px rgb(26 22 20 / 0.06);
+  --wk-shadow-md: 0 4px 16px rgb(26 22 20 / 0.10);
+  --wk-shadow-lg: 0 12px 40px rgb(26 22 20 / 0.16);
+
+  /* --- Rythme ---------------------------------------------------------- */
+  --wk-space-1: 4px;
+  --wk-space-2: 8px;
+  --wk-space-3: 12px;
+  --wk-space-4: 16px;
+  --wk-space-6: 24px;
+  --wk-space-8: 32px;
+
+  /* --- Canevas de l'éditeur -------------------------------------------- */
+  --wk-canvas-bg:       #12100F;  /* fond neutre derrière la zone d'édition */
+  --wk-canvas-guide:    #F2B705;  /* repères de zone réservée (admin)       */
+  --wk-canvas-preview:  640px;    /* cf. SPEC §4 : échelle d'aperçu         */
+}
+
+/**
+ * Correspondance tokens de décor → variables CSS.
+ * Le schéma DecorTemplate référence 'brand.primary', 'brand.ink', etc.
+ * (voir template.schema.ts › ColorRef). C'est ici que la résolution a lieu,
+ * afin qu'un décor publié ne se périme jamais si la charte évolue.
+ */
+[data-brand-token='brand.primary']   { color: var(--wk-primary); }
+[data-brand-token='brand.secondary'] { color: var(--wk-secondary); }
+[data-brand-token='brand.accent']    { color: var(--wk-accent); }
+[data-brand-token='brand.ink']       { color: var(--wk-ink); }
+[data-brand-token='brand.paper']     { color: var(--wk-paper); }
