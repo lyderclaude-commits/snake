@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2563EB"/><stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0F172A" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0F172A" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <!-- voile bas, pour asseoir la lisibilité du texte sur n'importe quelle photo -->
+  <rect x="0" y="540" width="1080" height="252" fill="url(#scrim)"/>
+  <!-- bandeau de marque, arête diagonale -->
+  <path d="M0 810 L1080 738 L1080 1080 L0 1080 Z" fill="url(#band)"/>
+  <!-- filet clair au-dessus du bandeau -->
+  <path d="M0 810 L1080 738" stroke="#F97316" stroke-width="9" fill="none"/>
+  <!-- encadrement -->
+  <rect x="7" y="7" width="1066" height="1066" rx="34" fill="none" stroke="#2563EB" stroke-width="14"/>
+  <!-- pastille d'angle -->
+  <circle cx="954" cy="126" r="66" fill="#F97316"/>
+  <circle cx="954" cy="126" r="40" fill="none" stroke="#FFFFFF" stroke-width="11"/>
+</svg>

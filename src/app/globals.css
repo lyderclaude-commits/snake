@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+/**
+ * Tokens de marque Wakabi — VALEURS RÉELLES, extraites du site.
+ * Voir docs/02-CHARTE-WAKABI.md.
+ *
+ * ⇒ SEUL ENDROIT DE L'APPLICATION OÙ UNE COULEUR EST ÉCRITE.
+ *   Aucun composant ne doit contenir un hex en dur.
+ *   (Le renderer a sa propre copie, dans src/core/renderScene.ts : il doit
+ *    rester utilisable hors DOM, donc sans accès aux variables CSS.)
+ */
+@theme {
+  --color-wk-primary: #2563eb;
+  --color-wk-primary-d: #1d4ed8;
+  --color-wk-primary-l: #eff6ff;
+  --color-wk-orange: #f97316;
+  --color-wk-teal: #0d9488;
+  --color-wk-gold: #d97706;
+  --color-wk-green: #16a34a;
+  --color-wk-red: #dc2626;
+
+  --color-wk-bg: #ffffff;
+  --color-wk-bg2: #f8faff;
+  --color-wk-bg3: #eff6ff;
+  --color-wk-surface2: #f1f5f9;
+  --color-wk-border: #e2e8f0;
+  --color-wk-border2: #cbd5e1;
+  --color-wk-text: #0f172a;
+  --color-wk-text2: #475569;
+  --color-wk-text3: #94a3b8;
+
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --radius-wk-sm: 6px;
+  --radius-wk-md: 10px;
+  --radius-wk-lg: 16px;
+  --radius-wk-xl: 24px;
+  --radius-wk-2xl: 32px;
+
+  --shadow-wk-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-wk: 0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-wk-lg: 0 20px 40px rgba(15, 23, 42, 0.1), 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-wk-bg2);
+  color: var(--color-wk-text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Le canevas d'édition ne doit jamais déclencher le défilement de la page
+   ni le zoom du navigateur : les gestes lui appartiennent. */
+.wk-stage {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-wk-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

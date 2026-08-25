@@ -3,8 +3,18 @@
 Outil web de génération de visuels personnalisés (cadres de profil, badges d'événement)
 pour la plateforme **Wakabi Le Guide** — le guide des bons coins de Lomé, Cotonou et Abidjan.
 
-> **Statut : conception.** Aucun code applicatif n'est encore écrit. Ce dépôt contient pour
-> l'instant la spécification technique et les contrats de données.
+> **Statut : J0–J1 livrés.** L'application tourne — galerie, éditeur, export haute
+> définition, partage et redirection. Trois modèles de démonstration.
+
+## Démarrer
+
+```bash
+npm install
+npm run dev          # http://localhost:3000
+npm run test         # 33 invariants du contrat de données
+npm run frames       # régénère les cadres PNG depuis les SVG
+npm run demo         # assemble public/demo/index.html (fichier unique autonome)
+```
 
 ## Documents
 
@@ -15,9 +25,11 @@ pour la plateforme **Wakabi Le Guide** — le guide des bons coins de Lomé, Cot
 | [`docs/02-CHARTE-WAKABI.md`](docs/02-CHARTE-WAKABI.md) | Audit de l'existant Wakabi : couleurs, polices, ton, économie Kori, architecture WordPress |
 | [`docs/03-ANALYSE-MOUGNI.md`](docs/03-ANALYSE-MOUGNI.md) | Analyse du concurrent : modèle économique, périmètre de l'éditeur, grille de décision sur 16 points |
 | [`docs/04-MODERATION.md`](docs/04-MODERATION.md) | Création partagée équipe + partenaires : rôles, machine à états, capacités WordPress, pré-vol automatique |
-| [`docs/contracts/template.schema.ts`](docs/contracts/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
-| [`docs/contracts/template.schema.test.ts`](docs/contracts/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert, zod 3.25.76) |
-| [`docs/contracts/wakabi-tokens.css`](docs/contracts/wakabi-tokens.css) | Tokens de marque — **valeurs réelles** extraites du site, seul fichier portant des couleurs |
+| [`docs/05-IMPLEMENTATION.md`](docs/05-IMPLEMENTATION.md) | Journal d'implémentation : ce que le code a appris et qui corrige la spec |
+| [`src/core/template.schema.ts`](src/core/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
+| [`src/core/renderScene.ts`](src/core/renderScene.ts) | **Le cœur** : la fonction de rendu pure, une seule pour l'aperçu et l'export |
+| [`src/core/template.schema.test.ts`](src/core/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert) |
+| [`src/app/globals.css`](src/app/globals.css) | Tokens de marque — **valeurs réelles**, seul fichier de l'app portant des couleurs |
 
 ## État des sources
 

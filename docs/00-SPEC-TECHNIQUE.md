@@ -1,5 +1,5 @@
 # Wakabi Studio — Générateur de décors & visuels personnalisés
-### Spécification technique & architecture — v0.6 (document de travail)
+### Spécification technique & architecture — v0.7 (document de travail)
 
 ---
 
@@ -162,12 +162,12 @@ décoratives : chaque décision de la section 3 y renvoie.
 | Couche | Choix | Justification |
 |---|---|---|
 | **Framework** | **Next.js 15 (App Router) + React 19 + TypeScript strict** | SSG pour les pages campagne (SEO), **génération d'OG images dynamiques** via `next/og` (levier viral direct, cf. C3), routes API pour compteurs |
-| **Moteur canvas** | **Konva + react-konva** | Scène minuscule (photo + cadre + textes) ; bindings React déclaratifs, gestion tactile/pointer solide, ~150 Ko. *Fabric.js est plus lourd et impératif ; PixiJS/WebGL est hors-sujet ici.* |
+| **Moteur canvas** | ~~Konva~~ → **Canvas 2D natif** | ⚠️ **Révisé à l'implémentation.** Avec un renderer pur à deux échelles, il n'y a aucun graphe de scène à tenir : l'aperçu est un simple appel à `renderScene`. Konva résout un problème que nous n'avons pas. ~150 Ko économisés — voir [`05-IMPLEMENTATION.md`](./05-IMPLEMENTATION.md) §1. |
 | **Rendu export** | **Canvas 2D natif + `OffscreenCanvas` en Web Worker** | Voir §4 : le rendu HD ne doit pas geler le thread principal sur un Android d'entrée de gamme (C1) |
 | **Styles** | **Tailwind CSS v4 + CSS custom properties** | Les tokens réels de Wakabi dans **un seul fichier** (`wakabi-tokens.css`) ; Tailwind ne fait que les consommer |
-| **Typographie** | **Bricolage Grotesque** (titres) + **Plus Jakarta Sans** (corps) | Les deux polices déjà chargées par le site. *Absolut Pro* est réservée au logotype — elle n'existe qu'en Bold |
+| **Typographie** | **Bricolage Grotesque** + **Plus Jakarta Sans**, **auto-hébergées** (`@fontsource`) | ⚠️ Ne PAS passer par fonts.googleapis.com : quand la requête échoue, le canevas retombe silencieusement sur une police système et compose faux, sans erreur. Vécu — voir [`05-IMPLEMENTATION.md`](./05-IMPLEMENTATION.md) §2. |
 | **Icônes** | **Phosphor** ou Lucide, embarquées en SVG | Remplace les appels CDN vers icons8, dans le même style linéaire fin ; zéro requête réseau **C2** |
-| **État éditeur** | **Zustand** | ~1 Ko, store sérialisable — c'est exactement le `RenderSpec` (§4) |
+| **État éditeur** | ~~Zustand~~ → **`useReducer`** | Même raison : un objet plat, un seul écran. Zéro dépendance. |
 | **Validation** | **Zod** | Un seul schéma pour le back-office, l'API et l'éditeur (§5) |
 | **Données & back-office** | **Le WordPress existant** — `decor_template` en custom post type, exposé via `wakabi/v1/decors` | L'équipe publie depuis l'admin qu'elle utilise déjà **C5**, et le circuit de modération est natif (§6.3) ; aucun fournisseur ni compte supplémentaires |
 | **Ancrage** | **Une URL** (`share.redirectUrl`), pas une jointure d'API | Le WordPress ne sert que l'éditorial : ni événements ni établissements. L'URL fonctionne dès la v1 et ne dépend de rien |

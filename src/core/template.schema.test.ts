@@ -3,7 +3,7 @@
  * Vérifié avec zod 3.25.76 / TypeScript 5 (strict) — 8/8 au 25/08/2026.
  * À rebrancher sur Vitest lors de la mise en place du dépôt applicatif.
  */
-import { DecorTemplate, canTransition, WAKABI_TAGLINE } from './template.schema.js';
+import { DecorTemplate, canTransition, WAKABI_TAGLINE } from './template.schema';
 
 const base = {
   id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
