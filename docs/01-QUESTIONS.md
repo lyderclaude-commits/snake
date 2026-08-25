@@ -1,47 +1,59 @@
 # Questions pour affiner le cahier des charges
 
-Classées par **impact sur l'architecture**. Les questions marquées 🔴 bloquent des décisions
-structurantes ; les autres peuvent être tranchées en cours de route.
+**Mis à jour le 25/08/2026, après dépouillement de l'archive du site.**
+Le bloc A est **entièrement résolu**, le bloc B l'est aux trois quarts. Ce qui reste
+est signalé 🔴 quand c'est bloquant.
+
+Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a été extrait.
 
 ---
 
-## A. Charte graphique — 🔴 bloquant pour la DA
+## A. Charte graphique — ✅ RÉSOLU par l'archive
 
-Le proxy réseau de ma session m'interdit l'accès à `wakabileguide.com`. Je n'ai donc **aucune**
-donnée de première main sur votre identité visuelle. Tout ce que je produirai en DA sera une
-proposition à valider tant que je n'ai pas :
+| # | Question | Réponse trouvée |
+|---|---|---|
+| 1 | Couleurs exactes | Primaire `#2563EB`, échelle Tailwind `blue-*`, accents `#F97316` / `#0D9488` / `#D97706`, texte `#0F172A`/`#475569`/`#94A3B8` |
+| 2 | Polices | **Bricolage Grotesque** (titres) + **Plus Jakarta Sans** (corps) + *Absolut Pro* (logotype, Bold uniquement) |
+| 3 | Logo | `logo-w.png` — ⚠️ **une version SVG reste nécessaire** pour l'incruster proprement dans un décor haute résolution |
+| 4 | Iconographie | icons8, style `ios/50` linéaire fin arrondi + emoji dans les niveaux de fidélité |
+| 5 | Ton éditorial | **Tutoiement** systématique. Lexique : *bon coin*, *explorateur*, *Kori*, *Carte Wakabi* |
 
-1. **Les couleurs exactes** — hex de la primaire, secondaire, accent(s), fonds, textes.
-   Une charte PDF, un fichier Figma, ou même trois captures d'écran suffisent.
-2. **Les polices** — titres et corps de texte. Google Fonts ? Fonte achetée ? Fallbacks ?
-3. **Le logo** en SVG (versions couleur, monochrome, fond sombre).
-4. **Le style d'iconographie** — linéaire ou plein ? Anguleux ou arrondi ? Une source
-   (Lucide, Phosphor, jeu d'icônes maison) ?
-5. **Le ton éditorial** — tutoiement ou vouvoiement ? Y a-t-il un lexique maison
-   (« bons coins », « Koris »…) à réutiliser tel quel dans l'interface ?
+**Deux points restent à trancher :**
+
 6. **Le logo doit-il apparaître sur chaque visuel exporté ?** Filigrane systématique, ou
-   uniquement quand le modèle le prévoit ? *(Cela change la stratégie virale : un filigrane
-   systématique donne de la visibilité, mais réduit le partage sur les comptes soignés.)*
+   seulement quand le modèle le prévoit ? *Un filigrane systématique donne de la
+   visibilité, mais réduit le partage sur les comptes soignés.*
+7. **Le pied de page vouvoie** (« Explorez. Découvrez. Connectez. ») alors que tout le
+   reste tutoie. Je pars sur le **tutoiement** pour le générateur, sauf avis contraire.
 
-> En attendant, la charte est isolée dans `docs/contracts/wakabi-tokens.css`. Aucune couleur
-> n'est écrite en dur ailleurs dans le code : le rebranding sera un diff d'un seul fichier.
+> **À signaler à votre équipe technique, indépendamment de ce projet :**
+> `var(--font-display)` est utilisé ~536 fois sur le site et **n'est jamais défini**.
+> Tous les titres retombent donc sur Plus Jakarta Sans, et Bricolage Grotesque est
+> téléchargée sur chaque page sans être appliquée. Correctif : une ligne par `:root`.
+> Détail dans [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) §2.
 
 ---
 
-## B. Écosystème existant — 🔴 bloquant pour l'architecture
+## B. Écosystème existant — ✅ RÉSOLU aux trois quarts
 
-7. **Qu'existe-t-il déjà techniquement ?** Le site est-il un WordPress, un site sur mesure,
-   autre chose ? Y a-t-il une **application mobile** Wakabi (les Koris le suggèrent) ?
-8. **Existe-t-il une base / une API des lieux, événements et partenaires ?**
-   C'est la question la plus importante du document. Si oui, le générateur s'y branche et
-   les décors sont **ancrés** (SPEC §1.3). Si non, la v1 fonctionne en autonomie avec des
-   modèles saisis à la main, et l'ancrage devient un jalon ultérieur.
-9. **Où vit l'application ?** Sous-domaine dédié (`studio.wakabileguide.com`), sous-répertoire
-   du site actuel, ou intégration en iframe dans une page existante ?
-10. **Contraintes d'hébergement ou de coût ?** Un fournisseur imposé, un budget mensuel cible,
-    une obligation d'hébergement dans une zone donnée ?
-11. **Les Koris : comment sont-ils attribués aujourd'hui ?** Manuellement, via une app, via un
-    QR code chez le partenaire ? Existe-t-il un compte utilisateur Wakabi sur lequel se brancher ?
+| # | Question | Réponse trouvée |
+|---|---|---|
+| 8 | Qu'existe-t-il déjà ? | **WordPress headless** sur `admin.wakabileguide.com` + site statique + **app Android** `com.wakabi.wakabimobile` |
+| 9 | Y a-t-il une API ? | **Oui.** `wp/v2/cities`, `wp/v2/partners`, `wp/v2/posts`, et un namespace custom `wakabi/v1` (`/contact` observé) |
+| 12 | Attribution des Koris | QR Code unique dans l'app ; 1 achat = 10 Koris min ; 100 Koris = −500 XOF ; 4 niveaux |
+
+**Ce qui reste :**
+
+10. 🔴 **La liste complète des routes de `admin.wakabileguide.com/wp-json`.**
+    Le site ne consomme que `cities`, `partners` et `posts` — mais l'app mobile expose
+    manifestement des **événements** et des **établissements**. Un simple
+    `GET /wp-json` renvoie l'index de toutes les routes : c'est ce qu'il me faut pour
+    figer le modèle d'ancrage. Sans lui, je conçois avec une couche d'accès remplaçable,
+    mais l'ancrage attend.
+11. **Où vit l'application ?** Je propose `studio.wakabileguide.com`, cohérent avec
+    `admin.` déjà en place.
+13. **Contraintes d'hébergement ou de coût ?** Le WordPress est déjà hébergé quelque part
+    (cPanel, d'après le `.ftpquota` de l'archive) — même hébergeur, ou un service edge ?
 
 ---
 

@@ -37,7 +37,14 @@ export const HexColor = z.string().regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
  * tous les décors suivent. Le hex reste toléré pour les cas particuliers.
  */
 export const ColorRef = z.union([
-  z.enum(['brand.primary', 'brand.secondary', 'brand.accent', 'brand.ink', 'brand.paper']),
+  z.enum([
+    'brand.primary',   // #2563EB — bleu Wakabi
+    'brand.secondary', // #0D9488 — teal
+    'brand.accent',    // #F97316 — orange
+    'brand.kori',      // #D97706 — or, réservé aux mentions Kori
+    'brand.ink',       // texte sombre, sur aplat clair
+    'brand.paper',     // texte clair, sur photo
+  ]),
   HexColor,
 ]);
 
@@ -45,7 +52,7 @@ export const AspectRatio = z.enum(['1:1', '4:5', '9:16', '16:9']);
 
 export const FilterId = z.enum([
   'none',
-  'wakabi-warm',   // signature chaude, à calibrer sur la charte  [À CONFIRMER]
+  'wakabi-blue',   // signature froide, calée sur --wk-primary #2563EB
   'noir',
   'vintage',
   'vibrant',
@@ -162,7 +169,7 @@ export const DecorTemplate = z
     layers: z.array(Layer).min(1),
 
     /* -- options offertes à l'utilisateur -- */
-    filters: z.array(FilterId).default(['none', 'wakabi-warm', 'noir']),
+    filters: z.array(FilterId).default(['none', 'wakabi-blue', 'noir']),
 
     /* -- export -- */
     export: z.object({

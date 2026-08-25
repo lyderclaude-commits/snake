@@ -5,41 +5,59 @@
 
 ## 0. Périmètre de fiabilité de ce document
 
-**À lire en premier.** Cette session s'exécute derrière un proxy réseau restrictif. Les trois sources
-que je voulais analyser directement ont été refusées :
+**Mis à jour le 25/08/2026.** L'archive du site `wakabileguide.com` a été fournie et
+dépouillée : 12 pages HTML de production, `blog/assets/wakabi.css` (80 Ko) et l'archive
+`Wakabi le guide v3.1.zip`.
 
-| Source | Statut | Conséquence |
+| Sujet | Statut | Source |
 |---|---|---|
-| `wakabileguide.com` | `EGRESS_BLOCKED` | **Aucun hex, aucune font, aucun logo extrait.** |
-| `mougni.com` | `EGRESS_BLOCKED` | Fonctionnalités reconstituées par recherche, non vérifiées. |
-| `waka.loremcommunication.com` (miroir) | `EGRESS_BLOCKED` | Idem. |
+| Charte graphique Wakabi | ✅ **Vérifié** | `:root` des 12 pages + `wakabi.css` |
+| Ton éditorial & lexique | ✅ **Vérifié** | Contenu des pages |
+| Économie Kori & niveaux | ✅ **Vérifié** | `kori.html` |
+| Architecture technique | ✅ **Vérifié** | Clients API embarqués dans chaque page |
+| Fonctionnalités mougni.com | ⚠️ **Non vérifié** | Résultats de recherche uniquement — domaine toujours inaccessible |
 
-Ce qui suit sur Wakabi et mougni provient de **résultats de recherche**, pas d'une inspection du DOM.
-Tout élément de charte graphique est donc traité comme une **variable**, jamais comme une constante :
-la DA vit dans un fichier unique (`src/styles/wakabi-tokens.css`), et le reste du code n'écrit
-jamais une couleur en dur. Le jour où vous me donnez le logo + les hex + les polices, le rebranding
-complet est un diff d'un seul fichier.
+Le détail complet de l'audit est dans [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md).
 
-> Ce qui n'est pas vérifié est marqué **`[À CONFIRMER]`** dans tout le document.
+> **Deux corrections par rapport à la v0.1 de ce document.**
+> **(1)** La marque Wakabi est **bleue** (`#2563EB`), pas orange. Les placeholders terre
+> cuite étaient faux et ont été remplacés par les valeurs réelles dans
+> `docs/contracts/wakabi-tokens.css`.
+> **(2)** Wakabi tourne déjà sur un **WordPress headless** avec une API custom. La
+> proposition Supabase de la v0.1 est retirée — voir §3.
+
+Seul le volet mougni reste marqué **`[À CONFIRMER]`**.
 
 ---
 
 ## 1. Positionnement produit
 
-### 1.1 Ce que je sais de Wakabi
+### 1.1 Wakabi, d'après son propre code
 
-Wakabi Le Guide se présente comme **« le guide des bons coins »** couvrant **Lomé, Cotonou et
-Abidjan** (zone UEMOA), avec un ancrage d'origine togolais. Les rubriques identifiées :
+**Positionnement.** « Le guide des bons coins » — Lomé, Cotonou, Abidjan, avec une
+présence affichée sur le Togo, le Bénin, la Côte d'Ivoire, le Sénégal, le Cameroun et le
+Gabon. Signature : *« Wakabi transforme chaque sortie en expérience inoubliable. Restos,
+sorties, événements, hébergements — tout ce qu'il faut sur ta ville, en une seule app. »*
 
-- **Gastronomie** — restaurants, maquis, bars, cocktails signature
-- **Événements** — concerts, soirées, festivals, expositions
-- **Hébergements** — hôtels, maisons d'hôtes
-- **Culture & découverte** — traditions, culture de rue, spots cachés
-- **Carte Wakabi** — réductions exclusives chez les partenaires
-- **Koris** — monnaie virtuelle gagnée à chaque visite partenaire, convertible en réductions,
-  accès VIP et privilèges
+**Ton.** Tutoiement systématique, phrases courtes, registre direct :
+« Ton prochain bon coin t'attend » · « Vis ta ville à 100% » · « En 3 étapes, c'est plié » ·
+« Gagne. Dépense. Explore. » · « En direct depuis Lomé, Togo ».
 
-Ton éditorial : chaleureux, dynamique, tutoiement probable, très ancré local. **`[À CONFIRMER]`**
+**Lexique maison** à reprendre tel quel : *bon coin*, *explorateur*, *Kori*,
+*Carte Wakabi*, *partenaire*.
+
+**Économie Kori.** Symbole **₵**. 1 achat = 10 Koris minimum ; 100 Koris = −500 XOF.
+Quatre niveaux : 🌱 Découvreur (0–200) · 🌟 Explorateur (201–500) · 💫 Insider (501–1 000) ·
+👑 Legend (1 000+). La Carte Wakabi est un QR Code dans l'app.
+
+**Existant technique.** Site statique interrogeant un **WordPress headless** sur
+`admin.wakabileguide.com` (`wp/v2/cities`, `wp/v2/partners`, `wp/v2/posts`,
+`wakabi/v1/contact`), plus une **application Android** publiée
+(`com.wakabi.wakabimobile`).
+
+> **Le mot « badge » est déjà dans le produit.** L'app affiche un « Badge *Explorateur
+> Gold* ». C'est le pont le plus court vers mougni : plutôt que d'inventer une mécanique,
+> le générateur peut produire **le visuel partageable d'un statut déjà gagné**.
 
 ### 1.2 Ce que je sais de mougni.com
 
@@ -89,8 +107,8 @@ décoratives : chaque décision de la section 3 y renvoie.
 | **C1** | **Android entrée de gamme** (2–4 Go RAM) majoritaire dans la zone | Le canvas d'édition doit rester ~60 fps ; interdiction de manipuler une image 12 Mpx en mémoire principale |
 | **C2** | **Réseau 3G/4G instable, data payante et chère** | Payload initial minimal, offline-first, **aucun upload de photo utilisateur** |
 | **C3** | **WhatsApp = canal de partage n°1** dans la zone | Web Share API niveau 2, format **statut 9:16** en first-class, OG image dynamique |
-| **C4** | **Friction zéro** (leçon retenue de mougni) | Création complète **sans compte** ; l'auth n'arrive qu'au moment des Koris |
-| **C5** | **L'équipe publie une campagne sans développeur** | Modèles **pilotés par la donnée**, pas par le code ; back-office |
+| **C4** | **Friction zéro** (leçon retenue de mougni) | Création complète **sans compte** ; l'auth n'arrive qu'au moment des Koris, via le compte Wakabi existant |
+| **C5** | **L'équipe publie une campagne sans développeur** | Modèles **pilotés par la donnée**, pas par le code — et dans le **WordPress qu'elle utilise déjà** |
 | **C6** | **Droit à l'image & vie privée** | La photo de l'utilisateur **ne quitte jamais son appareil** |
 
 > **C6 et C2 se renforcent.** Tout faire côté client n'est pas seulement plus respectueux : c'est
@@ -107,15 +125,23 @@ décoratives : chaque décision de la section 3 y renvoie.
 | **Framework** | **Next.js 15 (App Router) + React 19 + TypeScript strict** | SSG pour les pages campagne (SEO), **génération d'OG images dynamiques** via `next/og` (levier viral direct, cf. C3), routes API pour compteurs |
 | **Moteur canvas** | **Konva + react-konva** | Scène minuscule (photo + cadre + textes) ; bindings React déclaratifs, gestion tactile/pointer solide, ~150 Ko. *Fabric.js est plus lourd et impératif ; PixiJS/WebGL est hors-sujet ici.* |
 | **Rendu export** | **Canvas 2D natif + `OffscreenCanvas` en Web Worker** | Voir §4 : le rendu HD ne doit pas geler le thread principal sur un Android d'entrée de gamme (C1) |
-| **Styles** | **Tailwind CSS v4 + CSS custom properties** | Les tokens de marque dans **un seul fichier** ; Tailwind ne fait que les consommer |
+| **Styles** | **Tailwind CSS v4 + CSS custom properties** | Les tokens réels de Wakabi dans **un seul fichier** (`wakabi-tokens.css`) ; Tailwind ne fait que les consommer |
+| **Typographie** | **Bricolage Grotesque** (titres) + **Plus Jakarta Sans** (corps) | Les deux polices déjà chargées par le site. *Absolut Pro* est réservée au logotype — elle n'existe qu'en Bold |
+| **Icônes** | **Phosphor** ou Lucide, embarquées en SVG | Remplace les appels CDN vers icons8, dans le même style linéaire fin ; zéro requête réseau **C2** |
 | **État éditeur** | **Zustand** | ~1 Ko, store sérialisable — c'est exactement le `RenderSpec` (§4) |
 | **Validation** | **Zod** | Un seul schéma pour le back-office, l'API et l'éditeur (§5) |
-| **Données & back-office** | **Supabase** (Postgres + Storage + Auth + RLS) | Un seul fournisseur pour les modèles, les assets, les compteurs et l'auth Koris ; coût quasi nul à ce volume |
+| **Données & back-office** | **Le WordPress existant** — `decor_template` en custom post type, exposé via `wakabi/v1/decors` | L'équipe publie depuis l'admin qu'elle utilise déjà **C5** ; un décor référence nativement un `partner` ou une `city` ; aucun fournisseur ni compte supplémentaires |
 | **PWA / offline** | **Serwist** (`@serwist/next`) | Installable, modèles en cache — répond directement à C2 |
 | **Cache client** | **IndexedDB** (via `idb`) | Cadres PNG et photos récentes mis en cache : deuxième création = zéro data |
 | **Analytics** | **Plausible ou Umami** + événements custom | Léger, sans cookie, sans bandeau de consentement |
 | **Tests** | **Vitest** + **Playwright** (dont *golden image*) | Le renderer est une fonction pure → tests de non-régression visuelle fiables (§4) |
 | **Déploiement** | **Vercel** ou **Cloudflare Pages** | Edge proche de l'Afrique de l'Ouest ; à arbitrer sur la latence réelle mesurée |
+
+> **Révision par rapport à la v0.1.** Ce document recommandait Supabase, faute de
+> connaître l'existant. L'archive montre un WordPress headless déjà en place, avec un
+> namespace REST custom et des custom post types. Ajouter Supabase imposerait à l'équipe
+> **deux back-offices à tenir** — exactement ce que la contrainte C5 cherche à éviter.
+> Le catalogue de décors doit donc vivre dans le WordPress existant.
 
 ### Ce que je n'ai délibérément pas retenu
 
@@ -378,4 +404,14 @@ Chaque fonctionnalité relevée passe ensuite par ce tableau, et **doit** en res
 
 ## 10. Questions ouvertes
 
-Voir [`docs/01-QUESTIONS.md`](./01-QUESTIONS.md).
+L'archive a répondu à tout le bloc A (charte) et à l'essentiel du bloc B (écosystème).
+Ce qui reste est dans [`docs/01-QUESTIONS.md`](./01-QUESTIONS.md). Les trois points
+bloquants restants :
+
+1. **La liste complète des routes de `admin.wakabileguide.com/wp-json`.** Le site ne
+   consomme que `cities`, `partners` et `posts` — mais l'app mobile expose manifestement
+   des événements et des établissements. Sans cette liste, le modèle d'ancrage (§1.3)
+   ne peut pas être figé.
+2. **Les fonctionnalités réelles de mougni.com** — captures ou liste écrite, à verser
+   dans la grille §8.
+3. **Le périmètre de la v1** et **qui crée les décors** (§9).
