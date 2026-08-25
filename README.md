@@ -26,6 +26,7 @@ npm run demo         # assemble public/demo/index.html (fichier unique autonome)
 | [`docs/03-ANALYSE-MOUGNI.md`](docs/03-ANALYSE-MOUGNI.md) | Analyse du concurrent : modèle économique, périmètre de l'éditeur, grille de décision sur 16 points |
 | [`docs/04-MODERATION.md`](docs/04-MODERATION.md) | Création partagée équipe + partenaires : rôles, machine à états, capacités WordPress, pré-vol automatique |
 | [`docs/05-IMPLEMENTATION.md`](docs/05-IMPLEMENTATION.md) | Journal d'implémentation : ce que le code a appris et qui corrige la spec |
+| [`docs/06-BACKLOG.md`](docs/06-BACKLOG.md) | **Périmètre fonctionnel** — 81 fonctionnalités par acteur, état et jalon, plus les 10 écartées |
 | [`src/core/template.schema.ts`](src/core/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
 | [`src/core/renderScene.ts`](src/core/renderScene.ts) | **Le cœur** : la fonction de rendu pure, une seule pour l'aperçu et l'export |
 | [`src/core/template.schema.test.ts`](src/core/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert) |
