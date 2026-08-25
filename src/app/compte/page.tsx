@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { currentUser } from '@/server/auth';
 import { listForUser } from '@/server/repo/creations';
+import { koriBalance, koriHistory } from '@/server/repo/badges';
 import { AppShell, USER_NAV } from '@/components/site/AppShell';
 import { Card, LinkButton, Stat } from '@/components/ui';
 
@@ -14,6 +15,8 @@ export default async function ComptePage() {
   if (me.role === 'admin') redirect('/admin');
 
   const creations = listForUser(me.id);
+  const koris = koriBalance(me.id);
+  const history = koriHistory(me.id, 6);
 
   return (
     <AppShell
@@ -25,15 +28,40 @@ export default async function ComptePage() {
     >
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat value={creations.length} label="visuels créés" tone="primary" />
-        <Stat
-          value={new Set(creations.map((c) => c.decor_id)).size}
-          label="décors différents"
-        />
+        <Stat value={`${koris} ₵`} label="Koris gagnés" tone="gold" />
         <Stat
           value={creations[0] ? new Date(creations[0].created_at).toLocaleDateString('fr-FR') : '—'}
           label="dernière création"
         />
       </div>
+
+      <Card className="mb-6 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display text-[16px] font-bold">Mes Koris</h2>
+          <span className="font-display text-[24px] font-extrabold text-wk-gold tabular-nums">
+            {koris} ₵
+          </span>
+        </div>
+        {history.length === 0 ? (
+          <p className="mt-2 text-[13.5px] leading-relaxed text-wk-text2">
+            Tu gagnes <b className="text-wk-text">50 Koris</b> à chaque fois que ton badge est
+            scanné à l’entrée d’un événement. Télécharge un visuel, présente son QR sur place :
+            c’est tout.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {history.map((h) => (
+              <li key={h.id} className="flex items-baseline justify-between gap-3 text-[13.5px]">
+                <span className="min-w-0 flex-1 truncate text-wk-text2">{h.reason}</span>
+                <span className="shrink-0 font-semibold text-wk-green">+{h.amount} ₵</span>
+                <span className="shrink-0 text-[11.5px] text-wk-text3">
+                  {new Date(h.created_at).toLocaleDateString('fr-FR')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       {creations.length === 0 ? (
         <Card className="p-10 text-center">

@@ -5,16 +5,19 @@ réellement. Chaque ligne porte son état et son jalon.
 
 **Légende :** ✅ fait · 🔜 prochain · ⬜ à faire · 🔒 gelé · ✖️ écarté (décision actée)
 
-> **État au 25/08/2026**
+> **État au 25/08/2026** — après la campagne « rajouter tout ce qui manque »
 >
 > | | |
 > |---|---|
-> | ✅ **28** livrées et vérifiées | l'application tourne de bout en bout |
-> | ✅ **3** garanties par le contrat de données | la règle existe, l'écran qui l'expose non |
-> | 🔜 **4** identifiées comme prochaines | courtes, à fort effet |
-> | ⬜ **42** à construire | réparties de J2 à J4 |
-> | 🔒 **1** gelée | les Koris, en attente du programme de fidélité |
-> | ✖️ **10** écartées volontairement | §6 — pour ne pas les reprendre par réflexe |
+> | ✅ **67** livrées et vérifiées | recette automatisée : **22 scénarios, 22 réussis** |
+> | 🔜 **7** identifiées comme prochaines | courtes, à fort effet |
+> | ⬜ **23** à construire | réparties de J4 à J5 |
+> | 🔒 **0** gelée | les Koris sont rallumés — le QR à l'entrée les crédite |
+> | ✖️ **9** écartées volontairement | §7 — pour ne pas les reprendre par réflexe |
+>
+> **Ce qui a changé :** le back-office ne passe plus par WordPress (§3), le QR Code et le
+> scan à l'entrée existent (§4), et le pré-vol des 7 contrôles s'exécute côté serveur —
+> un décor qui échoue ne rejoint jamais la file d'attente.
 
 ---
 
@@ -86,104 +89,158 @@ réellement. Chaque ligne porte son état et son jalon.
 
 ## 2. Le partenaire — créer sa campagne
 
-**C'est l'argument de vente.** mougni facture 5 000 à 30 000 FCFA/mois pour ceci ;
-Wakabi l'inclut dans la Carte Partenaire. Rien n'est encore construit.
+**C'est l'argument de vente.** mougni facture 5 000 à 30 000 FCFA/mois pour ceci.
+Le parcours complet est en place : inscription, cadre, gabarit, pré-vol, soumission,
+suivi. Aucune ligne de code n'est nécessaire pour publier une campagne.
 
 | # | Fonctionnalité | État | Jalon |
 |---|---|:--:|:--:|
-| 2.1 | Compte partenaire (rôle WordPress `wakabi_partner`) | ⬜ | J3 |
-| 2.2 | Téléverser son cadre (PNG/WebP à alpha) | ⬜ | J3 |
-| 2.3 | Éditeur de gabarit : placer la zone photo et les textes | ⬜ | J3 |
-| 2.4 | Prévisualisation avec une photo de test | ⬜ | J3 |
-| 2.5 | Renseigner la redirection (fiche Wakabi imposée) | ⬜ | J3 |
-| 2.6 | Soumettre à la relecture | ⬜ | J3 |
-| 2.7 | Lire le motif de refus ou de correction | ⬜ | J3 |
-| 2.8 | Corriger et re-soumettre | ⬜ | J3 |
-| 2.9 | Retirer sa soumission | ⬜ | J3 |
-| 2.10 | Tableau de bord : ses campagnes et leurs chiffres | ⬜ | J4 |
-| 2.11 | Quotas de téléversement (fichiers, poids) | ⬜ | J4 |
-| 2.12 | Notifications e-mail à chaque étape | ⬜ | J4 |
+| 2.1 | Compte partenaire (rôle `partner`, inscription libre) | ✅ | J3 |
+| 2.2 | Téléverser son cadre (PNG/WebP à alpha, SVG refusé) | ✅ | J3 |
+| 2.3 | Gabarit : 3 dispositions prêtes (bandeau, bas, story 9:16) | ✅ | J3 |
+| 2.4 | Prévisualisation avec une photo de test | ✅ | J3 |
+| 2.5 | Renseigner la redirection (fiche Wakabi imposée) | ✅ | J3 |
+| 2.6 | Soumettre à la relecture — **après pré-vol** | ✅ | J3 |
+| 2.7 | Lire le motif de refus ou de correction | ✅ | J3 |
+| 2.8 | Re-soumettre après correction demandée | ✅ | J3 |
+| 2.9 | **Modifier** un décor déjà créé | 🔜 | J4 |
+| 2.10 | Retirer sa soumission | ⬜ | J4 |
+| 2.11 | Tableau de bord : ses campagnes, vues, téléchargements | ✅ | J4 |
+| 2.12 | Quotas de téléversement (20 Mo, 30 fichiers) | ✅ | J4 |
+| 2.13 | Vérification de l'adresse e-mail avant soumission | ✅ | J4 |
+| 2.14 | Notifications dans l'application (cloche + compteur) | ✅ | J4 |
+| 2.15 | **Envoi** réel des e-mails (SMTP) | ⬜ | J4 |
+| 2.16 | Export CSV de ses propres chiffres | ⬜ | J5 |
+
+> **2.15 — la nuance qui compte.** Le circuit de vérification est complet (jeton, expiration
+> 48 h, consommation à usage unique, page `/verifier/{token}`). Il ne manque que le
+> transport : sans SMTP configuré, le lien s'affiche à l'écran au lieu de partir par
+> courriel. Brancher un SMTP est un changement d'une fonction.
 
 ---
 
 ## 3. L'équipe Wakabi — publier et modérer
 
-Tout vit dans le **WordPress existant** : c'est lui qui fournit gratuitement le circuit
-Contributeur → en attente → publication.
+**Plus de WordPress.** Le back-office est intégré à l'application : mêmes comptes, mêmes
+rôles, mêmes données. WordPress reste la source des *articles* du guide, rien d'autre.
 
 ### Catalogue
 
 | # | Fonctionnalité | État | Jalon |
 |---|---|:--:|:--:|
-| 3.1 | Custom post type `decor_template` | ⬜ | J2 |
-| 3.2 | Endpoints `wakabi/v1/decors` (lecture publique) | ⬜ | J2 |
-| 3.3 | Rôles `wakabi_partner` et `wakabi_editor` | ⬜ | J2 |
-| 3.4 | Statuts personnalisés (`changes_requested`, `rejected`, `expired`) | ⬜ | J2 |
-| 3.5 | Publication directe par l'équipe | ⬜ | J2 |
-| 3.6 | Expiration automatique (tâche WP-Cron sur `expiresAt`) | ⬜ | J3 |
-| 3.7 | Endpoint compteur `POST /decors/{id}/count` | ⬜ | J3 |
+| 3.1 | Table `decors` + gabarit JSON validé par le contrat | ✅ | J2 |
+| 3.2 | Lecture publique du catalogue (`/decors`, `/decor/{slug}`) | ✅ | J2 |
+| 3.3 | Rôles `participant` · `partner` · `admin` | ✅ | J2 |
+| 3.4 | 7 statuts (`draft` → `published`, `changes_requested`, `rejected`, `expired`) | ✅ | J2 |
+| 3.5 | Publication directe par l'équipe (sans relecture) | ✅ | J2 |
+| 3.6 | Expiration automatique sur `expiresAt` | 🔜 | J4 |
+| 3.7 | Compteurs de vues et de téléchargements | ✅ | J3 |
 
 ### Modération
 
 | # | Fonctionnalité | État | Jalon |
 |---|---|:--:|:--:|
-| 3.8 | File d'attente des soumissions | ⬜ | J3 |
-| 3.9 | Métabox : Approuver · Demander des corrections · Refuser | ⬜ | J3 |
-| 3.10 | Motif obligatoire au refus | ✅ *(contrat)* | J3 |
-| 3.11 | Transitions autorisées par acteur | ✅ *(contrat)* | J3 |
-| 3.12 | Garde-fou : redirection partenaire vers un domaine Wakabi | ✅ *(contrat)* | J3 |
-| 3.13 | **Pré-vol — 7 contrôles automatiques** | ⬜ | J3 |
-| 3.14 | Sécurité des téléversements (SVG refusé, allowlist réelle) | ⬜ | J3 |
-| 3.15 | Engagement de relecture sous 24 h ouvrées | ⬜ | *opérationnel* |
+| 3.8 | File d'attente des soumissions | ✅ | J3 |
+| 3.9 | Approuver · Demander des corrections · Refuser | ✅ | J3 |
+| 3.10 | Motif obligatoire au refus | ✅ | J3 |
+| 3.11 | Transitions autorisées par acteur | ✅ | J3 |
+| 3.12 | Garde-fou : redirection partenaire vers un domaine Wakabi | ✅ | J3 |
+| 3.13 | **Pré-vol — 7 contrôles automatiques, côté serveur** | ✅ | J3 |
+| 3.14 | Rapport de pré-vol affiché au relecteur | ✅ | J3 |
+| 3.15 | Sécurité des téléversements (allowlist, nom de fichier contraint) | ✅ | J3 |
+| 3.16 | Limitation de débit sur la connexion (8 essais / 15 min) | ✅ | J3 |
+| 3.17 | Gestion des comptes : rôle, suspension | ✅ | J3 |
+| 3.18 | Journal d'audit des décisions de modération | ⬜ | J4 |
+| 3.19 | Engagement de relecture sous 24 h ouvrées | ✅ | *opérationnel* |
 
-Le pré-vol (3.13) détaille : validation du schéma · **zone photo réellement visible** ·
-textes qui tiennent · filigrane non recouvert · format et alpha du cadre · poids du
-fichier · contraste sur photo claire et sombre.
+**Les 7 contrôles du pré-vol** (`src/server/preflight.ts`), tous exécutés côté serveur —
+donc impossibles à contourner depuis le navigateur :
+
+| Contrôle | Ce qu'il refuse |
+|---|---|
+| `schema` | Un gabarit qui viole un des 33 invariants du contrat |
+| `asset-format` | Un cadre qui n'est ni PNG ni WebP, ou sans couche alpha |
+| `asset-weight` | Un cadre au-delà du poids soutenable en 3G |
+| `photo-visible` | Un cadre **opaque à plus de 85 %** — la photo ne se verrait pas |
+| `watermark-clear` | Un texte posé sous le filigrane ou sous le QR Code |
+| `text-fits` | Un texte qui déborde de sa zone à l'échelle d'export |
+| `contrast` | Un texte sombre, illisible sur une photo sombre |
 
 ### Pilotage
 
 | # | Fonctionnalité | État | Jalon |
 |---|---|:--:|:--:|
-| 3.16 | Statistiques par campagne (⬇, 👁, taux de conversion) | ⬜ | J4 |
-| 3.17 | Décors sponsorisés — inventaire vendable | ⬜ | J4 |
-| 3.18 | Export CSV des chiffres de campagne | ⬜ | J4 |
+| 3.20 | Tableau de bord : décors, créations, comptes | ✅ | J4 |
+| 3.21 | Courbe des téléchargements sur 14 jours | ✅ | J4 |
+| 3.22 | Statistiques par campagne (⬇, 👁, taux de conversion) | ✅ | J4 |
+| 3.23 | Décors sponsorisés — inventaire vendable | ⬜ | J5 |
+| 3.24 | Export CSV des chiffres de campagne | ⬜ | J5 |
 
 ---
 
-## 4. Socle technique
+## 4. L'organisateur — le QR, l'entrée, les Koris
+
+**C'est ce qu'un générateur d'images ne peut pas copier.** Le badge ne s'arrête pas au
+partage : il porte un code unique qui, scanné à l'entrée, prouve une présence *réelle*.
 
 | # | Fonctionnalité | État | Jalon |
 |---|---|:--:|:--:|
-| 4.1 | `renderScene` : fonction pure, deux échelles | ✅ | J0 |
-| 4.2 | Contrat `DecorTemplate` — 33 invariants vérifiés | ✅ | J0 |
-| 4.3 | Machine à états et transitions par acteur | ✅ | J0 |
-| 4.4 | Tokens de charte dans un fichier unique | ✅ | J0 |
-| 4.5 | Polices auto-hébergées (pas de CDN externe) | ✅ | J1 |
-| 4.6 | **Export dans un Web Worker** (`OffscreenCanvas`) | 🔜 | J2 |
-| 4.7 | Tests de régression visuelle (golden image) | ⬜ | J2 |
-| 4.8 | OG images dynamiques par campagne | ⬜ | J3 |
-| 4.9 | Cache IndexedDB des cadres | ⬜ | J3 |
-| 4.10 | PWA installable, mode hors ligne (Serwist) | ⬜ | J3 |
-| 4.11 | Analytics sans cookie (Plausible ou Umami) | ⬜ | J3 |
-| 4.12 | Internationalisation FR / EN | ⬜ | J4 |
-| 4.13 | Accessibilité : navigation clavier, contrastes, `prefers-reduced-motion` | 🔜 | J2 |
+| 4.1 | QR Code incrusté dans le décor (position et taille réglables) | ✅ | J3 |
+| 4.2 | QR visible **dès l'aperçu**, pas seulement à l'export | ✅ | J3 |
+| 4.3 | Un jeton unique par badge émis | ✅ | J3 |
+| 4.4 | Écran de scan à l'entrée (`/scan`) | ✅ | J3 |
+| 4.5 | Scan idempotent : un badge ne vaut qu'une entrée | ✅ | J3 |
+| 4.6 | Code inconnu refusé explicitement | ✅ | J3 |
+| 4.7 | **Koris crédités à l'entrée**, pas au téléchargement | ✅ | J3 |
+| 4.8 | Lecture caméra du QR (aujourd'hui : saisie du code) | 🔜 | J4 |
+| 4.9 | Liste des présents en direct pour l'organisateur | ⬜ | J4 |
+| 4.10 | Export de la liste des présents | ⬜ | J5 |
+
+> **4.7 — pourquoi c'est le bon endroit.** Créditer au téléchargement récompense un clic.
+> Créditer au scan récompense une venue. C'est la seule métrique qu'un organisateur paie
+> volontiers, et la seule que la concurrence ne mesure pas.
 
 ---
 
-## 5. Différé
+## 5. Socle technique
+
+| # | Fonctionnalité | État | Jalon |
+|---|---|:--:|:--:|
+| 5.1 | `renderScene` : fonction pure, deux échelles | ✅ | J0 |
+| 5.2 | Contrat `DecorTemplate` — 33 invariants vérifiés | ✅ | J0 |
+| 5.3 | Machine à états et transitions par acteur | ✅ | J0 |
+| 5.4 | Tokens de charte dans un fichier unique | ✅ | J0 |
+| 5.5 | Polices auto-hébergées (pas de CDN externe) | ✅ | J1 |
+| 5.6 | **Export dans un Web Worker** (`OffscreenCanvas`) | 🔜 | J2 |
+| 5.7 | Tests de régression visuelle (golden image) | ⬜ | J2 |
+| 5.8 | OG images dynamiques par campagne | ⬜ | J3 |
+| 5.9 | Cache IndexedDB des cadres | ⬜ | J3 |
+| 5.10 | PWA installable, mode hors ligne (Serwist) | ⬜ | J3 |
+| 5.11 | Analytics sans cookie (Plausible ou Umami) | ⬜ | J3 |
+| 5.12 | Internationalisation FR / EN | ⬜ | J4 |
+| 5.13 | Accessibilité : navigation clavier, contrastes, `prefers-reduced-motion` | 🔜 | J2 |
+
+---
+
+## 6. Différé
 
 | # | Fonctionnalité | Pourquoi plus tard |
 |---|---|---|
-| 5.1 | Mur public des créations | Fort levier social, mais exige une chaîne de modération avant ouverture |
-| 5.2 | **Récompense en Koris** 🔒 | Le programme de fidélité est désactivé. À rallumer avec lui (J5) |
-| 5.3 | Publicité native dans les décors | Revenu natif, adossé aux partenaires en base — après J4 |
-| 5.4 | Parrainage / lien de campagne personnel | Après les compteurs |
+| 6.1 | Mur public des créations | Fort levier social, mais exige une chaîne de modération avant ouverture |
+| 6.2 | Solde de Koris consultable par le participant | L'attribution existe (§4.7) ; l'écran de solde attend le programme de fidélité |
+| 6.3 | Publicité native dans les décors | Revenu natif, adossé aux partenaires en base — après J4 |
+| 6.4 | Parrainage / lien de campagne personnel | Après les compteurs |
 
 ---
 
-## 6. Écarté — décisions actées
+## 7. Écarté — décisions actées
 
 Ces lignes existent pour qu'on ne les reprenne pas par réflexe. Chacune a une raison.
+
+> **Une ligne a quitté ce tableau.** J'y avais écrit « abonnement payant aux organisateurs :
+> écarté ». Le prototype Wakabi Boost tranche autrement — 4 formules, 0 à 30 000 FCFA — et il
+> a raison : la différenciation ne se joue pas sur la gratuité mais sur l'audience du guide et
+> sur le QR. Voir `07-BACKEND.md` §7.
 
 | Fonctionnalité | Pourquoi non |
 |---|---|
@@ -191,7 +248,6 @@ Ces lignes existent pour qu'on ne les reprenne pas par réflexe. Chacune a une r
 | **Rotation de la photo** | Idem — chaque geste supplémentaire se paie. |
 | **Bascule multi-formats dans l'éditeur** | Un modèle = un format. Le 9:16 est un décor distinct, pas une option. |
 | **Copies des badges livrées à l'organisateur** | Suppose que les photos transitent par nos serveurs. Contredit frontalement C6. |
-| **Abonnement payant aux organisateurs** | C'est exactement là qu'on prend mougni à revers : chez nous c'est inclus. |
 | **`aggregateRating` sans avis réels** | Balisage trompeur, expose à une pénalité manuelle Google. |
 | **Rappels WhatsApp automatiques** | Produit à part entière (crédits, API Business), hors périmètre du générateur. |
 | **Web Push** | Idem. |
@@ -200,19 +256,22 @@ Ces lignes existent pour qu'on ne les reprenne pas par réflexe. Chacune a une r
 
 ---
 
-## 7. Ce que je ferais ensuite
+## 8. Ce que je ferais ensuite
 
 Dans cet ordre, et voici pourquoi :
 
 1. **Les vrais cadres** (1.x). Rien ne se teste sérieusement sur des placeholders — ni la
-   lisibilité, ni l'envie de partager.
-2. **Caméra directe et photos d'exemple** (1.11, 1.12). Deux ajouts courts qui ferment le
+   lisibilité, ni l'envie de partager. C'est le seul point qui bloque une mise en ligne.
+2. **La lecture caméra du QR** (4.8). Aujourd'hui l'agent d'entrée saisit le code à la main :
+   ça marche, mais ça ne tient pas une file d'attente. `BarcodeDetector` couvre Android récent,
+   avec repli sur une bibliothèque.
+3. **Caméra directe et photos d'exemple** (1.11, 1.12). Deux ajouts courts qui ferment le
    principal point d'abandon : arriver sans photo prête.
-3. **L'export en Web Worker** (4.6). Le seul point qui peut faire tomber un Android
-   d'entrée de gamme. Ne touche qu'un fichier.
-4. **Le catalogue WordPress** (3.1 → 3.5). À partir de là, l'équipe publie seule.
-5. **Pré-vol et modération** (3.8 → 3.14). Ouvre aux partenaires — et c'est là que l'outil
-   devient un argument commercial.
-
-Les compteurs publics (1.6) sont peu coûteux et donnent la preuve sociale : bons à glisser
-dès que le catalogue existe.
+4. **L'export en Web Worker** (5.6). Le seul point qui peut faire tomber un Android d'entrée
+   de gamme. Ne touche qu'un fichier.
+5. **Le SMTP** (2.15). Le circuit de vérification et les notifications existent ; sans
+   transport, le partenaire doit revenir de lui-même. Une fonction à brancher.
+6. **Modifier un décor** (2.9). Le partenaire peut re-soumettre mais pas corriger — c'est le
+   manque le plus visible du parcours partenaire.
+7. **Sauvegardes et migration Postgres** (`07-BACKEND.md` §5). À faire *avant* d'avoir des
+   données qu'on regretterait de perdre, pas après.

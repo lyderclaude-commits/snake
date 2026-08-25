@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { currentUser } from '@/server/auth';
 import { listByAuthor } from '@/server/repo/decors';
+import { attendance } from '@/server/repo/badges';
 import { AppShell, PARTNER_NAV } from '@/components/site/AppShell';
 import { Card, LinkButton, Stat, StatusPill, Icon } from '@/components/ui';
 import { SubmitButton } from '@/components/partner/SubmitButton';
@@ -17,6 +18,9 @@ export default async function PartenairePage() {
   const published = mine.filter((d) => d.status === 'published');
   const downloads = mine.reduce((a, d) => a + d.downloads, 0);
   const views = mine.reduce((a, d) => a + d.views, 0);
+  const att = mine.map((d) => attendance(d.id));
+  const issued = att.reduce((a, x) => a + x.issued, 0);
+  const scanned = att.reduce((a, x) => a + x.scanned, 0);
 
   return (
     <AppShell
@@ -26,16 +30,27 @@ export default async function PartenairePage() {
       subtitle={me.organisation ?? undefined}
       action={<LinkButton href="/partenaire/nouveau">Nouveau décor</LinkButton>}
     >
-      <div className="mb-7 grid gap-3 sm:grid-cols-4">
+      <div className="mb-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat value={published.length} label="campagnes publiées" tone="primary" />
         <Stat value={downloads} label="badges téléchargés" tone="green" />
-        <Stat value={views} label="vues" />
+        <Stat value={scanned} label="présences scannées" tone="gold" />
         <Stat
-          value={views ? `${Math.round((downloads / views) * 100)} %` : '—'}
-          label="taux de conversion"
-          tone="gold"
+          value={issued ? `${Math.round((scanned / issued) * 100)} %` : '—'}
+          label="taux de présence réelle"
         />
       </div>
+
+      <Card className="mb-7 flex flex-wrap items-center gap-4 p-4">
+        <span className="text-[22px]">🪙</span>
+        <p className="min-w-[220px] flex-1 text-[13.5px] leading-relaxed text-wk-text2">
+          <b className="text-wk-text">C’est le QR qui fait la différence.</b> {views} vues,{' '}
+          {downloads} badges téléchargés, <b className="text-wk-text">{scanned} personnes
+          réellement venues</b> — un générateur classique s’arrête au premier chiffre.
+        </p>
+        <LinkButton href="/scan" variant="outline" size="sm">
+          Contrôle d’entrée
+        </LinkButton>
+      </Card>
 
       {mine.length === 0 ? (
         <Card className="p-10 text-center">

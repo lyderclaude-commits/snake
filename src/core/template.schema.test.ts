@@ -1,7 +1,11 @@
 /**
  * Vérifie les invariants structurels du contrat DecorTemplate.
- * Vérifié avec zod 3.25.76 / TypeScript 5 (strict) — 8/8 au 25/08/2026.
- * À rebrancher sur Vitest lors de la mise en place du dépôt applicatif.
+ *
+ * Volontairement sans cadriciel de test : ce fichier ne dépend que de zod et du
+ * contrat lui-même. `npm test` le lance en une seconde, sans installation. Le jour
+ * où le projet aura besoin de fixtures ou de couverture, Vitest s'imposera — pas avant.
+ *
+ * Dernière exécution : 33 réussis, 0 échoués (zod 3.25.76 / TypeScript 5 strict).
  */
 import { DecorTemplate, canTransition, WAKABI_TAGLINE } from './template.schema';
 
@@ -20,13 +24,24 @@ const base = {
   export: {}, share: {},
 };
 
+let passed = 0;
+let failed = 0;
+
+function tally(pass: boolean) {
+  if (pass) passed++;
+  else {
+    failed++;
+    process.exitCode = 1;
+  }
+}
+
 function check(label: string, input: unknown, expectOk: boolean) {
   const r = DecorTemplate.safeParse(input);
   const pass = r.success === expectOk;
+  tally(pass);
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${label}`);
   if (!r.success && !expectOk) console.log(`        └─ ${r.error.issues[0].message}`);
   if (!r.success && expectOk) console.log(`        └─ UNEXPECTED: ${JSON.stringify(r.error.issues, null, 2)}`);
-  if (!pass) process.exitCode = 1;
 }
 
 check('modèle valide', base, true);
@@ -77,8 +92,8 @@ check('équipe Wakabi peut rediriger ailleurs (co-branding)',
 function t(from: any, to: any, actor: any, expect: boolean, label: string) {
   const got = canTransition(from, to, actor);
   const pass = got === expect;
+  tally(pass);
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${label}`);
-  if (!pass) process.exitCode = 1;
 }
 console.log('');
 t('draft', 'pending_review', 'partner', true,  'partenaire soumet son brouillon');
@@ -109,3 +124,6 @@ console.log('  createdBy         =', ok.createdBy);
 console.log('  watermark.variant =', ok.watermark.variant);
 console.log('  signature         =', WAKABI_TAGLINE);
 console.log('  allowRotation     =', (ok.layers[0] as any).allowRotation);
+
+console.log('');
+console.log(`━━ Contrat DecorTemplate : ${passed} réussis, ${failed} échoués ━━`);

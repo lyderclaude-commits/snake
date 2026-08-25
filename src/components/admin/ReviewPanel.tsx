@@ -21,15 +21,11 @@ export function ReviewPanel(props: {
   redirectUrl: string | null;
   expiresAt: string | null;
   schemaOk: boolean;
+  preflight: { passed: boolean; ranAt: string; checks: { id: string; status: string; message: string }[] } | null;
 }) {
   const [mode, setMode] = useState<'none' | 'changes' | 'reject'>('none');
 
-  const checks: [string, boolean, string][] = [
-    ['Schéma valide', props.schemaOk, 'Le gabarit passe toutes les règles du contrat'],
-    ['Cadre fourni', !!props.frameUrl, 'Un visuel est bien attaché'],
-    ['Redirection définie', !!props.redirectUrl, props.redirectUrl ?? 'Aucune adresse'],
-    ['Expiration renseignée', !!props.expiresAt, props.expiresAt ?? 'Aucune date'],
-  ];
+  const pf = props.preflight;
 
   return (
     <Card className="overflow-hidden">
@@ -58,17 +54,49 @@ export function ReviewPanel(props: {
               })}`}
           </p>
 
-          <ul className="mt-4 grid gap-1.5 sm:grid-cols-2">
-            {checks.map(([label, ok, detail]) => (
-              <li key={label} className="flex items-start gap-2 text-[12.5px]">
-                <span className={ok ? 'text-wk-green' : 'text-wk-red'}>{ok ? '✓' : '✗'}</span>
-                <span className="min-w-0">
-                  <b className="font-semibold">{label}</b>
-                  <span className="block truncate text-wk-text3">{detail}</span>
+          {/* Rapport du contrôle automatique — sept points, exécutés côté
+              serveur à la soumission. Le relecteur n'a plus à les refaire. */}
+          <div className="mt-4 rounded-wk-md border border-wk-border bg-wk-bg2 p-3">
+            <p className="mb-2 flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-wk-text3">
+              Contrôle automatique
+              {pf && (
+                <span
+                  className={`rounded-wk-sm px-2 py-0.5 text-[10.5px] ${
+                    pf.passed ? 'bg-green-50 text-wk-green' : 'bg-red-50 text-wk-red'
+                  }`}
+                >
+                  {pf.passed ? '7/7 franchis' : 'bloquant'}
                 </span>
-              </li>
-            ))}
-          </ul>
+              )}
+            </p>
+            {pf ? (
+              <ul className="grid gap-1.5 sm:grid-cols-2">
+                {pf.checks.map((c) => (
+                  <li key={c.id} className="flex items-start gap-2 text-[12.5px]">
+                    <span
+                      className={
+                        c.status === 'pass'
+                          ? 'text-wk-green'
+                          : c.status === 'warn'
+                            ? 'text-wk-gold'
+                            : 'text-wk-red'
+                      }
+                    >
+                      {c.status === 'pass' ? '✓' : c.status === 'warn' ? '⚠' : '✗'}
+                    </span>
+                    <span className="min-w-0">
+                      <b className="font-mono text-[11.5px] font-semibold">{c.id}</b>
+                      <span className="block text-wk-text2">{c.message}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[12.5px] text-wk-text3">
+                Aucun rapport — ce décor a été soumis avant la mise en place du pré-vol.
+              </p>
+            )}
+          </div>
 
           <p className="mt-4 rounded-wk-sm bg-wk-bg2 px-3 py-2 text-[12.5px] leading-snug text-wk-text2">
             <b className="text-wk-text">À vérifier vous-même :</b> les droits sur le visuel, le ton,

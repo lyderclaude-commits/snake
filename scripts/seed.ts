@@ -5,6 +5,7 @@
 import { db, nowIso } from '../src/server/db';
 import { createUser, findByEmail } from '../src/server/repo/users';
 import * as decors from '../src/server/repo/decors';
+import * as badges from '../src/server/repo/badges';
 import { TEMPLATES } from '../src/core/templates';
 
 const ACCOUNTS = [
@@ -19,6 +20,9 @@ const run = () => {
   for (const a of ACCOUNTS) {
     const existing = findByEmail(a.email);
     ids[a.role] = existing ? existing.id : createUser(a);
+    // Comptes de démonstration : adresse considérée comme vérifiée, sinon le
+    // partenaire ne pourrait pas soumettre.
+    db().prepare('UPDATE users SET email_verified_at = ? WHERE id = ?').run(nowIso(), ids[a.role]);
     console.log(`  ${existing ? '·' : '✓'} ${a.role.padEnd(7)} ${a.email}`);
   }
 
@@ -60,6 +64,13 @@ const run = () => {
     const [dl, vw] = seedCounts[i] ?? [5, 20];
     for (let k = 0; k < dl; k++) decors.track(d.id, 'download');
     for (let k = 0; k < vw; k++) decors.track(d.id, 'view');
+
+    // Badges émis, dont une partie déjà scannée : sans cela le taux de
+    // présence resterait à zéro et la démonstration perdrait son intérêt.
+    for (let k = 0; k < dl; k++) {
+      const token = badges.mint(d.id, k % 3 === 0 ? ids.user : null);
+      if (k % 5 < 2) badges.scan(token, ids.admin);
+    }
   });
   console.log(`\n  Base prête — ${nowIso().slice(0, 10)}`);
 };

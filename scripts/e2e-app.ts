@@ -3,8 +3,10 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { writeFileSync } from 'node:fs';
 
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const BASE = 'http://127.0.0.1:3210';
-const SHOT = process.env.SP + '/shots';
+// Le port suit `npm run dev` (3000). Surchargeable : BASE_URL=… npm run e2e:full
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
+// Les captures atterrissent dans .recette/ (ignoré par git), sauf SP= imposé.
+const SHOT = process.env.SP ? `${process.env.SP}/shots` : '.recette';
 const errs: string[] = [];
 
 const shot = async (p: Page, n: string, full = true) =>

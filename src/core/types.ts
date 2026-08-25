@@ -36,6 +36,12 @@ export interface RenderSpec {
   filterIntensity: number;
   /** slotId -> contenu saisi par l'utilisateur. */
   texts: Record<string, string>;
+  /**
+   * QR du badge, déjà rendu en image. Émis au moment du téléchargement :
+   * l'aperçu n'en a pas, l'export oui — chaque badge doit porter un jeton
+   * unique, et un aperçu n'en consomme pas.
+   */
+  qr?: LoadedImage | null;
 }
 
 /**

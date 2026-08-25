@@ -9,6 +9,10 @@ import { requireRole, requireUser } from '@/server/auth';
 import * as repo from '@/server/repo/decors';
 import { buildTemplate, type LayoutId } from '@/server/buildTemplate';
 import type { DecorStatus } from '@/core/template.schema';
+import { runPreflight } from '@/server/preflight';
+import { push } from '@/server/repo/notifications';
+import { canUpload, addUsage } from '@/server/quota';
+import { isVerified } from '@/server/repo/email';
 
 export interface DecorFormState {
   error?: string;
@@ -88,9 +92,20 @@ function sniff(b: Buffer): string | null {
  * plus le fichier.
  */
 export async function uploadFrame(form: FormData): Promise<{ url?: string; error?: string }> {
-  await requireRole('partner', 'admin');
+  const me = await requireRole('partner', 'admin');
+  const file = form.get('frame') as File;
+
+  const q = canUpload(me.id, me.role, file?.size ?? 0);
+  if (!q.ok) {
+    return {
+      error: `Quota atteint : ${Math.round(q.used / 1024 / 1024)} Mo utilisés sur ${Math.round(q.limit / 1024 / 1024)} Mo. Supprimez d’anciens décors.`,
+    };
+  }
+
   try {
-    return { url: await saveFrame(form.get('frame') as File) };
+    const url = await saveFrame(file);
+    addUsage(me.id, file.size);
+    return { url };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Téléversement impossible.' };
   }
@@ -164,16 +179,54 @@ export async function createDecor(
 
 /* ---------------- transitions ---------------- */
 
-export async function submitDecor(id: string) {
+export interface SubmitResult {
+  ok: boolean;
+  message?: string;
+  failures?: string[];
+}
+
+/**
+ * Soumet un décor — après le pré-vol.
+ *
+ * Un décor qui échoue ne rejoint JAMAIS la file d'attente : il revient au
+ * partenaire avec la liste de ce qui cloche. C'est ce qui permet de tenir
+ * l'engagement des 24 h — le relecteur ne voit que des décors valides.
+ */
+export async function submitDecor(id: string): Promise<SubmitResult> {
   const me = await requireRole('partner', 'admin');
   const d = repo.findById(id);
-  if (!d) return;
-  // Un partenaire ne peut soumettre que SES décors.
-  if (me.role === 'partner' && d.author_id !== me.id) return;
+  if (!d) return { ok: false, message: 'Décor introuvable.' };
+  if (me.role === 'partner' && d.author_id !== me.id) {
+    return { ok: false, message: 'Ce décor ne vous appartient pas.' };
+  }
+  if (me.role === 'partner' && !isVerified(me.id)) {
+    return { ok: false, message: 'Vérifiez d’abord votre adresse e-mail.' };
+  }
+
+  const flight = await runPreflight(id, d.template_json, d.frame_url);
+  if (!flight.passed) {
+    return {
+      ok: false,
+      message: 'Le contrôle automatique a relevé des problèmes bloquants.',
+      failures: flight.checks.filter((c) => c.status === 'fail').map((c) => c.message),
+    };
+  }
 
   repo.transition(id, 'pending_review', { id: me.id, role: 'partner' });
+
+  // Prévenir l'équipe : la file d'attente ne se surveille pas toute seule.
+  for (const admin of listAdmins()) {
+    push(admin.id, 'review', 'Un décor attend votre relecture', d.title, '/admin/moderation');
+  }
+
   revalidatePath('/partenaire');
   revalidatePath('/admin/moderation');
+  return { ok: true, message: 'Soumis — réponse sous 24 h ouvrées.' };
+}
+
+function listAdmins() {
+  const { listUsers } = require('@/server/repo/users') as typeof import('@/server/repo/users');
+  return listUsers().filter((u) => u.role === 'admin' && !u.suspended);
 }
 
 export async function reviewDecor(form: FormData) {
@@ -182,8 +235,27 @@ export async function reviewDecor(form: FormData) {
   const to = String(form.get('to') ?? '') as DecorStatus;
   const note = String(form.get('note') ?? '');
 
+  const d = repo.findById(id);
   try {
     repo.transition(id, to, { id: me.id, role: 'wakabi-team' }, note);
+
+    // Le partenaire doit apprendre la décision, et surtout son motif.
+    if (d?.author_id) {
+      const titles: Record<string, string> = {
+        published: 'Votre décor est publié 🎉',
+        changes_requested: 'Corrections demandées sur votre décor',
+        rejected: 'Votre décor a été refusé',
+      };
+      if (titles[to]) {
+        push(
+          d.author_id,
+          to,
+          titles[to],
+          to === 'published' ? d.title : `${d.title} — ${note}`,
+          '/partenaire',
+        );
+      }
+    }
   } catch {
     // La machine à états a refusé : on laisse la page se recharger telle quelle.
   }

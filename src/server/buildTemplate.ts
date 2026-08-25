@@ -44,19 +44,26 @@ const CANVAS = {
   story: { w: 1080, h: 1920, ratio: '9:16' as const },
 };
 
-/** Positions des textes par gabarit — calées pour ne jamais heurter le filigrane. */
+/**
+ * Positions des textes par gabarit.
+ *
+ * Calées pour ne heurter NI le filigrane (bas-droite, ~21 % de large) NI le
+ * QR Code (bas-gauche, ~19 % avec sa zone de silence). D'où un texte qui
+ * commence à 25 % et s'arrête à 73 % : la bande centrale est la seule
+ * vraiment libre.
+ */
 const TEXTS = {
   bandeau: {
-    claim: { x: 0.07, y: 0.795, w: 0.66, h: 0.09, size: 0.062, font: 'display' as const },
-    field: { x: 0.07, y: 0.888, w: 0.66, h: 0.055, size: 0.032, font: 'body' as const },
+    claim: { x: 0.25, y: 0.795, w: 0.48, h: 0.09, size: 0.058, font: 'display' as const },
+    field: { x: 0.25, y: 0.888, w: 0.48, h: 0.055, size: 0.03, font: 'body' as const },
   },
   angle: {
-    claim: { x: 0.07, y: 0.795, w: 0.66, h: 0.08, size: 0.052, font: 'display' as const },
-    field: { x: 0.07, y: 0.877, w: 0.66, h: 0.05, size: 0.027, font: 'body' as const },
+    claim: { x: 0.25, y: 0.79, w: 0.48, h: 0.08, size: 0.05, font: 'display' as const },
+    field: { x: 0.25, y: 0.872, w: 0.48, h: 0.05, size: 0.026, font: 'body' as const },
   },
   story: {
-    claim: { x: 0.07, y: 0.828, w: 0.62, h: 0.06, size: 0.034, font: 'display' as const },
-    field: { x: 0.07, y: 0.886, w: 0.62, h: 0.04, size: 0.021, font: 'body' as const },
+    claim: { x: 0.25, y: 0.826, w: 0.48, h: 0.06, size: 0.032, font: 'display' as const },
+    field: { x: 0.25, y: 0.884, w: 0.48, h: 0.04, size: 0.02, font: 'body' as const },
   },
 };
 

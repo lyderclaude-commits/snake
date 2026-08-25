@@ -16,8 +16,10 @@ interface Props {
   spec: RenderSpec;
   assets: LayerAssets;
   ready: boolean;
+  /** Jeton déjà émis par le studio ; le QR est déjà dans le RenderSpec. */
+  badgeToken?: string | null;
   /** Appelé une seule fois, quand l'image a réellement été produite. */
-  onExported?: () => void;
+  onExported?: (token?: string) => void;
 }
 
 /**
@@ -56,7 +58,7 @@ async function renderExport(
   });
 }
 
-export function ExportBar({ tpl, spec, assets, ready, onExported }: Props) {
+export function ExportBar({ tpl, spec, assets, ready, badgeToken, onExported }: Props) {
   const [busy, setBusy] = useState(false);
   const [longPress, setLongPress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,8 @@ export function ExportBar({ tpl, spec, assets, ready, onExported }: Props) {
     setBusy(true);
     setError(null);
     try {
+      // Le QR est déjà dans le RenderSpec depuis l'ajout de la photo :
+      // l'aperçu et l'export portent donc exactement le même code.
       const blob = await renderExport(tpl, spec, assets);
       const route = chooseRoute(blob, filename);
 
@@ -87,7 +91,7 @@ export function ExportBar({ tpl, spec, assets, ready, onExported }: Props) {
         setLongPress(URL.createObjectURL(blob));
       }
       setDone(true);
-      onExported?.();
+      onExported?.(badgeToken ?? undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Une erreur est survenue.');
     } finally {
@@ -110,6 +114,18 @@ export function ExportBar({ tpl, spec, assets, ready, onExported }: Props) {
         <p role="alert" className="rounded-wk-md bg-red-50 px-3 py-2 text-[13px] text-wk-red">
           {error}
         </p>
+      )}
+
+      {badgeToken && done && (
+        <div className="rounded-wk-md border border-wk-border bg-wk-bg2 px-4 py-3">
+          <p className="text-[13px] leading-snug text-wk-text2">
+            <b className="text-wk-text">Ton QR est sur le badge.</b> Présente-le à l’entrée pour
+            valider ta présence et gagner des Koris.
+          </p>
+          <p className="mt-1.5 font-mono text-[15px] font-bold tracking-[0.12em] text-wk-primary">
+            {badgeToken}
+          </p>
+        </div>
       )}
 
       {/* La redirection après téléchargement — la brique d'ancrage.

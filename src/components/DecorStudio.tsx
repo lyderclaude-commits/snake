@@ -10,7 +10,7 @@ import Link from 'next/link';
 import type { DecorTemplate } from '@/core/template.schema';
 import type { LayerAssets } from '@/core/types';
 import { loadImage } from '@/core/imagePipeline';
-import { trackEvent, recordCreation } from '@/app/actions/decors';
+import { mintBadge } from '@/app/actions/badges';
 import { useRenderSpec } from '@/store/useRenderSpec';
 import { CanvasStage } from './CanvasStage';
 import { PhotoDropzone } from './PhotoDropzone';
@@ -49,6 +49,29 @@ export function DecorStudio({ tpl, decorId, frameUrl, signedIn, stats }: StudioP
   const { spec, dispatch, setPhoto } = useRenderSpec(tpl);
   const [assets, setAssets] = useState<LayerAssets>({});
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+
+  /**
+   * Émettre le badge dès que la photo est là, pas au téléchargement.
+   *
+   * Le QR fait partie du visuel : le montrer seulement après l'export
+   * trahirait le « ce que tu vois est ce que tu télécharges ». Un jeton
+   * émis et jamais utilisé ne coûte qu'une ligne ; une surprise à
+   * l'ouverture du fichier coûte la confiance.
+   */
+  useEffect(() => {
+    if (!decorId || !spec.photo || token || !tpl.qr.enabled) return;
+    let alive = true;
+    (async () => {
+      const minted = await mintBadge(decorId);
+      if (!alive) return;
+      setToken(minted.token);
+      dispatch({ type: 'setQr', qr: await loadImage(minted.qrDataUrl) });
+    })().catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [decorId, spec.photo, token, tpl.qr.enabled, dispatch]);
 
   const maxScale = useMemo(() => {
     const slot = tpl.layers.find((l) => l.type === 'photoSlot');
@@ -140,14 +163,7 @@ export function DecorStudio({ tpl, decorId, frameUrl, signedIn, stats }: StudioP
             spec={spec}
             assets={assets}
             ready={!!spec.photo && !loading}
-            onExported={
-              decorId
-                ? () => {
-                    void trackEvent(decorId, 'download');
-                    if (signedIn) void recordCreation(decorId);
-                  }
-                : undefined
-            }
+            badgeToken={token}
           />
         </div>
       </div>

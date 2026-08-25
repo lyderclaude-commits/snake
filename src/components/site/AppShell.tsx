@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { signOut } from '@/app/actions/auth';
 import { WakabiMark } from '@/components/WakabiMark';
 import type { SessionUser } from '@/server/auth';
+import { NotifBell } from './NotifBell';
 
 /** Coquille des espaces connectés : barre latérale + en-tête. */
 export function AppShell({
@@ -27,6 +28,7 @@ export function AppShell({
             <WakabiMark tagline={false} />
           </Link>
           <div className="flex items-center gap-3">
+            <NotifBell userId={me.id} />
             <span className="hidden text-right sm:block">
               <b className="block text-[13px] font-semibold leading-tight">{me.name}</b>
               <span className="text-[11.5px] text-wk-text3">
@@ -89,12 +91,14 @@ export const USER_NAV = [
 export const PARTNER_NAV = [
   { href: '/partenaire', label: 'Mes campagnes' },
   { href: '/partenaire/nouveau', label: 'Nouveau décor' },
+  { href: '/scan', label: 'Contrôle d’entrée' },
   { href: '/decors', label: 'Catalogue public' },
 ];
 
 export const ADMIN_NAV = [
   { href: '/admin', label: 'Tableau de bord' },
   { href: '/admin/moderation', label: 'Relecture' },
+  { href: '/scan', label: 'Contrôle d’entrée' },
   { href: '/admin/comptes', label: 'Comptes' },
   { href: '/decors', label: 'Catalogue public' },
 ];

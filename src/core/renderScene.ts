@@ -382,6 +382,41 @@ function drawWatermark(
   ctx.restore();
 }
 
+/**
+ * Le QR du badge.
+ *
+ * Posé sur une pastille blanche : un QR doit avoir du blanc autour pour être
+ * lu, et une photo quelconque derrière le rendrait indéchiffrable. La zone
+ * de silence fait 8 % de la largeur du code, comme le veut la norme.
+ */
+function drawQr(
+  ctx: Ctx2D,
+  tpl: DecorTemplate,
+  spec: RenderSpec,
+  W: number,
+  H: number,
+) {
+  const cfg = tpl.qr;
+  if (!cfg.enabled || !spec.qr) return;
+
+  const size = W * cfg.size;
+  const quiet = size * 0.08;
+  const box = size + quiet * 2;
+  const margin = Math.min(W, H) * 0.04;
+
+  const x =
+    cfg.position === 'top-right' ? W - box - margin : margin;
+  const y =
+    cfg.position === 'bottom-left' ? H - box - margin : margin;
+
+  ctx.save();
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, x, y, box, box, box * 0.12);
+  ctx.fill();
+  ctx.drawImage(spec.qr as CanvasImageSource, x + quiet, y + quiet, size, size);
+  ctx.restore();
+}
+
 /* ------------------------------------------------------------------ */
 /* Point d'entrée                                                      */
 /* ------------------------------------------------------------------ */
@@ -413,6 +448,7 @@ export function renderScene(
     else drawTextLayer(ctx, layer, spec, W, H);
   }
 
+  drawQr(ctx, tpl, spec, W, H);
   drawWatermark(ctx, tpl, assets, W, H);
   ctx.restore();
 }

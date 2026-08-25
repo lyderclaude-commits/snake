@@ -7,3 +7,4 @@ next-env.d.ts
 public/demo/
 src/demo/frames.generated.ts
 .data/
+.recette/

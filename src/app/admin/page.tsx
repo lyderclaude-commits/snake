@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { currentUser } from '@/server/auth';
 import { overview, dailyDownloads } from '@/server/repo/stats';
 import { listAll, listPending } from '@/server/repo/decors';
+import { recentScans } from '@/server/repo/badges';
+import { db } from '@/server/db';
 import { AppShell, ADMIN_NAV } from '@/components/site/AppShell';
 import { Card, LinkButton, Stat, StatusPill, Icon } from '@/components/ui';
 
@@ -17,6 +19,13 @@ export default async function AdminPage() {
   const pending = listPending();
   const recent = listAll().slice(0, 8);
   const daily = dailyDownloads(14);
+  const badgeStats = db()
+    .prepare(
+      "SELECT COUNT(*) AS issued, SUM(CASE WHEN scanned_at IS NOT NULL THEN 1 ELSE 0 END) AS scanned FROM badges",
+    )
+    .get() as { issued: number; scanned: number | null };
+  const scanned = badgeStats.scanned ?? 0;
+  const lastScans = recentScans(5);
   const peak = Math.max(1, ...daily.map((d) => d.n));
 
   return (
@@ -51,8 +60,26 @@ export default async function AdminPage() {
         <Stat value={s.decorsPublished} label="décors publiés" tone="primary" />
         <Stat value={s.downloads} label="badges téléchargés" tone="green" />
         <Stat value={s.views} label="vues du catalogue" />
-        <Stat value={s.partners} label="partenaires actifs" tone="gold" />
+        <Stat value={scanned} label="présences scannées" tone="gold" />
       </div>
+
+      <Card className="mt-4 flex flex-wrap items-center gap-4 p-4">
+        <span className="text-[22px]">🪙</span>
+        <p className="min-w-[240px] flex-1 text-[13.5px] leading-relaxed text-wk-text2">
+          <b className="text-wk-text">Présence réelle :</b> {scanned} scannés sur{' '}
+          {badgeStats.issued} badges émis
+          {badgeStats.issued > 0 && (
+            <> — soit {Math.round((scanned / badgeStats.issued) * 100)} %</>
+          )}
+          .{' '}
+          {lastScans.length > 0 && (
+            <>Dernier passage : {lastScans[0].who ?? 'anonyme'} · {lastScans[0].decor}.</>
+          )}
+        </p>
+        <span className="text-[13px] font-semibold text-wk-text3">
+          {s.partners} partenaire{s.partners > 1 ? 's' : ''}
+        </span>
+      </Card>
 
       <Card className="mt-6 p-5">
         <div className="mb-4 flex items-baseline justify-between">

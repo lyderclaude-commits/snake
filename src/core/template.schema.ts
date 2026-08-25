@@ -292,6 +292,27 @@ export const DecorTemplate = z
     }),
 
     /**
+     * Le QR qui rapporte.
+     *
+     * Chaque badge téléchargé porte un jeton unique. Scanné à l'entrée, il
+     * mesure la présence RÉELLE et crédite des Koris — c'est ce qu'un
+     * générateur d'images ne peut pas faire.
+     *
+     * Traité comme le filigrane et non comme un calque : sa position est une
+     * décision de mise en page, pas un contenu que le partenaire compose.
+     */
+    qr: z
+      .object({
+        enabled: z.boolean().default(true),
+        position: z
+          .enum(['bottom-left', 'top-right', 'top-left'])
+          .default('bottom-left'),
+        /** Largeur en fraction du canevas. En dessous de 0,12 un téléphone peine à lire. */
+        size: z.number().min(0.12).max(0.3).default(0.16),
+      })
+      .default({ enabled: true, position: 'bottom-left', size: 0.16 }),
+
+    /**
      * Filigrane Wakabi. Systématique par défaut : l'outil est gratuit, donc
      * le logo voyage sur chaque partage — pure visibilité, sans l'arbitrage
      * commercial que mougni doit faire (son watermark est ce qu'on paie pour

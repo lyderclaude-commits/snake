@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { currentUser } from '@/server/auth';
 import { listPending, parseTemplate } from '@/server/repo/decors';
+import { getPreflight } from '@/server/preflight';
 import { AppShell, ADMIN_NAV } from '@/components/site/AppShell';
 import { Card } from '@/components/ui';
 import { ReviewPanel } from '@/components/admin/ReviewPanel';
@@ -48,6 +49,7 @@ export default async function ModerationPage() {
                 redirectUrl={tpl?.share.redirectUrl ?? null}
                 expiresAt={d.expires_at}
                 schemaOk={!!tpl}
+                preflight={getPreflight(d.id)}
               />
             );
           })}

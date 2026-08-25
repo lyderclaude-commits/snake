@@ -20,7 +20,8 @@ type Action =
   | { type: 'flip' }
   | { type: 'recenter' }
   | { type: 'setFilter'; intensity: number }
-  | { type: 'setText'; id: string; value: string };
+  | { type: 'setText'; id: string; value: string }
+  | { type: 'setQr'; qr: RenderSpec['qr'] };
 
 function initialSpec(tpl: DecorTemplate): RenderSpec {
   const texts: Record<string, string> = {};
@@ -33,6 +34,7 @@ function initialSpec(tpl: DecorTemplate): RenderSpec {
     filter: 'wakabi-blue',
     filterIntensity: 0,
     texts,
+    qr: null,
   };
 }
 
@@ -110,6 +112,8 @@ function reducer(tpl: DecorTemplate) {
         return { ...state, filterIntensity: action.intensity };
       case 'setText':
         return { ...state, texts: { ...state.texts, [action.id]: action.value } };
+      case 'setQr':
+        return { ...state, qr: action.qr };
       default:
         return state;
     }

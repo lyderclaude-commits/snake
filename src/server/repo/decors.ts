@@ -122,6 +122,14 @@ export interface CreateInput {
 export function create(input: CreateInput): string {
   const id = newId();
   const now = nowIso();
+  // La colonne `status` et le champ `status` du gabarit doivent partir d'accord :
+  // c'est `transition()` qui les fait évoluer ensuite, ensemble.
+  const template: Record<string, unknown> = {
+    ...(input.template as Record<string, unknown>),
+    status: 'draft',
+    moderation: {},
+  };
+  delete template.publishedAt;
   db()
     .prepare(
       `INSERT INTO decors
@@ -131,7 +139,7 @@ export function create(input: CreateInput): string {
     )
     .run(
       id, input.slug, input.title, input.subtitle ?? null, input.city, input.rubrique,
-      input.createdBy, input.authorId, JSON.stringify(input.template),
+      input.createdBy, input.authorId, JSON.stringify(template),
       input.frameUrl, input.expiresAt ?? null, now, now,
     );
   return id;
@@ -199,8 +207,69 @@ export function transition(
     vals.push(now, actor.id, note!.trim());
   }
 
+  // Le gabarit porte lui aussi le statut et la trace de relecture, et c'est LUI
+  // que la page publique relit. Le laisser diverger des colonnes produit un décor
+  // publié en base mais invalide au rendu — donc un 404 depuis le catalogue.
+  const tplJson = syncTemplate(row, to, actor, now, note);
+
+  sets.push('template_json = ?');
+  vals.push(tplJson);
+
   vals.push(id);
   db().prepare(`UPDATE decors SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+}
+
+/**
+ * Reporte la transition dans le gabarit JSON et le revalide.
+ *
+ * Revalider ici n'est pas une précaution de confort : c'est le seul endroit où l'on
+ * peut encore refuser. Une fois écrit, un gabarit invalide ne se manifeste qu'en
+ * 404 sur la page publique — le pire moment pour l'apprendre.
+ */
+function syncTemplate(
+  row: DecorRow,
+  to: DecorStatus,
+  actor: { id: string; role: ActorRole },
+  now: string,
+  note?: string,
+): string {
+  let tpl: Record<string, unknown>;
+  try {
+    tpl = JSON.parse(row.template_json) as Record<string, unknown>;
+  } catch {
+    throw new TransitionError('Le gabarit de ce décor est illisible.');
+  }
+
+  const mod = { ...((tpl.moderation as Record<string, unknown>) ?? {}) };
+
+  if (to === 'pending_review') {
+    mod.submittedAt = now;
+    mod.submittedBy = actor.id;
+  }
+  if (to === 'published' && row.created_by === 'partner') {
+    mod.reviewedAt = now;
+    mod.reviewedBy = actor.id;
+  }
+  if (to === 'rejected' || to === 'changes_requested') {
+    mod.reviewedAt = now;
+    mod.reviewedBy = actor.id;
+    mod.reviewNote = note!.trim();
+  }
+
+  const next = {
+    ...tpl,
+    status: to,
+    moderation: mod,
+    ...(to === 'published' ? { publishedAt: (tpl.publishedAt as string) ?? now } : {}),
+  };
+
+  const parsed = DecorTemplate.safeParse(next);
+  if (!parsed.success) {
+    throw new TransitionError(
+      `Le gabarit ne respecterait plus les règles de publication : ${parsed.error.issues[0].message}`,
+    );
+  }
+  return JSON.stringify(parsed.data);
 }
 
 export function remove(id: string) {
