@@ -38,3 +38,5 @@ Tout repose désormais sur des sources de première main :
   Wakabi — voir `docs/04-MODERATION.md`.
 - **Aucun logo vectoriel n'existe.** Le filigrane prévoit une variante `text` pour ne pas
   bloquer le développement.
+- **Signature officielle : « LE GUIDE DES BONS PLANS »** (constante `WAKABI_TAGLINE`).
+  Sept occurrences de « bons coins » restent à corriger sur le site.

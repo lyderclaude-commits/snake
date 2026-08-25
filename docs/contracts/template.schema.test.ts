@@ -3,7 +3,7 @@
  * Vérifié avec zod 3.25.76 / TypeScript 5 (strict) — 8/8 au 25/08/2026.
  * À rebrancher sur Vitest lors de la mise en place du dépôt applicatif.
  */
-import { DecorTemplate, canTransition } from './template.schema.js';
+import { DecorTemplate, canTransition, WAKABI_TAGLINE } from './template.schema.js';
 
 const base = {
   id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
@@ -107,4 +107,5 @@ console.log('  watermark         =', JSON.stringify(ok.watermark));
 console.log('  redirectLabel     =', ok.share.redirectLabel);
 console.log('  createdBy         =', ok.createdBy);
 console.log('  watermark.variant =', ok.watermark.variant);
+console.log('  signature         =', WAKABI_TAGLINE);
 console.log('  allowRotation     =', (ok.layers[0] as any).allowRotation);

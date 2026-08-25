@@ -51,6 +51,17 @@ export const ColorRef = z.union([
 export const AspectRatio = z.enum(['1:1', '4:5', '9:16', '16:9']);
 
 /**
+ * Signature officielle de la marque, tranchée le 25/08/2026.
+ * C'est la formule du logo. Le site utilise encore « bons coins » à sept
+ * endroits (titres et métadonnées) — voir docs/02-CHARTE-WAKABI.md §2 bis.
+ *
+ * Ne jamais écrire cette chaîne en dur ailleurs : elle est incrustée dans
+ * chaque visuel exporté, donc une divergence deviendrait définitive sur
+ * des milliers de partages.
+ */
+export const WAKABI_TAGLINE = 'LE GUIDE DES BONS PLANS';
+
+/**
  * Domaines vers lesquels un décor créé par un PARTENAIRE peut rediriger.
  * L'équipe Wakabi n'est pas contrainte (campagnes co-brandées, etc.).
  * À déplacer en configuration si la liste doit bouger sans déploiement.
@@ -303,9 +314,9 @@ export const DecorTemplate = z
          *  - `wordmark` : pin + « WAKABI », sans la signature. Le défaut —
          *                 c'est la réduction standard d'un logo à trois
          *                 étages, et elle reste lisible en petit.
-         *  - `text`     : « wakabileguide.com » composé en Bricolage
-         *                 Grotesque. AUCUN fichier requis : permet de
-         *                 développer J0/J1 sans attendre l'asset, et reste
+         *  - `text`     : « WAKABI » suivi de WAKABI_TAGLINE, composé en
+         *                 Bricolage Grotesque. AUCUN fichier requis : permet
+         *                 de développer J0/J1 sans attendre l'asset, et reste
          *                 un repli honnête si le bitmap est trop pauvre.
          */
         variant: z.enum(['wordmark', 'lockup', 'text']).default('wordmark'),

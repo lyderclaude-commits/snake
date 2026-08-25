@@ -1,5 +1,5 @@
 # Wakabi Studio — Générateur de décors & visuels personnalisés
-### Spécification technique & architecture — v0.5 (document de travail)
+### Spécification technique & architecture — v0.6 (document de travail)
 
 ---
 
@@ -46,8 +46,9 @@ sorties, événements, hébergements — tout ce qu'il faut sur ta ville, en une
 « Ton prochain bon coin t'attend » · « Vis ta ville à 100% » · « En 3 étapes, c'est plié » ·
 « Gagne. Dépense. Explore. » · « En direct depuis Lomé, Togo ».
 
-**Lexique maison** à reprendre tel quel : *bon coin*, *explorateur*, *Kori*,
-*Carte Wakabi*, *partenaire*.
+**Signature officielle : « LE GUIDE DES BONS PLANS »** — incrustée dans chaque visuel
+exporté (constante `WAKABI_TAGLINE`). **Lexique maison** à reprendre tel quel : *bon coin*,
+*bon plan*, *explorateur*, *Kori*, *Carte Wakabi*, *partenaire*.
 
 **Économie Kori.** Symbole **₵**. 1 achat = 10 Koris minimum ; 100 Koris = −500 XOF.
 Quatre niveaux : 🌱 Découvreur (0–200) · 🌟 Explorateur (201–500) · 💫 Insider (501–1 000) ·
@@ -456,9 +457,11 @@ bloquants restants :
    alpha d'au moins 2000 px de large. Le filigrane est incrusté dans chaque export 2048 px.
    *Non bloquant* : la variante `text` du filigrane permet de développer J0 et J1 sans
    attendre (voir [`02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) §2 bis).
-2. **« Bons coins » ou « bons plans » ?** Le logo dit « BONS PLANS », le site écrit
-   « bons coins » 13 fois — dont le `<title>` de l'accueil. À trancher avant d'incruster
-   la formule sur des milliers de visuels partagés.
+2. **Le vocabulaire éditorial.** La signature est tranchée — **« LE GUIDE DES BONS
+   PLANS »**, figée dans la constante `WAKABI_TAGLINE`. Reste à savoir si « bon coin »
+   disparaît aussi du **corps de texte** : c'est votre H1 d'accueil, « Ton prochain bon
+   coin t'attend ». Je recommande de le garder — un *bon coin* est un lieu, un *bon plan*
+   une occasion, et le blog a déjà une catégorie `bon-plan`. Mais c'est votre appel.
 3. **Le périmètre de la v1** (§9)  — combien de modèles au lancement, et avec quelle
    première campagne réelle.
 

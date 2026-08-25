@@ -105,11 +105,61 @@ Un **lockup à trois étages**, tout en bleu de marque :
    cohérent avec le `@font-face` trouvé dans `wakabi.css`.
 3. **La signature** — « LE GUIDE DES BONS PLANS », capitales fines très espacées, en noir.
 
-> ⚠️ **Incohérence de signature à trancher.** Le logo dit « LE GUIDE DES BONS **PLANS** ».
-> Le site écrit « bons **coins** » **13 fois** — dont le `<title>` de la page d'accueil,
-> « Wakabi – Le Guide des Bons Coins » — et « bons plans » 5 fois. Les deux formules
-> coexistent. Il faut en choisir une avant de l'incruster sur des milliers de visuels
-> partagés : c'est exactement le genre de détail qu'un filigrane rend définitif.
+### ✅ La signature officielle : « LE GUIDE DES BONS PLANS »
+
+**Tranché le 25/08/2026.** C'est la formule du logo, et c'est elle qui fait foi.
+
+Le site utilise encore « bons coins » à plusieurs endroits. Il faut distinguer deux choses
+que le décompte brut mélangeait :
+
+#### a) La signature de marque — 7 occurrences à corriger
+
+Ce sont des `<title>` et des métadonnées : elles portent la signature, elles doivent dire
+« bons plans ».
+
+| Fichier | Ligne | Contenu actuel |
+|---|---:|---|
+| `index.html` | 4 | `<title>Wakabi – Le Guide des Bons **Coins** \| Lomé, Cotonou, Abidjan</title>` |
+| `index.html` | 11 | `og:title` — même chaîne |
+| `application.html` | 4 | `<title>L'Application Wakabi — Téléchargez le guide des bons **coins**</title>` |
+| `application.html` | 10 | `og:title` — même chaîne |
+| `application.html` | 17 | `twitter:title` — même chaîne |
+| `article.html` | 5 | `meta description` — « nos articles et guides Wakabi sur les bons **coins** d'Afrique de l'Ouest » |
+| `villes.html` | 5 | `meta description` — « Découvrez les bons **coins** de votre ville » |
+
+Ce sont les chaînes que Google indexe et que WhatsApp affiche en aperçu de lien. Corriger
+ces sept-là suffit à aligner la marque.
+
+#### b) Le vocabulaire éditorial — 3 occurrences, décision distincte
+
+| Fichier | Ligne | Contenu |
+|---|---:|---|
+| `index.html` | 1798 | **Le H1 de l'accueil** — « Ton prochain **bon coin** t'attend » |
+| `application.html` | 1799 | « Ton prochain **bon coin** est à portée de doigt. » |
+| `a-propos.html` | 1801 | Le récit de marque — « l'ami qui connaît tout, qui te montre les **bons coins** » |
+
+> **Ma recommandation : garder « bon coin » comme vocabulaire, « bons plans » comme
+> signature.** Les deux ne se contredisent pas — un *bon coin* est un lieu, un *bon plan*
+> est une occasion. Votre blog a d'ailleurs déjà une catégorie nommée `bon-plan`, à côté
+> d'articles intitulés « … le nouveau **bon coin** à visiter ». C'est cohérent.
+>
+> Et « Ton prochain bon coin t'attend » est votre meilleure ligne. La remplacer par « ton
+> prochain bon plan » serait une perte sèche. **Mais c'est votre appel** — dites-moi si
+> vous voulez retirer « bon coin » partout, et j'ajuste le lexique du générateur.
+
+#### c) Ce qu'il ne faut PAS toucher
+
+- **13 occurrences dans un commentaire CSS** (`/* HERO TITLE — "Ton prochain bon coin
+  t'attend" paraissait trop petit */`), répété sur les 12 pages et dans `wakabi.css`.
+  Invisible pour l'utilisateur.
+- **Les titres d'articles publiés** (« Cup Grill, le tout nouveau bon coin… », « La
+  Résidence Madiba, le bon coin des amoureux »…). Ce sont des contenus datés, et leurs
+  slugs sont indexés : les modifier casserait des URLs.
+
+#### Pour le générateur
+
+Le filigrane et les décors portent **« LE GUIDE DES BONS PLANS »**, en capitales espacées,
+comme sur le logo. C'est figé dans le schéma (`WAKABI_TAGLINE`).
 
 ### Le problème pratique
 
@@ -196,8 +246,11 @@ compte sur data payante.
 | Communauté | « Rejoins des milliers d'explorateurs » |
 | Pied de page | « Fait avec amour » |
 
-**Lexique maison à réutiliser tel quel :** *bon coin* · *explorateur* · *Kori* ·
-*Carte Wakabi* · *partenaire* · *vivre sa ville*.
+**Lexique maison à réutiliser tel quel :** *bon coin* · *bon plan* · *explorateur* ·
+*Kori* · *Carte Wakabi* · *partenaire* · *vivre sa ville*.
+
+**Signature officielle : « LE GUIDE DES BONS PLANS »** (tranché le 25/08/2026) — voir
+§2 bis pour la liste des sept occurrences à corriger sur le site.
 
 > **Incohérence relevée :** le pied de page passe au vouvoiement
 > (« Explorez. Découvrez. Connectez. ») alors que tout le reste tutoie. À trancher —

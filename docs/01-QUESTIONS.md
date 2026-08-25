@@ -29,6 +29,10 @@ Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a ét�
    (`watermark.enabled` à `true` par défaut).
 7. **Le pied de page vouvoie** (« Explorez. Découvrez. Connectez. ») alors que tout le
    reste tutoie. Je pars sur le **tutoiement** pour le générateur, sauf avis contraire.
+8. ✅ **Signature — tranchée : « LE GUIDE DES BONS PLANS ».** Sept occurrences de
+   « bons coins » restent à corriger sur le site (titres et métadonnées), listées dans
+   [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) §2 bis. Reste ouvert : garder ou
+   non « bon coin » dans le **corps de texte** — je recommande de le garder.
 
 > **À signaler à votre équipe technique, indépendamment de ce projet :**
 > `var(--font-display)` est utilisé ~536 fois sur le site et **n'est jamais défini**.
