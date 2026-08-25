@@ -1,5 +1,5 @@
 # Wakabi Studio — Générateur de décors & visuels personnalisés
-### Spécification technique & architecture — v0.3 (document de travail)
+### Spécification technique & architecture — v0.4 (document de travail)
 
 ---
 
@@ -334,6 +334,33 @@ app/decor/[slug]/page.tsx                 (RSC — charge le DecorTemplate, gén
 | `core/templateSchema.ts` | Schéma Zod partagé back-office / API / éditeur. |
 | `store/useRenderSpec.ts` | Store Zustand = `RenderSpec` (§4). |
 | `lib/share.ts` | Détection de capacité + arbre de décision de partage (§7). |
+| `core/preflight.ts` | Les 7 contrôles automatiques exécutés à la soumission d'un décor de partenaire. Réutilise `renderScene` — bénéfice direct de la fonction pure. |
+| `core/transitions.ts` | `canTransition(from, to, actor)` — qui a le droit de faire quoi (§6.3). |
+
+---
+
+### 6.3 Côté back-office — création partagée
+
+Les décors sont créés par **l'équipe Wakabi et par les partenaires**, ces derniers passant
+par une relecture. L'essentiel vit dans le WordPress existant, pas dans le front Next.js :
+
+| Écran | Où | Contenu |
+|---|---|---|
+| Édition d'un décor | Admin WP | Le CPT `decor_template`, avec ses calques |
+| Soumission | Admin WP | Bouton natif « Soumettre à la relecture » — obtenu en retirant `publish_decors` au rôle partenaire |
+| **Métabox Relecture** | Admin WP | *Approuver* · *Demander des corrections* · *Refuser*, motif obligatoire pour les deux derniers |
+| **Rapport de pré-vol** | Admin WP | Les 7 contrôles automatiques, affichés au relecteur |
+| File d'attente | Admin WP | Filtre natif sur le statut `pending` |
+
+> **WordPress fait déjà 80 % du travail.** Le flux Contributeur → en attente → publication
+> est natif : un rôle sans `publish_decors` voit son bouton « Publier » remplacé par
+> « Soumettre à la relecture », ne peut pas modifier un décor déjà publié, et ne voit pas
+> ceux des autres. Il n'y a rien à écrire pour cela. C'est le bénéfice concret d'avoir
+> gardé le WordPress existant plutôt que d'ajouter Supabase.
+
+Détail complet — machine à états, capacités WordPress, les 7 contrôles de pré-vol, la
+grille de relecture humaine et la sécurité des téléversements — dans
+[`docs/04-MODERATION.md`](./04-MODERATION.md).
 
 ---
 
@@ -395,9 +422,10 @@ pénalité manuelle Google.
 |---|---|---|
 | **J0 — Socle** | Tokens de marque, `renderScene`, schéma `DecorTemplate`, 1 modèle codé en dur | Un visuel exportable de bout en bout |
 | **J1 — Éditeur** | Upload, zoom, déplacement, export HD, partage, redirection | Produit utilisable, mono-campagne |
-| **J2 — Catalogue** | Custom post type `decor_template`, endpoints `wakabi/v1/decors`, galerie, compteurs, OG images | L'équipe publie depuis son WordPress |
-| **J3 — Ancrage** | Rattachement aux `partners`/`cities`, compteurs publics, UTM, PWA offline | La boucle virale est fermée |
-| **J4 — Partenaires** | Rôle organisateur, décors sponsorisés, démo commerciale | L'offre partenaire a son argument |
+| | ↑ *le pré-vol arrive en J3, en même temps que l'ouverture aux partenaires — pas après. Sans lui, la file de relecture se remplit de décors cassés.* | |
+| **J2 — Catalogue** | CPT `decor_template`, les deux rôles, statuts personnalisés, endpoints `wakabi/v1/decors`, galerie, OG images | **L'équipe** publie depuis son WordPress |
+| **J3 — Ancrage & relecture** | Rattachement aux `partners`/`cities`, **pré-vol + métabox de relecture**, compteurs publics, UTM, PWA offline | **Les partenaires** soumettent, l'équipe relit |
+| **J4 — Partenaires** | Notifications, quotas de téléversement, tableau de bord partenaire, décors sponsorisés | L'offre partenaire a son argument complet |
 | **J5 — Koris** *(gelé)* | Attribution des Koris sur création et partage | **À activer quand le programme de fidélité sera rallumé** |
 
 ---
@@ -414,4 +442,6 @@ bloquants restants :
    ne peut pas être figé.
 2. **Les fonctionnalités réelles de mougni.com** — captures ou liste écrite, à verser
    dans la grille §8.
-3. **Le périmètre de la v1** et **qui crée les décors** (§9).
+3. **Le périmètre de la v1** (§9). *Le point « qui crée les décors » est tranché :
+   équipe Wakabi **et** partenaires, avec modération Wakabi — voir
+   [`docs/04-MODERATION.md`](./04-MODERATION.md).*

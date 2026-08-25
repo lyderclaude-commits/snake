@@ -51,6 +51,16 @@ export const ColorRef = z.union([
 export const AspectRatio = z.enum(['1:1', '4:5', '9:16', '16:9']);
 
 /**
+ * Domaines vers lesquels un décor créé par un PARTENAIRE peut rediriger.
+ * L'équipe Wakabi n'est pas contrainte (campagnes co-brandées, etc.).
+ * À déplacer en configuration si la liste doit bouger sans déploiement.
+ */
+export const WAKABI_REDIRECT_HOSTS = [
+  'wakabileguide.com',
+  'studio.wakabileguide.com',
+] as const;
+
+/**
  * Filtres. Volontairement réduits : mougni, qui domine la catégorie, n'en
  * propose AUCUN — son éditeur se limite à zoom + position. Les filtres
  * allongent le parcours et contredisent le budget des 30 secondes.
@@ -160,14 +170,64 @@ export const DecorTemplate = z
      * est juste.
      */
     createdBy: z.enum(['wakabi-team', 'partner']).default('wakabi-team'),
+    /** ID utilisateur WordPress de l'auteur. */
+    authorId: z.string().optional(),
     city: z.enum(['lome', 'cotonou', 'abidjan', 'all']).default('all'),
     rubrique: z
       .enum(['gastronomie', 'evenements', 'hebergements', 'culture', 'campagne'])
       .default('campagne'),
 
-    /* -- cycle de vie -- */
-    status: z.enum(['draft', 'published', 'archived']).default('draft'),
+    /* ================================================================
+       CYCLE DE VIE & MODÉRATION
+       ----------------------------------------------------------------
+       Les décors sont créés par l'équipe Wakabi ET par les partenaires,
+       ces derniers passant obligatoirement par une relecture.
+
+         draft ──submit──▶ pending_review ──approve──▶ published
+           ▲                    │                          │
+           │                    ├──request_changes──▶ changes_requested
+           └────────────────────┘                          │
+                                └──reject──▶ rejected      ├─archive─▶ archived
+                                                           └─expiresAt─▶ expired
+
+       Correspondance WordPress : draft / pending / publish sont natifs ;
+       seuls changes_requested, rejected et expired demandent un
+       register_post_status(). Voir docs/04-MODERATION.md.
+       ================================================================ */
+    status: z
+      .enum([
+        'draft',
+        'pending_review',
+        'changes_requested',
+        'published',
+        'rejected',
+        'archived',
+        'expired',
+      ])
+      .default('draft'),
     publishedAt: z.string().datetime().optional(),
+
+    /**
+     * Traçabilité de la relecture. Un décor de partenaire ne peut pas
+     * atteindre `published` sans être passé par ici — invariant vérifié.
+     */
+    moderation: z
+      .object({
+        submittedAt: z.string().datetime().optional(),
+        /** ID utilisateur WordPress de l'auteur de la soumission. */
+        submittedBy: z.string().optional(),
+        reviewedAt: z.string().datetime().optional(),
+        /** ID utilisateur WordPress du relecteur Wakabi. */
+        reviewedBy: z.string().optional(),
+        /**
+         * Motif, obligatoire pour un refus ou une demande de correction :
+         * un partenaire doit toujours savoir quoi corriger.
+         */
+        reviewNote: z.string().max(600).optional(),
+        /** Résumé du dernier contrôle automatique (§ Preflight). */
+        preflightPassed: z.boolean().optional(),
+      })
+      .default({}),
     /** Un décor d'événement doit expirer : le catalogue ne doit pas se périmer. */
     expiresAt: z.string().datetime().optional(),
 
@@ -262,6 +322,78 @@ export const DecorTemplate = z
       });
     }
 
+    /* ---- Modération ---------------------------------------------- */
+
+    // Le point central : un décor de partenaire ne peut pas être publié
+    // sans relecture. C'est la règle que l'équipe a demandée.
+    if (
+      tpl.createdBy === 'partner' &&
+      tpl.status === 'published' &&
+      !tpl.moderation.reviewedBy
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['moderation', 'reviewedBy'],
+        message:
+          'Un décor créé par un partenaire ne peut pas être publié sans relecture Wakabi.',
+      });
+    }
+
+    // Un refus ou une demande de correction sans motif laisse le
+    // partenaire sans rien à corriger.
+    if (
+      (tpl.status === 'rejected' || tpl.status === 'changes_requested') &&
+      !tpl.moderation.reviewNote
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['moderation', 'reviewNote'],
+        message: `Le statut "${tpl.status}" exige un motif dans moderation.reviewNote.`,
+      });
+    }
+
+    // Cohérence de la file d'attente : sans date de soumission, le décor
+    // n'apparaît nulle part dans la file du relecteur.
+    if (tpl.status === 'pending_review' && !tpl.moderation.submittedAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['moderation', 'submittedAt'],
+        message: 'Un décor en relecture doit porter moderation.submittedAt.',
+      });
+    }
+
+    if (tpl.status === 'published' && !tpl.publishedAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['publishedAt'],
+        message: 'Un décor publié doit porter publishedAt.',
+      });
+    }
+
+    // Un partenaire ne peut pas détourner la redirection vers son propre
+    // site : le badge doit ramener sur Wakabi, sinon le partenaire récupère
+    // le trafic sans que la plateforme en garde quoi que ce soit. C'est
+    // toute la logique de l'ancrage (SPEC §1.3).
+    if (tpl.createdBy === 'partner' && tpl.share.redirectUrl) {
+      let host = '';
+      try {
+        host = new URL(tpl.share.redirectUrl).hostname.toLowerCase();
+      } catch {
+        host = '';
+      }
+      const allowed = WAKABI_REDIRECT_HOSTS.some(
+        (h) => host === h || host.endsWith('.' + h),
+      );
+      if (!allowed) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['share', 'redirectUrl'],
+          message:
+            `Un décor de partenaire doit rediriger vers un domaine Wakabi (${WAKABI_REDIRECT_HOSTS.join(', ')}), pas vers "${host || 'URL invalide'}".`,
+        });
+      }
+    }
+
     // La redirection est la brique d'ancrage : un décor rattaché à un
     // partenaire qui ne renvoie nulle part perd tout son intérêt.
     if (tpl.partnerId && !tpl.share.redirectUrl) {
@@ -282,6 +414,90 @@ export const DecorTemplate = z
       });
     }
   });
+
+/* ------------------------------------------------------------------ */
+/* Transitions autorisées                                              */
+/* ------------------------------------------------------------------ */
+
+export type DecorStatus = DecorTemplate['status'];
+export type ActorRole = 'wakabi-team' | 'partner';
+
+/**
+ * Qui a le droit de faire passer un décor d'un état à un autre.
+ * Le partenaire soumet et corrige ; seule l'équipe Wakabi publie,
+ * refuse ou demande des corrections. C'est exactement la mécanique
+ * Contributeur → en attente → publication de WordPress.
+ */
+const TRANSITIONS: Record<DecorStatus, Partial<Record<DecorStatus, ActorRole[]>>> = {
+  draft: {
+    pending_review: ['partner'],                 // soumettre
+    published:      ['wakabi-team'],             // publication directe
+    archived:       ['wakabi-team', 'partner'],
+  },
+  pending_review: {
+    published:         ['wakabi-team'],          // approuver
+    changes_requested: ['wakabi-team'],
+    rejected:          ['wakabi-team'],
+    draft:             ['partner'],              // retirer sa soumission
+  },
+  changes_requested: {
+    pending_review: ['partner'],                 // re-soumettre après correction
+    draft:          ['partner'],
+    rejected:       ['wakabi-team'],
+  },
+  published: {
+    archived: ['wakabi-team'],
+    expired:  ['wakabi-team'],                   // aussi posé par la tâche planifiée
+    draft:    ['wakabi-team'],                   // dépublier pour retouche
+  },
+  rejected:  { draft: ['partner', 'wakabi-team'] },
+  archived:  { draft: ['wakabi-team'] },
+  expired:   { archived: ['wakabi-team'], draft: ['wakabi-team'] },
+};
+
+/** Une transition est-elle permise à cet acteur ? */
+export function canTransition(
+  from: DecorStatus,
+  to: DecorStatus,
+  actor: ActorRole,
+): boolean {
+  return TRANSITIONS[from]?.[to]?.includes(actor) ?? false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Contrôle automatique avant relecture humaine                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Rapport de « pré-vol ». Il tourne à la soumission, avant qu'un humain
+ * ne regarde quoi que ce soit : l'objectif est que le relecteur Wakabi
+ * n'ait à juger que ce qu'une machine ne peut pas juger — les droits sur
+ * les visuels, la pertinence éditoriale, le ton.
+ *
+ * Voir docs/04-MODERATION.md pour le détail de chaque contrôle.
+ */
+export const PreflightReport = z.object({
+  templateId: z.string(),
+  ranAt: z.string().datetime(),
+  passed: z.boolean(),
+  checks: z.array(
+    z.object({
+      id: z.enum([
+        'schema',            // le modèle valide le schéma Zod
+        'photo-visible',     // le cadre ne recouvre pas la zone photo
+        'text-fits',         // aucun texte ne déborde de son rect
+        'watermark-clear',   // le filigrane n'est pas masqué
+        'asset-format',      // PNG/WebP, canal alpha présent, pas de SVG
+        'asset-weight',      // poids du cadre sous la limite
+        'contrast',          // texte lisible sur photo claire ET sombre
+      ]),
+      status: z.enum(['pass', 'warn', 'fail']),
+      message: z.string().max(300),
+    }),
+  ),
+});
+
+export type PreflightReport = z.infer<typeof PreflightReport>;
 
 export type DecorTemplate = z.infer<typeof DecorTemplate>;
 export type Layer = z.infer<typeof Layer>;

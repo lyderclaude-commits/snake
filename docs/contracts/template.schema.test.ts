@@ -3,7 +3,7 @@
  * Vérifié avec zod 3.25.76 / TypeScript 5 (strict) — 8/8 au 25/08/2026.
  * À rebrancher sur Vitest lors de la mise en place du dépôt applicatif.
  */
-import { DecorTemplate } from './template.schema.js';
+import { DecorTemplate, canTransition } from './template.schema.js';
 
 const base = {
   id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
@@ -41,6 +41,52 @@ check('partenaire sans redirection', { ...base, partnerId: 'ptn_7' }, false);
 check('partenaire avec redirection',
   { ...base, partnerId: 'ptn_7', share: { redirectUrl: 'https://wakabileguide.com/p/le-maquis' } }, true);
 check('filtre retiré du périmètre v1', { ...base, filters: ['none', 'vintage'] }, false);
+
+/* ---- Modération ------------------------------------------------------ */
+const T0 = '2026-08-25T10:00:00Z';
+check('partenaire publié SANS relecture',
+  { ...base, createdBy: 'partner', status: 'published', publishedAt: T0 }, false);
+check('partenaire publié APRÈS relecture',
+  { ...base, createdBy: 'partner', status: 'published', publishedAt: T0,
+    moderation: { reviewedBy: 'wp_12', reviewedAt: T0 } }, true);
+check('équipe Wakabi publie directement',
+  { ...base, createdBy: 'wakabi-team', status: 'published', publishedAt: T0 }, true);
+check('refus sans motif', { ...base, status: 'rejected' }, false);
+check('refus avec motif',
+  { ...base, status: 'rejected', moderation: { reviewNote: 'Visuel non libre de droits.' } }, true);
+check('correction demandée sans motif', { ...base, status: 'changes_requested' }, false);
+check('en relecture sans date de soumission', { ...base, status: 'pending_review' }, false);
+check('en relecture avec date',
+  { ...base, status: 'pending_review', moderation: { submittedAt: T0, submittedBy: 'wp_44' } }, true);
+check('publié sans publishedAt', { ...base, status: 'published' }, false);
+check('partenaire redirige vers son propre site',
+  { ...base, createdBy: 'partner', partnerId: 'ptn_7',
+    share: { redirectUrl: 'https://mon-restaurant.tg/promo' } }, false);
+check('partenaire redirige vers Wakabi',
+  { ...base, createdBy: 'partner', partnerId: 'ptn_7',
+    share: { redirectUrl: 'https://wakabileguide.com/p/le-maquis' } }, true);
+check('équipe Wakabi peut rediriger ailleurs (co-branding)',
+  { ...base, createdBy: 'wakabi-team', partnerId: 'ptn_7',
+    share: { redirectUrl: 'https://festival-partenaire.tg' } }, true);
+
+/* ---- Transitions ----------------------------------------------------- */
+function t(from: any, to: any, actor: any, expect: boolean, label: string) {
+  const got = canTransition(from, to, actor);
+  const pass = got === expect;
+  console.log(`${pass ? 'PASS' : 'FAIL'}  ${label}`);
+  if (!pass) process.exitCode = 1;
+}
+console.log('');
+t('draft', 'pending_review', 'partner', true,  'partenaire soumet son brouillon');
+t('draft', 'published', 'partner', false,      'partenaire NE PEUT PAS publier directement');
+t('draft', 'published', 'wakabi-team', true,   'équipe publie directement');
+t('pending_review', 'published', 'wakabi-team', true, 'équipe approuve');
+t('pending_review', 'published', 'partner', false,    'partenaire NE PEUT PAS s\'auto-approuver');
+t('pending_review', 'changes_requested', 'wakabi-team', true, 'équipe demande des corrections');
+t('changes_requested', 'pending_review', 'partner', true,     'partenaire re-soumet après correction');
+t('published', 'archived', 'wakabi-team', true,  'équipe archive');
+t('published', 'archived', 'partner', false,     'partenaire NE PEUT PAS archiver un décor publié');
+console.log('');
 
 // Vérifie que les valeurs par défaut sont bien appliquées.
 const ok = DecorTemplate.parse(base);

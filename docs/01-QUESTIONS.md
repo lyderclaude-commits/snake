@@ -63,8 +63,11 @@ Voir [`docs/02-CHARTE-WAKABI.md`](./02-CHARTE-WAKABI.md) pour tout ce qui a ét�
 
 ## C. Périmètre & organisation
 
-12. **Qui crée les décors ?** L'équipe Wakabi seule ? Les partenaires en self-service ? Cela
-    détermine s'il faut un back-office avec rôles et modération, ou un simple écran d'admin.
+12. ✅ **Qui crée les décors — tranché.** L'équipe Wakabi **et** les partenaires, avec
+    modération Wakabi. Conçu dans [`docs/04-MODERATION.md`](./04-MODERATION.md) :
+    trois acteurs, machine à états à 7 statuts, correspondance avec les capacités
+    WordPress natives, 7 contrôles automatiques avant relecture humaine, et un garde-fou
+    empêchant un partenaire de détourner la redirection vers son propre site.
 13. **Combien de modèles au lancement, et à quelle fréquence ensuite ?** Trois modèles fixes et
     un back-office est un surinvestissement ; deux nouveaux modèles par semaine le rend
     indispensable.
