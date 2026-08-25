@@ -16,6 +16,8 @@ interface Props {
   spec: RenderSpec;
   assets: LayerAssets;
   ready: boolean;
+  /** Appelé une seule fois, quand l'image a réellement été produite. */
+  onExported?: () => void;
 }
 
 /**
@@ -54,7 +56,7 @@ async function renderExport(
   });
 }
 
-export function ExportBar({ tpl, spec, assets, ready }: Props) {
+export function ExportBar({ tpl, spec, assets, ready, onExported }: Props) {
   const [busy, setBusy] = useState(false);
   const [longPress, setLongPress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export function ExportBar({ tpl, spec, assets, ready }: Props) {
         setLongPress(URL.createObjectURL(blob));
       }
       setDone(true);
+      onExported?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Une erreur est survenue.');
     } finally {

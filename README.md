@@ -3,13 +3,15 @@
 Outil web de génération de visuels personnalisés (cadres de profil, badges d'événement)
 pour la plateforme **Wakabi Le Guide** — le guide des bons coins de Lomé, Cotonou et Abidjan.
 
-> **Statut : J0–J1 livrés.** L'application tourne — galerie, éditeur, export haute
-> définition, partage et redirection. Trois modèles de démonstration.
+> **Statut : application complète.** Vitrine Wakabi Boost, catalogue public, Studio,
+> comptes participants et partenaires, back-end d'administration. Base autonome —
+> **plus de WordPress**.
 
 ## Démarrer
 
 ```bash
 npm install
+npm run seed         # base + comptes de démonstration
 npm run dev          # http://localhost:3000
 npm run test         # 33 invariants du contrat de données
 npm run frames       # régénère les cadres PNG depuis les SVG
@@ -27,6 +29,7 @@ npm run demo         # assemble public/demo/index.html (fichier unique autonome)
 | [`docs/04-MODERATION.md`](docs/04-MODERATION.md) | Création partagée équipe + partenaires : rôles, machine à états, capacités WordPress, pré-vol automatique |
 | [`docs/05-IMPLEMENTATION.md`](docs/05-IMPLEMENTATION.md) | Journal d'implémentation : ce que le code a appris et qui corrige la spec |
 | [`docs/06-BACKLOG.md`](docs/06-BACKLOG.md) | **Périmètre fonctionnel** — 81 fonctionnalités par acteur, état et jalon, plus les 10 écartées |
+| [`docs/07-BACKEND.md`](docs/07-BACKEND.md) | **Back-end autonome** : schéma, rôles, écrans, et le chemin vers Postgres |
 | [`src/core/template.schema.ts`](src/core/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
 | [`src/core/renderScene.ts`](src/core/renderScene.ts) | **Le cœur** : la fonction de rendu pure, une seule pour l'aperçu et l'export |
 | [`src/core/template.schema.test.ts`](src/core/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert) |
@@ -53,3 +56,11 @@ Tout repose désormais sur des sources de première main :
   bloquer le développement.
 - **Signature officielle : « LE GUIDE DES BONS PLANS »** (constante `WAKABI_TAGLINE`).
   Sept occurrences de « bons coins » restent à corriger sur le site.
+
+## Comptes de démonstration
+
+| Rôle | E-mail | Mot de passe |
+|---|---|---|
+| Administration | `admin@wakabileguide.com` | `wakabi2026` |
+| Partenaire | `partenaire@chezlena.tg` | `wakabi2026` |
+| Participant | `kossi@exemple.tg` | `wakabi2026` |

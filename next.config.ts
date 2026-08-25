@@ -2,8 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Le générateur est 100 % client : aucune photo ne transite par le serveur.
-  // Voir docs/00-SPEC-TECHNIQUE.md, contrainte C6.
+  // better-sqlite3 est un module natif : il ne doit pas être bundlé.
+  serverExternalPackages: ['better-sqlite3'],
 };
 
 export default nextConfig;

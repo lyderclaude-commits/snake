@@ -9,8 +9,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { DecorTemplate } from '@/core/template.schema';
 import type { LayerAssets } from '@/core/types';
-import { assetUrl } from '@/core/templates';
 import { loadImage } from '@/core/imagePipeline';
+import { trackEvent, recordCreation } from '@/app/actions/decors';
 import { useRenderSpec } from '@/store/useRenderSpec';
 import { CanvasStage } from './CanvasStage';
 import { PhotoDropzone } from './PhotoDropzone';
@@ -35,7 +35,17 @@ async function ensureFonts(): Promise<void> {
   await document.fonts.ready;
 }
 
-export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
+interface StudioProps {
+  tpl: DecorTemplate;
+  /** Identifiant en base — sert aux compteurs et à l'historique. */
+  decorId?: string;
+  /** Cadre servi localement ; le `src` du gabarit pointe vers le CDN. */
+  frameUrl?: string | null;
+  signedIn?: boolean;
+  stats?: { downloads: number; views: number };
+}
+
+export function DecorStudio({ tpl, decorId, frameUrl, signedIn, stats }: StudioProps) {
   const { spec, dispatch, setPhoto } = useRenderSpec(tpl);
   const [assets, setAssets] = useState<LayerAssets>({});
   const [loading, setLoading] = useState(true);
@@ -43,7 +53,7 @@ export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
   const maxScale = useMemo(() => {
     const slot = tpl.layers.find((l) => l.type === 'photoSlot');
     return slot && slot.type === 'photoSlot' ? slot.maxScale : 4;
-  }, [tpl]);
+  }, [tpl, frameUrl]);
 
   useEffect(() => {
     let alive = true;
@@ -52,7 +62,9 @@ export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
       const [, ...images] = await Promise.all([
         ensureFonts(),
         ...imageLayers.map((l) =>
-          l.type === 'image' ? loadImage(assetUrl(l.src)) : Promise.resolve(null),
+          l.type === 'image'
+            ? loadImage(frameUrl ?? `/frames/${l.src.split('/').pop()}`)
+            : Promise.resolve(null),
         ),
       ]);
       if (!alive) return;
@@ -67,7 +79,7 @@ export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
     return () => {
       alive = false;
     };
-  }, [tpl]);
+  }, [tpl, frameUrl]);
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-5xl px-5 pb-28">
@@ -88,6 +100,17 @@ export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
           {tpl.title}
         </h1>
         <p className="mt-1 text-[15px] text-wk-text2">{tpl.subtitle}</p>
+        {stats && (
+          <p className="mt-2 flex items-center gap-4 text-[12.5px] font-semibold text-wk-text3">
+            <span>⬇ {stats.downloads} téléchargés</span>
+            <span>👁 {stats.views} vues</span>
+            {!signedIn && (
+              <Link href="/inscription" className="text-wk-primary hover:underline">
+                Créer un compte pour retrouver tes visuels
+              </Link>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -112,7 +135,20 @@ export function DecorStudio({ tpl }: { tpl: DecorTemplate }) {
           <PhotoDropzone onPhoto={setPhoto} hasPhoto={!!spec.photo} />
           <CropToolbar spec={spec} dispatch={dispatch} maxScale={maxScale} />
           <TextPanel tpl={tpl} spec={spec} dispatch={dispatch} />
-          <ExportBar tpl={tpl} spec={spec} assets={assets} ready={!!spec.photo && !loading} />
+          <ExportBar
+            tpl={tpl}
+            spec={spec}
+            assets={assets}
+            ready={!!spec.photo && !loading}
+            onExported={
+              decorId
+                ? () => {
+                    void trackEvent(decorId, 'download');
+                    if (signedIn) void recordCreation(decorId);
+                  }
+                : undefined
+            }
+          />
         </div>
       </div>
     </main>
