@@ -10,14 +10,11 @@
  * annoncé sur le prototype. Rien n'est inventé côté produit : ce qui est
  * compté est ce qui existe.
  */
-$s = tableau_de_bord();
 $organisateurs = 2340 + (int) db()->query("SELECT COUNT(*) n FROM utilisateurs WHERE role='partenaire'")->fetch()['n'];
-$utilisateurs = 10000 + (int) $s['comptes'];
 $vitrine = array_slice(decors_publies(8), 0, 4);
 $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 ?>
 
-<div class="annonce"><b>−50 %</b> Offre de lancement — les 3 premiers mois · se termine bientôt</div>
 
 <section class="heros">
   <div class="contenu heros-in" style="padding-bottom:0">
@@ -65,35 +62,24 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   </div>
 </section>
 
-<div class="bande">
-  <div class="contenu" style="padding-bottom:0">
-    <div class="grille g4">
-      <div><b><?= $fr($organisateurs) ?></b><span>organisateurs</span></div>
-      <div><b><?= $fr($utilisateurs) ?></b><span>utilisateurs Wakabi</span></div>
-      <div><b><?= $fr((int) $s['badges']) ?></b><span>badges émis</span></div>
-      <div><b><?= $fr((int) $s['presences']) ?></b><span>présences scannées</span></div>
-    </div>
-  </div>
-</div>
-
 <!-- ---------- canaux ---------- -->
 <section class="bloc">
   <div class="contenu" style="padding-bottom:0">
-    <div class="tete">
+    <div class="tete centre">
       <p class="sur">Tous vos canaux</p>
       <h2>Un seul outil pour <em>remplir la salle.</em></h2>
       <p>Là où vos invités sont déjà — pas là où vous espérez qu’ils aillent.</p>
     </div>
     <div class="grille canaux">
       <?php foreach ([
-        ['💬', 'WhatsApp & Rappels', 'Invitations, rappels automatiques J-1 et H-2, chatbots. Vos messages lus à 98 %, jamais dans les spams.', 'À partir de 1 FCFA/message', false],
-        ['🔔', 'Notifications Push', 'Notifiez vos abonnés directement sur leur navigateur, sans application à installer.', 'Coût d’envoi : zéro', false],
-        ['✈️', 'Telegram', 'Créez des canaux de diffusion illimités et sécurisés. Idéal pour fédérer une communauté fidèle.', 'Canaux illimités', false],
-        ['🔗', 'Liens courts', 'Raccourcissez vos URLs, suivez les clics en temps réel et retargetez votre audience.', 'wkb.link', false],
-        ['🎨', 'Studio Badge « J’y serai »', 'Vos invités créent leur badge personnalisé en 1 clic et le téléchargent. Effet viral sur WhatsApp et les réseaux.', 'Disponible maintenant', true],
+        ['message', 'WhatsApp & Rappels', 'Invitations, rappels automatiques J-1 et H-2, chatbots. Vos messages lus à 98 %, jamais dans les spams.', 'À partir de 1 FCFA/message', false],
+        ['cloche', 'Notifications Push', 'Notifiez vos abonnés directement sur leur navigateur, sans application à installer.', 'Coût d’envoi : zéro', false],
+        ['avion', 'Telegram', 'Créez des canaux de diffusion illimités et sécurisés. Idéal pour fédérer une communauté fidèle.', 'Canaux illimités', false],
+        ['lien', 'Liens courts', 'Raccourcissez vos URLs, suivez les clics en temps réel et retargetez votre audience.', 'wkb.link', false],
+        ['studio', 'Studio Badge « J’y serai »', 'Vos invités créent leur badge personnalisé en 1 clic et le téléchargent. Effet viral sur WhatsApp et les réseaux.', 'Disponible maintenant', true],
       ] as [$ico, $canal, $corps, $note, $actif]): ?>
         <div class="canal<?= $actif ? ' actif' : '' ?>">
-          <span class="ico"><?= $ico ?></span>
+          <span class="ico"><?= icone($ico) ?></span>
           <b><?= e($canal) ?></b>
           <p><?= e($corps) ?></p>
           <span class="note"><?= e($note) ?></span>

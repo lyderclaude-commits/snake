@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **52 scénarios, 52 réussis** sur
+Les deux ont été vérifiés de bout en bout : **60 scénarios, 60 réussis** sur
 chacun.
 
 ---
@@ -103,7 +103,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 52 scénarios, dans un vrai navigateur
+npm run php:e2e          # 60 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -113,11 +113,12 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 52 scénarios
+### Les 60 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
-| Vitrine | Neuf sections, l'offre de lancement, les quatre formules, les six questions |
+| Vitrine | Neuf sections, l'offre de lancement, les quatre formules, les six questions, les icônes dessinées |
+| La police | Déclarée, **chargée**, réellement utilisée au rendu, et servie par votre serveur |
 | Le Studio | Le QR **visible dans l'aperçu** (mesuré sur le canevas), le jeton émis |
 | Le téléchargement | Un **vrai fichier**, au format déclaré par le gabarit, sans repli intempestif |
 | La page du QR | `?p=qr&jeton=…` répond, annonce le badge valide, refuse un code inventé |
@@ -152,6 +153,29 @@ Tout le produit, pas un sous-ensemble :
 - QR incrusté, page de badge, contrôle d'entrée, Koris ;
 - tableau de bord, courbe sur 14 jours, gestion des comptes ;
 - limitation de débit, jetons anti-CSRF, sessions `httpOnly`.
+
+---
+
+## La police est servie par votre serveur
+
+**Plus Jakarta Sans** habille toute l'interface — titres compris. Une seule
+famille : les titres se distinguent par la graisse et l'approche, pas par un
+second caractère.
+
+Elle est **auto-hébergée** dans `public/polices/` (128 Ko, dix fichiers WOFF2),
+pas appelée chez Google. Trois raisons :
+
+- elle s'affiche même si le CDN est lent ou bloqué ;
+- elle n'ajoute pas d'aller-retour vers un tiers sur une connexion 3G ;
+- aucune adresse IP de visiteur ne part chez un tiers.
+
+> **Déclarer une police ne suffit pas.** Un `@font-face` qui pointe vers un
+> fichier absent ne casse rien : le navigateur retombe en silence sur une
+> police système et la page a l'air correcte. La recette vérifie donc les trois
+> niveaux — déclarée sur les titres, **chargée** selon `document.fonts`, et
+> **réellement utilisée au rendu** (la largeur d'un texte mesurée au canevas
+> diffère de celle du repli système). Plus un quatrième contrôle : aucune
+> feuille de police appelée chez un tiers.
 
 ---
 

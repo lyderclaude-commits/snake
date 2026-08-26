@@ -16,6 +16,7 @@ require __DIR__ . '/app/auth.php';
 require __DIR__ . '/app/depot.php';
 require __DIR__ . '/app/prevol.php';
 require __DIR__ . '/app/qr.php';
+require __DIR__ . '/app/icones.php';
 
 demarrer_session();
 

@@ -101,7 +101,43 @@ const run = async () => {
   ok('vitrine chargée', /Wakabi Boost/.test(await p.title()));
   ok('la vitrine présente le produit', (await p.locator('section').count()) >= 8,
      `${await p.locator('section').count()} sections`);
-  ok('offre de lancement affichée', /−50 %/.test(await p.locator('.annonce').innerText()));
+  // L'offre de lancement n'est plus annoncée par un bandeau en tête de site :
+  // elle vit dans la section des tarifs, là où elle se décide.
+  ok('offre de lancement affichée', /−50 %/.test(await p.locator('#tarifs').innerText()));
+  ok('aucun bandeau en tête de site', (await p.locator('.annonce').count()) === 0);
+  /**
+   * La police : déclarée ne suffit pas, il faut qu'elle soit CHARGÉE.
+   *
+   * Une déclaration CSS qui pointe vers un fichier absent ne casse rien :
+   * le navigateur retombe en silence sur une police système, et la page a
+   * l'air correcte à qui ne connaît pas le dessin attendu. On vérifie donc
+   * les trois niveaux — déclarée, chargée, réellement utilisée au rendu.
+   */
+  await p.evaluate(() => (document as unknown as { fonts: FontFaceSet }).fonts.ready);
+  await p.waitForTimeout(400);
+  const police = await p.evaluate(() => {
+    const d = document as unknown as { fonts: FontFaceSet & { check(f: string): boolean } };
+    const c = document.createElement('canvas').getContext('2d')!;
+    c.font = '800 40px "Plus Jakarta Sans"';
+    const avec = c.measureText('Vos invitations méritent').width;
+    c.font = '800 40px sans-serif';
+    return {
+      declaree: getComputedStyle(document.querySelector('h1')!).fontFamily.includes('Plus Jakarta Sans'),
+      chargee: [...d.fonts].some((f) => f.family === 'Plus Jakarta Sans' && f.status === 'loaded'),
+      disponible: d.fonts.check('800 16px "Plus Jakarta Sans"'),
+      distincte: Math.abs(avec - c.measureText('Vos invitations méritent').width) > 1,
+    };
+  });
+  ok('Plus Jakarta Sans déclarée sur les titres', police.declaree);
+  ok('Plus Jakarta Sans réellement chargée', police.chargee && police.disponible);
+  ok('le texte est rendu avec, pas avec un repli', police.distincte);
+  ok('aucune police appelée chez un tiers',
+     (await p.evaluate(() => [...document.querySelectorAll('link[href]')]
+        .filter((l) => (l as HTMLLinkElement).href.includes('fonts.'))
+        .length)) === 0);
+  ok('les canaux portent de vraies icônes',
+     (await p.locator('.canal .ico svg').count()) === 5,
+     `${await p.locator('.canal .ico svg').count()} icônes dessinées`);
   ok('les quatre formules sont présentes', (await p.locator('.offre').count()) === 4);
   ok('les questions fréquentes répondent', (await p.locator('details.qr').count()) === 6);
   await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
@@ -307,6 +343,15 @@ const run = async () => {
   console.log('\n━━ 12. Sécurité ━━');
   const anon = await browser.newContext();
   const a = await anon.newPage();
+  // Le menu ne doit jamais proposer deux fois la même destination.
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+  const entrees = (await p.locator('.barre nav a').allInnerTexts()).map((t) => t.trim());
+  ok('aucune entrée de menu en double', new Set(entrees).size === entrees.length,
+     entrees.join(' · '));
+  ok('le bouton du menu reste lisible',
+     (await p.locator('.barre nav .bouton, .barre nav button').first()
+        .evaluate((el) => getComputedStyle(el).color)) !== 'rgb(71, 85, 105)');
+
   for (const route of ['?p=admin', '?p=comptes', '?p=partenaire', '?p=scan', '?p=relecture', '?p=catalogue', '?p=nouveau']) {
     await a.goto(`${BASE}/index.php${route}`, { waitUntil: 'domcontentloaded' });
     ok(`accès anonyme refusé sur ${route}`, /connexion/.test(a.url()), a.url().split('index.php')[1] ?? '');

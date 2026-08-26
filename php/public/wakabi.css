@@ -1,3 +1,92 @@
+/* ============ la police, servie par votre serveur ============
+   Plus Jakarta Sans est auto-hébergée, pas appelée chez Google. Trois
+   raisons : elle s'affiche même si le CDN est lent ou bloqué, elle
+   n'ajoute pas un aller-retour vers un tiers sur une connexion 3G, et
+   aucune adresse IP de visiteur ne part chez un tiers.
+   `font-display: swap` : le texte s'affiche tout de suite dans la police
+   système, puis bascule — plutôt qu'un écran vide le temps du chargement. */
+
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-500-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* Charte Wakabi — valeurs réelles, extraites du site de production.
    Seul fichier de l'application qui porte des couleurs. */
 
@@ -8,7 +97,9 @@
   --paper:#FFFFFF; --bg:#F8FAFF; --bg2:#F1F5FC; --border:#E2E8F5;
   --r6:6px; --r10:10px; --r16:16px; --r24:24px;
   --ombre:0 1px 2px rgba(15,23,42,.05), 0 10px 24px -14px rgba(15,23,42,.2);
-  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  /* Une seule famille pour toute l'interface. Les titres se distinguent par
+     la graisse et l'approche, pas par un second caractère. */
+  --display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
   --corps:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
 }
 
@@ -33,12 +124,23 @@ a{color:var(--primary-d);text-underline-offset:3px}
 
 /* barre */
 .barre{background:var(--paper);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30}
-.barre-in{max-width:1100px;margin:0 auto;padding:12px 20px;display:flex;gap:16px;align-items:center}
+.barre-in{max-width:1100px;margin:0 auto;padding:11px 20px;display:flex;gap:18px;align-items:center}
 .marque{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:var(--ink);text-decoration:none;margin-right:auto}
 .marque span{color:var(--primary)}
-.barre nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.barre nav a{color:var(--text2);text-decoration:none;font-size:.9rem;font-weight:600}
-.barre nav a:hover,.barre nav a[aria-current]{color:var(--primary-d)}
+.barre nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.barre nav .sep{width:1px;height:18px;background:var(--border);flex:0 0 auto}
+@media(max-width:760px){
+  .barre-in{flex-wrap:wrap;gap:10px}
+  .barre nav{gap:13px;font-size:.86rem;width:100%;justify-content:flex-start}
+  .barre nav .sep{display:none}
+}
+/* `:not(.bouton)` : sans lui, cette règle est plus spécifique que `.bouton`
+   et repeint le texte du bouton « Créer un compte » en gris. */
+.barre nav a:not(.bouton){color:var(--text2);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap}
+.barre nav a:not(.bouton):hover,
+.barre nav a:not(.bouton)[aria-current]{color:var(--primary-d)}
+.barre nav a.bouton{color:#fff;text-decoration:none}
+.barre nav a.bouton.fant{color:var(--ink)}
 
 /* blocs */
 .carte{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:20px;box-shadow:var(--ombre)}
@@ -165,7 +267,12 @@ section.bloc{padding:64px 0}
 .tete p{color:var(--text2);margin:.7em 0 0;font-size:1rem}
 
 .canal{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:20px;display:flex;flex-direction:column;gap:9px}
-.canal .ico{font-size:1.6rem;line-height:1}
+.canal .ico{
+  width:40px;height:40px;border-radius:var(--r10);display:grid;place-items:center;
+  background:var(--primary-wash);color:var(--primary-d);flex:0 0 auto;
+}
+.canal .ico svg{width:21px;height:21px;display:block}
+.canal.actif .ico{background:var(--primary);color:#fff}
 .canal b{font-family:var(--display);font-size:1rem;font-weight:700}
 .canal p{color:var(--text2);font-size:.9rem;margin:0;flex:1}
 .canal .note{font-size:.78rem;font-weight:700;color:var(--primary);border-top:1px solid var(--border);padding-top:9px}
