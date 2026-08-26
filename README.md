@@ -36,8 +36,14 @@ en l'état.
 
 | Votre hébergement | Le guide |
 |---|---|
-| **cPanel** (LWS, o2switch, OVH mutualisé…) | [`docs/10-LWS-CPANEL.md`](docs/10-LWS-CPANEL.md) — `npm run package:cpanel` produit un paquet déjà construit |
+| **Mutualisé, PHP + MySQL** | [`docs/11-VERSION-PHP.md`](docs/11-VERSION-PHP.md) — `npm run package:php`. Décompresser, ouvrir `install.php`, c'est en ligne. **Le plus simple.** |
+| **cPanel avec Node.js** | [`docs/10-LWS-CPANEL.md`](docs/10-LWS-CPANEL.md) — `npm run package:cpanel` produit un paquet déjà construit |
 | **VPS / serveur dédié** | [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) — Node, systemd, Nginx, certbot |
+
+La **version PHP** fait tout ce que fait la version Next.js et se déploie sans terminal.
+Le Studio y est le *même code* : `renderScene` et le pipeline photo viennent de `src/core`,
+empaquetés en 11 Ko de JavaScript. Recette : **26 scénarios, 26 réussis**, sur SQLite et sur
+MySQL.
 
 `next build` demande **843 Mo de mémoire** : sur un mutualisé, on construit ici et on
 téléverse le résultat. C'est ce que fait `npm run package:cpanel`.
@@ -67,6 +73,7 @@ partage. Se tromper produit des badges faux pour toujours — l'application refu
 | [`docs/08-RECETTE.md`](docs/08-RECETTE.md) | **Recette** : les 25 scénarios, comment les rejouer, et ce qu'ils ne couvrent pas |
 | [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) | **Mise en ligne sur un VPS** — DNS, Node, systemd, Nginx, sauvegardes |
 | [`docs/10-LWS-CPANEL.md`](docs/10-LWS-CPANEL.md) | **Mise en ligne sur un cPanel LWS**, pas à pas — `npm run package:cpanel` |
+| [`docs/11-VERSION-PHP.md`](docs/11-VERSION-PHP.md) | **La version PHP + base de données** — installation en une page, et comment les deux briques réécrites sont vérifiées |
 | [`src/core/template.schema.ts`](src/core/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
 | [`src/core/renderScene.ts`](src/core/renderScene.ts) | **Le cœur** : la fonction de rendu pure, une seule pour l'aperçu et l'export |
 | [`src/core/template.schema.test.ts`](src/core/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert) |

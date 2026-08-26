@@ -16,7 +16,12 @@
     "purge": "tsx --conditions=react-server scripts/purge.ts",
     "e2e": "tsx scripts/e2e-app.ts",
     "e2e:full": "tsx scripts/e2e-full.ts",
-    "package:cpanel": "npm run build && tsx scripts/package-cpanel.ts"
+    "package:cpanel": "npm run build && tsx scripts/package-cpanel.ts",
+    "php:bundle": "esbuild php/studio/entry.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/studio.js --alias:@=./src",
+    "php:serve": "php -S 127.0.0.1:3600 -t php",
+    "php:e2e": "tsx scripts/e2e-php.ts",
+    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts",
+    "package:php": "tsx scripts/package-php.ts"
   },
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.3.0",

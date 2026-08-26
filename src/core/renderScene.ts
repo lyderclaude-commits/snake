@@ -20,7 +20,9 @@
  */
 
 import type { DecorTemplate, Layer } from './template.schema';
-import { WAKABI_TAGLINE } from './template.schema';
+// Depuis `brand` et non `template.schema` : ce module-ci part dans le
+// navigateur, et le schéma y entraînerait zod avec lui.
+import { WAKABI_TAGLINE } from './brand';
 import type { Ctx2D, LayerAssets, RenderSpec } from './types';
 import { coverScale, toPx } from './fitPhoto';
 

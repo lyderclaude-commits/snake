@@ -1,0 +1,46 @@
+/**
+ * Fabrique le zip de la version PHP.
+ *
+ * Le bundle JavaScript du Studio est reconstruit à chaque fois depuis
+ * src/core : c'est la garantie que les deux versions dessinent la même chose.
+ */
+
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+
+const SORTIE = 'dist-php';
+const RACINE = join(SORTIE, 'wakabi-boost');
+
+console.log('→ bundle du Studio depuis src/core');
+execFileSync('npx', [
+  'esbuild', 'php/studio/entry.ts',
+  '--bundle', '--format=iife', '--target=es2019', '--minify',
+  '--outfile=php/public/studio.js', '--alias:@=./src',
+], { stdio: 'inherit' });
+
+rmSync(SORTIE, { recursive: true, force: true });
+mkdirSync(RACINE, { recursive: true });
+
+for (const source of ['app', 'public', 'index.php', 'install.php', '.htaccess']) {
+  const chemin = join('php', source);
+  if (existsSync(chemin)) {
+    cpSync(chemin, join(RACINE, source), { recursive: true });
+  }
+}
+
+// Le dossier de données part vide, avec son garde-fou.
+mkdirSync(join(RACINE, 'donnees/cadres'), { recursive: true });
+writeFileSync(join(RACINE, 'donnees/.htaccess'), 'Deny from all\nRequire all denied\n');
+writeFileSync(join(RACINE, 'donnees/cadres/.gitkeep'), '');
+
+// `studio/` contient les sources TypeScript : inutiles en production.
+rmSync(join(RACINE, 'studio'), { recursive: true, force: true });
+
+cpSync('docs/11-VERSION-PHP.md', join(RACINE, 'LISEZ-MOI.md'));
+
+execFileSync('zip', ['-qr', 'wakabi-boost-php.zip', 'wakabi-boost'], { cwd: SORTIE });
+const taille = execFileSync('du', ['-sh', join(SORTIE, 'wakabi-boost-php.zip')]).toString().split('\t')[0];
+
+console.log(`\n  ✓ ${SORTIE}/wakabi-boost-php.zip — ${taille}`);
+console.log('    à décompresser dans le dossier du sous-domaine, puis ouvrir install.php\n');

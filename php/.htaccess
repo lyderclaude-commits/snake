@@ -1,0 +1,16 @@
+# Le dossier des données ne doit jamais être servi directement.
+# Il vit hors de la racine web sur un serveur bien configuré ; cette règle est
+# la ceinture qui va avec les bretelles.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^donnees/ - [F,L]
+  RewriteRule ^app/ - [F,L]
+  RewriteRule ^config\.php$ - [F,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+DirectoryIndex index.php

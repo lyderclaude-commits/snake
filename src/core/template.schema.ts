@@ -16,6 +16,8 @@
  */
 
 import { z } from 'zod';
+import { WAKABI_TAGLINE, WAKABI_REDIRECT_HOSTS } from './brand';
+export { WAKABI_TAGLINE, WAKABI_REDIRECT_HOSTS };
 
 /* ------------------------------------------------------------------ */
 /* Primitives                                                          */
@@ -59,17 +61,12 @@ export const AspectRatio = z.enum(['1:1', '4:5', '9:16', '16:9']);
  * chaque visuel exporté, donc une divergence deviendrait définitive sur
  * des milliers de partages.
  */
-export const WAKABI_TAGLINE = 'LE GUIDE DES BONS PLANS';
 
 /**
  * Domaines vers lesquels un décor créé par un PARTENAIRE peut rediriger.
  * L'équipe Wakabi n'est pas contrainte (campagnes co-brandées, etc.).
  * À déplacer en configuration si la liste doit bouger sans déploiement.
  */
-export const WAKABI_REDIRECT_HOSTS = [
-  'wakabileguide.com',
-  'studio.wakabileguide.com',
-] as const;
 
 /**
  * Filtres. Volontairement réduits : mougni, qui domine la catégorie, n'en
