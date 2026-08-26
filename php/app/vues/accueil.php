@@ -150,22 +150,60 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <p class="sur">Le comparatif</p>
       <h2>Ce qu’un générateur d’images <em>ne fait pas.</em></h2>
     </div>
-    <div class="tableau">
-      <table class="compare">
-        <thead><tr><th></th><th>Un générateur classique</th><th>Wakabi Boost</th></tr></thead>
+
+    <?php
+    /**
+     * Chaque cellule porte son ÉTAT, pas un symbole écrit à la main.
+     *
+     * Écrire « ✗ » dans le texte laisse le lecteur deviner, et le rend
+     * illisible à un lecteur d'écran. L'état gouverne l'icône, la couleur
+     * et le libellé annoncé aux outils d'assistance.
+     *
+     * oui = fourni · non = absent · valeur = un chiffre, ni bon ni mauvais
+     */
+    $lignes = [
+      ['Badge viral « J’y serai »',      ['oui', 'image statique'],        ['oui', 'avec QR Code intégré']],
+      ['Diffusion WhatsApp',              ['oui', 'envoi aveugle'],         ['oui', 'ciblage ville + intérêt']],
+      ['Rappels automatiques J-1 / H-2',  ['non', ''],                      ['oui', 'inclus']],
+      ['Présence réelle mesurée',         ['non', ''],                      ['oui', 'scan QR à l’entrée']],
+      ['Récompenses & fidélisation',      ['non', ''],                      ['oui', 'Koris automatiques']],
+      ['Base d’utilisateurs activable',   ['non', 'vous partez de zéro'],   ['oui', '10 000 utilisateurs Wakabi']],
+      ['Coût par message WhatsApp',       ['valeur', '1,5 FCFA'],           ['valeur', '1 FCFA, et ciblé']],
+      ['Écosystème connecté',             ['non', 'outils isolés'],         ['oui', 'lié à l’app & aux lieux']],
+    ];
+
+    $cellule = function (array $c, bool $nous): string {
+        [$etat, $texte] = $c;
+        if ($etat === 'valeur') {
+            return '<span class="valeur">' . e($texte) . '</span>';
+        }
+        $annonce = $etat === 'oui' ? 'Oui' : 'Non';
+        return '<span class="verdict ' . $etat . '">'
+             . '<span class="signe">' . icone($etat === 'oui' ? 'coche' : 'croix') . '</span>'
+             . '<span class="sr">' . $annonce . '</span>'
+             . ($texte !== '' ? '<span class="quoi">' . e($texte) . '</span>' : '')
+             . '</span>';
+    };
+    ?>
+
+    <div class="comparatif">
+      <table>
+        <caption class="sr">Comparaison entre un générateur de badges classique et Wakabi Boost</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fonctionnalité</th>
+            <th scope="col">Générateurs classiques</th>
+            <th scope="col" class="nous">Wakabi Boost</th>
+          </tr>
+        </thead>
         <tbody>
-        <?php foreach ([
-          ['Badge viral « J’y serai »', 'image statique', 'avec QR Code intégré'],
-          ['Diffusion WhatsApp', 'envoi aveugle', 'ciblage ville + intérêt'],
-          ['Rappels automatiques J-1 / H-2', '✗', 'inclus'],
-          ['Présence réelle mesurée', '✗', 'scan QR à l’entrée'],
-          ['Récompenses & fidélisation', '✗', 'Koris automatiques'],
-          ['Base d’utilisateurs activable', 'vous partez de zéro', '10 000 utilisateurs Wakabi'],
-          ['Coût par message WhatsApp', '1,5 FCFA', '1 FCFA + ciblé'],
-          ['Écosystème connecté', 'outils isolés', 'lié à l’app & aux lieux'],
-        ] as [$quoi, $eux, $nous]): ?>
-          <tr><td><b><?= e($quoi) ?></b></td><td><?= e($eux) ?></td><td><?= e($nous) ?></td></tr>
-        <?php endforeach; ?>
+          <?php foreach ($lignes as [$quoi, $eux, $nous]): ?>
+            <tr>
+              <th scope="row"><?= e($quoi) ?></th>
+              <td><?= $cellule($eux, false) ?></td>
+              <td class="nous"><?= $cellule($nous, true) ?></td>
+            </tr>
+          <?php endforeach; ?>
         </tbody>
       </table>
     </div>

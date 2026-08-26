@@ -30,6 +30,12 @@ function icone(string $nom): string
         'lien' => '<path d="M10 13.5a4 4 0 0 0 5.7.3l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7"/>'
                 . '<path d="M14 10.5a4 4 0 0 0-5.7-.3l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"/>',
 
+        // Coche — ce que l'offre apporte
+        'coche' => '<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+
+        // Croix — ce qu'elle n'apporte pas
+        'croix' => '<path d="M6.5 6.5 17.5 17.5"/><path d="M17.5 6.5 6.5 17.5"/>',
+
         // Cadre et portrait — le Studio
         'studio' => '<rect x="3.2" y="3.2" width="17.6" height="17.6" rx="3"/>'
                   . '<circle cx="9" cy="9.5" r="1.9"/>'

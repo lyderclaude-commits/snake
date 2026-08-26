@@ -138,6 +138,20 @@ const run = async () => {
   ok('les canaux portent de vraies icônes',
      (await p.locator('.canal .ico svg').count()) === 5,
      `${await p.locator('.canal .ico svg').count()} icônes dessinées`);
+
+  // Le comparatif : la colonne Wakabi est un bandeau, pas une colonne de plus.
+  ok('le comparatif compte huit lignes', (await p.locator('.comparatif tbody tr').count()) === 8);
+  ok('la colonne Wakabi est mise en avant',
+     (await p.locator('.comparatif thead th.nous').evaluate((el) => getComputedStyle(el).backgroundColor))
+       === 'rgb(37, 99, 235)');
+  ok('les colonnes ne se ressemblent pas',
+     (await p.locator('.comparatif td:not(.nous) .verdict.oui').first()
+        .evaluate((el) => getComputedStyle(el).color))
+     !== (await p.locator('.comparatif td.nous .verdict.oui').first()
+        .evaluate((el) => getComputedStyle(el).color)));
+  ok('chaque verdict est annoncé aux lecteurs d’écran',
+     (await p.locator('.comparatif .verdict .sr').count())
+       === (await p.locator('.comparatif .verdict').count()));
   ok('les quatre formules sont présentes', (await p.locator('.offre').count()) === 4);
   ok('les questions fréquentes répondent', (await p.locator('details.qr').count()) === 6);
   await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
@@ -376,7 +390,23 @@ const run = async () => {
   const limite = await a.locator('[role=alert]').first().innerText().catch(() => '');
   ok('limitation de débit active', /Trop de tentatives/.test(limite), limite.slice(0, 48));
 
-  console.log('\n━━ 14. Le navigateur intégré de WhatsApp ━━');
+  console.log('\n━━ 14. Sur un téléphone ━━');
+  const tel = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const t = await tel.newPage();
+  await t.goto(BASE, { waitUntil: 'load' });
+  await t.evaluate(`(() => document.fonts.ready)()`);
+  await t.waitForTimeout(700);
+  // On mesure ce que vit le lecteur : la page se déplace-t-elle de côté ?
+  // `scrollWidth` seul se trompe dans les deux sens.
+  const glisse = await t.evaluate(`
+    (() => { window.scrollTo(400, 0); const x = window.scrollX; window.scrollTo(0, 0); return x; })()
+  `);
+  ok('la page ne glisse pas de côté', glisse === 0, `déplacement de ${glisse} px`);
+  ok('le comparatif défile dans son propre cadre',
+     await t.evaluate(`(() => { const c = document.querySelector('.comparatif'); return c.scrollWidth > c.clientWidth; })()`));
+  await tel.close();
+
+  console.log('\n━━ 15. Le navigateur intégré de WhatsApp ━━');
   // Là, `<a download>` est inerte : un téléchargement échouerait en silence.
   const wa = await browser.newContext({
     viewport: { width: 390, height: 844 },

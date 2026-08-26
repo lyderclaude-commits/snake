@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **60 scénarios, 60 réussis** sur
+Les deux ont été vérifiés de bout en bout : **66 scénarios, 66 réussis** sur
 chacun.
 
 ---
@@ -103,7 +103,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 60 scénarios, dans un vrai navigateur
+npm run php:e2e          # 66 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -113,12 +113,14 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 60 scénarios
+### Les 66 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
 | Vitrine | Neuf sections, l'offre de lancement, les quatre formules, les six questions, les icônes dessinées |
 | La police | Déclarée, **chargée**, réellement utilisée au rendu, et servie par votre serveur |
+| Le comparatif | Huit lignes, la colonne Wakabi en bandeau bleu, les deux colonnes distinctes, chaque verdict annoncé aux lecteurs d'écran |
+| Sur un téléphone | **La page ne glisse pas de côté** — mesuré en tentant réellement de la déplacer, pas d'après `scrollWidth` |
 | Le Studio | Le QR **visible dans l'aperçu** (mesuré sur le canevas), le jeton émis |
 | Le téléchargement | Un **vrai fichier**, au format déclaré par le gabarit, sans repli intempestif |
 | La page du QR | `?p=qr&jeton=…` répond, annonce le badge valide, refuse un code inventé |

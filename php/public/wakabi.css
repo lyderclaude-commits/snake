@@ -253,6 +253,15 @@ footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:v
   padding:7px 11px;box-shadow:var(--ombre);font-size:.72rem;font-weight:700}
 .pastille-flot b{display:block;font-size:.95rem;color:var(--teal)}
 
+/* Sur un écran étroit, ces pastilles débordaient de six pixels et faisaient
+   défiler toute la page de côté. Elles rentrent dans le cadre plutôt que de
+   disparaître : ce sont les deux chiffres qui portent l'argument. */
+@media(max-width:520px){
+  .pastille-flot{font-size:.68rem;padding:6px 9px}
+  .pastille-flot[style*="left"]{left:2px!important}
+  .pastille-flot[style*="right"]{right:2px!important}
+}
+
 .bande{background:var(--paper);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:26px 0}
 .bande .grille{text-align:center}
 .bande b{display:block;font-family:var(--display);font-size:1.85rem;font-weight:800;letter-spacing:-.03em;color:var(--primary)}
@@ -284,9 +293,6 @@ section.bloc{padding:64px 0}
 .etape b{display:block;font-family:var(--display);font-size:1.02rem;font-weight:700;margin-bottom:6px}
 .etape p{color:var(--text2);font-size:.9rem;margin:0}
 
-.compare td:nth-child(2){color:var(--text3)}
-.compare td:nth-child(3){font-weight:600;color:var(--teal)}
-.compare thead th:nth-child(3){color:var(--primary)}
 
 .avis{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:20px}
 .avis q{display:block;font-size:.94rem;line-height:1.6;color:var(--ink);quotes:"«\00a0" "\00a0»"}
@@ -355,4 +361,87 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
 .confirmation{
   margin-top:10px;background:var(--paper);border:1px solid var(--rouge);
   border-left-width:3px;border-radius:var(--r10);padding:16px;
+}
+
+/* ============ le comparatif ============
+   Le procédé qui porte ce tableau : la colonne gagnante n'est pas une
+   colonne de plus, c'est un BANDEAU vertical — en-tête bleu plein, corps
+   teinté, arrondi en haut et en bas. L'œil la trouve avant de lire. */
+
+.comparatif{
+  /* `relative` n'est pas décoratif : la légende du tableau est en position
+     absolue pour les lecteurs d'écran. Sans bloc conteneur ici, elle se
+     rattache au document, échappe au cadre défilant, et fait glisser toute
+     la page de 95 px sur un téléphone. */
+  position:relative;
+  overflow-x:auto;
+  background:var(--paper);
+  border:1px solid var(--border);
+  border-radius:var(--r16);
+  box-shadow:var(--ombre);
+  -webkit-overflow-scrolling:touch;
+}
+.comparatif table{
+  border-collapse:separate;border-spacing:0;
+  width:100%;min-width:660px;font-size:.93rem;
+}
+
+/* --- en-têtes --- */
+.comparatif thead th{
+  background:var(--bg2);
+  font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text3);text-align:left;padding:16px 20px;border:0;white-space:nowrap;
+}
+.comparatif thead th.nous{
+  background:var(--primary);color:#fff;letter-spacing:.04em;
+  border-radius:var(--r10) var(--r10) 0 0;
+}
+
+/* --- corps --- */
+.comparatif tbody th{
+  text-align:left;font-weight:600;color:var(--ink);
+  padding:15px 20px;border-top:1px solid var(--border);white-space:normal;
+}
+.comparatif tbody td{
+  padding:15px 20px;border-top:1px solid var(--border);color:var(--text2);vertical-align:middle;
+}
+.comparatif tbody td.nous{
+  background:var(--primary-wash);color:var(--primary-d);border-top-color:#D5E2FB;
+}
+.comparatif tbody tr:last-child td.nous{border-radius:0 0 var(--r10) var(--r10)}
+.comparatif tbody tr:hover th,
+.comparatif tbody tr:hover td:not(.nous){background:var(--bg)}
+
+/* --- le verdict d'une cellule : oui, non, ou une valeur ---
+   `.verdict` et non `.marque` : cette dernière est déjà le logotype WAKABI
+   dans l'en-tête, et sa règle `.marque span{color:var(--primary)}` repeignait
+   ces cellules en bleu gras. Un nom de classe déjà pris est une collision qui
+   ne se voit qu'à l'écran. */
+.comparatif .verdict{
+  display:inline-flex;align-items:center;gap:9px;line-height:1.35;
+  font-family:var(--corps);font-weight:500;letter-spacing:0;
+}
+.comparatif .signe{
+  width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+}
+.comparatif .signe svg{width:13px;height:13px;stroke-width:2.4}
+
+/* Colonne du milieu : sobre. C'est le point de comparaison, pas le sujet. */
+.comparatif .verdict.oui{color:var(--text2)}
+.comparatif .verdict.oui .signe{background:#D8EFE9;color:var(--teal)}
+.comparatif .verdict.non{color:var(--text3)}
+.comparatif .verdict.non .signe{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
+.comparatif .valeur{font-weight:600;color:var(--text2)}
+
+/* Colonne Wakabi : c'est elle qu'on doit lire. */
+.comparatif td.nous .verdict.oui{color:var(--primary-d);font-weight:600}
+.comparatif td.nous .verdict.oui .signe{background:var(--teal);color:#fff}
+.comparatif td.nous .valeur{color:var(--primary-d);font-weight:700}
+
+/* Réservé aux lecteurs d'écran : « Oui » / « Non » sont annoncés même si
+   l'information n'est portée à l'écran que par une icône et une couleur. */
+.sr{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);
+  white-space:nowrap;border:0;
 }
