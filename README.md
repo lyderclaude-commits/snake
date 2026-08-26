@@ -30,9 +30,17 @@ cadres PNG depuis les SVG), `npm run demo` (assemble une démo en fichier unique
 
 ## Mettre en ligne
 
-**Lisez [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) avant tout.** Ce n'est pas un
-site statique : il faut Node.js en processus permanent et un disque qui persiste. Un
-hébergement mutualisé « HTML + PHP » ne suffira pas, et Vercel ne convient pas en l'état.
+Ce n'est pas un site statique : il faut **Node.js en processus permanent** et un disque qui
+persiste. Un hébergement mutualisé « HTML + PHP » ne suffira pas, et Vercel ne convient pas
+en l'état.
+
+| Votre hébergement | Le guide |
+|---|---|
+| **cPanel** (LWS, o2switch, OVH mutualisé…) | [`docs/10-LWS-CPANEL.md`](docs/10-LWS-CPANEL.md) — `npm run package:cpanel` produit un paquet déjà construit |
+| **VPS / serveur dédié** | [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) — Node, systemd, Nginx, certbot |
+
+`next build` demande **843 Mo de mémoire** : sur un mutualisé, on construit ici et on
+téléverse le résultat. C'est ce que fait `npm run package:cpanel`.
 
 Un seul réglage compte vraiment :
 
@@ -57,7 +65,8 @@ partage. Se tromper produit des badges faux pour toujours — l'application refu
 | [`docs/06-BACKLOG.md`](docs/06-BACKLOG.md) | **Périmètre fonctionnel** — 98 lignes par acteur, état et jalon, plus les 9 écartées |
 | [`docs/07-BACKEND.md`](docs/07-BACKEND.md) | **Back-end autonome** : schéma, rôles, écrans, les huit défauts trouvés, et le chemin vers Postgres |
 | [`docs/08-RECETTE.md`](docs/08-RECETTE.md) | **Recette** : les 25 scénarios, comment les rejouer, et ce qu'ils ne couvrent pas |
-| [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) | **Mise en ligne** sur `boost.wakabileguide.com` — DNS, Node, systemd, Nginx, sauvegardes |
+| [`docs/09-DEPLOIEMENT.md`](docs/09-DEPLOIEMENT.md) | **Mise en ligne sur un VPS** — DNS, Node, systemd, Nginx, sauvegardes |
+| [`docs/10-LWS-CPANEL.md`](docs/10-LWS-CPANEL.md) | **Mise en ligne sur un cPanel LWS**, pas à pas — `npm run package:cpanel` |
 | [`src/core/template.schema.ts`](src/core/template.schema.ts) | Schéma Zod du modèle de décor — contrat back-office ↔ API ↔ éditeur |
 | [`src/core/renderScene.ts`](src/core/renderScene.ts) | **Le cœur** : la fonction de rendu pure, une seule pour l'aperçu et l'export |
 | [`src/core/template.schema.test.ts`](src/core/template.schema.test.ts) | Tests des invariants du contrat (33/33 au vert) |

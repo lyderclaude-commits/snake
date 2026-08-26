@@ -8,3 +8,4 @@ public/demo/
 src/demo/frames.generated.ts
 .data/
 .recette/
+dist-cpanel/

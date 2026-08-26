@@ -15,7 +15,8 @@
     "seed": "tsx --conditions=react-server scripts/seed.ts",
     "purge": "tsx --conditions=react-server scripts/purge.ts",
     "e2e": "tsx scripts/e2e-app.ts",
-    "e2e:full": "tsx scripts/e2e-full.ts"
+    "e2e:full": "tsx scripts/e2e-full.ts",
+    "package:cpanel": "npm run build && tsx scripts/package-cpanel.ts"
   },
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.3.0",

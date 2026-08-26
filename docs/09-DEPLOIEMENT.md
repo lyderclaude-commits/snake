@@ -190,6 +190,11 @@ cd /srv/wakabi-boost/src && git pull   # ou remplacez les sources
 
 ## Voie B — cPanel « Setup Node.js App »
 
+> **Un guide dédié existe : [`10-LWS-CPANEL.md`](10-LWS-CPANEL.md).** Il est écrit
+> écran par écran, s'appuie sur `npm run package:cpanel` (paquet déjà construit,
+> pour ne pas heurter la limite de mémoire du mutualisé) et a été vérifié de bout
+> en bout. Le résumé qui suit reste pour mémoire.
+
 Si votre hébergement mutualisé propose *Setup Node.js App* (Passenger), c'est
 jouable, avec deux réserves : la compilation de `better-sqlite3` échoue chez
 certains hébergeurs, et le processus est parfois arrêté après une période

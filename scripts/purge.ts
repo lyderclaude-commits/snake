@@ -7,8 +7,8 @@
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { db, nowIso } from '../src/server/db';
+import { uploadsDir } from '../src/server/config';
 
-const DIR = process.env.WAKABI_UPLOADS ?? '.data/uploads';
 const GRACE_HOURS = 24;
 
 const run = async () => {
@@ -23,7 +23,7 @@ const run = async () => {
 
   let files: string[] = [];
   try {
-    files = await readdir(join(process.cwd(), DIR));
+    files = await readdir(uploadsDir());
   } catch {
     console.log('  Aucun dossier de téléversement.');
   }
@@ -34,7 +34,7 @@ const run = async () => {
 
   for (const f of files) {
     if (referenced.has(f)) continue;
-    const path = join(process.cwd(), DIR, f);
+    const path = join(uploadsDir(), f);
     const info = await stat(path);
     // Délai de grâce : un cadre tout juste téléversé n'est pas encore
     // rattaché à un décor, et le supprimer casserait la création en cours.

@@ -3,6 +3,7 @@ import sharp from 'sharp';
 // sharp 0.35 embarque ses types : l'espace de noms `sharp.` n'est plus
 // utilisable comme qualificateur, le type s'importe nommément.
 import type { Metadata } from 'sharp';
+import { uploadsDir } from './config';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { db, nowIso } from './db';
@@ -32,7 +33,6 @@ const MAX_FRAME_BYTES = 400 * 1024;
 /** Au-delà, la photo de l'invité serait invisible sous le cadre. */
 const OPAQUE_LIMIT = 0.85;
 
-const UPLOAD_DIR = () => process.env.WAKABI_UPLOADS ?? '.data/uploads';
 
 /** Retrouve le fichier réel derrière une URL `/api/frames/<nom>`. */
 function framePath(frameUrl: string | null): string | null {
@@ -43,7 +43,10 @@ function framePath(frameUrl: string | null): string | null {
     const local = frameUrl.replace(/^\//, '');
     return local.startsWith('frames/') ? join(process.cwd(), 'public', local) : null;
   }
-  return join(process.cwd(), UPLOAD_DIR(), name);
+  // `uploadsDir()` et non `join(cwd, …)` : en production ce dossier est
+  // absolu et vit hors de l'application. `join` le recollerait derrière le
+  // répertoire courant, et le pré-vol déclarerait tout cadre « illisible ».
+  return join(uploadsDir(), name);
 }
 
 /**
