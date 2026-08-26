@@ -3,6 +3,30 @@
 
 $u = exiger_role('partenaire', 'equipe');
 
+/**
+ * Le même formulaire sert à créer et à modifier.
+ *
+ * Un écran d'édition séparé divergerait du formulaire de création à la
+ * première évolution : ils décrivent la même chose.
+ */
+$modifie = $page === 'modifier' ? decor_par_id((string) ($_GET['id'] ?? $_POST['id'] ?? '')) : null;
+if ($page === 'modifier') {
+    if (!$modifie) {
+        rediriger($u['role'] === 'equipe' ? '?p=catalogue&err=' . urlencode('Décor introuvable.') : '?p=partenaire');
+    }
+    // Un partenaire ne modifie que ses propres décors, et pas après publication.
+    if ($u['role'] === 'partenaire') {
+        if ($modifie['auteur_id'] !== $u['id']) {
+            rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
+        }
+        if (in_array($modifie['statut'], ['publie', 'en_relecture'], true)) {
+            rediriger('?p=partenaire&err=' . urlencode(
+                'Un décor publié ou en relecture ne se modifie plus. Demandez à l’équipe Wakabi.'
+            ));
+        }
+    }
+}
+
 /* ---------------- soumission ---------------- */
 
 if ($page === 'soumettre') {
@@ -51,6 +75,32 @@ $valeurs = [
     'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'cadre_url' => '',
 ];
 
+if ($modifie && !$post) {
+    $g = json_lire($modifie['gabarit']);
+    $textes = [];
+    foreach ($g['layers'] ?? [] as $l) {
+        if (($l['type'] ?? '') === 'text') {
+            $textes[$l['id']] = $l;
+        }
+    }
+    $valeurs = [
+        'titre' => $modifie['titre'],
+        'sous_titre' => (string) $modifie['sous_titre'],
+        'ville' => $modifie['ville'],
+        'rubrique' => $modifie['rubrique'],
+        'disposition' => ($g['canvas']['ratio'] ?? '1:1') === '9:16' ? 'story'
+            : (($textes['claim']['uppercase'] ?? false) ? 'bandeau' : 'angle'),
+        'accroche' => (string) ($textes['claim']['value'] ?? ''),
+        'champ_libelle' => (string) ($textes['field']['placeholder'] ?? 'Ton prénom'),
+        'champ_valeur' => (string) ($textes['field']['value'] ?? ''),
+        'redirection' => (string) ($g['share']['redirectUrl'] ?? ''),
+        'redirection_libelle' => (string) ($g['share']['redirectLabel'] ?? ''),
+        'legende' => (string) ($g['share']['defaultCaption'] ?? ''),
+        'expire_le' => substr((string) $modifie['expire_le'], 0, 10),
+        'cadre_url' => (string) $modifie['cadre_url'],
+    ];
+}
+
 if ($post) {
     verifier_csrf();
     foreach (array_keys($valeurs) as $k) {
@@ -86,7 +136,9 @@ if ($post) {
     }
 
     if (!$erreur) {
-        $slug = slug_libre($valeurs['titre']);
+        // Le slug ne bouge pas à la modification : il est dans des liens déjà
+        // partagés, et dans les QR de badges déjà téléchargés.
+        $slug = $modifie ? $modifie['slug'] : slug_libre($valeurs['titre']);
         try {
             $gabarit = construire_gabarit([
                 'slug' => $slug,
@@ -103,9 +155,23 @@ if ($post) {
                 'redirection_libelle' => $valeurs['redirection_libelle'],
                 'legende' => $valeurs['legende'],
                 'expire_le' => $valeurs['expire_le'],
-                'cree_par' => $u['role'] === 'equipe' ? 'equipe' : 'partenaire',
+                'cree_par' => $modifie ? $modifie['cree_par'] : ($u['role'] === 'equipe' ? 'equipe' : 'partenaire'),
                 'partenaire_id' => $u['role'] === 'partenaire' ? $u['id'] : null,
             ]);
+
+            if ($modifie) {
+                decor_modifier($modifie['id'], [
+                    'titre' => $valeurs['titre'],
+                    'sous_titre' => $valeurs['sous_titre'],
+                    'ville' => $valeurs['ville'],
+                    'rubrique' => $valeurs['rubrique'],
+                    'gabarit' => $gabarit,
+                    'cadre_url' => $valeurs['cadre_url'],
+                    'expire_le' => $valeurs['expire_le'],
+                ]);
+                rediriger(($u['role'] === 'equipe' ? '?p=catalogue' : '?p=partenaire')
+                    . '&ok=' . urlencode('« ' . $valeurs['titre'] . ' » mis à jour.'));
+            }
 
             $id = decor_creer([
                 'slug' => $slug,
@@ -119,7 +185,9 @@ if ($post) {
                 'cadre_url' => $valeurs['cadre_url'],
                 'expire_le' => $valeurs['expire_le'],
             ]);
-            rediriger('?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.'));
+            rediriger($u['role'] === 'equipe'
+                ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.')
+                : '?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.'));
         } catch (GabaritInvalide $e) {
             // Le message vient du contrat : c'est lui qui sait pourquoi.
             $erreur = $e->getMessage();
@@ -127,4 +195,9 @@ if ($post) {
     }
 }
 
-vue('nouveau', ['titre' => 'Nouveau décor', 'erreur' => $erreur, 'valeurs' => $valeurs]);
+vue('nouveau', [
+    'titre' => $modifie ? 'Modifier « ' . $modifie['titre'] . ' »' : 'Nouveau décor',
+    'erreur' => $erreur,
+    'valeurs' => $valeurs,
+    'modifie' => $modifie,
+]);

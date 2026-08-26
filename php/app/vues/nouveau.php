@@ -1,8 +1,16 @@
 <div class="contenu">
   <section class="entete">
-    <h1>Nouveau décor</h1>
-    <p>Choisissez une disposition, téléversez votre cadre, décrivez la campagne.
-    Les positions du texte et de la zone photo sont déjà réglées.</p>
+    <h1><?= $modifie ? 'Modifier le décor' : 'Nouveau décor' ?></h1>
+    <?php if ($modifie): ?>
+      <p><?= e($modifie['titre']) ?> —
+        <span class="pastille <?= e($modifie['statut']) ?>"><?= e(statut_libelle($modifie['statut'])) ?></span>
+      </p>
+      <p class="aide">L’adresse du décor (<code>/<?= e($modifie['slug']) ?></code>) ne change pas :
+      elle vit dans des liens déjà partagés et dans les QR des badges déjà téléchargés.</p>
+    <?php else: ?>
+      <p>Choisissez une disposition, téléversez votre cadre, décrivez la campagne.
+      Les positions du texte et de la zone photo sont déjà réglées.</p>
+    <?php endif; ?>
   </section>
 
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
@@ -10,6 +18,7 @@
   <form method="post" enctype="multipart/form-data" class="grille g2" style="align-items:start">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
     <input type="hidden" name="cadre_url" value="<?= e($valeurs['cadre_url']) ?>">
+    <?php if ($modifie): ?><input type="hidden" name="id" value="<?= e($modifie['id']) ?>"><?php endif; ?>
 
     <div class="carte">
       <h3 style="margin-bottom:14px">1 · La disposition</h3>
@@ -28,6 +37,9 @@
       <div class="champ">
         <label for="cadre">Fichier PNG ou WebP à fond transparent</label>
         <input id="cadre" name="cadre" type="file" accept="image/png,image/webp">
+        <?php if ($modifie && $valeurs['cadre_url']): ?>
+          <p class="aide">Un cadre est déjà en place. N’en choisissez un que pour le remplacer.</p>
+        <?php endif; ?>
         <p class="aide">2 Mo maximum. La photo de l’invité apparaîtra derrière : laissez donc
         le centre vide. Le SVG est refusé pour raison de sécurité.</p>
       </div>
@@ -59,7 +71,9 @@
       <div class="champ"><label for="expire_le">Expiration <span style="font-weight:400">(facultatif)</span></label>
         <input id="expire_le" name="expire_le" type="date" value="<?= e($valeurs['expire_le']) ?>"></div>
 
-      <button class="bouton" type="submit" style="width:100%;justify-content:center">Créer et enregistrer</button>
+      <button class="bouton" type="submit" style="width:100%;justify-content:center">
+        <?= $modifie ? 'Enregistrer les modifications' : 'Créer et enregistrer' ?>
+      </button>
     </div>
   </form>
 

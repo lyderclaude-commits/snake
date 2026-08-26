@@ -13,7 +13,7 @@
 import { renderScene } from '@/core/renderScene';
 import { decodePhoto, loadImage } from '@/core/imagePipeline';
 import { clampPhoto } from '@/core/fitPhoto';
-import { chooseRoute, shareFile, slugifyFilename, triggerDownload } from '@/lib/share';
+import { canShareFile, chooseRoute, shareFile, slugifyFilename, triggerDownload } from '@/lib/share';
 import type { LayerAssets, LoadedImage, PhotoState, RenderSpec } from '@/core/types';
 import type { Rect } from '@/core/fitPhoto';
 
@@ -234,10 +234,14 @@ function demarrer(ctx: Contexte) {
       // Exactement la même fonction, à une autre échelle.
       renderScene(hors.getContext('2d')!, spec, tpl, assets, w / tpl.canvas.width);
 
+      // Le format vient du gabarit, il n'est pas décidé ici. Le JPEG par
+      // défaut n'est pas un détail : le même badge pèse 921 Ko en PNG contre
+      // environ 200 Ko en JPEG, et la contrainte est un forfait data cher.
+      const type: string = tpl.export?.mimeType ?? 'image/jpeg';
       const blob: Blob = await new Promise((res) =>
-        hors.toBlob((b) => res(b!), 'image/png', tpl.export?.quality ?? 0.92),
+        hors.toBlob((b) => res(b!), type, tpl.export?.quality ?? 0.92),
       );
-      const nom = slugifyFilename(ctx.slug, 'png');
+      const nom = slugifyFilename(ctx.slug, type === 'image/png' ? 'png' : 'jpg');
 
       fetch(ctx.base + '?p=api-telechargement', {
         method: 'POST',
@@ -245,15 +249,23 @@ function demarrer(ctx: Contexte) {
         body: JSON.stringify({ decor: ctx.decorId }),
       }).catch(() => {});
 
-      const route = chooseRoute(blob, nom);
-      if (route === 'share') {
-        await shareFile(blob, nom, tpl.share?.defaultCaption ?? '');
-      } else if (route === 'long-press') {
+      // Le bouton dit « Télécharger » : il télécharge. Le partage est un
+      // second bouton, proposé seulement s'il marche réellement.
+      if (chooseRoute() === 'long-press') {
+        // Navigateur intégré (WhatsApp, Instagram) : `<a download>` est
+        // inerte. Un téléchargement y échouerait sans rien dire.
         const img = $('#apercu-partage') as HTMLImageElement;
         img.src = URL.createObjectURL(blob);
         $('#bloc-partage').hidden = false;
       } else {
         triggerDownload(blob, nom);
+      }
+
+      // Le partage, offert et non imposé.
+      const partage = document.getElementById('partager') as HTMLButtonElement | null;
+      if (partage && canShareFile(blob, nom)) {
+        partage.hidden = false;
+        partage.onclick = () => shareFile(blob, nom, tpl.share?.defaultCaption ?? '');
       }
 
       const suite = $('#apres') as HTMLElement;

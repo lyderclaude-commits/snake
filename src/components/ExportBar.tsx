@@ -77,7 +77,7 @@ export function ExportBar({ tpl, spec, assets, ready, badgeToken, onExported }: 
       // Le QR est déjà dans le RenderSpec depuis l'ajout de la photo :
       // l'aperçu et l'export portent donc exactement le même code.
       const blob = await renderExport(tpl, spec, assets);
-      const route = chooseRoute(blob, filename);
+      const route = chooseRoute();
 
       if (route === 'share') {
         const ok = await shareFile(blob, filename, caption);

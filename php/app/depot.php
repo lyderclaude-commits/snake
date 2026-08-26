@@ -379,3 +379,132 @@ function comptes_tous(): array
 {
     return db()->query('SELECT * FROM utilisateurs ORDER BY cree_le DESC LIMIT 200')->fetchAll();
 }
+
+/**
+ * Catalogue complet pour l'équipe, filtrable par statut.
+ *
+ * Distinct de `decors_tous()`, qui alimente le tableau de bord : ici on
+ * pagine et on filtre, parce que la liste est faite pour agir dessus.
+ */
+function decors_catalogue(?string $statut = null, string $cherche = ''): array
+{
+    $ou = [];
+    $args = [];
+    if ($statut && in_array($statut, STATUTS, true)) {
+        $ou[] = 'd.statut = ?';
+        $args[] = $statut;
+    }
+    if (trim($cherche) !== '') {
+        $ou[] = '(d.titre LIKE ? OR d.slug LIKE ?)';
+        $args[] = '%' . trim($cherche) . '%';
+        $args[] = '%' . trim($cherche) . '%';
+    }
+    $where = $ou ? 'WHERE ' . implode(' AND ', $ou) : '';
+
+    $s = db()->prepare("SELECT d.*, u.nom AS auteur_nom, " . STATS_SQL . "
+        FROM decors d LEFT JOIN utilisateurs u ON u.id = d.auteur_id
+        $where ORDER BY d.maj_le DESC LIMIT 200");
+    $s->execute($args);
+    return $s->fetchAll();
+}
+
+/** Combien de décors par statut — pour les onglets de filtre. */
+function decors_par_statut(): array
+{
+    $out = [];
+    foreach (db()->query('SELECT statut, COUNT(*) AS n FROM decors GROUP BY statut')->fetchAll() as $r) {
+        $out[$r['statut']] = (int) $r['n'];
+    }
+    return $out;
+}
+
+/**
+ * Remplace le gabarit d'un décor existant.
+ *
+ * Le statut et la trace de relecture sont CONSERVÉS : modifier un décor
+ * publié ne doit pas le dépublier, ni effacer qui l'a relu. Le gabarit est
+ * revalidé — une modification qui violerait le contrat échoue ici, pas
+ * plus tard en page introuvable.
+ */
+function decor_modifier(string $id, array $d): void
+{
+    $ancien = decor_par_id($id);
+    if (!$ancien) {
+        throw new TransitionRefusee('Décor introuvable.');
+    }
+
+    $g = $d['gabarit'];
+    $courant = json_lire($ancien['gabarit']);
+    $g['status'] = $ancien['statut'];
+    $g['moderation'] = $courant['moderation'] ?? new stdClass();
+    if ($ancien['publie_le']) {
+        $g['publishedAt'] = $ancien['publie_le'];
+    }
+    // Le créateur ne change jamais : c'est lui qui décide si le garde-fou
+    // de redirection s'applique.
+    $g['createdBy'] = $ancien['cree_par'];
+
+    valider_gabarit($g);
+
+    db()->prepare('UPDATE decors SET titre = ?, sous_titre = ?, ville = ?, rubrique = ?,
+                   gabarit = ?, cadre_url = ?, expire_le = ?, maj_le = ? WHERE id = ?')
+        ->execute([
+            $d['titre'], $d['sous_titre'] ?: null, $d['ville'], $d['rubrique'],
+            json_encode($g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $d['cadre_url'], $d['expire_le'] ?: null, maintenant(), $id,
+        ]);
+}
+
+/**
+ * Supprime un décor et tout ce qui en dépend.
+ *
+ * Les clés étrangères ne portent pas de cascade — MySQL et SQLite ne
+ * l'appliquent pas de la même façon selon la configuration de l'hébergeur,
+ * et une suppression partielle laisserait des badges pointant vers un décor
+ * disparu. On efface donc explicitement, dans l'ordre.
+ */
+function decor_supprimer(string $id): array
+{
+    $d = decor_par_id($id);
+    if (!$d) {
+        throw new TransitionRefusee('Décor introuvable.');
+    }
+
+    // Compté AVANT la suppression, pour pouvoir dire à l'équipe ce qu'elle a
+    // détruit : des badges déjà entre les mains d'invités.
+    $s = db()->prepare('SELECT COUNT(*) AS n FROM badges WHERE decor_id = ?');
+    $s->execute([$id]);
+    $nb_badges = (int) $s->fetch()['n'];
+
+    db()->beginTransaction();
+    try {
+        foreach (['evenements', 'creations', 'badges', 'prevol'] as $table) {
+            db()->prepare("DELETE FROM $table WHERE decor_id = ?")->execute([$id]);
+        }
+        db()->prepare('DELETE FROM decors WHERE id = ?')->execute([$id]);
+        db()->commit();
+    } catch (Throwable $e) {
+        db()->rollBack();
+        throw $e;
+    }
+
+    // Le fichier du cadre, s'il n'est plus référencé par aucun autre décor.
+    $fichier = null;
+    $requete = parse_url((string) $d['cadre_url'], PHP_URL_QUERY);
+    if ($requete) {
+        parse_str($requete, $params);
+        $nom = (string) ($params['f'] ?? '');
+        if (preg_match('/^[0-9a-f-]{36}\.(png|webp)$/', $nom)) {
+            $autre = db()->prepare('SELECT 1 FROM decors WHERE cadre_url LIKE ?');
+            $autre->execute(['%' . $nom]);
+            if (!$autre->fetch()) {
+                $chemin = dossier_cadres() . '/' . $nom;
+                if (is_file($chemin) && @unlink($chemin)) {
+                    $fichier = $nom;
+                }
+            }
+        }
+    }
+
+    return ['titre' => $d['titre'], 'badges' => $nb_badges, 'cadre' => $fichier];
+}

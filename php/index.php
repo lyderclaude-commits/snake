@@ -23,14 +23,28 @@ $page = (string) ($_GET['p'] ?? 'accueil');
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
 $me = utilisateur_courant();
 
-/** Rend une vue dans le gabarit commun. */
+/**
+ * Rend une vue dans le gabarit commun.
+ *
+ * Le titre est mis de côté AVANT d'inclure la vue, puis restitué. PHP partage
+ * la portée entre les deux : une simple variable de boucle nommée `$titre`
+ * dans une vue écrasait sinon le titre de la page — et l'accueil s'annonçait
+ * « Studio Badge » parce qu'une boucle réutilisait ce nom.
+ */
 function vue(string $nom, array $donnees = []): never
 {
+    $_titre = $donnees['titre'] ?? 'Wakabi Boost';
+    $_description = $donnees['description'] ?? null;
+
     extract($donnees, EXTR_SKIP);
     $me = utilisateur_courant();
+
     ob_start();
     require RACINE . '/app/vues/' . $nom . '.php';
     $contenu = ob_get_clean();
+
+    $titre = $_titre;
+    $description = $_description;
     require RACINE . '/app/vues/layout.php';
     exit;
 }
@@ -99,6 +113,7 @@ switch ($page) {
         vue('partenaire', ['titre' => 'Mes campagnes', 'liste' => decors_de($u['id'])]);
 
     case 'nouveau':
+    case 'modifier':
     case 'soumettre':
         require RACINE . '/app/actions/decor.php';
 
@@ -112,6 +127,11 @@ switch ($page) {
             'serie' => telechargements_par_jour(),
             'derniers' => decors_tous(),
         ]);
+
+    case 'catalogue':
+    case 'statut':
+    case 'supprimer':
+        require RACINE . '/app/actions/catalogue.php';
 
     case 'relecture':
     case 'decider':

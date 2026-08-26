@@ -225,7 +225,7 @@ async function exportImage() {
       return;
     }
 
-    const route = chooseRoute(blob, name);
+    const route = chooseRoute();
     if (route === 'share') { if (!(await shareFile(blob, name, caption))) triggerDownload(blob, name); }
     else if (route === 'download') triggerDownload(blob, name);
     else {

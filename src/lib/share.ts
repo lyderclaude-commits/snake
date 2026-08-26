@@ -20,15 +20,32 @@ export function isInAppBrowser(ua: string = navigator.userAgent): boolean {
   return /(FBAN|FBAV|Instagram|Line\/|Twitter|WhatsApp|MicroMessenger|Snapchat)/i.test(ua);
 }
 
-export function chooseRoute(blob: Blob, filename: string): ExportRoute {
-  const file = new File([blob], filename, { type: blob.type });
-  const canShareFiles =
-    typeof navigator !== 'undefined' &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [file] });
-
-  if (canShareFiles) return 'share';
+/**
+ * Le bouton dit « Télécharger » : il télécharge.
+ *
+ * Le partage n'est plus la route automatique. Ouvrir la feuille de partage
+ * à la place d'un téléchargement demandé est une substitution : l'invité
+ * voulait un fichier dans sa galerie, il reçoit un choix d'applications.
+ * Le partage reste offert, mais comme un second bouton, explicite.
+ *
+ * Reste une exception, qui n'en est pas une : dans un navigateur intégré
+ * (WhatsApp, Instagram), `<a download>` est inerte. Là, le téléchargement
+ * échouerait en silence — on montre l'image et on demande un appui long.
+ */
+export function chooseRoute(): ExportRoute {
   return isInAppBrowser() ? 'long-press' : 'download';
+}
+
+/** Le partage de fichiers est-il réellement disponible ? */
+export function canShareFile(blob: Blob, filename: string): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function') {
+    return false;
+  }
+  try {
+    return navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] });
+  } catch {
+    return false;
+  }
 }
 
 export async function shareFile(

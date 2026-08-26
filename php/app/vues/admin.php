@@ -1,7 +1,15 @@
 <div class="contenu">
   <section class="entete">
-    <h1>Administration</h1>
-    <p>Vue d’ensemble de Wakabi Boost.</p>
+    <div class="rangee" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h1>Administration</h1>
+        <p>Vue d’ensemble de Wakabi Boost.</p>
+      </div>
+      <div class="rangee">
+        <a class="bouton fant" href="<?= e(url('?p=catalogue')) ?>">Tous les décors</a>
+        <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
+      </div>
+    </div>
   </section>
 
   <div class="grille g3" style="margin-bottom:22px">
@@ -39,7 +47,10 @@
       <tbody>
       <?php foreach ($derniers as $d): ?>
         <tr>
-          <td><b><?= e($d['titre']) ?></b><br><span class="aide">/<?= e($d['slug']) ?></span></td>
+          <td>
+            <a href="<?= e(url('?p=modifier&id=' . urlencode($d['id']))) ?>"><b><?= e($d['titre']) ?></b></a>
+            <br><span class="aide">/<?= e($d['slug']) ?></span>
+          </td>
           <td><?= e($d['auteur_nom'] ?: '—') ?><br><span class="aide"><?= e($d['cree_par']) ?></span></td>
           <td><span class="pastille <?= e($d['statut']) ?>"><?= e(statut_libelle($d['statut'])) ?></span></td>
           <td class="mono"><?= (int) $d['telechargements'] ?></td>

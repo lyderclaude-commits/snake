@@ -24,6 +24,7 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
       <?php if ($me): ?>
         <?php if ($me['role'] === 'equipe'): ?>
           <a href="<?= e(url('?p=admin')) ?>">Administration</a>
+          <a href="<?= e(url('?p=catalogue')) ?>">Décors</a>
           <a href="<?= e(url('?p=relecture')) ?>">Relecture</a>
           <a href="<?= e(url('?p=scan')) ?>">Contrôle d’entrée</a>
         <?php elseif ($me['role'] === 'partenaire'): ?>

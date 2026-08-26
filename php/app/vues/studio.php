@@ -51,9 +51,16 @@
       <?php endif; ?>
 
       <div class="carte">
-        <h3 style="margin-bottom:10px">3 · Partager</h3>
+        <h3 style="margin-bottom:10px">3 · Récupérer votre badge</h3>
         <button class="bouton" id="telecharger" type="button" style="width:100%;justify-content:center">
           Télécharger mon badge
+        </button>
+
+        <!-- Le partage est proposé, jamais substitué au téléchargement.
+             Il n'apparaît que si l'appareil sait réellement partager un fichier. -->
+        <button class="bouton fant" id="partager" type="button" hidden
+                style="width:100%;justify-content:center;margin-top:8px">
+          Partager sur WhatsApp
         </button>
 
         <div data-jeton hidden style="margin-top:14px">
@@ -62,8 +69,9 @@
         </div>
 
         <div id="bloc-partage" hidden style="margin-top:14px">
-          <p class="aide">Votre navigateur ne permet pas l’enregistrement direct :
-          <strong>appui long</strong> sur l’image, puis « Enregistrer ».</p>
+          <p class="aide">Vous êtes dans le navigateur de WhatsApp ou d’Instagram, qui
+          bloque le téléchargement direct : <strong>appui long</strong> sur l’image ci-dessous,
+          puis « Enregistrer l’image ».</p>
           <img id="apercu-partage" alt="Votre badge" style="width:100%;border-radius:var(--r10)">
         </div>
 

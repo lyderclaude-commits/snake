@@ -60,6 +60,9 @@
       <?php endif; ?>
 
       <div class="rangee" style="margin-top:12px">
+        <?php if (in_array($d['statut'], ['brouillon', 'corrections', 'refuse'], true)): ?>
+          <a class="bouton fant petit" href="<?= e(url('?p=modifier&id=' . urlencode($d['id']))) ?>">Modifier</a>
+        <?php endif; ?>
         <?php if (in_array($d['statut'], ['brouillon', 'corrections'], true)): ?>
           <form method="post" action="<?= e(url('?p=soumettre')) ?>">
             <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">

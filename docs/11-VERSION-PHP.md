@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **26 scénarios, 26 réussis** sur
+Les deux ont été vérifiés de bout en bout : **52 scénarios, 52 réussis** sur
 chacun.
 
 ---
@@ -103,7 +103,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 26 scénarios, dans un vrai navigateur
+npm run php:e2e          # 52 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -113,20 +113,27 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 26 scénarios
+### Les 52 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
-| Vitrine et catalogue | La page d'accueil, les décors publiés |
-| Le Studio | Le QR **visible dans l'aperçu** (45 % de blanc mesuré au coin bas-gauche), le jeton émis |
+| Vitrine | Neuf sections, l'offre de lancement, les quatre formules, les six questions |
+| Le Studio | Le QR **visible dans l'aperçu** (mesuré sur le canevas), le jeton émis |
+| Le téléchargement | Un **vrai fichier**, au format déclaré par le gabarit, sans repli intempestif |
 | La page du QR | `?p=qr&jeton=…` répond, annonce le badge valide, refuse un code inventé |
 | Contrôle d'entrée | Entrée validée, rescan refusé, code inconnu refusé |
 | Koris | Solde crédité **au scan**, pas au téléchargement |
-| Le garde-fou | Une redirection hors domaine Wakabi est refusée |
+| Le garde-fou | Une redirection hors domaine Wakabi est refusée à un partenaire |
 | Le pré-vol | Un cadre opaque ne rejoint jamais la file |
+| Une soumission valide | Créée par la recette elle-même, pour qu'elle soit rejouable |
 | Modération | Rapport affiché, approbation traitée, décor réellement ouvrable ensuite |
-| Sécurité | Cinq routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
+| **Gestion par l'équipe** | Ajouter, lister, filtrer, chercher, modifier, publier, supprimer — et le refus quand le titre de confirmation ne correspond pas |
+| Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
+| WhatsApp | Le repli « appui long » là où le téléchargement direct est inerte |
+
+> **La recette est rejouable.** Elle crée ses propres comptes et sa propre
+> soumission à chaque exécution : pas besoin de remettre la base à zéro.
 
 ---
 
@@ -134,14 +141,76 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 
 Tout le produit, pas un sous-ensemble :
 
-- vitrine, catalogue, Studio sans compte ;
+- **vitrine complète** — héros, canaux, la boucle en trois temps, comparatif,
+  témoignages, quatre formules, questions fréquentes, appel final ;
+- catalogue et Studio, sans compte ;
 - comptes participant, partenaire, équipe ;
 - création de décor par un partenaire, en trois blocs, sans compétence graphique ;
+- **gestion complète des décors par l'équipe** (§ ci-dessous) ;
 - **les 7 contrôles du pré-vol**, exécutés côté serveur avec GD ;
 - file de relecture, motif obligatoire au refus, notifications ;
 - QR incrusté, page de badge, contrôle d'entrée, Koris ;
 - tableau de bord, courbe sur 14 jours, gestion des comptes ;
 - limitation de débit, jetons anti-CSRF, sessions `httpOnly`.
+
+---
+
+## Le visiteur télécharge, il ne partage pas
+
+Le bouton dit « Télécharger » : **il télécharge**. Ouvrir la feuille de partage
+à la place est une substitution — l'invité voulait un fichier dans sa galerie,
+il recevait un choix d'applications.
+
+Le partage reste offert, en **second bouton**, et seulement quand l'appareil
+sait réellement partager un fichier.
+
+Une exception, qui n'en est pas une : dans le navigateur intégré de WhatsApp ou
+d'Instagram, `<a download>` est inerte. Là, un téléchargement échouerait en
+silence — l'image s'affiche avec la consigne d'appui long. La recette vérifie
+les deux cas.
+
+> **Au passage, le badge a maigri.** Le code forçait le PNG alors que le
+> gabarit déclare `image/jpeg` — un défaut de mon portage, que les versions
+> Next.js et démo n'avaient pas. Le format vient maintenant du gabarit :
+> **921 Ko → 242 Ko**, sans toucher au rendu. Sur un forfait data facturé au
+> mégaoctet, ce n'est pas un détail.
+
+---
+
+## L'équipe gère les décors
+
+Un écran `?p=catalogue`, distinct de la file de relecture : celle-ci ne montre
+que ce qui attend une décision, celui-là montre **tout**.
+
+| Action | Où |
+|---|---|
+| **Ajouter** | Bouton « + Nouveau décor », depuis le tableau de bord ou le catalogue |
+| **Lister** | Onglets par statut, recherche par titre, compteurs par onglet |
+| **Modifier** | Le même formulaire que la création, pré-rempli |
+| **Publier / Archiver** | Un bouton par action, selon ce que la machine à états autorise |
+| **Supprimer** | Repli de confirmation, titre à retaper |
+
+Trois décisions qui méritent d'être dites :
+
+**Le slug ne change jamais à la modification.** Il vit dans des liens déjà
+partagés et dans les QR de badges déjà téléchargés. Changer l'adresse d'un
+décor publié casserait les deux.
+
+**Supprimer exige de retaper le titre.** Un décor supprimé détruit les badges
+émis pour lui : leurs QR ne mènent plus nulle part, et les entrées
+correspondantes ne peuvent plus être validées. Le formulaire annonce combien de
+badges seront détruits, et propose **Archiver** comme voie douce.
+
+**La suppression efface aussi ce qui en dépend** — événements, créations,
+badges, rapport de pré-vol — dans une transaction, puis le fichier du cadre
+s'il n'est plus référencé. Les clés étrangères ne portent pas de cascade :
+MySQL et SQLite ne l'appliquent pas de la même façon selon la configuration de
+l'hébergeur, et une suppression partielle laisserait des badges pointant vers
+un décor disparu.
+
+> **L'équipe n'est pas soumise au garde-fou de redirection.** Un partenaire ne
+> peut renvoyer que vers un domaine Wakabi ; l'équipe peut co-brander ailleurs.
+> C'est la règle que vous aviez fixée, et elle vaut toujours.
 
 ---
 
