@@ -289,7 +289,34 @@ qu'elle protège ne protège de rien.
 
 ---
 
-## 5. Ce qui reste à brancher après la mise en ligne
+## 5. Les dépendances
+
+`npm audit` doit rendre **0 vulnérabilité**. C'était le cas au 26/08/2026, après
+trois relèvements :
+
+| Paquet | De | À | Pourquoi |
+|---|---|---|---|
+| `next` | 15.5.4 | 15.5.24 | Une **exécution de code à distance** dans le protocole React Flight, plus une trentaine d'autres avis |
+| `sharp` | 0.33.5 | 0.35.3 | Quatre CVE héritées de libvips |
+| `postcss` | 8.4.x | 8.5.26 (`overrides`) | Lecture de fichiers arbitraires via `sourceMappingURL` |
+
+Le relèvement de `postcss` passe par un `overrides` dans `package.json` : la
+version fautive est celle que `next` embarque, et `npm` ne la remplacerait
+autrement qu'en passant à Next 16 — une majeure, à ne pas prendre la veille
+d'une mise en ligne.
+
+Vérifiez avant chaque déploiement :
+
+```bash
+npm audit
+```
+
+Un avis critique sur une application exposée n'attend pas la prochaine
+itération.
+
+---
+
+## 6. Ce qui reste à brancher après la mise en ligne
 
 | Point | Sans quoi |
 |---|---|
@@ -299,7 +326,7 @@ qu'elle protège ne protège de rien.
 
 ---
 
-## 6. Rester en dehors du chemin de WordPress
+## 7. Rester en dehors du chemin de WordPress
 
 `boost.wakabileguide.com` est un sous-domaine **indépendant** :
 

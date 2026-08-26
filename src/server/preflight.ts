@@ -1,5 +1,8 @@
 import 'server-only';
 import sharp from 'sharp';
+// sharp 0.35 embarque ses types : l'espace de noms `sharp.` n'est plus
+// utilisable comme qualificateur, le type s'importe nommément.
+import type { Metadata } from 'sharp';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { db, nowIso } from './db';
@@ -114,7 +117,7 @@ export async function runPreflight(
   }
 
   /* 5 — format du fichier */
-  let meta: sharp.Metadata;
+  let meta: Metadata;
   try {
     meta = await sharp(path).metadata();
   } catch {
