@@ -1,0 +1,9 @@
+{
+  // Typage de la démonstration autonome. À lancer APRÈS génération des cadres
+  // (`scripts/build-demo.ts` écrit src/demo/frames.generated.ts) — c'est ce que
+  // fait `npm run demo`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "plugins": [] },
+  "include": ["src/demo/**/*.ts", "src/core/**/*.ts", "src/lib/**/*.ts"],
+  "exclude": ["node_modules"]
+}

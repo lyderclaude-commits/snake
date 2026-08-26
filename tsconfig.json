@@ -17,5 +17,9 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  // src/demo est une cible de build à part (scripts/build-demo.ts, esbuild) et
+  // s'appuie sur un fichier généré, absent d'un dépôt fraîchement cloné. Le
+  // laisser ici ferait échouer `next build` sur une case à cocher qui ne
+  // concerne pas l'application. Il garde son propre typage : tsconfig.demo.json.
+  "exclude": ["node_modules", "src/demo"]
 }

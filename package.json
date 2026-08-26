@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx src/core/template.schema.test.ts",
     "frames": "tsx scripts/build-frames.ts",
-    "demo": "tsx scripts/build-demo.ts",
+    "demo": "tsx scripts/build-demo.ts && tsc -p tsconfig.demo.json",
     "seed": "tsx --conditions=react-server scripts/seed.ts",
     "purge": "tsx --conditions=react-server scripts/purge.ts",
     "e2e": "tsx scripts/e2e-app.ts",
