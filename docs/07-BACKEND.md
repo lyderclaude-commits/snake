@@ -225,6 +225,6 @@ Puis, application lancée :
 npm run e2e:full      # 20 scénarios, navigateur réel, sortie en français
 ```
 
-Le script conduit un navigateur à travers les 22 scénarios de `docs/08-RECETTE.md` et
+Le script conduit un navigateur à travers les 25 scénarios de `docs/08-RECETTE.md` et
 échoue bruyamment sur la moindre erreur de console. Dernière exécution :
-**22 réussis, 0 échoués, aucune erreur console.**
+**25 réussis, 0 échoués, aucune erreur console.**

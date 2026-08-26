@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { writeFile, mkdir } from 'node:fs/promises';
+import { uploadsDir } from '@/server/config';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { requireRole, requireUser } from '@/server/auth';
@@ -65,7 +66,7 @@ async function saveFrame(file: File): Promise<string> {
   const name = `${randomUUID()}${ALLOWED.get(kind)}`;
   // Hors de public/ : Next fige ce dossier au build. Servi par
   // src/app/api/frames/[name]/route.ts.
-  const dir = join(process.cwd(), process.env.WAKABI_UPLOADS ?? '.data/uploads');
+  const dir = uploadsDir();
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, name), buf);
   return `/api/frames/${name}`;

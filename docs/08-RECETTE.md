@@ -38,7 +38,7 @@ BASE_URL=http://127.0.0.1:3210 npm run e2e:full   # autre port
 Le script pilote un vrai Chromium. Il n'inspecte pas du HTML : il clique, téléverse, scanne,
 et **échoue si la console du navigateur émet la moindre erreur**.
 
-### Les 22 scénarios
+### Les 25 scénarios
 
 | # | Scénario | Ce qu'il prouve |
 |:--:|---|---|
@@ -47,36 +47,39 @@ et **échoue si la console du navigateur émet la moindre erreur**.
 | 3 | Simulateur WhatsApp dégressif | 60 000 messages → 51 000 FCFA : le calcul est juste |
 | 4 | QR visible dans l'aperçu | Le coin bas-gauche est blanc à 38 % — le QR est bien **dessiné**, pas promis |
 | 5 | Jeton du badge affiché | Un code à 10 caractères est émis par badge |
-| 6 | Entrée validée | Le scan du jeton ouvre l'entrée |
-| 7 | Rescan refusé | Le même badge une seconde fois : refusé. **Idempotence** |
-| 8 | Code inconnu refusé | Un code inventé ne passe pas |
-| 9 | Koris crédités après scan | Solde 550 → 600 : la présence, pas le clic |
-| 10 | Pré-vol bloque le cadre opaque | Un cadre sans transparence ne rejoint pas la file |
-| 11 | Rapport de pré-vol affiché | Le relecteur voit *pourquoi* un décor est passé |
-| 12 | Approbation traitée | La file d'attente diminue d'une ligne |
-| 13 | **Décor approuvé réellement ouvrable** | Le décor publié répond 200, pas 404 |
-| 14 | **Le Studio se charge dessus** | Approuver ne suffit pas : le gabarit doit rester valide |
-| 15 | Notification reçue par le partenaire | La cloche porte un compteur non nul |
-| 16 | Publication annoncée | Le décor apparaît publié |
-| 17 | Accès anonyme refusé sur `/admin` | Redirection vers la connexion |
-| 18 | Accès anonyme refusé sur `/admin/comptes` | Idem |
-| 19 | Accès anonyme refusé sur `/partenaire` | Idem |
-| 20 | Accès anonyme refusé sur `/scan` | Idem |
-| 21 | Participant redirigé hors de `/admin` | Être connecté ne suffit pas : le rôle est vérifié |
-| 22 | Limitation de débit active | « Trop de tentatives. Réessayez dans 15 minutes. » |
+| 6 | La page du QR répond | `/qr/{token}` renvoie 200 — le QR mène quelque part |
+| 7 | Badge annoncé valide | Le porteur voit l'état de son badge sans pouvoir le valider |
+| 8 | QR d'un code inconnu refusé | Un jeton inventé n'ouvre rien, et ne plante pas |
+| 9 | Entrée validée | Le scan du jeton ouvre l'entrée |
+| 10 | Rescan refusé | Le même badge une seconde fois : refusé. **Idempotence** |
+| 11 | Code inconnu refusé | Un code inventé ne passe pas |
+| 12 | Koris crédités après scan | Solde 550 → 600 : la présence, pas le clic |
+| 13 | Pré-vol bloque le cadre opaque | Un cadre sans transparence ne rejoint pas la file |
+| 14 | Rapport de pré-vol affiché | Le relecteur voit *pourquoi* un décor est passé |
+| 15 | Approbation traitée | La file d'attente diminue d'une ligne |
+| 16 | **Décor approuvé réellement ouvrable** | Le décor publié répond 200, pas 404 |
+| 17 | **Le Studio se charge dessus** | Approuver ne suffit pas : le gabarit doit rester valide |
+| 18 | Notification reçue par le partenaire | La cloche porte un compteur non nul |
+| 19 | Publication annoncée | Le décor apparaît publié |
+| 20 | Accès anonyme refusé sur `/admin` | Redirection vers la connexion |
+| 21 | Accès anonyme refusé sur `/admin/comptes` | Idem |
+| 22 | Accès anonyme refusé sur `/partenaire` | Idem |
+| 23 | Accès anonyme refusé sur `/scan` | Idem |
+| 24 | Participant redirigé hors de `/admin` | Être connecté ne suffit pas : le rôle est vérifié |
+| 25 | Limitation de débit active | « Trop de tentatives. Réessayez dans 15 minutes. » |
 
-> **Les scénarios 13 et 14 sont nés d'un défaut.** Ils n'existaient pas, et c'est
+> **Les scénarios 16 et 17 sont nés d'un défaut.** Ils n'existaient pas, et c'est
 > précisément pour cela qu'un décor approuvé pouvait répondre 404 sans que rien ne le
 > signale. Voir `07-BACKEND.md` §4 (h).
 
 ### Dernière exécution
 
 ```
-━━ Résultat : 22 réussis, 0 échoués ━━
+━━ Résultat : 25 réussis, 0 échoués ━━
 ✓ aucune erreur console
 ```
 
-> **Une base fraîche est supposée.** Le scénario 12 approuve le seul décor en attente ;
+> **Une base fraîche est supposée.** Le scénario 15 approuve le seul décor en attente ;
 > rejouer la recette sans re-semer laisse la file vide et le scénario échoue. Pour
 > repartir de zéro : `rm -f .data/wakabi.sqlite*` puis `npm run seed`.
 

@@ -1,0 +1,8 @@
+node_modules
+.next
+.data
+.recette
+.git
+docs
+scripts/fixtures
+*.bundle

@@ -77,6 +77,17 @@ const run = async () => {
   const codeEl = p.locator('p.font-mono');
   const token = (await codeEl.count()) ? (await codeEl.first().innerText()).trim() : '';
   ok('jeton du badge affiché', /^[2-9A-Z]{10}$/.test(token), token);
+
+  // Le QR encode une adresse : elle doit mener quelque part. Scanner un badge
+  // avec un téléphone ordinaire ouvre cette page — pas une 404 chez WordPress.
+  const qrPage = await p.goto(`${BASE}/qr/${token}`, { waitUntil: 'networkidle' });
+  ok('la page du QR répond', qrPage?.status() === 200, `/qr/${token} → ${qrPage?.status()}`);
+  ok('badge annoncé valide', /Badge valide/.test(await p.locator('h1').innerText()));
+  const inconnu = await p.goto(`${BASE}/qr/ZZZZZZZZZZ`, { waitUntil: 'networkidle' });
+  ok(
+    'QR d’un code inconnu : refusé sans planter',
+    inconnu?.status() === 200 && /introuvable/.test(await p.locator('h1').innerText()),
+  );
   await shot(p, '02-badge-emis');
 
   console.log('\n━━ 3. Contrôle d’entrée ━━');

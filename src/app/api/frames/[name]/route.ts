@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { uploadsDir } from '@/server/config';
 import { NextResponse } from 'next/server';
 
 /**
@@ -8,13 +9,12 @@ import { NextResponse } from 'next/server';
  * Ils ne peuvent PAS vivre dans `public/` : Next fige ce dossier au moment du
  * build, donc un fichier écrit ensuite n'est jamais servi — et sur une image
  * de conteneur immuable, l'écriture échouerait de toute façon. Ils vivent donc
- * dans `.data/uploads/`, à côté de la base, et transitent par cette route.
+ * dans le dossier `WAKABI_UPLOADS` (`.data/uploads/` par défaut), à côté de la
+ * base, et transitent par cette route.
  *
  * En production ce dossier sera un volume monté, ou remplacé par un stockage
  * objet : seul ce fichier changera.
  */
-
-const DIR = process.env.WAKABI_UPLOADS ?? '.data/uploads';
 
 const TYPES: Record<string, string> = { '.png': 'image/png', '.webp': 'image/webp' };
 
@@ -32,7 +32,7 @@ export async function GET(
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const path = join(process.cwd(), DIR, name);
+  const path = join(uploadsDir(), name);
   try {
     const [file, info] = await Promise.all([readFile(path), stat(path)]);
     const ext = name.slice(name.lastIndexOf('.'));

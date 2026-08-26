@@ -5,6 +5,7 @@ import { currentUser } from '@/server/auth';
 import * as badges from '@/server/repo/badges';
 import { track } from '@/server/repo/decors';
 import { record } from '@/server/repo/creations';
+import { badgeUrl } from '@/server/config';
 
 /**
  * Émet un badge et renvoie son QR.
@@ -22,7 +23,7 @@ export async function mintBadge(decorId: string): Promise<{
 }> {
   const me = await currentUser();
   const token = badges.mint(decorId, me?.id ?? null);
-  const url = `https://wakabileguide.com/qr/${token}`;
+  const url = badgeUrl(token);
 
   const qrDataUrl = await QRCode.toDataURL(url, {
     margin: 0,

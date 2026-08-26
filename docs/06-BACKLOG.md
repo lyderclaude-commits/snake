@@ -9,7 +9,7 @@ réellement. Chaque ligne porte son état et son jalon.
 >
 > | | |
 > |---|---|
-> | ✅ **67** livrées et vérifiées | recette automatisée : **22 scénarios, 22 réussis** |
+> | ✅ **68** livrées et vérifiées | recette automatisée : **25 scénarios, 25 réussis** |
 > | 🔜 **7** identifiées comme prochaines | courtes, à fort effet |
 > | ⬜ **23** à construire | réparties de J4 à J5 |
 > | 🔒 **0** gelée | les Koris sont rallumés — le QR à l'entrée les crédite |
@@ -192,9 +192,10 @@ partage : il porte un code unique qui, scanné à l'entrée, prouve une présenc
 | 4.5 | Scan idempotent : un badge ne vaut qu'une entrée | ✅ | J3 |
 | 4.6 | Code inconnu refusé explicitement | ✅ | J3 |
 | 4.7 | **Koris crédités à l'entrée**, pas au téléchargement | ✅ | J3 |
-| 4.8 | Lecture caméra du QR (aujourd'hui : saisie du code) | 🔜 | J4 |
-| 4.9 | Liste des présents en direct pour l'organisateur | ⬜ | J4 |
-| 4.10 | Export de la liste des présents | ⬜ | J5 |
+| 4.8 | Page d'atterrissage du QR (`/qr/{token}`) | ✅ | J4 |
+| 4.9 | Lecture caméra du QR (aujourd'hui : saisie du code) | 🔜 | J4 |
+| 4.10 | Liste des présents en direct pour l'organisateur | ⬜ | J4 |
+| 4.11 | Export de la liste des présents | ⬜ | J5 |
 
 > **4.7 — pourquoi c'est le bon endroit.** Créditer au téléchargement récompense un clic.
 > Créditer au scan récompense une venue. C'est la seule métrique qu'un organisateur paie
@@ -262,7 +263,7 @@ Dans cet ordre, et voici pourquoi :
 
 1. **Les vrais cadres** (1.x). Rien ne se teste sérieusement sur des placeholders — ni la
    lisibilité, ni l'envie de partager. C'est le seul point qui bloque une mise en ligne.
-2. **La lecture caméra du QR** (4.8). Aujourd'hui l'agent d'entrée saisit le code à la main :
+2. **La lecture caméra du QR** (4.9). Aujourd'hui l'agent d'entrée saisit le code à la main :
    ça marche, mais ça ne tient pas une file d'attente. `BarcodeDetector` couvre Android récent,
    avec repli sur une bibliothèque.
 3. **Caméra directe et photos d'exemple** (1.11, 1.12). Deux ajouts courts qui ferment le

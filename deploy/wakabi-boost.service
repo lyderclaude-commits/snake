@@ -1,0 +1,36 @@
+# /etc/systemd/system/wakabi-boost.service
+#
+#   sudo cp deploy/wakabi-boost.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now wakabi-boost
+#   sudo systemctl status wakabi-boost
+#
+# Journal en direct :  journalctl -u wakabi-boost -f
+
+[Unit]
+Description=Wakabi Boost
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wakabi
+Group=wakabi
+WorkingDirectory=/srv/wakabi-boost/current
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+# Les réglages vivent dans un fichier à part : il contient l'adresse publique
+# et les chemins de données, et il ne bouge pas quand on redéploie.
+EnvironmentFile=/srv/wakabi-boost/wakabi.env
+
+# Cloisonnement : le service ne peut écrire que dans son dossier de données.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wakabi-boost
+
+[Install]
+WantedBy=multi-user.target

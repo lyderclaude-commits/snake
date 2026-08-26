@@ -11,7 +11,7 @@ import { Button, Card } from '@/components/ui';
  * lecteur de QR physique se comporte comme un clavier, et l'entrée manuelle
  * reste possible quand le code est abîmé ou l'éclairage mauvais.
  */
-export function ScanForm() {
+export function ScanForm({ code = '' }: { code?: string }) {
   const [state, action, pending] = useActionState<ScanState, FormData>(scanBadge, {});
   const ref = useRef<HTMLInputElement>(null);
 
@@ -39,6 +39,7 @@ export function ScanForm() {
               autoFocus
               autoComplete="off"
               maxLength={10}
+              defaultValue={code}
               placeholder="A7K2M9XQ4P"
               className="w-full rounded-wk-md border-2 border-wk-border bg-wk-bg2 px-4 py-3 text-center font-mono text-[22px] font-bold uppercase tracking-[0.18em] outline-none transition focus:border-wk-primary focus:bg-white"
             />

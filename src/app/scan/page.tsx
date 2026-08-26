@@ -7,7 +7,13 @@ import { ScanForm } from '@/components/admin/ScanForm';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ScanPage() {
+export default async function ScanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  // Arrivée depuis /qr/{token} : l'agent d'entrée n'a plus qu'à valider.
+  const { code } = await searchParams;
   const me = await currentUser();
   if (!me) redirect('/connexion');
   if (me.role === 'user') redirect('/compte');
@@ -22,7 +28,7 @@ export default async function ScanPage() {
       subtitle="Scannez le QR du badge, ou saisissez son code."
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <ScanForm />
+        <ScanForm code={(code ?? '').toUpperCase().slice(0, 10)} />
 
         <Card className="p-5">
           <h2 className="mb-3 font-display text-[15px] font-bold">Derniers passages</h2>
