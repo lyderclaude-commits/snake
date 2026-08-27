@@ -178,6 +178,41 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     };
     ?>
 
+    <?php
+    /**
+     * Sur téléphone, le tableau cède la place à deux cartes.
+     *
+     * Une par colonne, comme les offres : on lit un camp entier d'affilée au
+     * lieu de sauter de l'un à l'autre huit fois. Les deux rendus sortent du
+     * MÊME tableau `$lignes` — un seul texte à tenir à jour — et un seul est
+     * affiché à la fois, `display:none` retirant l'autre y compris pour les
+     * lecteurs d'écran.
+     */
+    ?>
+    <div class="comparatif-cartes">
+      <?php foreach ([
+        ['Ce qui existe ailleurs', 'Générateurs classiques', 1, false],
+        ['Notre réponse', 'Wakabi Boost', 2, true],
+      ] as [$tag, $nom_colonne, $col, $phare]): ?>
+        <div class="colonne<?= $phare ? ' phare' : '' ?>">
+          <span class="tag"><?= e($tag) ?></span>
+          <h3><?= e($nom_colonne) ?></h3>
+          <ul>
+            <?php foreach ($lignes as $l): [$etat, $texte] = $l[$col]; ?>
+              <li class="<?= e($etat) ?>">
+                <span class="signe" aria-hidden="true"><?= $etat === 'valeur' ? '' : icone($etat === 'oui' ? 'coche' : 'croix') ?></span>
+                <span class="dit">
+                  <b><?= e($l[0]) ?></b>
+                  <?php if ($etat !== 'valeur'): ?><span class="sr"> : <?= $etat === 'oui' ? 'oui' : 'non' ?></span><?php endif; ?>
+                  <?php if ($texte !== ''): ?><span class="quoi"><?= e($texte) ?></span><?php endif; ?>
+                </span>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+      <?php endforeach; ?>
+    </div>
+
     <div class="comparatif">
       <table>
         <caption class="sr">Comparaison entre un générateur de badges classique et Wakabi Boost</caption>
@@ -192,11 +227,8 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
           <?php foreach ($lignes as [$quoi, $eux, $nous]): ?>
             <tr>
               <th scope="row"><?= e($quoi) ?></th>
-              <!-- `data-quoi` : sur téléphone le tableau devient une pile de
-                   cartes, l'en-tête disparaît, et chaque cellule doit alors
-                   rappeler elle-même de quelle colonne elle vient. -->
-              <td data-quoi="Générateurs classiques"><?= $cellule($eux, false) ?></td>
-              <td class="nous" data-quoi="Wakabi Boost"><?= $cellule($nous, true) ?></td>
+              <td><?= $cellule($eux, false) ?></td>
+              <td class="nous"><?= $cellule($nous, true) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>

@@ -564,18 +564,22 @@ const run = async () => {
                 if (v.length < 2) return true;
                 return v[0].getBoundingClientRect().top !== v[1].getBoundingClientRect().top; })()
      `));
-  ok('le comparatif se lit sans défilement latéral',
-     await t.evaluate(`
-       (() => { const c = document.querySelector('.comparatif');
-                return c.scrollWidth <= c.clientWidth + 1; })()
-     `));
-  ok('chaque verdict rappelle sa colonne',
-     await t.evaluate(`
-       (() => { const c = document.querySelector('.comparatif tbody td');
-                return getComputedStyle(c, '::before').content.includes('Générateurs'); })()
-     `));
-  ok('le tableau garde sa structure pour les lecteurs d’écran',
-     (await t.locator('.comparatif thead th').count()) === 3);
+  // Sur téléphone, le comparatif se lit en deux cartes — une par camp,
+  // comme les offres. Le tableau, lui, doit disparaître : deux versions
+  // affichées en même temps seraient lues deux fois par un lecteur d'écran.
+  ok('le comparatif devient deux cartes, une par camp',
+     (await t.locator('.comparatif-cartes .colonne').count()) === 2
+     && await t.locator('.comparatif-cartes').isVisible());
+  ok('le tableau cède la place', !(await t.locator('.comparatif').isVisible()));
+  ok('chaque carte porte les huit lignes',
+     (await t.locator('.comparatif-cartes .colonne').first().locator('li').count()) === 8
+     && (await t.locator('.comparatif-cartes .colonne.phare li').count()) === 8);
+  ok('la carte Wakabi est mise en avant comme l’offre phare',
+     (await t.locator('.comparatif-cartes .colonne.phare').evaluate((el) => getComputedStyle(el).borderColor))
+       === 'rgb(37, 99, 235)');
+  ok('chaque verdict reste annoncé aux lecteurs d’écran',
+     (await t.locator('.comparatif-cartes .sr').count()) === 14,
+     `${await t.locator('.comparatif-cartes .sr').count()} verdicts annoncés sur 14`);
 
   // Le menu doit être REPLIÉ à l'arrivée, puis s'ouvrir au doigt. Sans le
   // premier point, la page s'ouvre sur une liste de liens ; sans le second,
@@ -603,6 +607,7 @@ const run = async () => {
   await tel.close();
 
   console.log('\n━━ 16. Le menu déplié sur grand écran ━━');
+  // (les cartes du comparatif y sont vérifiées aussi : c'est le même contexte)
   // Le <details> est replié par défaut : sur grand écran, c'est la feuille
   // de style qui doit le tenir ouvert. Si elle échoue, la barre est vide.
   const large = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -611,6 +616,8 @@ const run = async () => {
   await g.waitForTimeout(400);
   ok('la navigation reste visible sans clic', await g.locator('.menu nav').isVisible());
   ok('le bouton hamburger disparaît', !(await g.locator('.menu > summary').isVisible()));
+  ok('le comparatif reprend sa forme de tableau', await g.locator('.comparatif table').isVisible());
+  ok('les cartes du comparatif s’effacent', !(await g.locator('.comparatif-cartes').isVisible()));
   await large.close();
 
   console.log('\n━━ 17. Le navigateur intégré de WhatsApp ━━');

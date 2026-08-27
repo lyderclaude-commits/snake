@@ -716,42 +716,55 @@ input[type=file].fichier-natif{
 }
 
 /* ============ le comparatif sur téléphone ============
-   Un tableau de trois colonnes ne rentre pas dans 358 px. Le faire défiler
-   de côté cache justement la colonne qui porte l'argument : personne ne
-   glisse un tableau qu'il n'a pas vu bouger. Chaque ligne devient donc une
-   carte — la fonctionnalité en titre, les deux verdicts dessous, celui de
-   Wakabi en pied coloré. Rien à faire glisser, rien à deviner. */
+   Un tableau de trois colonnes ne rentre pas dans 358 px, et le faire
+   défiler de côté cache justement la colonne qui porte l'argument. Il cède
+   donc la place à DEUX CARTES, une par camp, présentées comme les offres :
+   on lit un camp entier d'affilée au lieu de sauter de l'un à l'autre huit
+   fois de suite. Le tableau reste la version grand écran, et `display:none`
+   n'en laisse qu'un seul à la fois — y compris pour les lecteurs d'écran. */
+
+.comparatif-cartes{display:none}
+
 @media(max-width:760px){
-  .comparatif{background:none;border:0;box-shadow:none;overflow:visible}
-  .comparatif table{min-width:0;font-size:.92rem}
-  /* L'en-tête ne disparaît pas : il reste lu par les lecteurs d'écran,
-     qui continuent d'associer chaque cellule à sa colonne. */
-  .comparatif thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  .comparatif tbody,.comparatif tbody tr,.comparatif tbody th,.comparatif tbody td{display:block}
-  .comparatif tbody tr{
+  .comparatif{display:none}
+  .comparatif-cartes{display:grid;gap:14px}
+
+  .comparatif-cartes .colonne{
     background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
-    padding:15px 16px 0;margin-bottom:12px;box-shadow:var(--ombre);overflow:hidden;
+    padding:20px;box-shadow:var(--ombre);
   }
-  .comparatif tbody tr:hover th,
-  .comparatif tbody tr:hover td:not(.nous){background:transparent}
-  .comparatif tbody th{
-    padding:0 0 11px;border:0;background:none;
-    font-family:var(--display);font-size:1rem;font-weight:700;color:var(--ink);
+  /* La carte Wakabi se distingue comme l'offre phare : c'est la même
+     grammaire visuelle, donc la même lecture. */
+  .comparatif-cartes .colonne.phare{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-wash),var(--ombre)}
+
+  .comparatif-cartes .tag{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3)}
+  .comparatif-cartes .colonne.phare .tag{color:var(--primary)}
+  .comparatif-cartes h3{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin:5px 0 14px}
+
+  .comparatif-cartes ul{list-style:none;padding:0;margin:0}
+  .comparatif-cartes li{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
+  .comparatif-cartes li:first-child{border-top:0;padding-top:0}
+  .comparatif-cartes li:last-child{padding-bottom:0}
+
+  .comparatif-cartes .signe{
+    width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+    flex:0 0 auto;margin-top:2px;
   }
-  .comparatif tbody td{
-    display:flex;align-items:center;justify-content:space-between;gap:14px;
-    padding:10px 0;border-top:1px solid var(--border);border-left:0;border-radius:0;
-  }
-  .comparatif tbody td::before{
-    content:attr(data-quoi);flex:0 0 auto;
-    font-size:.75rem;font-weight:700;letter-spacing:.02em;color:var(--text3);
-  }
-  .comparatif tbody td .verdict,
-  .comparatif tbody td .valeur{text-align:right}
-  .comparatif tbody td.nous{
-    margin:0 -16px;padding:11px 16px;background:var(--primary-wash);
-    border-top-color:#D5E2FB;border-radius:0;
-  }
-  .comparatif tbody td.nous::before{color:var(--primary-d)}
-  .comparatif tbody tr:last-child td.nous{border-radius:0}
+  .comparatif-cartes .signe svg{width:13px;height:13px;stroke-width:2.4}
+  .comparatif-cartes .oui .signe{background:#D8EFE9;color:var(--teal)}
+  .comparatif-cartes .non .signe{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
+  /* Une valeur n'est ni un oui ni un non : un point neutre, pas une pastille
+     vide qui ressemble à un défaut d'affichage. */
+  .comparatif-cartes .valeur .signe{background:var(--bg2);border:1px solid var(--border)}
+  .comparatif-cartes .valeur .signe::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--text3)}
+  .comparatif-cartes .phare .valeur .signe::before{background:var(--primary)}
+  .comparatif-cartes .phare .oui .signe{background:var(--teal);color:#fff}
+
+  .comparatif-cartes b{display:block;font-size:.92rem;font-weight:600;color:var(--ink);line-height:1.35}
+  .comparatif-cartes .quoi{display:block;font-size:.82rem;color:var(--text2);margin-top:2px}
+  .comparatif-cartes .non b{color:var(--text3);font-weight:500}
+  .comparatif-cartes .non .quoi{color:var(--text3)}
+  .comparatif-cartes .phare .quoi{color:var(--primary-d);font-weight:600}
+  .comparatif-cartes .valeur .quoi{font-weight:700;color:var(--ink)}
+  .comparatif-cartes .phare .valeur .quoi{color:var(--primary-d)}
 }
