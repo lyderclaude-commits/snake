@@ -162,6 +162,71 @@ switch ($page) {
 
     /* ---- interfaces appelées par le Studio ---- */
 
+    /**
+     * L'aperçu du formulaire de décor.
+     *
+     * Le gabarit est construit ICI, par la même fonction que celle qui
+     * l'enregistre. Le navigateur ne fabrique rien : il reçoit la structure
+     * exacte qui sera stockée et la dessine avec le même renderer que le
+     * Studio. Un aperçu qui mentirait ne servirait à rien.
+     */
+    case 'api-apercu':
+        $u = exiger_role('partenaire', 'equipe');
+        verifier_csrf();
+
+        $disposition = (string) ($_POST['disposition'] ?? 'bandeau');
+        if (!in_array($disposition, array_column(dispositions(), 'id'), true)) {
+            $disposition = 'bandeau';
+        }
+        // `reinit` : la disposition vient de changer, on repart de ses
+        // réglages d'usine plutôt que de traîner ceux de la précédente.
+        $apparence = ($_POST['reinit'] ?? '') === '1'
+            ? apparence_par_defaut($disposition)
+            : apparence_propre($disposition, $_POST);
+
+        $cadre = (string) ($_POST['cadre_url'] ?? '');
+        if ($cadre === '' && ($_POST['cadre_fourni'] ?? '') !== '') {
+            $nom = basename((string) $_POST['cadre_fourni']);
+            $cadre = isset(cadres_fournis()[$nom]) ? url('public/cadres/' . $nom) : '';
+        }
+        if ($cadre === '') {
+            $cadre = cadre_du_format($disposition);
+        }
+
+        try {
+            $g = construire_gabarit([
+                'slug' => 'apercu',
+                'titre' => (string) ($_POST['titre'] ?? 'Aperçu'),
+                'sous_titre' => '',
+                'ville' => 'all',
+                'rubrique' => 'campagne',
+                'disposition' => $disposition,
+                'cadre_url' => $cadre,
+                'accroche' => (string) ($_POST['accroche'] ?? 'J’Y SERAI'),
+                'champ_libelle' => (string) ($_POST['champ_libelle'] ?? 'Ton prénom'),
+                'champ_valeur' => (string) ($_POST['champ_valeur'] ?? 'Ama'),
+                // La redirection réelle n'a pas à passer le garde-fou pour un
+                // aperçu : c'est à l'enregistrement qu'elle est jugée.
+                'redirection' => 'https://wakabileguide.com/',
+                'redirection_libelle' => '',
+                'legende' => '',
+                'expire_le' => '',
+                'apparence' => $apparence,
+                'cree_par' => 'equipe',
+            ]);
+        } catch (GabaritInvalide $e) {
+            json_repondre(['erreur' => $e->getMessage()]);
+        }
+
+        json_repondre([
+            'gabarit' => $g,
+            'apparence' => $apparence,
+            'cadre' => $cadre,
+            'photo' => url('public/apercu-photo.webp'),
+            // Un QR d'illustration, pas un badge : rien n'est émis en base.
+            'qr' => Qr::dataUri(url(''), 320),
+        ]);
+
     case 'api-badge':
         $corps = json_lire(file_get_contents('php://input') ?: '{}');
         $d = decor_par_id((string) ($corps['decor'] ?? ''));

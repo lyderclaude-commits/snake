@@ -24,9 +24,12 @@ const STATUTS = ['brouillon', 'en_relecture', 'corrections', 'refuse', 'publie',
 function dispositions(): array
 {
     return [
-        ['id' => 'bandeau', 'nom' => 'Bandeau bas', 'aide' => 'Carré · texte sur une bande en bas', 'ratio' => '1:1'],
-        ['id' => 'angle',   'nom' => 'Coin & voile', 'aide' => 'Carré · texte en bas à gauche',     'ratio' => '1:1'],
-        ['id' => 'story',   'nom' => 'Story verticale', 'aide' => '9:16 · pour le statut WhatsApp', 'ratio' => '9:16'],
+        ['id' => 'bandeau',   'nom' => 'Bandeau bas',     'aide' => 'Carré · texte sur une bande en bas', 'ratio' => '1:1'],
+        ['id' => 'angle',     'nom' => 'Coin & voile',    'aide' => 'Carré · texte en bas à gauche',      'ratio' => '1:1'],
+        ['id' => 'story',     'nom' => 'Story verticale', 'aide' => '9:16 · pour le statut WhatsApp',     'ratio' => '9:16'],
+        ['id' => 'instagram', 'nom' => 'Post Instagram',  'aide' => '4:5 · le format qui prend le plus de place dans le fil', 'ratio' => '4:5'],
+        ['id' => 'facebook',  'nom' => 'Post Facebook',   'aide' => '1:1 · carré, jamais recadré par le fil',                 'ratio' => '1:1'],
+        ['id' => 'tiktok',    'nom' => 'TikTok & Reels',  'aide' => '9:16 · tout remonté au-dessus des boutons de l’appli',   'ratio' => '9:16'],
     ];
 }
 
@@ -74,34 +77,268 @@ function statut_libelle(string $s): string
 function canevas(string $disposition): array
 {
     return match ($disposition) {
-        'story' => ['w' => 1080, 'h' => 1920, 'ratio' => '9:16'],
-        default => ['w' => 1080, 'h' => 1080, 'ratio' => '1:1'],
+        'story', 'tiktok' => ['w' => 1080, 'h' => 1920, 'ratio' => '9:16'],
+        'instagram'       => ['w' => 1080, 'h' => 1350, 'ratio' => '4:5'],
+        default           => ['w' => 1080, 'h' => 1080, 'ratio' => '1:1'],
     };
 }
 
 /**
- * Positions des textes, par disposition.
+ * L'apparence de départ d'une disposition.
  *
- * Calées pour ne heurter NI le filigrane (bas-droite) NI le QR (bas-gauche
- * avec sa zone de silence). D'où un texte qui commence à 25 % et s'arrête à
- * 73 % : la bande centrale est la seule vraiment libre.
+ * Ce sont des VALEURS DE DÉPART, pas des positions figées : le formulaire les
+ * expose toutes, et l'équipe comme l'organisateur peuvent les déplacer. Ce
+ * qu'ils ne peuvent pas faire, c'est retirer le QR, le filigrane ou
+ * l'emplacement photo — `valider_gabarit()` s'y oppose.
+ *
+ * Les valeurs sont calées pour ne heurter NI le filigrane NI le QR avec sa
+ * zone de silence, et pour les trois formats de réseau, pour rester hors des
+ * zones que l'application recouvre de ses propres boutons.
+ *
+ * En bas d'un décor, la bande réellement libre va de x = 0,24 (fin du QR et
+ * de sa zone de silence) à x = 0,74 (début du filigrane). Un bloc de texte
+ * qui en sort passe SOUS l'un des deux, et le pré-vol le refuse.
  */
-function positions_textes(string $disposition): array
+function apparence_par_defaut(string $disposition): array
 {
-    return match ($disposition) {
+    $commun = [
+        'texte_couleur' => 'brand.paper',
+        'texte_align' => 'left',
+        'qr_position' => 'bottom-left',
+        'qr_taille' => 0.16,
+        'filigrane_position' => 'bottom-right',
+    ];
+
+    // `array_merge` et non `+` : avec l'union, ce sont les valeurs de GAUCHE
+    // qui l'emportent, et le QR de TikTok serait retombé en bas à gauche,
+    // c'est-à-dire sous la légende de l'application.
+    return array_merge($commun, match ($disposition) {
         'angle' => [
-            'accroche' => ['x' => 0.25, 'y' => 0.79,  'w' => 0.48, 'h' => 0.08,  'size' => 0.05,  'font' => 'display'],
-            'champ'    => ['x' => 0.25, 'y' => 0.872, 'w' => 0.48, 'h' => 0.05,  'size' => 0.026, 'font' => 'body'],
+            'bloc_x' => 0.25, 'bloc_y' => 0.79, 'bloc_w' => 0.48,
+            'accroche_taille' => 0.05, 'champ_taille' => 0.026,
         ],
         'story' => [
-            'accroche' => ['x' => 0.25, 'y' => 0.826, 'w' => 0.48, 'h' => 0.06,  'size' => 0.032, 'font' => 'display'],
-            'champ'    => ['x' => 0.25, 'y' => 0.884, 'w' => 0.48, 'h' => 0.04,  'size' => 0.02,  'font' => 'body'],
+            'bloc_x' => 0.25, 'bloc_y' => 0.826, 'bloc_w' => 0.48,
+            'accroche_taille' => 0.032, 'champ_taille' => 0.02,
+        ],
+        // Instagram : rien ne recouvre l'image dans le fil, le texte peut
+        // descendre bas et rester large.
+        'instagram' => [
+            'bloc_x' => 0.25, 'bloc_y' => 0.80, 'bloc_w' => 0.49,
+            'accroche_taille' => 0.05, 'champ_taille' => 0.027,
+        ],
+        // Facebook recadre les aperçus au carré : tout ce qui compte reste
+        // dans le carré, et le texte prend toute la largeur utile.
+        'facebook' => [
+            'bloc_x' => 0.25, 'bloc_y' => 0.775, 'bloc_w' => 0.48,
+            'accroche_taille' => 0.055, 'champ_taille' => 0.029,
+        ],
+        // TikTok pose sa légende sur le cinquième du bas et ses boutons sur
+        // le bord droit : le texte remonte au-dessus, le QR passe en haut à
+        // gauche, seul coin que l'application laisse tranquille.
+        'tiktok' => [
+            'bloc_x' => 0.09, 'bloc_y' => 0.655, 'bloc_w' => 0.62,
+            'accroche_taille' => 0.036, 'champ_taille' => 0.021,
+            'qr_position' => 'top-left', 'qr_taille' => 0.17,
+            'filigrane_position' => 'bottom-center',
         ],
         default => [
-            'accroche' => ['x' => 0.25, 'y' => 0.795, 'w' => 0.48, 'h' => 0.09,  'size' => 0.058, 'font' => 'display'],
-            'champ'    => ['x' => 0.25, 'y' => 0.888, 'w' => 0.48, 'h' => 0.055, 'size' => 0.03,  'font' => 'body'],
+            'bloc_x' => 0.25, 'bloc_y' => 0.795, 'bloc_w' => 0.48,
+            'accroche_taille' => 0.058, 'champ_taille' => 0.03,
         ],
+    });
+}
+
+/**
+ * Retrouve la disposition d'un décor enregistré.
+ *
+ * Les décors créés avant que `layout` n'existe ne le portent pas : on les
+ * reconnaît alors au format et à la mise en page. Approximatif par nature,
+ * mais seulement pour ces décors-là, et une fois rouverts puis enregistrés
+ * ils portent la vraie valeur.
+ */
+function disposition_devinee(array $g): string
+{
+    $connues = array_column(dispositions(), 'id');
+    $enregistree = (string) ($g['layout'] ?? '');
+    if (in_array($enregistree, $connues, true)) {
+        return $enregistree;
+    }
+
+    $ratio = (string) ($g['canvas']['ratio'] ?? '1:1');
+    $qr = (string) ($g['qr']['position'] ?? 'bottom-left');
+    $claim = null;
+    foreach ($g['layers'] ?? [] as $l) {
+        if (($l['id'] ?? '') === 'claim') {
+            $claim = $l;
+        }
+    }
+
+    if ($ratio === '4:5') {
+        return 'instagram';
+    }
+    if ($ratio === '9:16') {
+        return $qr === 'top-left' ? 'tiktok' : 'story';
+    }
+    // Un carré sans `layout` date forcément d'avant les formats de réseau :
+    // il ne peut être que l'un des deux carrés d'origine. « Bandeau » et
+    // « Post Facebook » ont la même géométrie — les distinguer ici reviendrait
+    // à tirer à pile ou face.
+    return ($claim['uppercase'] ?? false) ? 'bandeau' : 'angle';
+}
+
+/**
+ * Les cadres livrés avec l'application, avec leur format.
+ *
+ * Ils permettent d'essayer un gabarit sans passer par un graphiste : le
+ * format annoncé vient de l'image elle-même, donc un cadre déposé plus tard
+ * dans le dossier apparaît sans qu'on touche à ce code.
+ */
+function cadres_fournis(): array
+{
+    static $liste = null;
+    if ($liste !== null) {
+        return $liste;
+    }
+
+    $noms = [
+        'jy-serai.png' => 'J’y serai',
+        'bon-plan.png' => 'Bon plan',
+        'story.png' => 'Story',
+        'instagram.png' => 'Instagram',
+        'facebook.png' => 'Facebook',
+        'tiktok.png' => 'TikTok',
+    ];
+
+    $liste = [];
+    foreach (glob(RACINE . '/public/cadres/*.{png,webp}', GLOB_BRACE) ?: [] as $chemin) {
+        $nom = basename($chemin);
+        $taille = @getimagesize($chemin);
+        if (!$taille) {
+            continue;
+        }
+        $liste[$nom] = [
+            'nom' => $noms[$nom] ?? pathinfo($nom, PATHINFO_FILENAME),
+            'ratio' => ratio_lisible((int) $taille[0], (int) $taille[1]),
+            'w' => (int) $taille[0],
+            'h' => (int) $taille[1],
+        ];
+    }
+    return $liste;
+}
+
+/**
+ * Un cadre livré au bon format, pour l'aperçu d'un décor sans cadre.
+ *
+ * Sans lui, régler l'apparence avant d'avoir dessiné son cadre revient à
+ * placer du texte sur du vide : on ne voit ni la bande, ni la zone laissée
+ * libre pour la photo.
+ */
+function cadre_du_format(string $disposition): string
+{
+    $voulu = canevas($disposition)['ratio'];
+    $prefere = ['instagram' => 'instagram.png', 'facebook' => 'facebook.png',
+                'tiktok' => 'tiktok.png', 'story' => 'story.png'][$disposition] ?? 'jy-serai.png';
+
+    $fournis = cadres_fournis();
+    if (isset($fournis[$prefere])) {
+        return url('public/cadres/' . $prefere);
+    }
+    foreach ($fournis as $nom => $c) {
+        if ($c['ratio'] === $voulu) {
+            return url('public/cadres/' . $nom);
+        }
+    }
+    return '';
+}
+
+/** « 1080×1350 » devient « 4:5 » — sinon personne ne compare de tête. */
+function ratio_lisible(int $w, int $h): string
+{
+    $r = $h > 0 ? $w / $h : 1;
+    foreach (['1:1' => 1, '4:5' => 0.8, '9:16' => 0.5625, '16:9' => 1.7778] as $nom => $valeur) {
+        if (abs($r - $valeur) < 0.02) {
+            return $nom;
+        }
+    }
+    return $w . '×' . $h;
+}
+
+/** Les valeurs qu'un formulaire a le droit de proposer. */
+const APPARENCE_COULEURS = [
+    'brand.paper' => 'Blanc',
+    'brand.ink' => 'Encre (sur fond clair)',
+    'brand.primary' => 'Bleu Wakabi',
+    'brand.accent' => 'Orange',
+    'brand.secondary' => 'Teal',
+    'brand.kori' => 'Or (Koris)',
+];
+const APPARENCE_ALIGNEMENTS = ['left' => 'À gauche', 'center' => 'Centré', 'right' => 'À droite'];
+const APPARENCE_QR = ['bottom-left' => 'En bas à gauche', 'top-left' => 'En haut à gauche', 'top-right' => 'En haut à droite'];
+const APPARENCE_FILIGRANE = ['bottom-right' => 'En bas à droite', 'bottom-left' => 'En bas à gauche', 'bottom-center' => 'En bas au centre'];
+
+/**
+ * Nettoie une apparence venue d'un formulaire.
+ *
+ * Tout ce qui n'est pas reconnu retombe sur la valeur de départ de la
+ * disposition : un champ absent, mal orthographié ou hors bornes ne doit
+ * jamais produire un décor cassé, seulement un décor par défaut.
+ */
+function apparence_propre(string $disposition, array $saisie): array
+{
+    $d = apparence_par_defaut($disposition);
+
+    $borne = function (string $cle, float $min, float $max) use ($saisie, $d): float {
+        if (!isset($saisie[$cle]) || !is_numeric($saisie[$cle])) {
+            return (float) $d[$cle];
+        }
+        return max($min, min($max, (float) $saisie[$cle]));
     };
+    $parmi = function (string $cle, array $valeurs) use ($saisie, $d): string {
+        $v = (string) ($saisie[$cle] ?? '');
+        return isset($valeurs[$v]) ? $v : (string) $d[$cle];
+    };
+
+    return [
+        'texte_couleur' => $parmi('texte_couleur', APPARENCE_COULEURS),
+        'texte_align' => $parmi('texte_align', APPARENCE_ALIGNEMENTS),
+        'bloc_x' => $borne('bloc_x', 0, 0.8),
+        'bloc_y' => $borne('bloc_y', 0.02, 0.92),
+        'bloc_w' => $borne('bloc_w', 0.15, 1),
+        'accroche_taille' => $borne('accroche_taille', 0.02, 0.12),
+        'champ_taille' => $borne('champ_taille', 0.014, 0.06),
+        'qr_position' => $parmi('qr_position', APPARENCE_QR),
+        'qr_taille' => $borne('qr_taille', 0.12, 0.28),
+        'filigrane_position' => $parmi('filigrane_position', APPARENCE_FILIGRANE),
+    ];
+}
+
+/**
+ * Les deux rectangles de texte, déduits du bloc.
+ *
+ * L'accroche et le champ ne se règlent pas séparément : ils forment un bloc
+ * qu'on déplace d'un seul geste. Deux réglages indépendants, et on obtient
+ * surtout des décors où le prénom chevauche l'accroche.
+ */
+function rectangles_textes(array $a): array
+{
+    $h_accroche = $a['accroche_taille'] * 1.55;
+    $h_champ = $a['champ_taille'] * 1.83;
+    $y_champ = $a['bloc_y'] + $h_accroche + 0.004;
+
+    // Le bloc ne sort pas du canevas, quelles que soient les tailles : on
+    // rentre le débordement ici plutôt que de refuser la saisie plus tard
+    // avec un « un élément déborde » que personne ne sait corriger.
+    $debord = ($y_champ + $h_champ) - 1;
+    if ($debord > 0) {
+        $y_champ -= $debord;
+    }
+    $largeur = min($a['bloc_w'], 1 - $a['bloc_x']);
+
+    return [
+        'accroche' => ['x' => $a['bloc_x'], 'y' => $a['bloc_y'], 'w' => $largeur, 'h' => $h_accroche],
+        'champ' => ['x' => $a['bloc_x'], 'y' => $y_champ, 'w' => $largeur, 'h' => $h_champ],
+    ];
 }
 
 /* ---------------- fabrication ---------------- */
@@ -118,7 +355,8 @@ class GabaritInvalide extends RuntimeException
 function construire_gabarit(array $i): array
 {
     $c = canevas($i['disposition']);
-    $t = positions_textes($i['disposition']);
+    $a = apparence_propre($i['disposition'], $i['apparence'] ?? []);
+    $t = rectangles_textes($a);
 
     $gabarit = [
         'id' => nouvel_id(),
@@ -127,6 +365,7 @@ function construire_gabarit(array $i): array
         'subtitle' => $i['sous_titre'] ?: null,
         'city' => $i['ville'],
         'rubrique' => $i['rubrique'],
+        'layout' => $i['disposition'],
         'status' => 'brouillon',
         'createdBy' => $i['cree_par'],
         'partnerId' => $i['partenaire_id'] ?? null,
@@ -147,19 +386,21 @@ function construire_gabarit(array $i): array
              'opacity' => 1, 'blendMode' => 'normal'],
             ['type' => 'text', 'id' => 'claim', 'value' => $i['accroche'],
              'editable' => false, 'placeholder' => '', 'maxLength' => 40,
-             'uppercase' => $i['disposition'] === 'bandeau',
-             'rect' => ['x' => $t['accroche']['x'], 'y' => $t['accroche']['y'], 'w' => $t['accroche']['w'], 'h' => $t['accroche']['h']],
-             'size' => $t['accroche']['size'], 'align' => 'left',
-             'color' => 'brand.paper', 'font' => $t['accroche']['font'], 'autoShrink' => true],
+             'uppercase' => in_array($i['disposition'], ['bandeau', 'facebook'], true),
+             'rect' => $t['accroche'],
+             'size' => $a['accroche_taille'], 'align' => $a['texte_align'],
+             'color' => $a['texte_couleur'], 'font' => 'display', 'autoShrink' => true],
             ['type' => 'text', 'id' => 'field', 'editable' => true,
              'placeholder' => $i['champ_libelle'], 'value' => $i['champ_valeur'],
              'maxLength' => 42, 'uppercase' => false,
-             'rect' => ['x' => $t['champ']['x'], 'y' => $t['champ']['y'], 'w' => $t['champ']['w'], 'h' => $t['champ']['h']],
-             'size' => $t['champ']['size'], 'align' => 'left',
-             'color' => 'brand.paper', 'font' => $t['champ']['font'], 'autoShrink' => true],
+             'rect' => $t['champ'],
+             'size' => $a['champ_taille'], 'align' => $a['texte_align'],
+             'color' => $a['texte_couleur'], 'font' => 'body', 'autoShrink' => true],
         ],
-        'watermark' => ['enabled' => true, 'position' => 'bottom-right', 'opacity' => 0.9, 'variant' => 'wordmark'],
-        'qr' => ['enabled' => true, 'position' => 'bottom-left', 'size' => 0.16],
+        // Le filigrane et le QR se déplacent, ne se retirent pas : ce sont
+        // les deux informations qui font la différence avec une image.
+        'watermark' => ['enabled' => true, 'position' => $a['filigrane_position'], 'opacity' => 0.9, 'variant' => 'wordmark'],
+        'qr' => ['enabled' => true, 'position' => $a['qr_position'], 'size' => $a['qr_taille']],
         'export' => ['formats' => [$c['ratio']], 'maxPx' => 2048, 'quality' => 0.92, 'mimeType' => 'image/jpeg'],
         'filters' => ['none', 'wakabi-blue'],
         'share' => [
@@ -201,8 +442,11 @@ function valider_gabarit(array $g): void
         throw new GabaritInvalide('Le cadre doit être dessiné APRÈS la photo, sinon la photo le recouvre.');
     }
 
+    // Le ratio est LU, pas deviné : trois formats hier, six aujourd'hui, et
+    // un `9:16 sinon carré` codé en dur aurait accepté un 4:5 déclaré carré.
     $c = $g['canvas'] ?? [];
-    $attendu = ($c['ratio'] ?? '') === '9:16' ? 9 / 16 : 1;
+    [$rw, $rh] = array_map('floatval', explode(':', (string) ($c['ratio'] ?? '1:1')) + [1, 1]);
+    $attendu = $rh > 0 ? $rw / $rh : 1;
     $reel = ($c['width'] ?? 1) / max(1, $c['height'] ?? 1);
     if (abs($reel - $attendu) > 0.01) {
         throw new GabaritInvalide('Les dimensions du canevas ne correspondent pas au format annoncé.');

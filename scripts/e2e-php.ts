@@ -354,6 +354,68 @@ const run = async () => {
   await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreEquipe)}`, { waitUntil: 'domcontentloaded' });
   ok('le décor a bien disparu', (await p.locator('.carte:has-text("Modifier")').count()) === 0);
 
+  /* ---- les gabarits de réseau, et l'apparence qu'on leur donne ---- */
+
+  const titreIg = `Instagram recette ${marque}`;
+  await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  ok('les six gabarits sont proposés', (await p.locator('#disposition option').count()) === 6);
+
+  await p.waitForTimeout(1200);
+  const forme = async (): Promise<number> => Number(await p.evaluate(`
+    (() => { const c = document.getElementById('apercu');
+             return parseFloat(c.style.width) / parseFloat(c.style.height); })()
+  `));
+  ok('l’aperçu s’affiche pour le gabarit par défaut', Math.abs((await forme()) - 1) < 0.02);
+
+  await p.selectOption('#disposition', 'instagram');
+  await p.waitForTimeout(1100);
+  ok('changer de format change la forme de l’aperçu', Math.abs((await forme()) - 0.8) < 0.03,
+     `${(await forme()).toFixed(2)} attendu 0.80`);
+
+  await p.selectOption('#disposition', 'tiktok');
+  await p.waitForTimeout(1100);
+  ok('TikTok remonte le QR hors de la zone de la légende',
+     (await p.inputValue('#r-qr_position')) === 'top-left');
+
+  await p.selectOption('#disposition', 'instagram');
+  await p.waitForTimeout(1100);
+
+  // Un cadre livré avec l'application : aucun fichier à téléverser.
+  await p.selectOption('#cadre_fourni', 'instagram.png');
+  await p.fill('#titre', titreIg);
+  await p.fill('#redirection', 'https://wakabileguide.com/p/instagram');
+  await p.selectOption('#r-qr_position', 'top-right');
+  await p.evaluate(`
+    (() => { const e = document.getElementById('r-bloc_y');
+             e.value = '0.7'; e.dispatchEvent(new Event('input', { bubbles: true })); })()
+  `);
+  await p.waitForTimeout(700);
+  await p.click('#form-decor button[type=submit]');
+  await p.waitForLoadState('domcontentloaded');
+  ok('décor créé sans téléverser le moindre cadre',
+     /créé|enregistré/i.test(await p.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await p.locator('.msg.ok').first().innerText().catch(() => '')).slice(0, 48));
+
+  // Rouvrir : le format et l'apparence doivent revenir tels qu'enregistrés.
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreIg)}`, { waitUntil: 'domcontentloaded' });
+  const versEdition = await p.locator(`.carte:has-text("${titreIg}") a:has-text("Modifier")`).first().getAttribute('href');
+  ok('le décor apparaît au catalogue', !!versEdition);
+  await p.goto(versEdition!, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(900);
+  ok('le format est retrouvé à la réouverture', (await p.inputValue('#disposition')) === 'instagram',
+     await p.inputValue('#disposition'));
+  ok('le coin du QR est conservé', (await p.inputValue('#r-qr_position')) === 'top-right');
+  ok('la hauteur du texte est conservée', Math.abs(Number(await p.inputValue('#r-bloc_y')) - 0.7) < 0.011,
+     await p.inputValue('#r-bloc_y'));
+  ok('l’aperçu rouvre au bon format', Math.abs((await forme()) - 0.8) < 0.03);
+
+  // Le bouton « réglages du gabarit » remet l'apparence d'usine.
+  await p.click('#apparence-defaut');
+  await p.waitForTimeout(900);
+  ok('« réglages du gabarit » restaure les valeurs d’usine',
+     (await p.inputValue('#r-qr_position')) === 'bottom-left'
+     && Math.abs(Number(await p.inputValue('#r-bloc_y')) - 0.8) < 0.011);
+
   console.log('\n━━ 12. Comptes, rôles et offres ━━');
   await connexion(p, ADMIN.email, ADMIN.mdp);
 
@@ -432,7 +494,18 @@ const run = async () => {
   const a = await anon.newPage();
   // Le menu ne doit jamais proposer deux fois la même destination.
   await connexion(p, ADMIN.email, ADMIN.mdp);
-  const entrees = (await p.locator('.barre nav a').allInnerTexts()).map((t) => t.trim());
+  // `textContent` et non `innerText` : depuis que l'administration vit dans
+  // un déroulant, ses liens sont dans le document mais masqués tant qu'on ne
+  // l'ouvre pas — `innerText` les rendait tous vides, donc tous identiques.
+  const entrees = (await p.locator('.barre nav a').evaluateAll(
+    (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
+  ));
+  ok('les cinq destinations sont sous un seul intitulé',
+     (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
+     && (await p.locator('.barre .deroulant .volet a').count()) === 5);
+  ok('notifications et déconnexion restent hors du déroulant',
+     (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
+     && (await p.locator('.barre nav > form[action*="deconnexion"] button').count()) === 1);
   ok('aucune entrée de menu en double', new Set(entrees).size === entrees.length,
      entrees.join(' · '));
   ok('le bouton du menu reste lisible',
@@ -475,8 +548,24 @@ const run = async () => {
     (() => { window.scrollTo(400, 0); const x = window.scrollX; window.scrollTo(0, 0); return x; })()
   `);
   ok('la page ne glisse pas de côté', glisse === 0, `déplacement de ${glisse} px`);
-  ok('le comparatif défile dans son propre cadre',
-     await t.evaluate(`(() => { const c = document.querySelector('.comparatif'); return c.scrollWidth > c.clientWidth; })()`));
+  ok('les décors s’affichent un par ligne sur téléphone',
+     await t.evaluate(`
+       (() => { const v = [...document.querySelectorAll('.vitrines .vignette')];
+                if (v.length < 2) return true;
+                return v[0].getBoundingClientRect().top !== v[1].getBoundingClientRect().top; })()
+     `));
+  ok('le comparatif se lit sans défilement latéral',
+     await t.evaluate(`
+       (() => { const c = document.querySelector('.comparatif');
+                return c.scrollWidth <= c.clientWidth + 1; })()
+     `));
+  ok('chaque verdict rappelle sa colonne',
+     await t.evaluate(`
+       (() => { const c = document.querySelector('.comparatif tbody td');
+                return getComputedStyle(c, '::before').content.includes('Générateurs'); })()
+     `));
+  ok('le tableau garde sa structure pour les lecteurs d’écran',
+     (await t.locator('.comparatif thead th').count()) === 3);
 
   // Le menu doit être REPLIÉ à l'arrivée, puis s'ouvrir au doigt. Sans le
   // premier point, la page s'ouvre sur une liste de liens ; sans le second,

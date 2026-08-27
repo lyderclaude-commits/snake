@@ -30,12 +30,18 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
      * le lien public est donc redondant, et il disparaît.
      */
     $liens = match ($me['role'] ?? '') {
+        // Cinq destinations d'administration alignées dans la barre la
+        // remplissaient d'un bout à l'autre. Elles tiennent maintenant dans
+        // un seul groupe qui se déplie ; les notifications et la déconnexion
+        // restent dehors, ce sont les deux gestes qu'on ne veut pas chercher.
         'equipe' => [
-            ['?p=admin',     'Tableau de bord'],
-            ['?p=catalogue', 'Décors'],
-            ['?p=relecture', 'Relecture'],
-            ['?p=scan',      'Contrôle d’entrée'],
-            ['?p=comptes',   'Comptes'],
+            ['groupe', 'Administration', [
+                ['?p=admin',     'Tableau de bord'],
+                ['?p=catalogue', 'Décors'],
+                ['?p=relecture', 'Relecture'],
+                ['?p=scan',      'Contrôle d’entrée'],
+                ['?p=comptes',   'Comptes'],
+            ]],
         ],
         'partenaire' => [
             ['?p=decors',     'Le catalogue'],
@@ -50,6 +56,13 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
         ],
     };
     $ici = (string) ($_GET['p'] ?? 'accueil');
+
+    /** Un lien de menu, marqué s'il désigne la page courante. */
+    $lien = function (string $cible, string $nom) use ($ici): string {
+        $actif = str_starts_with($cible, '?p=' . $ici);
+        return '<a href="' . e(url($cible)) . '"' . ($actif ? ' aria-current="page"' : '') . '>'
+             . e($nom) . '</a>';
+    };
     ?>
 
     <?php
@@ -66,9 +79,26 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
         <span class="fermer"><?= icone('croix') ?></span>
       </summary>
       <nav>
-        <?php foreach ($liens as [$cible, $nom]):
-            $actif = str_starts_with($cible, '?p=' . $ici); ?>
-          <a href="<?= e(url($cible)) ?>"<?= $actif ? ' aria-current="page"' : '' ?>><?= e($nom) ?></a>
+        <?php foreach ($liens as $entree): ?>
+          <?php if ($entree[0] === 'groupe'):
+              [, $titre_groupe, $sous] = $entree;
+              // Marqué, pas déplié : un volet ouvert d'office recouvrirait le
+              // haut de la page qu'on vient d'ouvrir.
+              $dedans = false;
+              foreach ($sous as [$c, ]) {
+                  $dedans = $dedans || str_starts_with($c, '?p=' . $ici);
+              } ?>
+            <details class="deroulant">
+              <summary<?= $dedans ? ' aria-current="true"' : '' ?>>
+                <?= e($titre_groupe) ?><?= icone('chevron') ?>
+              </summary>
+              <div class="volet">
+                <?php foreach ($sous as [$c, $n]): ?><?= $lien($c, $n) ?><?php endforeach; ?>
+              </div>
+            </details>
+          <?php else: ?>
+            <?= $lien($entree[0], $entree[1]) ?>
+          <?php endif; ?>
         <?php endforeach; ?>
 
         <?php if ($me): ?>

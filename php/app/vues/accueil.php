@@ -117,7 +117,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <h2>Vos invités font <em>l’affiche</em></h2>
       <p>Une photo, un décor, trente secondes. La photo ne quitte jamais leur téléphone.</p>
     </div>
-    <div class="grille g4">
+    <div class="grille vitrines">
       <?php foreach ($vitrine as $d): ?>
         <a class="vignette" href="<?= e(url('?p=decor&slug=' . urlencode($d['slug']))) ?>">
           <img src="<?= e($d['cadre_url'] ?: url('public/cadres/bon-plan.png')) ?>" alt="" loading="lazy">
@@ -192,14 +192,16 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
           <?php foreach ($lignes as [$quoi, $eux, $nous]): ?>
             <tr>
               <th scope="row"><?= e($quoi) ?></th>
-              <td><?= $cellule($eux, false) ?></td>
-              <td class="nous"><?= $cellule($nous, true) ?></td>
+              <!-- `data-quoi` : sur téléphone le tableau devient une pile de
+                   cartes, l'en-tête disparaît, et chaque cellule doit alors
+                   rappeler elle-même de quelle colonne elle vient. -->
+              <td data-quoi="Générateurs classiques"><?= $cellule($eux, false) ?></td>
+              <td class="nous" data-quoi="Wakabi Boost"><?= $cellule($nous, true) ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
     </div>
-    <p class="aide indice-glisser">Faites glisser le tableau vers la gauche pour voir la colonne Wakabi Boost.</p>
   </div>
 </section>
 

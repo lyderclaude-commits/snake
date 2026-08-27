@@ -149,6 +149,30 @@ a{color:var(--primary-d);text-underline-offset:3px}
 .menu nav a.bouton{color:#fff;text-decoration:none}
 .menu nav a.bouton.fant{color:var(--ink)}
 
+/* Un groupe de liens dans la barre : l'administration compte cinq
+   destinations, elles tiennent sous un seul intitulé qui se déplie. Sur
+   téléphone le groupe s'efface et ses liens rejoignent la liste du menu :
+   deux volets emboîtés dans un panneau de 250 px, personne n'en veut. */
+.deroulant{position:relative}
+.deroulant > summary{
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;
+  color:var(--text2);font-size:.9rem;font-weight:600;white-space:nowrap;
+}
+.deroulant > summary::-webkit-details-marker{display:none}
+.deroulant > summary:hover,
+.deroulant > summary[aria-current]{color:var(--primary-d)}
+.deroulant > summary svg{width:15px;height:15px;stroke-width:2;transition:transform .15s}
+.deroulant[open] > summary svg{transform:rotate(180deg)}
+.deroulant > .volet{
+  display:flex;flex-direction:column;gap:1px;
+  position:absolute;right:0;top:calc(100% + 12px);min-width:210px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
+  padding:7px;box-shadow:0 20px 44px -20px rgba(15,23,42,.4);z-index:40;
+}
+.deroulant > .volet a{padding:9px 11px;border-radius:var(--r10)}
+.deroulant > .volet a:hover,
+.deroulant > .volet a[aria-current]{background:var(--bg2)}
+
 /* Chrome récent masque le contenu d'un <details> replié avec
    `content-visibility`, que `display` ne peut pas contredire. Sur grand
    écran, où le volet doit rester ouvert en permanence, il faut donc le
@@ -181,6 +205,17 @@ a{color:var(--primary-d);text-underline-offset:3px}
   .menu[open] > nav a:not(.bouton):hover,
   .menu[open] > nav a:not(.bouton)[aria-current]{background:var(--bg2)}
   .menu[open] > nav .sep{width:auto;height:1px;margin:6px 6px}
+  /* Dans le panneau du téléphone, le groupe s'efface : plus de bouton, plus
+     de volet flottant, ses liens rejoignent simplement la liste.
+     `::details-content` est le pseudo-élément par lequel Chrome masque un
+     <details> replié ; sans lui, le volet reste invisible quoi qu'on écrive
+     sur ses enfants. */
+  .deroulant > summary{display:none}
+  .deroulant::details-content{content-visibility:visible;block-size:auto}
+  .deroulant > .volet{
+    position:static;display:flex;flex-direction:column;gap:1px;
+    min-width:0;padding:0;background:none;border:0;box-shadow:none;
+  }
   .menu[open] > nav form{display:block;margin:4px 4px 0}
   .menu[open] > nav .bouton{width:100%;justify-content:center;margin:4px 0 0}
 }
@@ -282,6 +317,30 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .marche .rail{height:9px;background:var(--bg2);border-radius:999px;overflow:hidden;margin-top:5px}
 .marche .rail i{display:block;height:100%;background:var(--primary);border-radius:999px}
 .marche .taux{display:block;font-size:.75rem;color:var(--text3);margin-top:4px}
+
+/* ---- l'atelier d'apparence ----
+   Les réglages à gauche, l'aperçu à droite et COLLÉ : on règle en regardant,
+   sinon on règle à l'aveugle et on enregistre pour voir. */
+.atelier{display:grid;gap:22px;grid-template-columns:minmax(0,1fr) 320px;align-items:start}
+.reglages{display:grid;gap:0 18px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.reglage{margin-bottom:12px}
+.reglage label{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.reglage output{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.78rem;
+  font-weight:700;color:var(--primary-d);background:var(--primary-wash);
+  border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.reglage input[type=range]{margin-top:2px}
+.apercu-boite{position:sticky;top:78px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r16);padding:14px;display:grid;place-items:center;gap:8px}
+.apercu-boite canvas{border-radius:var(--r10);background:var(--paper);max-width:100%;height:auto;
+  box-shadow:0 14px 30px -18px rgba(15,23,42,.5)}
+.apercu-boite .aide{margin:0;text-align:center}
+@media(max-width:860px){
+  /* Sur téléphone l'aperçu passe DEVANT les réglages : il faut le voir en
+     tournant les curseurs, pas après avoir fait défiler la page. */
+  .atelier{grid-template-columns:1fr}
+  .apercu-boite{order:-1;position:sticky;top:70px;z-index:5}
+  .apercu-boite canvas{max-height:38vh}
+}
 
 /* La création de compte est repliée : la page sert d'abord à consulter la
    liste. Le formulaire se déplie quand on en a besoin, et reste ouvert si
@@ -473,6 +532,10 @@ details.qr p{border-top:1px solid var(--border);padding:15px 18px;margin:0;color
 /* Cinq canaux dans une grille de trois : le dernier resterait orphelin.
    Celui qui existe vraiment occupe la largeur restante. */
 .canaux{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+/* Les décors de la vitrine : quatre de front sur grand écran, mais UN SEUL
+   par ligne sur téléphone. À deux, la vignette tombe à 170 px et le décor
+   ne se voit plus — or c'est lui qu'on vient regarder. */
+.vitrines{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 @media(min-width:900px){ .canaux .canal.actif{grid-column:span 2} }
 
 /* Le repli de suppression : un bouton qui ouvre sa propre confirmation. */
@@ -536,12 +599,6 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
 .comparatif tbody tr:last-child td.nous{border-radius:0 0 var(--r10) var(--r10)}
 .comparatif tbody tr:hover th,
 .comparatif tbody tr:hover td:not(.nous){background:var(--bg)}
-
-/* Le tableau défile latéralement sous 760 px : sans un mot, personne ne
-   pense à le faire glisser, et la colonne qui porte l'argument reste
-   invisible. L'indice n'apparaît que là où il sert. */
-.indice-glisser{display:none;margin-top:10px;text-align:center}
-@media(max-width:760px){.indice-glisser{display:block}}
 
 /* --- le verdict d'une cellule : oui, non, ou une valeur ---
    `.verdict` et non `.marque` : cette dernière porte le logo dans l'en-tête,
@@ -651,3 +708,43 @@ input[type=file]::file-selector-button:hover{background:var(--primary-d)}
   input[type=range]{height:30px}
 }
 
+/* ============ le comparatif sur téléphone ============
+   Un tableau de trois colonnes ne rentre pas dans 358 px. Le faire défiler
+   de côté cache justement la colonne qui porte l'argument : personne ne
+   glisse un tableau qu'il n'a pas vu bouger. Chaque ligne devient donc une
+   carte — la fonctionnalité en titre, les deux verdicts dessous, celui de
+   Wakabi en pied coloré. Rien à faire glisser, rien à deviner. */
+@media(max-width:760px){
+  .comparatif{background:none;border:0;box-shadow:none;overflow:visible}
+  .comparatif table{min-width:0;font-size:.92rem}
+  /* L'en-tête ne disparaît pas : il reste lu par les lecteurs d'écran,
+     qui continuent d'associer chaque cellule à sa colonne. */
+  .comparatif thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .comparatif tbody,.comparatif tbody tr,.comparatif tbody th,.comparatif tbody td{display:block}
+  .comparatif tbody tr{
+    background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
+    padding:15px 16px 0;margin-bottom:12px;box-shadow:var(--ombre);overflow:hidden;
+  }
+  .comparatif tbody tr:hover th,
+  .comparatif tbody tr:hover td:not(.nous){background:transparent}
+  .comparatif tbody th{
+    padding:0 0 11px;border:0;background:none;
+    font-family:var(--display);font-size:1rem;font-weight:700;color:var(--ink);
+  }
+  .comparatif tbody td{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:10px 0;border-top:1px solid var(--border);border-left:0;border-radius:0;
+  }
+  .comparatif tbody td::before{
+    content:attr(data-quoi);flex:0 0 auto;
+    font-size:.75rem;font-weight:700;letter-spacing:.02em;color:var(--text3);
+  }
+  .comparatif tbody td .verdict,
+  .comparatif tbody td .valeur{text-align:right}
+  .comparatif tbody td.nous{
+    margin:0 -16px;padding:11px 16px;background:var(--primary-wash);
+    border-top-color:#D5E2FB;border-radius:0;
+  }
+  .comparatif tbody td.nous::before{color:var(--primary-d)}
+  .comparatif tbody tr:last-child td.nous{border-radius:0}
+}

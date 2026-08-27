@@ -10,7 +10,14 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SRC = 'scripts/frames-src';
-const OUT = 'public/frames';
+/**
+ * Deux destinations, un seul rendu.
+ *
+ * `public/frames` sert la version Next.js, `php/public/cadres` la version
+ * PHP. Rasteriser deux fois, c'est prendre le risque que les deux versions
+ * n'aient pas le même cadre — donc pas le même badge.
+ */
+const OUT = ['public/frames', 'php/public/cadres'];
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 const run = async () => {
@@ -27,9 +34,10 @@ const run = async () => {
       `<style>html,body{margin:0;padding:0;background:transparent}svg{display:block}</style>${svg}`,
     );
     const buf = await page.screenshot({ omitBackground: true, type: 'png' });
-    const out = join(OUT, file.replace(/\.svg$/, '.png'));
-    writeFileSync(out, buf);
-    console.log(`  ✓ ${out}  ${w}×${h}  ${(buf.length / 1024).toFixed(0)} Ko`);
+    for (const dossier of OUT) {
+      writeFileSync(join(dossier, file.replace(/\.svg$/, '.png')), buf);
+    }
+    console.log(`  ✓ ${file.replace(/\.svg$/, '.png')}  ${w}×${h}  ${(buf.length / 1024).toFixed(0)} Ko`);
     await page.close();
   }
   await browser.close();

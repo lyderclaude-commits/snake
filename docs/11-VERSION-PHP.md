@@ -24,8 +24,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **87 scénarios, 87 réussis** sur
-chacun, depuis le zip livré. La montée de version d'une installation déjà en
+Les deux ont été vérifiés de bout en bout : **103 scénarios, 103 réussis**
+sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
 
@@ -105,7 +105,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 87 scénarios, dans un vrai navigateur
+npm run php:e2e          # 103 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -115,7 +115,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 87 scénarios
+### Les 103 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -138,6 +138,9 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Le tableau de bord** | Cinq indicateurs avec leur variation, l'entonnoir en quatre étapes, la répartition des quatre offres |
 | **Le menu du téléphone** | Replié à l'arrivée, ouvert au doigt, refermé, jamais hors de l'écran — et déplié sans clic sur grand écran |
 | **La marque** | Le logo dans la barre, les portraits des témoignages |
+| **Les six gabarits** | Les six formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
+| **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
+| **Le menu de l'équipe** | Cinq destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
 | WhatsApp | Le repli « appui long » là où le téléchargement direct est inerte |
@@ -298,6 +301,53 @@ Une inscription publique démarre **toujours** en Découverte. Le bouton
 « Choisir Impact » de la vitrine transmet l'offre visée : la personne le lit
 sur le formulaire, et l'équipe reçoit une notification pour activer l'offre
 après paiement. C'est l'équipe qui bascule l'offre depuis **Comptes**.
+
+---
+
+## Les six gabarits
+
+Trois formats Wakabi, trois formats de réseau :
+
+| Gabarit | Canevas | Ratio | Ce qu'il vise |
+|---|---|---|---|
+| Bandeau bas | 1080 × 1080 | 1:1 | le format d'origine, texte sur une bande |
+| Coin & voile | 1080 × 1080 | 1:1 | texte en bas à gauche, sur un voile |
+| Story verticale | 1080 × 1920 | 9:16 | le statut WhatsApp |
+| **Post Instagram** | 1080 × 1350 | 4:5 | le format qui prend le plus de place dans le fil |
+| **Post Facebook** | 1080 × 1080 | 1:1 | carré, jamais recadré par le fil |
+| **TikTok & Reels** | 1080 × 1920 | 9:16 | tout est remonté au-dessus des boutons de l'appli |
+
+Le gabarit TikTok n'est pas une story renommée. L'application pose sa légende
+sur le cinquième du bas et ses boutons sur le bord droit : le bloc de texte
+descend donc à 65 % de la hauteur au lieu de 83 %, et **le QR passe en haut à
+gauche**, seul coin que TikTok laisse tranquille. Le filigrane, lui, reste en
+bas — les trois positions permises par le contrat sont toutes en bas ; en
+partage hors TikTok il est parfaitement visible.
+
+### Tout se règle, sauf l'essentiel
+
+Le formulaire d'un décor expose maintenant l'apparence : couleur et
+alignement du texte, position et largeur du bloc, taille de l'accroche et du
+prénom, coin et taille du QR, coin du filigrane. **L'aperçu suit chaque
+geste** : il est construit par le serveur, avec la fonction qui enregistre le
+décor, et dessiné par le renderer du Studio. Ce qu'on voit est ce qui sera
+enregistré.
+
+Trois choses ne se retirent pas, quoi qu'on règle : **le QR, le filigrane et
+l'emplacement photo**. Ce sont eux qui distinguent un badge Wakabi d'une
+image, et `valider_gabarit()` refuse un gabarit qui s'en passerait.
+
+En bas d'un décor, la bande réellement libre va de x = 0,24 (fin du QR et de
+sa zone de silence) à x = 0,74 (début du filigrane). Un bloc de texte qui en
+sort passe sous l'un des deux, et le pré-vol le refuse à la soumission.
+
+### Six cadres livrés
+
+`public/cadres/` contient un cadre par gabarit. Le formulaire propose
+« partez d'un cadre fourni » : de quoi créer un décor Instagram ou TikTok
+**sans passer par un graphiste**, le temps que les vrais visuels arrivent.
+Un fichier déposé dans ce dossier apparaît dans la liste tout seul, avec son
+format lu dans l'image.
 
 ---
 

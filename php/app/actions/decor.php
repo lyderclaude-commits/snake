@@ -85,12 +85,26 @@ if ($page === 'soumettre') {
 /* ---------------- création ---------------- */
 
 $erreur = null;
+
+/**
+ * Les clés d'apparence voyagent dans $valeurs comme les autres champs.
+ *
+ * Elles sont initialisées avec les valeurs de départ de la disposition : le
+ * formulaire montre donc dès l'ouverture ce que le gabarit vaut réellement,
+ * et non des curseurs à zéro.
+ */
+const CLES_APPARENCE = [
+    'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
+    'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
+];
+
 $valeurs = [
     'titre' => '', 'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
     'disposition' => 'bandeau', 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom',
     'champ_valeur' => 'Kossi', 'redirection' => 'https://wakabileguide.com/',
     'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'cadre_url' => '',
-];
+    'cadre_fourni' => '',
+] + apparence_par_defaut('bandeau');
 
 if ($modifie && !$post) {
     $g = json_lire($modifie['gabarit']);
@@ -100,13 +114,32 @@ if ($modifie && !$post) {
             $textes[$l['id']] = $l;
         }
     }
+    $claim = $textes['claim'] ?? [];
+    $champ = $textes['field'] ?? [];
+
     $valeurs = [
+        // L'apparence enregistrée est relue telle quelle : rouvrir un décor
+        // doit montrer le décor, pas les réglages d'usine de sa disposition.
+        'texte_couleur' => (string) ($claim['color'] ?? 'brand.paper'),
+        'texte_align' => (string) ($claim['align'] ?? 'left'),
+        'bloc_x' => (float) ($claim['rect']['x'] ?? 0.25),
+        'bloc_y' => (float) ($claim['rect']['y'] ?? 0.795),
+        'bloc_w' => (float) ($claim['rect']['w'] ?? 0.48),
+        'accroche_taille' => (float) ($claim['size'] ?? 0.058),
+        'champ_taille' => (float) ($champ['size'] ?? 0.03),
+        'qr_position' => (string) ($g['qr']['position'] ?? 'bottom-left'),
+        'qr_taille' => (float) ($g['qr']['size'] ?? 0.16),
+        'filigrane_position' => (string) ($g['watermark']['position'] ?? 'bottom-right'),
+        'cadre_fourni' => '',
         'titre' => $modifie['titre'],
         'sous_titre' => (string) $modifie['sous_titre'],
         'ville' => $modifie['ville'],
         'rubrique' => $modifie['rubrique'],
-        'disposition' => ($g['canvas']['ratio'] ?? '1:1') === '9:16' ? 'story'
-            : (($textes['claim']['uppercase'] ?? false) ? 'bandeau' : 'angle'),
+        // La disposition n'est pas stockée telle quelle : on la retrouve par
+        // le format et la mise en page. Avec six dispositions dont trois
+        // partagent leur ratio, le repère devient la position du QR et la
+        // hauteur du bloc de texte.
+        'disposition' => disposition_devinee($g),
         'accroche' => (string) ($textes['claim']['value'] ?? ''),
         'champ_libelle' => (string) ($textes['field']['placeholder'] ?? 'Ton prénom'),
         'champ_valeur' => (string) ($textes['field']['value'] ?? ''),
@@ -144,6 +177,16 @@ if ($post) {
         }
     }
 
+    // Un cadre livré avec l'application évite d'avoir à en dessiner un pour
+    // essayer un format : c'est ce qui rend les gabarits de réseau utilisables
+    // tout de suite, sans passer par un graphiste.
+    if (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['cadre_fourni'] !== '') {
+        $nom = basename($valeurs['cadre_fourni']);
+        if (isset(cadres_fournis()[$nom])) {
+            $valeurs['cadre_url'] = url('public/cadres/' . $nom);
+        }
+    }
+
     if (!$erreur && $valeurs['titre'] === '') {
         $erreur = 'Donnez un titre à votre décor.';
     } elseif (!$erreur && $valeurs['accroche'] === '') {
@@ -172,6 +215,7 @@ if ($post) {
                 'redirection_libelle' => $valeurs['redirection_libelle'],
                 'legende' => $valeurs['legende'],
                 'expire_le' => $valeurs['expire_le'],
+                'apparence' => array_intersect_key($valeurs, array_flip(CLES_APPARENCE)),
                 'cree_par' => $modifie ? $modifie['cree_par'] : ($u['role'] === 'equipe' ? 'equipe' : 'partenaire'),
                 'partenaire_id' => $u['role'] === 'partenaire' ? $u['id'] : null,
             ]);

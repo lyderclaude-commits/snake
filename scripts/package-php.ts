@@ -12,12 +12,17 @@ import { join } from 'node:path';
 const SORTIE = 'dist-php';
 const RACINE = join(SORTIE, 'wakabi-boost');
 
-console.log('→ bundle du Studio depuis src/core');
-execFileSync('npx', [
-  'esbuild', 'php/studio/entry.ts',
-  '--bundle', '--format=iife', '--target=es2019', '--minify',
-  '--outfile=php/public/studio.js', '--alias:@=./src',
-], { stdio: 'inherit' });
+console.log('→ bundles du Studio et de l’aperçu depuis src/core');
+for (const [source, sortie] of [
+  ['php/studio/entry.ts', 'php/public/studio.js'],
+  ['php/studio/apercu.ts', 'php/public/apercu.js'],
+]) {
+  execFileSync('npx', [
+    'esbuild', source,
+    '--bundle', '--format=iife', '--target=es2019', '--minify',
+    `--outfile=${sortie}`, '--alias:@=./src',
+  ], { stdio: 'inherit' });
+}
 
 rmSync(SORTIE, { recursive: true, force: true });
 mkdirSync(RACINE, { recursive: true });

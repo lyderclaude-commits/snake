@@ -194,6 +194,17 @@ export const DecorTemplate = z
     rubrique: z
       .enum(['gastronomie', 'evenements', 'hebergements', 'culture', 'campagne'])
       .default('campagne'),
+    /**
+     * La disposition d'origine, gardée telle quelle.
+     *
+     * Sans elle, rouvrir un décor obligeait à DEVINER son gabarit d'après le
+     * format et la casse du texte. Avec six dispositions dont trois partagent
+     * leur ratio, la devinette se trompait — et l'éditeur rouvrait le décor
+     * dans le mauvais gabarit, ce que la sauvegarde entérinait ensuite.
+     */
+    layout: z
+      .enum(['bandeau', 'angle', 'story', 'instagram', 'facebook', 'tiktok'])
+      .default('bandeau'),
 
     /* ================================================================
        CYCLE DE VIE & MODÉRATION

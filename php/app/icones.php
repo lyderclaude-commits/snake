@@ -36,6 +36,9 @@ function icone(string $nom): string
         // Croix — ce qu'elle n'apporte pas
         'croix' => '<path d="M6.5 6.5 17.5 17.5"/><path d="M17.5 6.5 6.5 17.5"/>',
 
+        // Chevron — un groupe de liens qui se déplie
+        'chevron' => '<path d="M6.5 9.5 12 15l5.5-5.5"/>',
+
         // Trois traits — le menu replié du mobile
         'menu' => '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
 

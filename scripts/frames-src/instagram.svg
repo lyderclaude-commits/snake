@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <defs>
+    <linearGradient id="ig-voile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0F172A" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#0F172A" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#0F172A" stop-opacity="0.88"/>
+    </linearGradient>
+    <linearGradient id="ig-filet" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F97316"/><stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <!-- Voile bas : le texte reste lisible sur n'importe quelle photo, sans
+       masquer le visage qui occupe le haut du cadre. -->
+  <rect x="0" y="740" width="1080" height="610" fill="url(#ig-voile)"/>
+  <!-- Filet de marque au-dessus du bloc de texte (y = 0,80 × 1350 = 1080) -->
+  <rect x="86" y="1036" width="908" height="8" rx="4" fill="url(#ig-filet)"/>
+  <!-- Encadrement -->
+  <rect x="8" y="8" width="1064" height="1334" rx="38" fill="none" stroke="#FFFFFF" stroke-width="10" opacity="0.9"/>
+  <!-- Pastille d'angle, à l'opposé du QR (bas-gauche) et du filigrane -->
+  <circle cx="948" cy="132" r="58" fill="#2563EB"/>
+  <circle cx="948" cy="132" r="34" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+</svg>

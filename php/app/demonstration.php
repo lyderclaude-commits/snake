@@ -1,9 +1,11 @@
 <?php
 /**
- * Contenu de départ — trois décors publiés, un en attente de relecture.
+ * Contenu de départ : six décors publiés, un en attente de relecture.
  *
  * Le décor en attente n'est pas décoratif : il permet de voir la file de
  * relecture et le rapport de pré-vol sans avoir à créer quoi que ce soit.
+ * Les trois derniers couvrent les formats de réseau, pour qu'on puisse
+ * comparer un badge Instagram, Facebook et TikTok dès l'installation.
  */
 
 declare(strict_types=1);
@@ -17,6 +19,12 @@ function installer_demonstration(string $admin_id): void
          'BON PLAN', 'Le nom du bon coin', 'Chez Léna', 'lome', 'gastronomie'],
         ['story-wakabi', 'Story Wakabi', 'Format vertical, pour le statut WhatsApp', 'story', 'story.png',
          'WAKABI', 'Ton prénom', 'Ama', 'all', 'campagne'],
+        ['post-instagram', 'Post Instagram', 'Format 4:5, celui qui prend le plus de place dans le fil',
+         'instagram', 'instagram.png', 'J’Y SERAI', 'Ton prénom', 'Ama', 'all', 'campagne'],
+        ['post-facebook', 'Post Facebook', 'Carré, jamais recadré par le fil',
+         'facebook', 'facebook.png', 'J’Y SERAI', 'Ton prénom', 'Kossi', 'all', 'campagne'],
+        ['post-tiktok', 'TikTok & Reels', 'Vertical, tout remonté au-dessus des boutons de l’appli',
+         'tiktok', 'tiktok.png', 'J’Y SERAI', 'Ton prénom', 'Ama', 'all', 'campagne'],
     ];
 
     foreach ($modeles as [$slug, $titre, $sous, $dispo, $cadre, $accroche, $libelle, $valeur, $ville, $rubrique]) {
