@@ -690,7 +690,14 @@ input[type=file]::file-selector-button:hover{background:var(--primary-d)}
    Ce qu'on voit et qu'on touche, c'est le <label>, écrit en français quelle
    que soit la langue du navigateur. */
 .pas{font-size:.82rem;font-weight:600;color:var(--text2);margin:0 0 6px}
-.fichier-natif{position:absolute;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0;overflow:hidden}
+/* `input[type=file]` est plus spécifique que `.fichier-natif` : sans le
+   sélecteur composé, la largeur du champ stylé l'emportait et le champ
+   « caché » gardait 100 % de large — assez pour faire déborder la page
+   de 130 px vers la droite, invisible mais bien là. */
+input[type=file].fichier-natif{
+  position:absolute;width:1px;height:1px;padding:0;margin:0;border:0;
+  opacity:0;overflow:hidden;clip-path:inset(50%);
+}
 .bouton.fichier{width:100%;justify-content:center;cursor:pointer}
 .bouton.fichier svg{width:19px;height:19px;flex:0 0 auto}
 .fichier-natif:focus-visible + .fichier{outline:2px solid var(--primary);outline-offset:2px}

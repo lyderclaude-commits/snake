@@ -416,6 +416,16 @@ const run = async () => {
      (await p.inputValue('#r-qr_position')) === 'bottom-left'
      && Math.abs(Number(await p.inputValue('#r-bloc_y')) - 0.8) < 0.011);
 
+  // Un champ « caché » resté à 100 % de large fait déborder toute la page
+  // sans qu'on le voie. On mesure le glissement là où ce champ vit.
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.waitForTimeout(500);
+  const glisseForm = await p.evaluate(`
+    (() => { window.scrollTo(400, 0); const x = window.scrollX; window.scrollTo(0, 0); return x; })()
+  `);
+  ok('le formulaire ne glisse pas de côté sur téléphone', glisseForm === 0, `${glisseForm} px`);
+  await p.setViewportSize({ width: 1280, height: 900 });
+
   console.log('\n━━ 12. Comptes, rôles et offres ━━');
   await connexion(p, ADMIN.email, ADMIN.mdp);
 
