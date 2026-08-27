@@ -12,6 +12,46 @@ declare(strict_types=1);
 const ROLES = ['participant', 'partenaire', 'equipe'];
 const KORIS_PAR_SCAN = 50;
 
+/**
+ * Les formules, telles qu'elles sont vendues sur la vitrine.
+ *
+ * Elles vivent ici et nulle part ailleurs : la page des offres, le
+ * formulaire de création de compte et la limite de campagnes lisent la même
+ * table. Une offre changée sur la vitrine sans l'être dans le produit est
+ * une promesse qu'on ne tient pas.
+ *
+ * `campagnes` et `telechargements` : -1 signifie sans limite.
+ */
+const FORMULES = [
+    'decouverte' => ['nom' => 'Découverte', 'prix' => 0,     'campagnes' => 1,  'telechargements' => 50],
+    'impact'     => ['nom' => 'Impact',     'prix' => 5000,  'campagnes' => 3,  'telechargements' => 500],
+    'croissance' => ['nom' => 'Croissance', 'prix' => 12000, 'campagnes' => 5,  'telechargements' => 2000],
+    'mouvement'  => ['nom' => 'Mouvement',  'prix' => 30000, 'campagnes' => -1, 'telechargements' => -1],
+];
+
+function role_libelle(?string $r): string
+{
+    return [
+        'participant' => 'Participant',
+        'partenaire' => 'Organisateur',
+        'equipe' => 'Équipe',
+    ][$r ?? ''] ?? (string) $r;
+}
+
+function formule_libelle(?string $cle): string
+{
+    return FORMULES[$cle ?? '']['nom'] ?? FORMULES['decouverte']['nom'];
+}
+
+/** Le quota d'un compte, ou -1 s'il n'y en a pas. L'équipe n'en a jamais. */
+function quota(array $u, string $quoi): int
+{
+    if (($u['role'] ?? '') === 'equipe') {
+        return -1;
+    }
+    return FORMULES[$u['formule'] ?? 'decouverte'][$quoi] ?? FORMULES['decouverte'][$quoi];
+}
+
 function hacher(string $mdp): string
 {
     return password_hash($mdp, PASSWORD_DEFAULT);
@@ -20,15 +60,17 @@ function hacher(string $mdp): string
 function creer_utilisateur(array $u): string
 {
     $id = nouvel_id();
+    $formule = $u['formule'] ?? 'decouverte';
     db()->prepare(
-        'INSERT INTO utilisateurs (id, email, mot_de_passe, nom, role, organisation, ville, cree_le)
-         VALUES (?,?,?,?,?,?,?,?)'
+        'INSERT INTO utilisateurs (id, email, mot_de_passe, nom, role, formule, organisation, ville, cree_le)
+         VALUES (?,?,?,?,?,?,?,?,?)'
     )->execute([
         $id,
         mb_strtolower(trim($u['email'])),
         hacher($u['mot_de_passe']),
         trim($u['nom']),
         $u['role'] ?? 'participant',
+        isset(FORMULES[$formule]) ? $formule : 'decouverte',
         $u['organisation'] ?? null,
         $u['ville'] ?? null,
         maintenant(),

@@ -2,7 +2,7 @@
   <section class="entete">
     <h1><?= $modifie ? 'Modifier le décor' : 'Nouveau décor' ?></h1>
     <?php if ($modifie): ?>
-      <p><?= e($modifie['titre']) ?> —
+      <p><?= e($modifie['titre']) ?>
         <span class="pastille <?= e($modifie['statut']) ?>"><?= e(statut_libelle($modifie['statut'])) ?></span>
       </p>
       <p class="aide">L’adresse du décor (<code>/<?= e($modifie['slug']) ?></code>) ne change pas :
@@ -27,7 +27,7 @@
         <select id="disposition" name="disposition">
           <?php foreach (dispositions() as $l): ?>
             <option value="<?= e($l['id']) ?>" <?= $valeurs['disposition'] === $l['id'] ? 'selected' : '' ?>>
-              <?= e($l['nom']) ?> — <?= e($l['aide']) ?>
+              <?= e($l['nom']) ?> : <?= e($l['aide']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -44,7 +44,7 @@
         le centre vide. Le SVG est refusé pour raison de sécurité.</p>
       </div>
       <?php if ($valeurs['cadre_url']): ?>
-        <div class="msg ok" style="margin:0">Cadre téléversé — il survivra à une erreur de saisie.</div>
+        <div class="msg ok" style="margin:0">Cadre téléversé : il survivra à une erreur de saisie.</div>
       <?php endif; ?>
     </div>
 
@@ -80,7 +80,7 @@
   <div class="carte plate" style="margin-top:18px">
     <h3 style="margin-bottom:10px">Ce que la relecture vérifie</h3>
     <ul style="color:var(--text2);margin:0;padding-left:1.1em;font-size:.92rem">
-      <li>La zone photo reste visible — un cadre opaque est refusé</li>
+      <li>La zone photo reste visible : un cadre opaque est refusé</li>
       <li>Les textes tiennent dans le cadre</li>
       <li>Aucun texte sous le filigrane ni sous le QR</li>
       <li>Format et poids du cadre soutenables en 3G</li>

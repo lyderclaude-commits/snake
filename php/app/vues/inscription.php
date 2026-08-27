@@ -1,13 +1,22 @@
 <div class="etroit">
   <h1 style="margin-bottom:.4em">Créer un compte</h1>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
+  <?php if (!empty($offre)): ?>
+    <div class="msg info">
+      <strong>Offre <?= e(formule_libelle($offre)) ?> demandée.</strong>
+      Créez votre compte : il démarre en Découverte, et l’équipe Wakabi active votre offre
+      dès réception du paiement. Vous n’avancez rien.
+    </div>
+  <?php endif; ?>
+
   <form method="post" class="carte">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+    <?php if (!empty($offre)): ?><input type="hidden" name="offre" value="<?= e($offre) ?>"><?php endif; ?>
     <div class="champ">
       <label for="role">Type de compte</label>
       <select id="role" name="role">
-        <option value="participant" <?= $valeurs['role'] === 'participant' ? 'selected' : '' ?>>Participant — je crée des badges</option>
-        <option value="partenaire" <?= $valeurs['role'] === 'partenaire' ? 'selected' : '' ?>>Organisateur — je crée des campagnes</option>
+        <option value="participant" <?= $valeurs['role'] === 'participant' ? 'selected' : '' ?>>Participant : je crée des badges</option>
+        <option value="partenaire" <?= $valeurs['role'] === 'partenaire' ? 'selected' : '' ?>>Organisateur : je crée des campagnes</option>
       </select>
     </div>
     <div class="champ"><label for="nom">Nom</label>

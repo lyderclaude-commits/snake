@@ -1,7 +1,7 @@
 <div class="contenu">
   <section class="entete">
     <h1>Contrôle d’entrée</h1>
-    <p>Scannez le QR du badge — un lecteur se comporte comme un clavier — ou saisissez son code.</p>
+    <p>Scannez le QR du badge (un lecteur se comporte comme un clavier) ou saisissez son code.</p>
   </section>
 
   <div class="grille g2" style="align-items:start">

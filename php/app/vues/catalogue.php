@@ -19,7 +19,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
     <div class="rangee" style="justify-content:space-between;align-items:flex-start">
       <div>
         <h1>Tous les décors</h1>
-        <p><?= $total ?> au total, tous statuts confondus — les vôtres et ceux des partenaires.</p>
+        <p><?= $total ?> au total, tous statuts confondus : les vôtres et ceux des partenaires.</p>
       </div>
       <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
     </div>
@@ -37,10 +37,10 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
     <?= $onglet('refuse', 'Refusés') ?>
     <?= $onglet('archive', 'Archivés') ?>
 
-    <form method="get" class="rangee" style="gap:6px;margin-left:auto;flex-wrap:nowrap">
+    <form method="get" class="rangee chercher">
       <input type="hidden" name="p" value="catalogue">
       <?php if ($filtre): ?><input type="hidden" name="statut" value="<?= e($filtre) ?>"><?php endif; ?>
-      <input type="text" name="q" value="<?= e($cherche) ?>" placeholder="Chercher un titre…" style="width:190px">
+      <input type="text" name="q" value="<?= e($cherche) ?>" placeholder="Chercher un titre…">
       <button class="bouton fant petit" type="submit">Chercher</button>
     </form>
   </div>
@@ -70,7 +70,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
             <span class="pastille <?= e($d['statut']) ?>"><?= e(statut_libelle($d['statut'])) ?></span>
           </div>
           <p class="aide" style="margin:3px 0 0">
-            /<?= e($d['slug']) ?> · <?= e($d['auteur_nom'] ?: '—') ?>
+            /<?= e($d['slug']) ?> · <?= e($d['auteur_nom'] ?: 'Équipe Wakabi') ?>
             (<?= $d['cree_par'] === 'equipe' ? 'équipe' : 'partenaire' ?>)
             · modifié le <?= e(substr($d['maj_le'], 0, 10)) ?>
           </p>

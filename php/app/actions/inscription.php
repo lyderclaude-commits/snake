@@ -1,7 +1,23 @@
 <?php
-/** Inscription — participant ou organisateur. */
+/** Inscription : participant ou organisateur. */
 $erreur = null;
 $valeurs = ['nom' => '', 'email' => '', 'role' => 'participant', 'organisation' => '', 'ville' => 'lome'];
+
+/**
+ * L'offre cliquée sur la vitrine suit jusqu'ici.
+ *
+ * Elle n'est PAS appliquée au compte : une offre payante s'active après
+ * paiement, pas en cochant une case. Elle sert à deux choses honnêtes :
+ * dire à la personne où elle en est, et prévenir l'équipe qu'un
+ * organisateur attend son activation.
+ */
+$offre = (string) ($_POST['offre'] ?? $_GET['offre'] ?? '');
+if (!isset(FORMULES[$offre]) || $offre === 'decouverte') {
+    $offre = '';
+}
+if ($offre !== '') {
+    $valeurs['role'] = 'partenaire';
+}
 
 if ($post) {
     verifier_csrf();
@@ -30,9 +46,24 @@ if ($post) {
             'organisation' => $valeurs['organisation'] ?: null,
             'ville' => $valeurs['ville'] ?: null,
         ]);
+        // Toute inscription publique démarre en Découverte, quelle que soit
+        // l'offre cliquée : c'est l'équipe qui active le reste.
+        if ($offre !== '') {
+            foreach (equipe() as $membre) {
+                notifier($membre['id'], 'compte', 'Une offre ' . formule_libelle($offre) . ' est demandée',
+                    $valeurs['nom'] . ' (' . $valeurs['email'] . ') vient de s’inscrire en visant l’offre '
+                    . formule_libelle($offre) . '. Son compte est en Découverte en attendant l’activation.',
+                    '?p=comptes');
+            }
+        }
         connecter($id);
         rediriger($valeurs['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte');
     }
 }
 
-vue('inscription', ['titre' => 'Créer un compte — Wakabi Boost', 'erreur' => $erreur, 'valeurs' => $valeurs]);
+vue('inscription', [
+    'titre' => 'Créer un compte · Wakabi Boost',
+    'erreur' => $erreur,
+    'valeurs' => $valeurs,
+    'offre' => $offre,
+]);

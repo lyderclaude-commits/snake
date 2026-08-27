@@ -17,7 +17,9 @@ require __DIR__ . '/app/depot.php';
 require __DIR__ . '/app/prevol.php';
 require __DIR__ . '/app/qr.php';
 require __DIR__ . '/app/icones.php';
+require __DIR__ . '/app/avatars.php';
 
+assurer_schema();
 demarrer_session();
 
 $page = (string) ($_GET['p'] ?? 'accueil');
@@ -123,10 +125,15 @@ switch ($page) {
     case 'admin':
         exiger_role('equipe');
         vue('admin', [
-            'titre' => 'Administration',
+            'titre' => 'Tableau de bord',
             'stats' => tableau_de_bord(),
+            'semaine' => indicateurs(7),
+            'boucle' => entonnoir(30),
             'serie' => telechargements_par_jour(),
-            'derniers' => decors_tous(),
+            'formules' => comptes_par_formule(),
+            'roles' => comptes_par_role(),
+            'nouveaux' => comptes_recents(6),
+            'tetes' => decors_en_tete(6),
         ]);
 
     case 'catalogue':
@@ -139,6 +146,7 @@ switch ($page) {
         require RACINE . '/app/actions/relecture.php';
 
     case 'comptes':
+    case 'creer-compte':
     case 'role':
     case 'suspendre':
         require RACINE . '/app/actions/comptes.php';

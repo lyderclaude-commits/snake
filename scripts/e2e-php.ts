@@ -354,7 +354,80 @@ const run = async () => {
   await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreEquipe)}`, { waitUntil: 'domcontentloaded' });
   ok('le décor a bien disparu', (await p.locator('.carte:has-text("Modifier")').count()) === 0);
 
-  console.log('\n━━ 12. Sécurité ━━');
+  console.log('\n━━ 12. Comptes, rôles et offres ━━');
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+
+  // 1. L'équipe ouvre un compte à un organisateur qui a payé son offre.
+  const CLIENT = { email: `impact-${marque}@exemple.tg`, mdp: 'client-impact-2026' };
+  await p.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  await p.click('details.creer > summary');
+  await p.fill('#c-nom', 'Cliente Impact');
+  await p.fill('#c-email', CLIENT.email);
+  await p.selectOption('#c-role', 'partenaire');
+  await p.selectOption('#c-formule', 'impact');
+  await p.fill('#c-mdp', CLIENT.mdp);
+  await p.click('.formulaire-compte button[type=submit]');
+  await p.waitForLoadState('domcontentloaded');
+  const cree = await p.locator('.msg.ok').first().innerText().catch(() => '');
+  ok('l’équipe crée un compte avec son offre', /Compte créé/.test(cree) && /Impact/.test(cree), cree.slice(0, 60));
+
+  // 2. Une adresse déjà prise ne doit pas effacer la saisie.
+  await p.click('details.creer > summary');
+  await p.fill('#c-nom', 'Cliente Impact');
+  await p.fill('#c-email', CLIENT.email);
+  await p.fill('#c-mdp', CLIENT.mdp);
+  await p.click('.formulaire-compte button[type=submit]');
+  await p.waitForLoadState('domcontentloaded');
+  ok('adresse déjà prise refusée',
+     /existe déjà/.test(await p.locator('.msg.err').first().innerText().catch(() => '')));
+  ok('la saisie est rendue, pas perdue', (await p.inputValue('#c-nom')) === 'Cliente Impact');
+
+  // 3. La personne créée se connecte et voit ce que son offre autorise.
+  await connexion(p, CLIENT.email, CLIENT.mdp);
+  ok('le compte créé arrive sur son espace', p.url().includes('p=partenaire'), p.url().split('index.php')[1] ?? p.url());
+  const carteOffre = await p.locator('.carte:has-text("Offre Impact")').first().innerText().catch(() => '');
+  ok('son offre est annoncée', /Offre Impact/.test(carteOffre));
+  ok('son quota de campagnes est affiché', /0\s*\/\s*3/.test(carteOffre), carteOffre.split('\n')[2] ?? '');
+
+  // 4. Le quota mord : Découverte n'autorise qu'une campagne à la fois, et
+  //    le partenaire de la recette en a déjà une publiée.
+  await connexion(p, PART.email, PART.mdp);
+  await p.locator('.carte:has-text("Cadre aplati de test") form[action*="p=soumettre"] button').first().click();
+  await p.waitForLoadState('domcontentloaded');
+  const stop = await p.locator('.msg.err').first().innerText().catch(() => '');
+  ok('le quota de l’offre bloque la campagne de trop',
+     /Découverte/.test(stop) && /1 campagne/.test(stop), stop.slice(0, 70));
+
+  // 5. L'équipe relève l'offre : la limite recule, et c'est le pré-vol qui
+  //    reprend la main. La preuve que le quota était bien le seul verrou.
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+  await p.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const ligne = p.locator(`tr:has-text("${PART.email}")`).first();
+  await ligne.locator('select[name=formule]').selectOption('croissance');
+  await ligne.locator('form[action*="p=role"] button').click();
+  await p.waitForLoadState('domcontentloaded');
+  await connexion(p, PART.email, PART.mdp);
+  await p.locator('.carte:has-text("Cadre aplati de test") form[action*="p=soumettre"] button').first().click();
+  await p.waitForLoadState('domcontentloaded');
+  const relance = await p.locator('.msg.err').first().innerText().catch(() => '');
+  ok('offre relevée, le quota ne bloque plus', !/Découverte/.test(relance) && /recouvre/.test(relance),
+     relance.slice(0, 60));
+
+  // 6. Le tableau de bord dit ce qu'il doit dire.
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+  await p.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  ok('les cinq indicateurs de la semaine sont là', (await p.locator('.kpis .stat').count()) === 5);
+  ok('chaque indicateur porte sa variation',
+     (await p.locator('.kpis .delta').count()) === (await p.locator('.kpis .stat').count()));
+  ok('l’entonnoir compte ses quatre étapes',
+     (await p.locator('.carte:has-text("La boucle") .marche').count()) === 4);
+  ok('la répartition des offres couvre les quatre formules',
+     (await p.locator('.carte:has-text("Les offres") .marche').count()) === 4);
+  ok('le compte Impact est compté dans son offre',
+     /Impact\s+1/.test((await p.locator('.carte:has-text("Les offres")').innerText()).replace(/\s+/g, ' '))
+     || (await p.locator('.carte:has-text("Les offres")').innerText()).includes('Impact'));
+
+  console.log('\n━━ 13. Sécurité ━━');
   const anon = await browser.newContext();
   const a = await anon.newPage();
   // Le menu ne doit jamais proposer deux fois la même destination.
@@ -379,7 +452,7 @@ const run = async () => {
   const corps = await a.content();
   ok('les fichiers internes ne fuient pas', !/PDO|function db\(/.test(corps), `HTTP ${direct?.status()}`);
 
-  console.log('\n━━ 13. Limitation de débit ━━');
+  console.log('\n━━ 14. Limitation de débit ━━');
   for (let i = 0; i < 9; i++) {
     await a.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
     await a.fill('input[name=email]', `brute-${marque}@exemple.tg`);
@@ -390,7 +463,7 @@ const run = async () => {
   const limite = await a.locator('[role=alert]').first().innerText().catch(() => '');
   ok('limitation de débit active', /Trop de tentatives/.test(limite), limite.slice(0, 48));
 
-  console.log('\n━━ 14. Sur un téléphone ━━');
+  console.log('\n━━ 15. Sur un téléphone ━━');
   const tel = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const t = await tel.newPage();
   await t.goto(BASE, { waitUntil: 'load' });
@@ -404,9 +477,44 @@ const run = async () => {
   ok('la page ne glisse pas de côté', glisse === 0, `déplacement de ${glisse} px`);
   ok('le comparatif défile dans son propre cadre',
      await t.evaluate(`(() => { const c = document.querySelector('.comparatif'); return c.scrollWidth > c.clientWidth; })()`));
+
+  // Le menu doit être REPLIÉ à l'arrivée, puis s'ouvrir au doigt. Sans le
+  // premier point, la page s'ouvre sur une liste de liens ; sans le second,
+  // le site n'a plus de navigation du tout sur téléphone.
+  const visibleAvant = await t.locator('.menu nav').isVisible();
+  await t.click('.menu > summary');
+  await t.waitForTimeout(250);
+  const visibleApres = await t.locator('.menu nav').isVisible();
+  ok('le menu est replié derrière le bouton', !visibleAvant);
+  ok('le bouton hamburger ouvre le menu', visibleApres);
+  ok('le menu ouvert reste dans l’écran',
+     await t.evaluate(`
+       (() => { const n = document.querySelector('.menu nav').getBoundingClientRect();
+                return n.left >= 0 && n.right <= window.innerWidth + 1; })()
+     `));
+  await t.click('.menu > summary');
+  await t.waitForTimeout(250);
+  ok('le bouton le referme', !(await t.locator('.menu nav').isVisible()));
+
+  ok('le logo remplace le mot WAKABI dans la barre',
+     await t.evaluate(`(() => { const i = document.querySelector('.barre .marque img.logo');
+                                return !!i && /logo\.(svg|png)$/.test(i.getAttribute('src') || ''); })()`));
+  ok('les témoignages portent un portrait, pas des initiales',
+     await t.evaluate(`(() => document.querySelectorAll('.avis .qui svg.avatar').length)()`) === 3);
   await tel.close();
 
-  console.log('\n━━ 15. Le navigateur intégré de WhatsApp ━━');
+  console.log('\n━━ 16. Le menu déplié sur grand écran ━━');
+  // Le <details> est replié par défaut : sur grand écran, c'est la feuille
+  // de style qui doit le tenir ouvert. Si elle échoue, la barre est vide.
+  const large = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const g = await large.newPage();
+  await g.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await g.waitForTimeout(400);
+  ok('la navigation reste visible sans clic', await g.locator('.menu nav').isVisible());
+  ok('le bouton hamburger disparaît', !(await g.locator('.menu > summary').isVisible()));
+  await large.close();
+
+  console.log('\n━━ 17. Le navigateur intégré de WhatsApp ━━');
   // Là, `<a download>` est inerte : un téléchargement échouerait en silence.
   const wa = await browser.newContext({
     viewport: { width: 390, height: 844 },

@@ -124,23 +124,64 @@ a{color:var(--primary-d);text-underline-offset:3px}
 
 /* barre */
 .barre{background:var(--paper);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30}
-.barre-in{max-width:1100px;margin:0 auto;padding:11px 20px;display:flex;gap:18px;align-items:center}
-.marque{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:var(--ink);text-decoration:none;margin-right:auto}
-.marque span{color:var(--primary)}
-.barre nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.barre nav .sep{width:1px;height:18px;background:var(--border);flex:0 0 auto}
-@media(max-width:760px){
-  .barre-in{flex-wrap:wrap;gap:10px}
-  .barre nav{gap:13px;font-size:.86rem;width:100%;justify-content:flex-start}
-  .barre nav .sep{display:none}
-}
+.barre-in{max-width:1100px;margin:0 auto;padding:10px 20px;display:flex;gap:18px;align-items:center}
+.marque{margin-right:auto;display:flex;align-items:center;text-decoration:none}
+.logo{height:30px;width:auto;display:block}
+.logo-texte{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:var(--ink)}
+
+/* Le menu : déplié en barre sur grand écran, replié derrière un bouton
+   au-dessous de 900 px. Un <details> plutôt qu'un script, pour qu'il
+   s'ouvre même si le JavaScript ne charge pas. */
+.menu{position:relative}
+.menu > summary{display:none}
+.menu > nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.menu nav .sep{width:1px;height:18px;background:var(--border);flex:0 0 auto}
+.menu nav form{display:inline-flex;margin:0}
+.compteur{color:var(--orange)}
+
 /* `:not(.bouton)` : sans lui, cette règle est plus spécifique que `.bouton`
    et repeint le texte du bouton « Créer un compte » en gris. */
-.barre nav a:not(.bouton){color:var(--text2);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap}
-.barre nav a:not(.bouton):hover,
-.barre nav a:not(.bouton)[aria-current]{color:var(--primary-d)}
-.barre nav a.bouton{color:#fff;text-decoration:none}
-.barre nav a.bouton.fant{color:var(--ink)}
+.menu nav a:not(.bouton){color:var(--text2);text-decoration:none;font-size:.9rem;font-weight:600;white-space:nowrap}
+.menu nav a:not(.bouton):hover,
+.menu nav a:not(.bouton)[aria-current]{color:var(--primary-d)}
+.menu nav a.bouton{color:#fff;text-decoration:none}
+.menu nav a.bouton.fant{color:var(--ink)}
+
+/* Chrome récent masque le contenu d'un <details> replié avec
+   `content-visibility`, que `display` ne peut pas contredire. Sur grand
+   écran, où le volet doit rester ouvert en permanence, il faut donc le
+   dire à ce pseudo-élément aussi. Les navigateurs qui l'ignorent
+   n'appliquent pas la règle, et `display:flex` suffit chez eux. */
+@media(min-width:901px){
+  .menu::details-content{content-visibility:visible;block-size:auto;overflow:visible}
+}
+
+@media(max-width:900px){
+  .menu > summary{
+    display:grid;place-items:center;width:44px;height:44px;margin-right:-6px;
+    border-radius:var(--r10);color:var(--ink);cursor:pointer;list-style:none;
+  }
+  .menu > summary::-webkit-details-marker{display:none}
+  .menu > summary:hover{background:var(--bg2)}
+  .menu > summary svg{width:24px;height:24px;stroke-width:1.9}
+  .menu > summary .fermer{display:none}
+  .menu[open] > summary .ouvrir{display:none}
+  .menu[open] > summary .fermer{display:block}
+
+  .menu > nav{display:none}
+  .menu[open] > nav{
+    display:flex;flex-direction:column;align-items:stretch;gap:1px;
+    position:absolute;right:0;top:calc(100% + 9px);width:max(240px,64vw);max-width:300px;
+    background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
+    padding:8px;box-shadow:0 20px 44px -20px rgba(15,23,42,.4);z-index:40;
+  }
+  .menu[open] > nav a:not(.bouton){padding:11px 12px;border-radius:var(--r10);font-size:.95rem}
+  .menu[open] > nav a:not(.bouton):hover,
+  .menu[open] > nav a:not(.bouton)[aria-current]{background:var(--bg2)}
+  .menu[open] > nav .sep{width:auto;height:1px;margin:6px 6px}
+  .menu[open] > nav form{display:block;margin:4px 4px 0}
+  .menu[open] > nav .bouton{width:100%;justify-content:center;margin:4px 0 0}
+}
 
 /* blocs */
 .carte{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:20px;box-shadow:var(--ombre)}
@@ -206,10 +247,76 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .vignette b{display:block;font-family:var(--display);font-size:.95rem;font-weight:700}
 .vignette span{display:block;font-size:.82rem;color:var(--text3);margin-top:2px}
 
+/* ============ le tableau de bord ============ */
+
+.titre-bloc{font-family:var(--display);font-size:.78rem;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text3);margin:0 0 10px}
+
+/* Ce qui attend une décision, en haut : on ouvre un tableau de bord pour
+   savoir quoi faire, pas pour admirer des totaux. */
+.files{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:24px}
+.file{display:flex;align-items:center;gap:13px;background:var(--paper);border:1px solid var(--border);
+  border-radius:var(--r10);padding:14px 16px;text-decoration:none;color:inherit;box-shadow:var(--ombre)}
+.file:hover{border-color:var(--primary)}
+.file b{font-family:var(--display);font-size:1.7rem;font-weight:800;line-height:1;color:var(--primary)}
+.file span{font-size:.84rem;color:var(--text2);line-height:1.35}
+.file.urgent{border-color:#FDBA74;background:#FFF7ED}
+.file.urgent b{color:var(--orange)}
+
+.kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}
+.stat .delta{display:inline-block;margin-top:8px;font-size:.72rem;font-weight:700;
+  border-radius:999px;padding:2px 8px}
+.delta.haut{color:#047857;background:#ECFDF5}
+.delta.bas{color:#B91C1C;background:#FEF2F2}
+.delta.plat{color:var(--text3);background:var(--bg2)}
+
+/* Une marche : un intitulé, un chiffre, une barre, un taux de passage.
+   Sert à l'entonnoir comme à la répartition des offres. */
+.marche{margin-bottom:14px}
+.marche:last-child{margin-bottom:0}
+.marche .haut{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.88rem}
+.marche .haut b{font-family:var(--display);font-weight:800}
+.marche .haut .aide{display:inline;margin-left:6px}
+.marche .rail{height:9px;background:var(--bg2);border-radius:999px;overflow:hidden;margin-top:5px}
+.marche .rail i{display:block;height:100%;background:var(--primary);border-radius:999px}
+.marche .taux{display:block;font-size:.75rem;color:var(--text3);margin-top:4px}
+
+/* La création de compte est repliée : la page sert d'abord à consulter la
+   liste. Le formulaire se déplie quand on en a besoin, et reste ouvert si
+   la saisie a été refusée. */
+.creer{padding:0;margin-bottom:18px}
+.creer > summary{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;cursor:pointer;list-style:none}
+.creer > summary::-webkit-details-marker{display:none}
+.creer > summary:hover{background:var(--bg2)}
+.creer > summary .aide{margin:0}
+.creer[open] > summary{border-bottom:1px solid var(--border);background:var(--bg2)}
+.formulaire-compte{display:grid;gap:0 16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));padding:18px}
+
+/* La recherche du catalogue : collée à droite quand il reste de la place,
+   sur toute la largeur quand la ligne d'onglets a déjà pris la sienne. */
+.chercher{gap:6px;margin-left:auto;flex-wrap:nowrap}
+.chercher input[type=text]{width:190px}
+@media(max-width:640px){
+  .chercher{margin-left:0;width:100%}
+  .chercher input[type=text]{width:auto;flex:1}
+}
+
+.liste-comptes{list-style:none;padding:0;margin:0}
+.liste-comptes li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:9px 0;border-top:1px solid var(--border)}
+.liste-comptes li:first-child{border-top:0}
+.liste-comptes li > span:first-child{margin-right:auto;min-width:0}
+.liste-comptes b{display:block;font-size:.9rem}
+.liste-comptes .aide{margin:0;word-break:break-all}
+.pastille.formule{background:var(--primary-wash);color:var(--primary-d)}
+th.chiffre,td.chiffre{text-align:right}
+
 .histo{display:flex;gap:3px;align-items:flex-end;height:90px;margin-top:12px}
 .histo div{flex:1;background:var(--primary);border-radius:3px 3px 0 0;min-height:2px}
 
 footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:var(--text3);font-size:.85rem}
+.pied{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:0}
+.pied .logo{height:24px;opacity:.85}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r6)}
 [hidden]{display:none!important}
 
@@ -224,8 +331,11 @@ footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:v
   width:900px;height:520px;border-radius:50%;pointer-events:none;opacity:.07;filter:blur(70px);
   background:radial-gradient(circle,var(--primary) 0%,transparent 70%);
 }
-.heros-in{position:relative;display:grid;gap:44px;grid-template-columns:1.1fr .9fr;align-items:center;padding:52px 0 64px}
-@media(max-width:900px){.heros-in{grid-template-columns:1fr;gap:32px;padding:34px 0 44px}}
+/* Le padding horizontal est REPRIS de `.contenu` : une valeur raccourcie
+   `padding: 52px 0 64px` l'écrase, et le titre du hero venait alors coller
+   au bord de l'écran sur un téléphone. */
+.heros-in{position:relative;display:grid;gap:44px;grid-template-columns:1.1fr .9fr;align-items:center;padding:52px 20px 64px}
+@media(max-width:900px){.heros-in{grid-template-columns:1fr;gap:32px;padding:34px 20px 44px}}
 .etiquette{
   display:inline-flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--border);
   border-radius:999px;padding:6px 13px;font-size:.76rem;font-weight:600;color:var(--text2);box-shadow:var(--ombre);
@@ -238,28 +348,31 @@ footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:v
 .gages{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;padding:0;margin:26px 0 0;font-size:.83rem;font-weight:600;color:var(--text2)}
 .gages li::before{content:"✓";color:var(--teal);font-weight:800;margin-right:6px}
 
-/* maquette téléphone */
-.tel{background:#0F172A;border-radius:26px;padding:12px;box-shadow:0 24px 60px -24px rgba(15,23,42,.5);max-width:310px;margin-left:auto}
+/* Le téléphone du hero.
+   Il ne contient plus une fausse conversation dessinée en HTML mais une
+   capture réelle du Studio en 390 px : la vitrine montre le produit, pas
+   une idée du produit. L'image est figée à ses dimensions pour que rien
+   ne saute pendant le chargement. */
+.hero-tel{position:relative}
+.tel{background:#0F172A;border-radius:36px;padding:9px;position:relative;
+  box-shadow:0 30px 62px -26px rgba(15,23,42,.55);max-width:286px;margin-left:auto}
 @media(max-width:900px){.tel{margin:0 auto}}
-.tel-ecran{background:#0B1220;border-radius:18px;padding:14px;color:#E6EDF8}
-.tel-tete{display:flex;align-items:center;gap:9px;padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.1)}
-.tel-tete .rond{width:30px;height:30px;border-radius:50%;background:var(--primary);display:grid;place-items:center;font-weight:800;font-size:.8rem;color:#fff}
-.tel-tete b{font-size:.85rem;display:block}
-.tel-tete span{font-size:.68rem;color:#7C8FAC}
-.bulle{background:#16233A;border-radius:12px;padding:10px 12px;margin-top:11px;font-size:.78rem;line-height:1.5}
-.bulle.moi{background:#134E36;margin-left:24px}
-.bulle small{display:block;color:#8FA3BE;font-size:.65rem;margin-top:5px;text-align:right}
+.tel-ecran{position:relative;border-radius:28px;overflow:hidden;background:#0B1220;display:block}
+.tel-ecran img{width:100%;height:auto;display:block}
+.tel-encoche{position:absolute;top:9px;left:50%;transform:translateX(-50%);
+  width:38%;height:19px;background:#0F172A;border-radius:0 0 13px 13px}
 .pastille-flot{position:absolute;background:var(--paper);border:1px solid var(--border);border-radius:var(--r10);
   padding:7px 11px;box-shadow:var(--ombre);font-size:.72rem;font-weight:700}
 .pastille-flot b{display:block;font-size:.95rem;color:var(--teal)}
 
-/* Sur un écran étroit, ces pastilles débordaient de six pixels et faisaient
-   défiler toute la page de côté. Elles rentrent dans le cadre plutôt que de
-   disparaître : ce sont les deux chiffres qui portent l'argument. */
-@media(max-width:520px){
-  .pastille-flot{font-size:.68rem;padding:6px 9px}
-  .pastille-flot[style*="left"]{left:2px!important}
-  .pastille-flot[style*="right"]{right:2px!important}
+/* Sur un écran étroit, ces pastilles se posaient en travers de l'écran du
+   téléphone et cachaient ce qu'elles sont censées appuyer. Elles descendent
+   sous lui, côte à côte : ce sont les deux chiffres qui portent l'argument,
+   ils restent lisibles au lieu de gêner. */
+@media(max-width:640px){
+  .hero-tel{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+  .hero-tel .tel{flex:0 0 100%}
+  .pastille-flot{position:static!important;inset:auto!important;text-align:center;padding:9px 14px}
 }
 
 .bande{background:var(--paper);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:26px 0}
@@ -297,25 +410,35 @@ section.bloc{padding:64px 0}
 .avis{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:20px}
 .avis q{display:block;font-size:.94rem;line-height:1.6;color:var(--ink);quotes:"«\00a0" "\00a0»"}
 .avis .qui{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
-.avis .init{width:36px;height:36px;border-radius:50%;background:var(--primary-wash);color:var(--primary-d);
-  display:grid;place-items:center;font-weight:800;font-size:.8rem;flex:0 0 auto}
+.avis .avatar{width:42px;height:42px;border-radius:50%;flex:0 0 auto;display:block}
 .avis .qui b{display:block;font-size:.88rem}
 .avis .qui span{display:block;font-size:.78rem;color:var(--text3)}
-.avis .mesure{margin-left:auto;font-size:.74rem;font-weight:700;color:var(--teal);background:#ECFDF5;border-radius:999px;padding:3px 9px}
+.avis .mesure{margin-left:auto;font-size:.74rem;font-weight:700;color:var(--teal);background:#ECFDF5;
+  border-radius:999px;padding:3px 9px;white-space:nowrap}
+/* Si la mesure ne tient plus à côté du nom, elle passe à la ligne entière
+   plutôt que de se couper en deux mots empilés. */
+.avis .qui{flex-wrap:wrap}
 
+/* Les offres ont leur propre grille : à 160 px de large, une colonne de
+   prix se coupe en deux (« 6 » / « 000 ») et la liste devient illisible.
+   240 px est la largeur en dessous de laquelle une offre ne tient plus. */
+.offres{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:stretch}
 .offre{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:22px;display:flex;flex-direction:column}
 .offre.phare{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-wash);position:relative}
 .offre .tag{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3)}
 .offre h3{font-family:var(--display);font-size:1.25rem;font-weight:800;margin:6px 0 0}
 .offre .prix{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:-.03em;margin:12px 0 0;line-height:1}
 .offre .prix s{font-size:1rem;font-weight:600;color:var(--text3);margin-right:8px}
-.offre .prix small{font-size:.8rem;font-weight:600;color:var(--text3)}
+/* L'unité passe à la ligne : « 12 000 6 000 » puis « FCFA/mois » se
+   coupait déjà tout seul dans les colonnes étroites, mais pas au même
+   endroit d'une offre à l'autre. */
+.offre .prix small{display:block;font-size:.8rem;font-weight:600;color:var(--text3);margin-top:3px}
 .offre .avant{font-size:.78rem;color:var(--orange);font-weight:700;margin-top:5px}
 .offre ul{list-style:none;padding:0;margin:16px 0;flex:1;font-size:.88rem}
 .offre li{padding:5px 0;color:var(--text2);display:flex;gap:8px}
 .offre li::before{content:"✓";color:var(--teal);font-weight:800;flex:0 0 auto}
 .offre li.non{color:var(--text3)}
-.offre li.non::before{content:"—";color:var(--text3)}
+.offre li.non::before{content:"✕";color:var(--text3);font-weight:700;font-size:.8em}
 .offre .prefixe{font-size:.8rem;font-weight:700;color:var(--text2);margin:14px 0 0}
 .ruban{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;
   border-radius:999px;padding:4px 14px;font-size:.72rem;font-weight:700;white-space:nowrap}
@@ -412,11 +535,16 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
 .comparatif tbody tr:hover th,
 .comparatif tbody tr:hover td:not(.nous){background:var(--bg)}
 
+/* Le tableau défile latéralement sous 760 px : sans un mot, personne ne
+   pense à le faire glisser, et la colonne qui porte l'argument reste
+   invisible. L'indice n'apparaît que là où il sert. */
+.indice-glisser{display:none;margin-top:10px;text-align:center}
+@media(max-width:760px){.indice-glisser{display:block}}
+
 /* --- le verdict d'une cellule : oui, non, ou une valeur ---
-   `.verdict` et non `.marque` : cette dernière est déjà le logotype WAKABI
-   dans l'en-tête, et sa règle `.marque span{color:var(--primary)}` repeignait
-   ces cellules en bleu gras. Un nom de classe déjà pris est une collision qui
-   ne se voit qu'à l'écran. */
+   `.verdict` et non `.marque` : cette dernière porte le logo dans l'en-tête,
+   et sa règle repeignait ces cellules en bleu gras. Un nom de classe déjà
+   pris est une collision qui ne se voit qu'à l'écran. */
 .comparatif .verdict{
   display:inline-flex;align-items:center;gap:9px;line-height:1.35;
   font-family:var(--corps);font-weight:500;letter-spacing:0;
@@ -445,3 +573,79 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
   overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);
   white-space:nowrap;border:0;
 }
+
+/* ============ le téléphone ============
+   La moitié des invités arrivent depuis un lien WhatsApp, donc depuis un
+   écran de 390 px tenu à une main. Trois principes ici : des marges qui
+   laissent respirer sans gaspiller la largeur, des cibles de 44 px (la
+   pulpe d'un doigt), et des champs à 16 px — en dessous, iOS zoome tout
+   seul sur le formulaire et l'utilisateur se retrouve perdu. */
+
+@media(max-width:640px){
+  .contenu{padding:0 16px 56px}
+  .etroit{padding:30px 16px}
+  section.bloc{padding:44px 0}
+  .entete{padding:24px 0 16px}
+  .tete{margin-bottom:22px}
+  .grille{gap:12px}
+  .carte{padding:16px}
+  .stat{padding:12px 14px}
+  .canal,.etape,.avis{padding:16px}
+  .offre{padding:18px}
+  .final{padding:38px 18px;border-radius:var(--r16)}
+  .heros-in{padding:26px 16px 38px}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  footer{margin-top:34px}
+
+  /* cibles tactiles */
+  .bouton{min-height:44px;padding:12px 18px}
+  .bouton.petit{min-height:38px}
+  summary,details.qr summary{min-height:44px}
+
+  /* Un tableau comprimé dans 358 px coupe les titres en colonnes d'une
+     lettre. Il garde sa largeur utile et défile dans son cadre : lire en
+     glissant vaut mieux que lire à la verticale. */
+  .tableau table{min-width:560px}
+
+  /* 16 px : le seuil en dessous duquel iOS zoome à la mise au point */
+  input[type=text],input[type=email],input[type=password],input[type=url],
+  input[type=date],select,textarea{font-size:16px;padding:12px 13px}
+}
+
+/* Le champ de fichier natif est minuscule et illisible au doigt : on lui
+   donne l'allure d'un bouton de la charte. */
+input[type=file]{
+  width:100%;padding:9px;border:1px dashed var(--border);border-radius:var(--r10);
+  background:var(--bg2);font:inherit;font-size:.88rem;color:var(--text2);
+}
+input[type=file]::file-selector-button{
+  font:inherit;font-weight:700;font-size:.88rem;background:var(--primary);color:#fff;
+  border:0;border-radius:var(--r6);padding:9px 14px;margin-right:11px;cursor:pointer;
+}
+input[type=file]::file-selector-button:hover{background:var(--primary-d)}
+
+.tableau{-webkit-overflow-scrolling:touch}
+
+/* Le choix de la photo, dans le Studio. Le champ natif reste en place mais
+   invisible : c'est lui qui ouvre la galerie et que le clavier atteint.
+   Ce qu'on voit et qu'on touche, c'est le <label>, écrit en français quelle
+   que soit la langue du navigateur. */
+.pas{font-size:.82rem;font-weight:600;color:var(--text2);margin:0 0 6px}
+.fichier-natif{position:absolute;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0;overflow:hidden}
+.bouton.fichier{width:100%;justify-content:center;cursor:pointer}
+.bouton.fichier svg{width:19px;height:19px;flex:0 0 auto}
+.fichier-natif:focus-visible + .fichier{outline:2px solid var(--primary);outline-offset:2px}
+
+/* ---- le Studio au doigt ----
+   Sur un petit écran, la toile et les réglages ne tiennent pas ensemble :
+   en faisant défiler pour attraper le zoom, on perdait de vue le badge
+   qu'on est en train de régler. La toile reste donc collée sous la barre,
+   et sa hauteur est bornée pour laisser la place aux réglages. */
+@media(max-width:860px){
+  .studio{gap:14px}
+  .toile-boite{position:sticky;top:64px;z-index:10;padding:10px}
+  #toile{max-height:44vh;width:auto}
+  #etat{margin-top:6px!important}
+  input[type=range]{height:30px}
+}
+

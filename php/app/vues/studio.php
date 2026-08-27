@@ -14,8 +14,15 @@
     <div class="pile">
       <div class="carte">
         <div class="champ">
-          <label for="photo">1 · Votre photo</label>
-          <input id="photo" type="file" accept="image/*">
+          <p class="pas">1 · Votre photo</p>
+          <!-- Le champ natif reste, caché mais focusable : c'est lui qui ouvre
+               la galerie, et le clavier y accède toujours. Le libellé visible
+               est le nôtre : celui du navigateur s'affiche dans SA langue,
+               et un « Choose File » en plein Studio français fait tache. -->
+          <input id="photo" type="file" accept="image/*" class="fichier-natif">
+          <label class="bouton fichier" for="photo">
+            <?= icone('studio') ?><span class="texte">Choisir une photo</span>
+          </label>
           <p class="aide">Elle reste sur votre téléphone : rien n’est envoyé au serveur.</p>
         </div>
 

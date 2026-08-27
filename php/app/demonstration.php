@@ -11,7 +11,7 @@ declare(strict_types=1);
 function installer_demonstration(string $admin_id): void
 {
     $modeles = [
-        ['jy-serai', 'J’y serai — Lomé', 'Festival des Divinités Noires', 'bandeau', 'jy-serai.png',
+        ['jy-serai', 'J’y serai à Lomé', 'Festival des Divinités Noires', 'bandeau', 'jy-serai.png',
          'J’Y SERAI', 'Ton prénom', 'Kossi', 'lome', 'evenements'],
         ['bon-plan-du-moment', 'Bon plan du moment', 'Partage ta trouvaille de la semaine', 'angle', 'bon-plan.png',
          'BON PLAN', 'Le nom du bon coin', 'Chez Léna', 'lome', 'gastronomie'],

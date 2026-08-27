@@ -13,10 +13,10 @@ if ($post) {
         $resultat = match (true) {
             $r['ok'] => [
                 'ok' => true,
-                'message' => 'Entrée validée — ' . $r['decor'],
+                'message' => 'Entrée validée : ' . $r['decor'],
                 'detail' => $r['porteur']
                     ? $r['porteur'] . ' · ' . $r['koris'] . ' Koris crédités'
-                    : 'Badge anonyme — présence comptée, aucun Kori',
+                    : 'Badge anonyme : présence comptée, aucun Kori',
             ],
             ($r['raison'] ?? '') === 'deja' => [
                 'ok' => false,

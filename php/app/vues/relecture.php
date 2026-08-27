@@ -18,7 +18,7 @@
         <div>
           <b class="display" style="font-size:1.1rem"><?= e($d['titre']) ?></b>
           <p class="aide" style="margin:2px 0 0">
-            <?= e($d['auteur_nom'] ?: '—') ?> · soumis le <?= e(substr((string) $d['soumis_le'], 0, 10)) ?>
+            <?= e($d['auteur_nom'] ?: 'Équipe Wakabi') ?> · soumis le <?= e(substr((string) $d['soumis_le'], 0, 10)) ?>
           </p>
         </div>
         <?php if ($d['cadre_url']): ?>
@@ -49,7 +49,7 @@
         <form method="post" action="<?= e(url('?p=decider')) ?>" style="flex:1;min-width:260px">
           <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
           <input type="hidden" name="id" value="<?= e($d['id']) ?>">
-          <input name="motif" type="text" required placeholder="Motif — obligatoire pour refuser ou corriger">
+          <input name="motif" type="text" required placeholder="Motif, obligatoire pour refuser ou corriger">
           <div class="rangee" style="margin-top:8px">
             <button class="bouton fant petit" type="submit" name="vers" value="corrections">Demander des corrections</button>
             <button class="bouton danger petit" type="submit" name="vers" value="refuse">Refuser</button>

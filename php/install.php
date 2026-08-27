@@ -88,6 +88,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$deja && !$bloquant) {
             }
             @chmod(RACINE . '/config.php', 0600);
 
+            /**
+             * Le schéma sort d'usine à jour : pas de migration à rejouer.
+             *
+             * Écrit APRÈS config.php, et depuis $conf plutôt que par
+             * `dossier_donnees()` : cette fonction lit la configuration, et
+             * la met en cache pour toute la requête. L'appeler avant que le
+             * fichier existe fige une configuration vide — l'installation
+             * MySQL basculait alors sur SQLite et échouait sur « no such
+             * table: utilisateurs ».
+             */
+            @mkdir($conf['dossier_donnees'], 0775, true);
+            @file_put_contents($conf['dossier_donnees'] . '/version-schema.txt', (string) SCHEMA_VERSION);
+
             require_once RACINE . '/app/auth.php';
             require_once RACINE . '/app/depot.php';
             require_once RACINE . '/app/prevol.php';
@@ -122,7 +135,7 @@ $csrf = '';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Installation — Wakabi Boost</title>
+<title>Installation · Wakabi Boost</title>
 <link rel="stylesheet" href="public/wakabi.css">
 </head>
 <body>
@@ -149,7 +162,7 @@ $csrf = '';
   <div class="msg err" style="margin-top:20px">
     <strong>Déjà installé.</strong>
     <p style="margin:.5em 0 0">Le fichier <code>config.php</code> existe. Pour réinstaller,
-    supprimez-le d’abord — vous perdriez l’accès à vos données actuelles.</p>
+    supprimez-le d’abord : vous perdriez l’accès à vos données actuelles.</p>
   </div>
   <a class="bouton" href="index.php">Aller au site</a>
 
@@ -167,7 +180,7 @@ $csrf = '';
         <?php foreach ($extensions as $nom => $present): ?>
           <tr><td><?= e($nom) ?></td>
               <td style="text-align:right;color:<?= $present ? 'var(--teal)' : 'var(--text3)' ?>">
-                <?= $present ? '✓' : '—' ?></td></tr>
+                <?= $present ? '✓' : '·' ?></td></tr>
         <?php endforeach; ?>
         <tr><td>Écriture dans ce dossier</td>
             <td style="text-align:right;color:<?= $dossier_ecrit ? 'var(--teal)' : 'var(--rouge)' ?>">
@@ -194,12 +207,12 @@ $csrf = '';
         <select id="sgbd" name="sgbd" onchange="document.getElementById('mysql').hidden = this.value !== 'mysql'">
           <?php if (extension_loaded('pdo_sqlite')): ?>
             <option value="sqlite" <?= $valeurs['sgbd'] === 'sqlite' ? 'selected' : '' ?>>
-              SQLite — aucun réglage, recommandé pour démarrer
+              SQLite : aucun réglage, recommandé pour démarrer
             </option>
           <?php endif; ?>
           <?php if (extension_loaded('pdo_mysql')): ?>
             <option value="mysql" <?= $valeurs['sgbd'] === 'mysql' ? 'selected' : '' ?>>
-              MySQL / MariaDB — une base créée dans cPanel
+              MySQL / MariaDB : une base créée dans cPanel
             </option>
           <?php endif; ?>
         </select>

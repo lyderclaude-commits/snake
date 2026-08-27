@@ -28,7 +28,7 @@
       <h3 style="margin-bottom:12px">Mes Koris</h3>
       <?php if (!$historique): ?>
         <p style="color:var(--text2);margin:0">Les Koris se gagnent <strong>à l’entrée</strong>,
-        quand votre badge est scanné — pas au téléchargement.</p>
+        quand votre badge est scanné, pas au téléchargement.</p>
       <?php else: foreach ($historique as $k): ?>
         <div class="rangee" style="justify-content:space-between;border-top:1px solid var(--border);padding:9px 0">
           <span><?= e($k['motif']) ?></span>
@@ -39,7 +39,7 @@
   </div>
 
   <p class="aide" style="margin-top:18px">
-    Ce qui est enregistré : le décor utilisé et la date. <strong>Pas votre photo</strong> —
+    Ce qui est enregistré : le décor utilisé et la date. <strong>Pas votre photo</strong> :
     elle est traitée dans votre navigateur et n’arrive jamais sur nos serveurs.
   </p>
 </div>

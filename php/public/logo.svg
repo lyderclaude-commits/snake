@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 4 116 100" role="img" aria-label="Wakabi">
+  <title>Wakabi</title>
+  <!-- Une seule forme : la première branche du W est la pointe de l'épingle.
+       Le trait démarre à l'intérieur du cône pour ne pas boucher l'œilleton. -->
+  <path fill="none" stroke="#2563EB" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"
+        d="M45 64.9 L55 93.2 L74 50 L93 93.2 L114 29"/>
+  <path fill="#2563EB" fill-rule="evenodd"
+        d="M56 31.36 A23 23 0 1 0 15.37 45.75 L55 93.2 Z
+           M33 22.5 a8.5 8.5 0 1 0 0 17 a8.5 8.5 0 1 0 0-17 Z"/>
+</svg>

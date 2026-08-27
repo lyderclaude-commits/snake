@@ -24,8 +24,10 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **66 scénarios, 66 réussis** sur
-chacun.
+Les deux ont été vérifiés de bout en bout : **87 scénarios, 87 réussis** sur
+chacun, depuis le zip livré. La montée de version d'une installation déjà en
+service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
+requête, comptes existants intacts.
 
 ---
 
@@ -103,7 +105,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 66 scénarios, dans un vrai navigateur
+npm run php:e2e          # 87 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -113,7 +115,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 66 scénarios
+### Les 87 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -131,6 +133,11 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | Une soumission valide | Créée par la recette elle-même, pour qu'elle soit rejouable |
 | Modération | Rapport affiché, approbation traitée, décor réellement ouvrable ensuite |
 | **Gestion par l'équipe** | Ajouter, lister, filtrer, chercher, modifier, publier, supprimer — et le refus quand le titre de confirmation ne correspond pas |
+| **Comptes et offres** | L'équipe crée un compte avec son rôle et son offre, une adresse déjà prise est refusée sans effacer la saisie, la personne créée se connecte et voit son quota |
+| **Le quota d'une offre** | Découverte bloque la deuxième campagne active ; l'offre relevée, la campagne repart |
+| **Le tableau de bord** | Cinq indicateurs avec leur variation, l'entonnoir en quatre étapes, la répartition des quatre offres |
+| **Le menu du téléphone** | Replié à l'arrivée, ouvert au doigt, refermé, jamais hors de l'écran — et déplié sans clic sur grand écran |
+| **La marque** | Le logo dans la barre, les portraits des témoignages |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
 | WhatsApp | Le repli « appui long » là où le téléchargement direct est inerte |
@@ -153,8 +160,14 @@ Tout le produit, pas un sous-ensemble :
 - **les 7 contrôles du pré-vol**, exécutés côté serveur avec GD ;
 - file de relecture, motif obligatoire au refus, notifications ;
 - QR incrusté, page de badge, contrôle d'entrée, Koris ;
-- tableau de bord, courbe sur 14 jours, gestion des comptes ;
-- limitation de débit, jetons anti-CSRF, sessions `httpOnly`.
+- **tableau de bord de pilotage** : ce qui attend une décision, cinq
+  indicateurs à sept jours avec leur variation, l'entonnoir du produit,
+  la répartition des offres, les décors qui portent ;
+- **création de comptes par l'équipe**, avec rôle et offre, et **quota de
+  campagnes** appliqué à la soumission ;
+- limitation de débit, jetons anti-CSRF, sessions `httpOnly` ;
+- **utilisable au doigt** : menu replié derrière un bouton, toile du Studio
+  collée sous la barre, pincement pour zoomer, cibles de 44 px.
 
 ---
 
@@ -259,6 +272,35 @@ un décor disparu.
 
 ---
 
+## Les offres, et ce qu'elles autorisent
+
+Les quatre offres de la vitrine existent dans le produit. Elles sont
+déclarées **une seule fois**, dans `app/auth.php` :
+
+| Offre | Campagnes actives | Téléchargements / mois | Prix |
+|---|---|---|---|
+| Découverte | 1 | 50 | gratuit |
+| Impact | 3 | 500 | 5 000 FCFA |
+| Croissance | 5 | 2 000 | 12 000 FCFA |
+| Mouvement | illimité | illimité | 30 000 FCFA |
+
+Ce que le produit applique aujourd'hui :
+
+- **le quota de campagnes est bloquant**, au moment de la soumission. Un
+  brouillon ne coûte rien : ce qui occupe une place, c'est une campagne en
+  ligne ou en route vers la relecture ;
+- **le compteur de téléchargements est indicatif**. Il est affiché à
+  l'organisateur, mais **aucun badge n'est refusé à un invité** : couper un
+  invité au milieu de sa création parce que l'organisateur a atteint son
+  quota est une décision commerciale, pas technique. Elle vous appartient.
+
+Une inscription publique démarre **toujours** en Découverte. Le bouton
+« Choisir Impact » de la vitrine transmet l'offre visée : la personne le lit
+sur le formulaire, et l'équipe reçoit une notification pour activer l'offre
+après paiement. C'est l'équipe qui bascule l'offre depuis **Comptes**.
+
+---
+
 ## Mettre à jour
 
 ```bash
@@ -267,6 +309,13 @@ npm run package:php
 
 Téléversez le nouveau zip **par-dessus**, sans toucher à `config.php` ni au
 dossier `donnees/`. Vos comptes, campagnes et badges restent.
+
+**Le schéma se met à jour tout seul.** Une installation déjà en service ne
+repasse jamais par `install.php` : une colonne ajoutée après coup n'existerait
+donc que chez les nouveaux. Le numéro de version du schéma est gardé dans
+`donnees/version-schema.txt`, et la première requête après la mise à jour
+ajoute ce qui manque. Rien à lancer à la main, rien à exécuter dans
+phpMyAdmin.
 
 ---
 

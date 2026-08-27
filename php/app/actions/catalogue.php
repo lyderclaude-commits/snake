@@ -26,9 +26,9 @@ if ($page === 'statut') {
     }
     if ($d['auteur_id'] && $d['auteur_id'] !== $u['id']) {
         notifier($d['auteur_id'], 'decision', 'Votre décor a changé de statut',
-                 $d['titre'] . ' — ' . statut_libelle($vers), '?p=partenaire');
+                 $d['titre'] . ' : ' . statut_libelle($vers), '?p=partenaire');
     }
-    rediriger('?p=catalogue&ok=' . urlencode($d['titre'] . ' — ' . statut_libelle($vers)));
+    rediriger('?p=catalogue&ok=' . urlencode($d['titre'] . ' : ' . statut_libelle($vers)));
 }
 
 /* ---------------- suppression ---------------- */
@@ -60,8 +60,8 @@ if ($page === 'supprimer') {
     $message = sprintf(
         '« %s » supprimé%s%s.',
         $bilan['titre'],
-        $bilan['badges'] ? ' — ' . $bilan['badges'] . ' badge(s) détruit(s)' : '',
-        $bilan['cadre'] ? ' — cadre effacé du disque' : ''
+        $bilan['badges'] ? ', ' . $bilan['badges'] . ' badge(s) détruit(s)' : '',
+        $bilan['cadre'] ? ', cadre effacé du disque' : ''
     );
     rediriger('?p=catalogue&ok=' . urlencode($message));
 }

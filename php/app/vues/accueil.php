@@ -1,6 +1,6 @@
 <?php
 /**
- * La vitrine — repris du prototype « Wakabi Boost ».
+ * La vitrine, reprise du prototype « Wakabi Boost ».
  *
  * Note de ton : cette page VOUVOIE, parce qu'elle s'adresse aux
  * organisateurs. Le Studio, lui, tutoie : il parle aux participants.
@@ -20,10 +20,10 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu heros-in" style="padding-bottom:0">
     <div>
       <p class="etiquette"><b>NOUVEAU</b> La suite marketing événementielle de Wakabi</p>
-      <h1>Vos invitations méritent<br><em>une salle pleine.</em></h1>
+      <h1>Vos invitations méritent<br><em>une salle pleine</em></h1>
       <p class="accroche">
         Badges viraux, WhatsApp, Push, Telegram, liens traçables.
-        <strong>Wakabi Boost</strong> transforme chaque contact en présence réelle —
+        <strong>Wakabi Boost</strong> transforme chaque contact en présence réelle,
         et chaque présence en client fidèle grâce au <strong>QR Code qui rapporte</strong>.
       </p>
       <div class="rangee" style="margin-top:26px">
@@ -37,27 +37,19 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       </ul>
     </div>
 
-    <div style="position:relative">
+    <!-- Ce n'est pas une maquette : c'est une capture du Studio tel qu'il
+         s'affiche sur un téléphone de 390 px, une invitée en train de
+         composer son badge. Ce que la vitrine montre est ce qu'on livre. -->
+    <div class="hero-tel">
       <div class="tel">
         <div class="tel-ecran">
-          <div class="tel-tete">
-            <span class="rond">W</span>
-            <span><b>Wakabi Boost</b><span>en ligne</span></span>
-          </div>
-          <div class="bulle">
-            🎉 <strong>GARDEN PARTY</strong><br>
-            📅 Demain à 14 h · 📍 Cotonou — HECM<br>
-            🎟️ Ton QR : prêt
-          </div>
-          <div class="bulle moi">
-            Rappel J-1 : présente ton QR Code à l’entrée pour gagner
-            <strong>50 Koris</strong> 🪙
-            <small>10:42 ✓✓</small>
-          </div>
+          <img src="<?= e(url('public/apercu-studio.webp')) ?>" width="640" height="1385"
+               alt="Le Studio Wakabi Boost sur un téléphone : une invitée compose son badge « J’y serai », photo, QR Code et prénom déjà en place.">
         </div>
+        <span class="tel-encoche" aria-hidden="true"></span>
       </div>
       <div class="pastille-flot" style="top:14%;left:-6px"><b>98 %</b>taux de lecture</div>
-      <div class="pastille-flot" style="bottom:8%;right:-6px"><b>+40 %</b>présence réelle</div>
+      <div class="pastille-flot" style="bottom:6%;right:-14px"><b>+40 %</b>présence réelle</div>
     </div>
   </div>
 </section>
@@ -67,8 +59,8 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Tous vos canaux</p>
-      <h2>Un seul outil pour <em>remplir la salle.</em></h2>
-      <p>Là où vos invités sont déjà — pas là où vous espérez qu’ils aillent.</p>
+      <h2>Un seul outil pour <em>remplir la salle</em></h2>
+      <p>Là où vos invités sont déjà, pas là où vous espérez qu’ils aillent.</p>
     </div>
     <div class="grille canaux">
       <?php foreach ([
@@ -97,13 +89,13 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">La boucle</p>
-      <h2>Du partage à la <em>présence réelle.</em></h2>
+      <h2>Du partage à la <em>présence réelle</em></h2>
       <p>Trois étapes. Chacune nourrit la suivante.</p>
     </div>
     <div class="grille g3">
       <?php foreach ([
         ['Le badge viral', 'Vos invités créent leur badge « J’y serai » dans le Studio et le partagent. Chaque partage attire de nouveaux invités.'],
-        ['WhatsApp & rappels auto', 'Invitations et rappels J-1, H-2 envoyés automatiquement. Vous ne courez plus après vos invités — Wakabi le fait.'],
+        ['WhatsApp & rappels auto', 'Invitations et rappels J-1, H-2 envoyés automatiquement. Vous ne courez plus après vos invités, Wakabi le fait pour vous.'],
         ['QR Code à l’entrée → Koris', 'Chaque présent scanne son QR, gagne des Koris et devient un client fidèle de l’écosystème Wakabi. Vous mesurez tout.'],
       ] as $i => [$t, $b]): ?>
         <div class="etape">
@@ -122,7 +114,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete">
       <p class="sur">Le Studio</p>
-      <h2>Vos invités font <em>l’affiche.</em></h2>
+      <h2>Vos invités font <em>l’affiche</em></h2>
       <p>Une photo, un décor, trente secondes. La photo ne quitte jamais leur téléphone.</p>
     </div>
     <div class="grille g4">
@@ -148,7 +140,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Le comparatif</p>
-      <h2>Ce qu’un générateur d’images <em>ne fait pas.</em></h2>
+      <h2>Ce qu’un générateur d’images <em>ne fait pas</em></h2>
     </div>
 
     <?php
@@ -207,6 +199,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
         </tbody>
       </table>
     </div>
+    <p class="aide indice-glisser">Faites glisser le tableau vers la gauche pour voir la colonne Wakabi Boost.</p>
   </div>
 </section>
 
@@ -215,18 +208,18 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Ils l’utilisent</p>
-      <h2>Des salles pleines, <em>pas des promesses.</em></h2>
+      <h2>Des salles pleines, <em>pas des promesses</em></h2>
     </div>
     <div class="grille g3">
       <?php foreach ([
-        ['Avant Wakabi Boost, je devais relancer mes invités un par un. Maintenant les rappels partent seuls et ma dernière soirée a fait salle comble.', 'Kofi Mensah', 'Organisateur, Lomé', 'KM', '1 200 badges'],
-        ['Le badge « J’y serai » a été partagé plus de 1 200 fois en 3 jours. Une visibilité que je n’aurais jamais pu m’offrir en pub classique.', 'Aïcha Traoré', 'Promotrice événementielle, Cotonou', 'AT', '98 % lus'],
-        ['Le QR Code à l’entrée a tout changé : je sais exactement qui est venu, et mes invités reviennent pour les Koris. Du jamais vu.', 'Emmanuel Agbo', 'Gérant de lieu, Cotonou', 'EA', 'Présence tracée'],
-      ] as [$q, $nom, $role, $init, $mesure]): ?>
+        ['Avant Wakabi Boost, je devais relancer mes invités un par un. Maintenant les rappels partent seuls et ma dernière soirée a fait salle comble.', 'Kofi Mensah', 'Organisateur, Lomé', 'kofi', '1 200 badges'],
+        ['Le badge « J’y serai » a été partagé plus de 1 200 fois en 3 jours. Une visibilité que je n’aurais jamais pu m’offrir en pub classique.', 'Aïcha Traoré', 'Promotrice événementielle, Cotonou', 'aicha', '98 % lus'],
+        ['Le QR Code à l’entrée a tout changé : je sais exactement qui est venu, et mes invités reviennent pour les Koris. Du jamais vu.', 'Emmanuel Agbo', 'Gérant de lieu, Cotonou', 'emmanuel', 'Présence tracée'],
+      ] as [$q, $nom, $role, $portrait, $mesure]): ?>
         <div class="avis">
           <q><?= e($q) ?></q>
           <div class="qui">
-            <span class="init"><?= e($init) ?></span>
+            <?= avatar($portrait, 42) ?>
             <span><b><?= e($nom) ?></b><span><?= e($role) ?></span></span>
             <span class="mesure"><?= e($mesure) ?></span>
           </div>
@@ -241,25 +234,25 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Les offres</p>
-      <h2>Commencez gratuitement, <em>payez quand ça marche.</em></h2>
-      <p><strong>−50 % les 3 premiers mois</strong> — offre de lancement.</p>
+      <h2>Commencez gratuitement, <em>payez quand ça marche</em></h2>
+      <p><strong>−50 % les 3 premiers mois</strong>, offre de lancement.</p>
     </div>
-    <div class="grille g4" style="align-items:stretch">
+    <div class="grille offres">
       <?php foreach ([
-        ['Pour tester', 'Découverte', 0, 0, 'Commencer gratuitement', false, null,
+        ['decouverte', 'Pour tester', 'Découverte', 0, 0, 'Commencer gratuitement', false, null,
           [['1 campagne active', 1], ['50 téléchargements badge / mois', 1], ['Studio complet', 1],
            ['Stats de base', 1], ['Filigrane discret sur les badges', 0], ['QR Code Koris', 0]]],
-        ['Entrée sérieuse', 'Impact', 5000, 2500, 'Choisir Impact', true, null,
+        ['impact', 'Entrée sérieuse', 'Impact', 5000, 2500, 'Choisir Impact', true, null,
           [['3 campagnes actives', 1], ['500 téléchargements / badge', 1], ['Sans filigrane', 1],
            ['Redirection après téléchargement', 1], ['20 liens courts wkb.link', 1],
            ['QR Code Koris intégré', 1], ['Stats complètes « J’y serai »', 1], ['Achat de crédits WhatsApp', 1]]],
-        ['Clients actifs', 'Croissance', 12000, 6000, 'Choisir Croissance', false, 'Tout Impact, plus :',
+        ['croissance', 'Clients actifs', 'Croissance', 12000, 6000, 'Choisir Croissance', false, 'Tout Impact, plus :',
           [['5 campagnes actives', 1], ['2 000 téléchargements', 1], ['Ciblage ville + intérêt', 1],
            ['Diffusion à la base Wakabi', 1], ['100 liens courts', 1], ['Campagnes Telegram + Push', 1]]],
-        ['Pros & institutions', 'Mouvement', 30000, 15000, 'Nous contacter', false, 'Tout Croissance, plus :',
+        ['mouvement', 'Pros & institutions', 'Mouvement', 30000, 15000, 'Nous contacter', false, 'Tout Croissance, plus :',
           [['Campagnes illimitées', 1], ['Téléchargements illimités', 1], ['Accès API REST', 1],
            ['Web Push illimité', 1], ['Article sponsorisé blog Wakabi', 1], ['Account manager dédié', 1]]],
-      ] as [$tag, $nom, $prix, $lancement, $cta, $phare, $prefixe, $lignes]): ?>
+      ] as [$cle, $tag, $nom, $prix, $lancement, $cta, $phare, $prefixe, $lignes]): ?>
         <div class="offre<?= $phare ? ' phare' : '' ?>">
           <?php if ($phare): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
           <span class="tag"><?= e($tag) ?></span>
@@ -277,7 +270,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
             <?php endforeach; ?>
           </ul>
           <a class="bouton<?= $phare ? '' : ' fant' ?>" style="justify-content:center"
-             href="<?= e(url('?p=inscription')) ?>"><?= e($cta) ?></a>
+             href="<?= e(url('?p=inscription&offre=' . $cle)) ?>"><?= e($cta) ?></a>
         </div>
       <?php endforeach; ?>
     </div>
@@ -293,17 +286,17 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="max-width:760px;padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Vos questions</p>
-      <h2>Tout ce que vous <em>voulez savoir.</em></h2>
+      <h2>Tout ce que vous <em>voulez savoir</em></h2>
     </div>
     <?php foreach ([
       ['C’est quoi la différence avec un générateur de badge classique ?',
-       'Un générateur classique produit une image que vos invités partagent — c’est tout. Wakabi Boost ajoute un QR Code unique sur chaque badge : scanné à l’entrée, il mesure la présence réelle, crédite des Koris à l’invité et le transforme en client fidèle de l’écosystème. Vous ne créez plus du buzz qui retombe, vous créez de la valeur durable.'],
+       'Un générateur classique produit une image que vos invités partagent, c’est tout. Wakabi Boost ajoute un QR Code unique sur chaque badge : scanné à l’entrée, il mesure la présence réelle, crédite des Koris à l’invité et le transforme en client fidèle de l’écosystème. Vous ne créez plus du buzz qui retombe, vous créez de la valeur durable.'],
       ['Est-ce que je peux vraiment démarrer gratuitement ?',
        'Oui. La formule Découverte est gratuite à vie, sans carte bancaire : 1 campagne active, 50 téléchargements de badges par mois et le Studio complet. Vous ne payez que lorsque vous voulez plus de portée ou des fonctionnalités avancées.'],
       ['Comment fonctionne le ciblage WhatsApp ?',
-       'Contrairement aux envois aveugles, Wakabi vous laisse cibler par ville, centre d’intérêt et historique de visite parmi les 10 000+ utilisateurs de l’écosystème. Vos messages atteignent les bonnes personnes — donc plus de présence pour moins de budget. Les crédits coûtent 1 FCFA par message.'],
+       'Contrairement aux envois aveugles, Wakabi vous laisse cibler par ville, centre d’intérêt et historique de visite parmi les 10 000+ utilisateurs de l’écosystème. Vos messages atteignent les bonnes personnes, donc plus de présence pour moins de budget. Les crédits coûtent 1 FCFA par message.'],
       ['Les crédits WhatsApp sont-ils inclus dans l’abonnement ?',
-       'Non, ils s’achètent à part (1 FCFA/message), comme chez tous les acteurs sérieux — ce sont des coûts réels facturés par Meta. En revanche, nos tarifs dégressifs et le ciblage intelligent font que vous dépensez beaucoup moins pour un meilleur résultat.'],
+       'Non, ils s’achètent à part (1 FCFA/message), comme chez tous les acteurs sérieux : ce sont des coûts réels facturés par Meta. En revanche, nos tarifs dégressifs et le ciblage intelligent font que vous dépensez beaucoup moins pour un meilleur résultat.'],
       ['Je n’ai aucune compétence technique. C’est compliqué ?',
        'Pas du tout. Le Studio fonctionne en glisser-déposer, les campagnes se lancent en quelques clics, et tout est en français. Si vous savez envoyer un message WhatsApp, vous savez utiliser Wakabi Boost.'],
       ['Que devient la photo de mes invités ?',
@@ -321,7 +314,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <section class="bloc" style="padding-top:0">
   <div class="contenu" style="padding-bottom:0">
     <div class="final">
-      <h2>Votre prochaine salle comble commence maintenant.</h2>
+      <h2>Votre prochaine salle comble commence maintenant</h2>
       <p>Rejoignez les <?= $fr($organisateurs) ?> organisateurs qui ne laissent plus jamais une chaise vide.</p>
       <div class="rangee" style="justify-content:center;margin-top:26px">
         <a class="bouton" href="<?= e(url('?p=decors')) ?>">Créer mon badge gratuit</a>

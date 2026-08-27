@@ -109,6 +109,8 @@ function demarrer(ctx: Contexte) {
       spec.photo = recadrer(spec.photo);
       $('#etat').textContent = '';
       $('#outils').hidden = false;
+      const etiquette = document.querySelector('.fichier .texte');
+      if (etiquette) etiquette.textContent = 'Changer la photo';
 
       // Le jeton est émis MAINTENANT, pas au téléchargement : sinon le QR
       // n'apparaîtrait qu'à l'export et l'aperçu mentirait.
@@ -140,24 +142,64 @@ function demarrer(ctx: Contexte) {
     }
   }
 
-  /* ---------------- recadrage ---------------- */
+  /* ---------------- recadrage : glisser, pincer ----------------
+     Un doigt déplace la photo, deux doigts la zooment. Sans le pincement,
+     le seul zoom du téléphone était le curseur, situé sous la toile : on
+     réglait à l'aveugle ce qu'on ne voyait plus. */
 
+  const doigts = new Map<number, { x: number; y: number }>();
   let attrape: { x: number; y: number; px: number; py: number } | null = null;
+  let pince: { ecart: number; echelle: number } | null = null;
+
+  const ecartement = () => {
+    const [a, b] = [...doigts.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+
+  const saisir = (e: PointerEvent) => {
+    if (!spec.photo) return;
+    attrape = { x: e.clientX, y: e.clientY, px: spec.photo.x, py: spec.photo.y };
+  };
 
   canvas.addEventListener('pointerdown', (e) => {
     if (!spec.photo) return;
     canvas.setPointerCapture(e.pointerId);
-    attrape = { x: e.clientX, y: e.clientY, px: spec.photo.x, py: spec.photo.y };
+    doigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (doigts.size >= 2) {
+      attrape = null;
+      pince = { ecart: ecartement(), echelle: spec.photo.scale };
+    } else {
+      saisir(e);
+    }
   });
+
   canvas.addEventListener('pointermove', (e) => {
-    if (!attrape || !spec.photo) return;
+    if (!spec.photo || !doigts.has(e.pointerId)) return;
+    doigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pince && doigts.size >= 2) {
+      const ecart = ecartement();
+      if (pince.ecart > 0) zoomer(pince.echelle * (ecart / pince.ecart));
+      return;
+    }
+    if (!attrape) return;
     const r = canvas.getBoundingClientRect();
     spec.photo.x = attrape.px + (e.clientX - attrape.x) / r.width;
     spec.photo.y = attrape.py + (e.clientY - attrape.y) / r.height;
     spec.photo = recadrer(spec.photo);
     dessiner();
   });
-  const lacher = () => { attrape = null; };
+
+  const lacher = (e: PointerEvent) => {
+    doigts.delete(e.pointerId);
+    if (doigts.size < 2) pince = null;
+    // Le doigt qui reste reprend le glissement là où il est : sans ce
+    // réamorçage, la photo saute au relâchement du second doigt.
+    const reste = [...doigts.values()][0];
+    attrape = reste && spec.photo
+      ? { x: reste.x, y: reste.y, px: spec.photo.x, py: spec.photo.y }
+      : null;
+  };
   canvas.addEventListener('pointerup', lacher);
   canvas.addEventListener('pointercancel', lacher);
 

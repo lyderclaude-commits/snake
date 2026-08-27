@@ -39,6 +39,23 @@ if ($page === 'soumettre') {
         rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
     }
 
+    /**
+     * Le quota de l'offre se joue ICI.
+     *
+     * Un brouillon ne coûte rien : personne ne le voit. Ce qui occupe une
+     * place, c'est une campagne en ligne ou en route vers la relecture.
+     * L'équipe n'a jamais de quota.
+     */
+    $max = quota($u, 'campagnes');
+    if ($max >= 0 && campagnes_actives($u['id'], $d['id']) >= $max) {
+        rediriger('?p=partenaire&err=' . urlencode(
+            'Votre offre ' . formule_libelle($u['formule'] ?? null) . ' autorise '
+            . $max . ' campagne' . ($max > 1 ? 's' : '') . ' à la fois, et elle'
+            . ($max > 1 ? 's sont prises' : ' est prise') . '. Demandez à l’équipe d’archiver une '
+            . 'campagne terminée, ou passez à l’offre supérieure.'
+        ));
+    }
+
     // Le pré-vol AVANT la file : un décor qui échoue n'y rejoint jamais,
     // ce qui permet de tenir l'engagement des 24 h.
     $rapport = prevol(json_lire($d['gabarit']), $d['cadre_url']);
@@ -62,7 +79,7 @@ if ($page === 'soumettre') {
     foreach (equipe() as $membre) {
         notifier($membre['id'], 'relecture', 'Un décor attend votre relecture', $d['titre'], '?p=relecture');
     }
-    rediriger('?p=partenaire&ok=' . urlencode('Soumis — réponse sous 24 h ouvrées.'));
+    rediriger('?p=partenaire&ok=' . urlencode('Soumis : réponse sous 24 h ouvrées.'));
 }
 
 /* ---------------- création ---------------- */

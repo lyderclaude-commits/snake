@@ -29,4 +29,4 @@ if ($post) {
     }
 }
 
-vue('connexion', ['titre' => 'Connexion — Wakabi Boost', 'erreur' => $erreur, 'valeurs' => $valeurs]);
+vue('connexion', ['titre' => 'Connexion · Wakabi Boost', 'erreur' => $erreur, 'valeurs' => $valeurs]);

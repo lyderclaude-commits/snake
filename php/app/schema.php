@@ -10,6 +10,50 @@
 
 declare(strict_types=1);
 
+/**
+ * Version du schéma.
+ *
+ * Une installation déjà en service ne repasse jamais par install.php : sans
+ * ce numéro, une colonne ajoutée après coup n'existerait que chez les
+ * nouveaux. Le numéro est gardé dans un fichier du dossier de données, donc
+ * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
+ * fichier par requête.
+ */
+const SCHEMA_VERSION = 2;
+
+function assurer_schema(): void
+{
+    $marque = dossier_donnees() . '/version-schema.txt';
+    $vue = is_file($marque) ? (int) file_get_contents($marque) : 0;
+    if ($vue >= SCHEMA_VERSION) {
+        return;
+    }
+    migrer_schema(db(), est_mysql());
+    @file_put_contents($marque, (string) SCHEMA_VERSION);
+}
+
+/**
+ * Rattrape les colonnes ajoutées après la première installation.
+ *
+ * Chaque ALTER est tenté puis ignoré s'il échoue : MySQL comme SQLite
+ * refusent d'ajouter une colonne qui existe déjà, et c'est exactement le
+ * cas qu'on veut traverser sans bruit.
+ */
+function migrer_schema(PDO $pdo, bool $mysql): void
+{
+    $court = $mysql ? 'VARCHAR(190)' : 'TEXT';
+
+    foreach ([
+        // v2 — la formule commerciale du compte, alignée sur les offres.
+        "ALTER TABLE utilisateurs ADD COLUMN formule $court NOT NULL DEFAULT 'decouverte'",
+    ] as $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (PDOException) {
+        }
+    }
+}
+
 function creer_schema(PDO $pdo, bool $mysql): void
 {
     $id = $mysql ? 'VARCHAR(36)' : 'TEXT';
@@ -26,6 +70,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
             mot_de_passe      $txt NOT NULL,
             nom               $court NOT NULL,
             role              $court NOT NULL DEFAULT 'participant',
+            formule           $court NOT NULL DEFAULT 'decouverte',
             organisation      $court NULL,
             ville             $court NULL,
             suspendu          INT NOT NULL DEFAULT 0,

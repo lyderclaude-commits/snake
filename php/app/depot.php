@@ -53,14 +53,6 @@ function decors_en_attente(): array
     return $s->fetchAll();
 }
 
-function decors_tous(): array
-{
-    $s = db()->query("SELECT d.*, u.nom AS auteur_nom, " . STATS_SQL . "
-        FROM decors d LEFT JOIN utilisateurs u ON u.id = d.auteur_id
-        ORDER BY d.maj_le DESC LIMIT 100");
-    return $s->fetchAll();
-}
-
 function slug_existe(string $slug): bool
 {
     $s = db()->prepare('SELECT 1 FROM decors WHERE slug = ?');
@@ -266,7 +258,7 @@ function badge_scanner(string $jeton, string $agent_id): array
     // reste comptabilisé en présence, mais ne rapporte rien.
     if ($b['utilisateur_id']) {
         db()->prepare('INSERT INTO koris (utilisateur_id, montant, motif, badge_jeton, cree_le) VALUES (?,?,?,?,?)')
-            ->execute([$b['utilisateur_id'], KORIS_PAR_SCAN, 'Présence — ' . $b['decor_titre'], $b['jeton'], $now]);
+            ->execute([$b['utilisateur_id'], KORIS_PAR_SCAN, 'Présence : ' . $b['decor_titre'], $b['jeton'], $now]);
     }
 
     return ['ok' => true, 'koris' => $koris, 'decor' => $b['decor_titre'], 'porteur' => $b['porteur']];
@@ -345,17 +337,167 @@ function equipe(): array
 
 /* ================= pilotage ================= */
 
+/** Un COUNT paramétré. Le seul endroit qui compte, pour n'oublier aucun cas. */
+function compter(string $sql, array $args = []): int
+{
+    $s = db()->prepare($sql);
+    $s->execute($args);
+    return (int) $s->fetch()['n'];
+}
+
+/** Une borne de temps, en arrière depuis maintenant. */
+function il_y_a(int $jours): string
+{
+    return gmdate('Y-m-d\TH:i:s\Z', time() - $jours * 86400);
+}
+
 function tableau_de_bord(): array
 {
     $n = fn(string $sql) => (int) db()->query($sql)->fetch()['n'];
     return [
         'publies' => $n("SELECT COUNT(*) AS n FROM decors WHERE statut='publie'"),
         'en_attente' => $n("SELECT COUNT(*) AS n FROM decors WHERE statut='en_relecture'"),
+        'corrections' => $n("SELECT COUNT(*) AS n FROM decors WHERE statut='corrections'"),
+        'brouillons' => $n("SELECT COUNT(*) AS n FROM decors WHERE statut='brouillon'"),
         'badges' => $n('SELECT COUNT(*) AS n FROM badges'),
         'presences' => $n('SELECT COUNT(*) AS n FROM badges WHERE scanne_le IS NOT NULL'),
         'comptes' => $n('SELECT COUNT(*) AS n FROM utilisateurs'),
+        'partenaires' => $n("SELECT COUNT(*) AS n FROM utilisateurs WHERE role='partenaire'"),
+        'suspendus' => $n('SELECT COUNT(*) AS n FROM utilisateurs WHERE suspendu = 1'),
         'vues' => $n("SELECT COUNT(*) AS n FROM evenements WHERE genre='vue'"),
+        'koris' => $n('SELECT COALESCE(SUM(montant),0) AS n FROM koris'),
     ];
+}
+
+/**
+ * Les indicateurs de la période, et ceux de la période précédente.
+ *
+ * Un chiffre seul ne dit rien : 40 badges est bon ou mauvais selon ce qu'a
+ * fait la semaine d'avant. Chaque indicateur porte donc sa variation, et
+ * `null` quand la période précédente était vide — « +∞ % » n'informe personne.
+ */
+function indicateurs(int $jours = 7): array
+{
+    $courant = [il_y_a($jours), il_y_a(0)];
+    $avant = [il_y_a($jours * 2), il_y_a($jours)];
+
+    $mesures = [
+        'badges' => ['Badges créés', 'SELECT COUNT(*) AS n FROM badges WHERE cree_le >= ? AND cree_le < ?'],
+        'telechargements' => ['Téléchargements', "SELECT COUNT(*) AS n FROM evenements WHERE genre='telechargement' AND cree_le >= ? AND cree_le < ?"],
+        'presences' => ['Présences scannées', 'SELECT COUNT(*) AS n FROM badges WHERE scanne_le >= ? AND scanne_le < ?'],
+        'vues' => ['Vues de décors', "SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ? AND cree_le < ?"],
+        'comptes' => ['Nouveaux comptes', 'SELECT COUNT(*) AS n FROM utilisateurs WHERE cree_le >= ? AND cree_le < ?'],
+    ];
+
+    $out = [];
+    foreach ($mesures as $cle => [$titre, $sql]) {
+        $ici = compter($sql, $courant);
+        $la = compter($sql, $avant);
+        $out[$cle] = [
+            'titre' => $titre,
+            'valeur' => $ici,
+            'avant' => $la,
+            'variation' => $la > 0 ? (int) round(($ici - $la) / $la * 100) : null,
+        ];
+    }
+    return $out;
+}
+
+/**
+ * L'entonnoir du produit : on regarde une page, on fabrique, on emporte, on vient.
+ *
+ * C'est la seule vue qui dit si la boucle tourne. Un décor très vu qui ne
+ * produit pas de badges est un décor qui ne parle pas ; des badges qui ne
+ * sont jamais scannés, c'est du bruit sans présence.
+ */
+function entonnoir(int $jours = 30): array
+{
+    $d = il_y_a($jours);
+    $etapes = [
+        ['Vues de décors', compter("SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ?", [$d])],
+        ['Badges créés', compter('SELECT COUNT(*) AS n FROM badges WHERE cree_le >= ?', [$d])],
+        ['Téléchargés', compter("SELECT COUNT(*) AS n FROM evenements WHERE genre='telechargement' AND cree_le >= ?", [$d])],
+        ['Présences à l’entrée', compter('SELECT COUNT(*) AS n FROM badges WHERE scanne_le >= ?', [$d])],
+    ];
+    $tete = max(1, $etapes[0][1]);
+    $out = [];
+    foreach ($etapes as $i => [$nom, $n]) {
+        $precedent = $i === 0 ? $n : $etapes[$i - 1][1];
+        $out[] = [
+            'nom' => $nom,
+            'n' => $n,
+            'part' => $n / $tete,
+            // Le taux de passage depuis l'étape d'AVANT : c'est là que ça fuit.
+            'passage' => $i === 0 ? null : ($precedent > 0 ? $n / $precedent : 0.0),
+        ];
+    }
+    return $out;
+}
+
+/** Les décors qui travaillent le plus, présence comprise. */
+function decors_en_tete(int $limite = 5): array
+{
+    return db()->query("SELECT d.id, d.titre, d.slug, d.statut, u.nom AS auteur_nom, " . STATS_SQL . ",
+        (SELECT COUNT(*) FROM badges b WHERE b.decor_id = d.id) AS badges,
+        (SELECT COUNT(*) FROM badges b WHERE b.decor_id = d.id AND b.scanne_le IS NOT NULL) AS presences
+        FROM decors d LEFT JOIN utilisateurs u ON u.id = d.auteur_id
+        WHERE d.statut = 'publie'
+        ORDER BY telechargements DESC, vues DESC LIMIT $limite")->fetchAll();
+}
+
+function comptes_recents(int $limite = 6): array
+{
+    return db()->query("SELECT * FROM utilisateurs ORDER BY cree_le DESC LIMIT $limite")->fetchAll();
+}
+
+/** Combien de comptes par formule, hors équipe : la photo du portefeuille. */
+function comptes_par_formule(): array
+{
+    $out = [];
+    foreach (db()->query("SELECT formule, COUNT(*) AS n FROM utilisateurs
+                          WHERE role <> 'equipe' GROUP BY formule")->fetchAll() as $r) {
+        $out[(string) $r['formule']] = (int) $r['n'];
+    }
+    return $out;
+}
+
+function comptes_par_role(): array
+{
+    $out = [];
+    foreach (db()->query('SELECT role, COUNT(*) AS n FROM utilisateurs GROUP BY role')->fetchAll() as $r) {
+        $out[(string) $r['role']] = (int) $r['n'];
+    }
+    return $out;
+}
+
+/**
+ * Les campagnes qui comptent dans le quota d'une offre.
+ *
+ * Un brouillon ne consomme rien : il n'est visible de personne. Un décor
+ * archivé, refusé ou expiré non plus. Ce qui occupe une place, c'est ce qui
+ * est en ligne ou en train d'y aller.
+ */
+function campagnes_actives(string $auteur_id, ?string $sauf = null): int
+{
+    // `$sauf` : le décor qu'on est en train de soumettre occupe déjà sa
+    // place s'il revient de corrections. Sans cette exception, un quota de
+    // 1 empêcherait de renvoyer le seul décor qu'on a.
+    $sql = "SELECT COUNT(*) AS n FROM decors
+        WHERE auteur_id = ? AND statut IN ('publie','en_relecture','corrections')";
+    $args = [$auteur_id];
+    if ($sauf !== null) {
+        $sql .= ' AND id <> ?';
+        $args[] = $sauf;
+    }
+    return compter($sql, $args);
+}
+
+/** Téléchargements du mois en cours, tous décors confondus, pour un compte. */
+function telechargements_du_mois(string $auteur_id): int
+{
+    return compter("SELECT COUNT(*) AS n FROM evenements e JOIN decors d ON d.id = e.decor_id
+        WHERE d.auteur_id = ? AND e.genre = 'telechargement' AND e.cree_le >= ?",
+        [$auteur_id, gmdate('Y-m-01\T00:00:00\Z')]);
 }
 
 /** Série des 14 derniers jours, trous comblés — sinon l'histogramme ment. */
@@ -377,14 +519,20 @@ function telechargements_par_jour(int $jours = 14): array
 
 function comptes_tous(): array
 {
-    return db()->query('SELECT * FROM utilisateurs ORDER BY cree_le DESC LIMIT 200')->fetchAll();
+    // Le nombre de décors accompagne chaque compte : sans lui, la liste ne
+    // dit pas lesquels travaillent et lesquels dorment.
+    return db()->query("SELECT u.*,
+        (SELECT COUNT(*) FROM decors d WHERE d.auteur_id = u.id) AS decors,
+        (SELECT COUNT(*) FROM decors d WHERE d.auteur_id = u.id
+            AND d.statut IN ('publie','en_relecture','corrections')) AS actives
+        FROM utilisateurs u ORDER BY u.cree_le DESC LIMIT 200")->fetchAll();
 }
 
 /**
  * Catalogue complet pour l'équipe, filtrable par statut.
  *
- * Distinct de `decors_tous()`, qui alimente le tableau de bord : ici on
- * pagine et on filtre, parce que la liste est faite pour agir dessus.
+ * Distinct de `decors_en_tete()`, qui alimente le tableau de bord : ici on
+ * filtre et on cherche, parce que la liste est faite pour agir dessus.
  */
 function decors_catalogue(?string $statut = null, string $cherche = ''): array
 {

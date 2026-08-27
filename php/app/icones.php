@@ -36,6 +36,9 @@ function icone(string $nom): string
         // Croix — ce qu'elle n'apporte pas
         'croix' => '<path d="M6.5 6.5 17.5 17.5"/><path d="M17.5 6.5 6.5 17.5"/>',
 
+        // Trois traits — le menu replié du mobile
+        'menu' => '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
+
         // Cadre et portrait — le Studio
         'studio' => '<rect x="3.2" y="3.2" width="17.6" height="17.6" rx="3"/>'
                   . '<circle cx="9" cy="9.5" r="1.9"/>'
@@ -47,4 +50,23 @@ function icone(string $nom): string
     return $d === ''
         ? ''
         : '<svg viewBox="0 0 24 24" ' . $traits . ' aria-hidden="true" focusable="false">' . $d . '</svg>';
+}
+
+/**
+ * Le logo Wakabi.
+ *
+ * Le tracé livré (public/logo.svg) est une reconstitution vectorielle de la
+ * marque : le W dont la première branche est l'épingle de carte. Si l'équipe
+ * dépose son propre fichier sous public/logo.png, il prend la main sans
+ * qu'une ligne de code ne change — c'est la version officielle qui gagne.
+ */
+function logo_wakabi(string $classe = 'logo'): string
+{
+    foreach (['logo.png', 'logo.svg'] as $nom) {
+        if (is_file(RACINE . '/public/' . $nom)) {
+            return '<img class="' . e($classe) . '" src="' . e(url('public/' . $nom))
+                 . '" alt="Wakabi Boost">';
+        }
+    }
+    return '<span class="' . e($classe) . '-texte">WAKABI</span>';
 }

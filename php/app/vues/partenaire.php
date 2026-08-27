@@ -16,17 +16,56 @@
   $emis = 0; $vus = 0; $presents = 0;
   foreach ($liste as $d) { $p = presence($d['id']); $emis += $p['emis']; $presents += $p['scannes']; $vus += (int) $d['vues']; }
   ?>
-  <div class="grille g4" style="margin-bottom:22px">
+  <div class="grille g4" style="margin-bottom:18px">
     <div class="stat p"><b><?= count($liste) ?></b><span>campagnes</span></div>
     <div class="stat"><b><?= $vus ?></b><span>vues</span></div>
     <div class="stat o"><b><?= $emis ?></b><span>badges téléchargés</span></div>
     <div class="stat v"><b><?= $presents ?></b><span>présences scannées</span></div>
   </div>
 
+  <?php
+  /**
+   * Ce que l'offre autorise, et où on en est.
+   *
+   * Le chiffre est affiché AVANT de buter dessus : découvrir sa limite au
+   * moment de soumettre une campagne préparée, c'est la découvrir trop tard.
+   */
+  $offre = FORMULES[$me['formule'] ?? 'decouverte'] ?? FORMULES['decouverte'];
+  $actives = campagnes_actives($me['id']);
+  $mois = telechargements_du_mois($me['id']);
+  $part = fn(int $n, int $max) => $max <= 0 ? 6 : min(100, round($n / $max * 100));
+  ?>
+  <div class="carte" style="margin-bottom:22px">
+    <div class="rangee" style="justify-content:space-between;align-items:baseline">
+      <h3 style="margin:0">Offre <?= e($offre['nom']) ?></h3>
+      <a class="aide" href="<?= e(url('#tarifs')) ?>">Voir les offres</a>
+    </div>
+
+    <div class="grille g2" style="margin-top:14px">
+      <div class="marche">
+        <div class="haut">
+          <span>Campagnes actives</span>
+          <b><?= $actives ?><?= $offre['campagnes'] < 0 ? '' : ' / ' . $offre['campagnes'] ?></b>
+        </div>
+        <div class="rail"><i style="width:<?= $part($actives, (int) $offre['campagnes']) ?>%"></i></div>
+        <span class="taux">Un brouillon ne compte pas : seules les campagnes en ligne ou en relecture occupent une place.</span>
+      </div>
+
+      <div class="marche">
+        <div class="haut">
+          <span>Téléchargements ce mois</span>
+          <b><?= $mois ?><?= $offre['telechargements'] < 0 ? '' : ' / ' . $offre['telechargements'] ?></b>
+        </div>
+        <div class="rail"><i style="width:<?= $part($mois, (int) $offre['telechargements']) ?>%"></i></div>
+        <span class="taux">Repère indicatif : aucun badge n’est refusé à vos invités.</span>
+      </div>
+    </div>
+  </div>
+
   <?php if ($emis > 0 && $presents === 0): ?>
     <div class="msg info">
       <strong>C’est le QR qui fait la différence.</strong> <?= $emis ?> badge(s) téléchargé(s),
-      0 personne réellement venue — un générateur classique s’arrête au premier chiffre.
+      0 personne réellement venue. Un générateur classique s’arrête au premier chiffre.
       Scannez les badges à l’entrée pour mesurer le second.
     </div>
   <?php endif; ?>
