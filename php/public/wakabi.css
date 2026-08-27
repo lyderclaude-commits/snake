@@ -126,7 +126,9 @@ a{color:var(--primary-d);text-underline-offset:3px}
 .barre{background:var(--paper);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30}
 .barre-in{max-width:1100px;margin:0 auto;padding:10px 20px;display:flex;gap:18px;align-items:center}
 .marque{margin-right:auto;display:flex;align-items:center;text-decoration:none}
-.logo{height:30px;width:auto;display:block}
+/* Le logo officiel est presque carré : à 30 px de haut il ne pesait plus
+   rien dans la barre. On ne touche pas au fichier, on lui donne sa place. */
+.logo{height:34px;width:auto;display:block}
 .logo-texte{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:var(--ink)}
 
 /* Le menu : déplié en barre sur grand écran, replié derrière un bouton
@@ -316,7 +318,7 @@ th.chiffre,td.chiffre{text-align:right}
 
 footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:var(--text3);font-size:.85rem}
 .pied{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:0}
-.pied .logo{height:24px;opacity:.85}
+.pied .logo{height:26px;opacity:.85}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r6)}
 [hidden]{display:none!important}
 

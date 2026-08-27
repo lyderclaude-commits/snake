@@ -301,6 +301,15 @@ après paiement. C'est l'équipe qui bascule l'offre depuis **Comptes**.
 
 ---
 
+## Le logo
+
+Le fichier officiel de la marque est servi tel quel, depuis
+`public/logo.png`. Rien n'est redessiné dans le code : pour changer le logo
+partout — barre, pied de page, favicone — il suffit de remplacer ce fichier.
+Un `public/logo.svg` est pris en compte s'il n'y a pas de PNG.
+
+---
+
 ## Mettre à jour
 
 ```bash

@@ -55,18 +55,26 @@ function icone(string $nom): string
 /**
  * Le logo Wakabi.
  *
- * Le tracé livré (public/logo.svg) est une reconstitution vectorielle de la
- * marque : le W dont la première branche est l'épingle de carte. Si l'équipe
- * dépose son propre fichier sous public/logo.png, il prend la main sans
- * qu'une ligne de code ne change — c'est la version officielle qui gagne.
+ * C'est le fichier officiel de la marque, servi tel quel : rien n'est
+ * redessiné ici. `public/logo.png` d'abord, `public/logo.svg` ensuite —
+ * remplacer l'un ou l'autre suffit à changer le logo partout, sans toucher
+ * une ligne de code. S'il manque, on retombe sur le nom écrit plutôt que
+ * sur une approximation du dessin.
  */
-function logo_wakabi(string $classe = 'logo'): string
+function logo_fichier(): ?array
 {
-    foreach (['logo.png', 'logo.svg'] as $nom) {
+    foreach (['logo.png' => 'image/png', 'logo.svg' => 'image/svg+xml'] as $nom => $type) {
         if (is_file(RACINE . '/public/' . $nom)) {
-            return '<img class="' . e($classe) . '" src="' . e(url('public/' . $nom))
-                 . '" alt="Wakabi Boost">';
+            return ['url' => url('public/' . $nom), 'type' => $type];
         }
     }
-    return '<span class="' . e($classe) . '-texte">WAKABI</span>';
+    return null;
+}
+
+function logo_wakabi(string $classe = 'logo'): string
+{
+    $f = logo_fichier();
+    return $f === null
+        ? '<span class="' . e($classe) . '-texte">WAKABI</span>'
+        : '<img class="' . e($classe) . '" src="' . e($f['url']) . '" alt="Wakabi Boost">';
 }

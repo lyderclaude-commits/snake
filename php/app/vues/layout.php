@@ -10,7 +10,8 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
 <meta name="theme-color" content="#2563EB">
 <title><?= e($titre ?? 'Wakabi Boost') ?></title>
 <meta name="description" content="<?= e($description ?? 'Créez votre badge et partagez-le. Wakabi Boost, le guide des bons plans.') ?>">
-<link rel="icon" href="<?= e(url('public/logo.svg')) ?>" type="image/svg+xml">
+<?php $ico = logo_fichier(); ?>
+<?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?= e(url('public/wakabi.css')) ?>">
 </head>
 <body>
