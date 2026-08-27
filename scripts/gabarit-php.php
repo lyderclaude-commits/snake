@@ -9,7 +9,9 @@ echo json_encode(construire_gabarit([
     'ville' => 'lome',
     'rubrique' => 'evenements',
     'disposition' => $argv[1] ?? 'bandeau',
-    'cadre_url' => 'https://wakabileguide.com/frames/jy-serai.png',
+    // La page blanche se passe de cadre : c'est justement la variante que le
+    // schéma doit accepter, calque image en moins.
+    'cadre_url' => ($argv[1] ?? '') === 'vierge' ? '' : 'https://wakabileguide.com/frames/jy-serai.png',
     'accroche' => 'J’Y SERAI',
     'champ_libelle' => 'Ton prénom',
     'champ_valeur' => 'Kossi',

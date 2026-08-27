@@ -203,7 +203,7 @@ export const DecorTemplate = z
      * dans le mauvais gabarit, ce que la sauvegarde entérinait ensuite.
      */
     layout: z
-      .enum(['bandeau', 'angle', 'story', 'instagram', 'facebook', 'tiktok'])
+      .enum(['bandeau', 'angle', 'story', 'instagram', 'facebook', 'tiktok', 'vierge'])
       .default('bandeau'),
 
     /* ================================================================
@@ -369,10 +369,18 @@ export const DecorTemplate = z
       });
     }
 
-    // Le cadre doit passer AU-DESSUS de la photo, sinon il est invisible.
+    /**
+     * Le cadre doit passer AU-DESSUS de la photo, sinon il est invisible.
+     *
+     * La règle ne porte que sur un modèle QUI A un cadre : la « page
+     * blanche » n'en a aucun — son décor tient au fond, à la forme de la
+     * fenêtre photo et au texte. Exiger un calque image lui interdisait
+     * d'exister.
+     */
     const slotIndex = tpl.layers.findIndex((l) => l.type === 'photoSlot');
+    const images = tpl.layers.filter((l) => l.type === 'image');
     const hasFrameAbove = tpl.layers.some((l, i) => l.type === 'image' && i > slotIndex);
-    if (slotIndex !== -1 && !hasFrameAbove) {
+    if (slotIndex !== -1 && images.length > 0 && !hasFrameAbove) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['layers'],

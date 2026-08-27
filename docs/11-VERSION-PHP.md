@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **108 scénarios, 108 réussis**
+Les deux ont été vérifiés de bout en bout : **117 scénarios, 117 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -105,7 +105,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 108 scénarios, dans un vrai navigateur
+npm run php:e2e          # 117 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -115,7 +115,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 108 scénarios
+### Les 117 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -138,7 +138,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Le tableau de bord** | Cinq indicateurs avec leur variation, l'entonnoir en quatre étapes, la répartition des quatre offres |
 | **Le menu du téléphone** | Replié à l'arrivée, ouvert au doigt, refermé, jamais hors de l'écran — et déplié sans clic sur grand écran |
 | **La marque** | Le logo dans la barre, les portraits des témoignages |
-| **Les six gabarits** | Les six formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
+| **Les sept gabarits** | Les sept formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
+| **La page blanche** | Ses réglages n'apparaissent que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
 | **Le menu de l'équipe** | Cinq destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
@@ -305,9 +306,9 @@ après paiement. C'est l'équipe qui bascule l'offre depuis **Comptes**.
 
 ---
 
-## Les six gabarits
+## Les sept gabarits
 
-Trois formats Wakabi, trois formats de réseau :
+Trois formats Wakabi, trois formats de réseau, une page blanche :
 
 | Gabarit | Canevas | Ratio | Ce qu'il vise |
 |---|---|---|---|
@@ -317,6 +318,7 @@ Trois formats Wakabi, trois formats de réseau :
 | **Post Instagram** | 1080 × 1350 | 4:5 | le format qui prend le plus de place dans le fil |
 | **Post Facebook** | 1080 × 1080 | 1:1 | carré, jamais recadré par le fil |
 | **TikTok & Reels** | 1080 × 1920 | 9:16 | tout est remonté au-dessus des boutons de l'appli |
+| **Page blanche** | au choix | 1:1, 4:5, 9:16, 16:9 | rien d'imposé : on compose |
 
 Le gabarit TikTok n'est pas une story renommée. L'application pose sa légende
 sur le cinquième du bas et ses boutons sur le bord droit : le bloc de texte
@@ -324,6 +326,27 @@ descend donc à 65 % de la hauteur au lieu de 83 %, et **le QR passe en haut à
 gauche**, seul coin que TikTok laisse tranquille. Le filigrane, lui, reste en
 bas — les trois positions permises par le contrat sont toutes en bas ; en
 partage hors TikTok il est parfaitement visible.
+
+### La page blanche
+
+Le septième gabarit ne ressemble à rien, et c'est le but. **Aucun cadre** :
+son décor tient au fond, à la forme de la fenêtre photo et au texte. Elle
+ajoute quatre réglages aux autres :
+
+| Réglage | Ce qu'il fait |
+|---|---|
+| **Format** | 1:1, 4:5, 9:16 ou 16:9 — les gabarits nommés imposent le leur, celle-ci le demande |
+| **Couleur de fond** | visible partout où la photo ne va pas |
+| **Forme de la fenêtre photo** | rectangle, coins arrondis ou cercle |
+| **Fenêtre photo** | marges, largeur et hauteur |
+
+Un cadre reste possible si vous en avez un : il se pose par-dessus comme
+ailleurs.
+
+Les hauteurs de départ sont **calculées à partir du format**, pas écrites une
+fois pour toutes : le QR est dimensionné sur la largeur, donc en paysage il
+occupe un tiers de la hauteur là où il n'en prend qu'un sixième en vertical.
+Changer de format remet donc la mise en page d'aplomb.
 
 ### Tout se règle, sauf l'essentiel
 

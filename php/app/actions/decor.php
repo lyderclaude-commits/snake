@@ -96,6 +96,7 @@ $erreur = null;
 const CLES_APPARENCE = [
     'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
     'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
+    'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
 ];
 
 $valeurs = [
@@ -116,6 +117,12 @@ if ($modifie && !$post) {
     }
     $claim = $textes['claim'] ?? [];
     $champ = $textes['field'] ?? [];
+    $photo = [];
+    foreach ($g['layers'] ?? [] as $l) {
+        if (($l['type'] ?? '') === 'photoSlot') {
+            $photo = $l;
+        }
+    }
 
     $valeurs = [
         // L'apparence enregistrée est relue telle quelle : rouvrir un décor
@@ -130,6 +137,15 @@ if ($modifie && !$post) {
         'qr_position' => (string) ($g['qr']['position'] ?? 'bottom-left'),
         'qr_taille' => (float) ($g['qr']['size'] ?? 0.16),
         'filigrane_position' => (string) ($g['watermark']['position'] ?? 'bottom-right'),
+        'format' => (string) ($g['canvas']['ratio'] ?? '1:1'),
+        'fond' => (string) ($g['canvas']['background'] ?? 'brand.ink'),
+        'photo_x' => (float) ($photo['rect']['x'] ?? 0),
+        'photo_y' => (float) ($photo['rect']['y'] ?? 0),
+        'photo_w' => (float) ($photo['rect']['w'] ?? 1),
+        'photo_h' => (float) ($photo['rect']['h'] ?? 1),
+        'photo_forme' => ($photo['mask']['kind'] ?? 'rect') === 'circle'
+            ? 'cercle'
+            : (($photo['mask']['radius'] ?? 0) > 0 ? 'arrondi' : 'rect'),
         'cadre_fourni' => '',
         'titre' => $modifie['titre'],
         'sous_titre' => (string) $modifie['sous_titre'],
@@ -191,8 +207,10 @@ if ($post) {
         $erreur = 'Donnez un titre à votre décor.';
     } elseif (!$erreur && $valeurs['accroche'] === '') {
         $erreur = 'Indiquez l’accroche affichée sur le badge.';
-    } elseif (!$erreur && $valeurs['cadre_url'] === '') {
-        $erreur = 'Téléversez le fichier de votre cadre.';
+    } elseif (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['disposition'] !== 'vierge') {
+        // La page blanche est le seul gabarit qui se passe de cadre : son
+        // décor tient au fond, à la fenêtre photo et au texte.
+        $erreur = 'Téléversez le fichier de votre cadre, ou choisissez le gabarit « Page blanche ».';
     }
 
     if (!$erreur) {

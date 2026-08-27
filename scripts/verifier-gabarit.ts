@@ -27,7 +27,7 @@ function ecarts(attendu: unknown, obtenu: unknown, chemin = ''): string[] {
   return out;
 }
 
-for (const disposition of ['bandeau', 'angle', 'story', 'instagram', 'facebook', 'tiktok']) {
+for (const disposition of ['bandeau', 'angle', 'story', 'instagram', 'facebook', 'tiktok', 'vierge']) {
   const brut = execFileSync('php', ['scripts/gabarit-php.php', disposition]).toString();
   const php = JSON.parse(brut);
 

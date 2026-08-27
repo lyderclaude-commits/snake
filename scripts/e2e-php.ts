@@ -358,7 +358,8 @@ const run = async () => {
 
   const titreIg = `Instagram recette ${marque}`;
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
-  ok('les six gabarits sont proposés', (await p.locator('#disposition option').count()) === 6);
+  ok('les sept gabarits sont proposés', (await p.locator('#disposition option').count()) === 7,
+     `${await p.locator('#disposition option').count()} dans la liste`);
 
   await p.waitForTimeout(1200);
   const forme = async (): Promise<number> => Number(await p.evaluate(`
@@ -415,6 +416,60 @@ const run = async () => {
   ok('« réglages du gabarit » restaure les valeurs d’usine',
      (await p.inputValue('#r-qr_position')) === 'bottom-left'
      && Math.abs(Number(await p.inputValue('#r-bloc_y')) - 0.8) < 0.011);
+
+  /* ---- la page blanche : aucun cadre, tout au choix ---- */
+
+  const titrePB = `Page blanche ${marque}`;
+  await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1200);
+  ok('les réglages de la page blanche restent cachés ailleurs',
+     await p.locator('.si-vierge').first().isHidden());
+
+  await p.selectOption('#disposition', 'vierge');
+  await p.waitForTimeout(1200);
+  ok('la page blanche ouvre ses propres réglages',
+     !(await p.locator('.si-vierge').first().isHidden()));
+
+  await p.selectOption('#r-format', '9:16');
+  await p.waitForTimeout(1200);
+  ok('le format choisi s’applique à l’aperçu', Math.abs((await forme()) - 0.5625) < 0.03,
+     `${(await forme()).toFixed(2)} attendu 0.56`);
+
+  await p.selectOption('#r-photo_forme', 'cercle');
+  await p.selectOption('#r-fond', 'brand.primary');
+  await p.fill('#titre', titrePB);
+  await p.fill('#redirection', 'https://wakabileguide.com/p/page-blanche');
+  await p.waitForTimeout(800);
+  await p.click('#form-decor button[type=submit]');
+  await p.waitForLoadState('domcontentloaded');
+  ok('un décor sans aucun cadre est accepté',
+     /créé|enregistré/i.test(await p.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await p.locator('.msg.err').first().innerText().catch(() => '')).slice(0, 60));
+
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titrePB)}`, { waitUntil: 'domcontentloaded' });
+  const versPB = await p.locator(`.carte:has-text("${titrePB}") a:has-text("Modifier")`).first().getAttribute('href');
+  await p.goto(versPB!, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1100);
+  ok('le format de la page blanche est conservé', (await p.inputValue('#r-format')) === '9:16');
+  ok('la fenêtre ronde est conservée', (await p.inputValue('#r-photo_forme')) === 'cercle');
+  ok('le fond choisi est conservé', (await p.inputValue('#r-fond')) === 'brand.primary');
+
+  // Sans cadre, le Studio doit tout de même s'ouvrir et dessiner.
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titrePB)}`, { waitUntil: 'domcontentloaded' });
+  await p.locator(`.carte:has-text("${titrePB}") form[action*="p=statut"] button:has-text("Publier")`).first()
+    .click().catch(() => {});
+  await p.waitForLoadState('domcontentloaded');
+  const lienPB = await p.locator(`.carte:has-text("${titrePB}") a:has-text("Voir en ligne")`).first()
+    .getAttribute('href').catch(() => null);
+  ok('la page blanche se publie', !!lienPB, lienPB ?? 'pas publiable');
+  if (lienPB) {
+    await p.goto(lienPB, { waitUntil: 'domcontentloaded' });
+    await p.waitForSelector('#toile', { timeout: 15_000 }).catch(() => {});
+    ok('son Studio s’ouvre sans cadre', (await p.locator('#toile').count()) > 0);
+  }
+
+  await p.goto(versPB!, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(900);
 
   // Un champ « caché » resté à 100 % de large fait déborder toute la page
   // sans qu'on le voie. On mesure le glissement là où ce champ vit.

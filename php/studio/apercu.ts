@@ -24,12 +24,14 @@ const CHAMPS = [
   'disposition', 'cadre_url', 'cadre_fourni', 'titre', 'accroche', 'champ_libelle',
   'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
   'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
+  'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
 ];
 
 // Les curseurs affichent une fraction de la hauteur du canevas : un
 // pourcentage se lit, « 0.058 » ne se lit pas.
 const POURCENTAGES = new Set([
   'bloc_x', 'bloc_y', 'bloc_w', 'accroche_taille', 'champ_taille', 'qr_taille',
+  'photo_x', 'photo_y', 'photo_w', 'photo_h',
 ]);
 
 function demarrer(ctx: Contexte) {
@@ -54,6 +56,20 @@ function demarrer(ctx: Contexte) {
     const el = form.elements.namedItem(nom) as HTMLInputElement | null;
     return el && 'value' in el ? el.value : '';
   };
+
+  /**
+   * Les réglages de la page blanche n'ont de sens que pour elle.
+   *
+   * Sur un gabarit nommé, le format fait partie de sa définition et la
+   * fenêtre photo est dessinée par le cadre : montrer ces commandes
+   * inviterait à casser le cadre qu'on vient de téléverser.
+   */
+  function ajusterGroupes() {
+    const vierge = val('disposition') === 'vierge';
+    for (const el of document.querySelectorAll('.si-vierge')) {
+      (el as HTMLElement).hidden = !vierge;
+    }
+  }
 
   /** Les nombres du formulaire, montrés en clair sous chaque curseur. */
   function afficherValeurs() {
@@ -99,6 +115,7 @@ function demarrer(ctx: Contexte) {
         if (el) el.value = String(valeur);
       }
       afficherValeurs();
+      ajusterGroupes();
     }
 
     const tpl = d.gabarit;
@@ -180,11 +197,15 @@ function demarrer(ctx: Contexte) {
     minuteur = window.setTimeout(() => rafraichir(reinit), 220);
   };
 
+  // Changer de gabarit OU de format repart des réglages d'usine : sur une
+  // page blanche, toutes les hauteurs se déduisent du format, et les garder
+  // en passant du carré au paysage poserait le texte sous le QR.
+  const remetAZero = (id: string) => id === 'disposition' || id === 'r-format';
+
   form.addEventListener('input', (e) => {
     afficherValeurs();
-    const cible = e.target as HTMLElement;
-    // Changer de format repart des réglages de ce gabarit.
-    plusTard(cible.id === 'disposition');
+    ajusterGroupes();
+    plusTard(remetAZero((e.target as HTMLElement).id));
   });
   form.addEventListener('change', (e) => {
     const cible = e.target as HTMLInputElement;
@@ -197,12 +218,13 @@ function demarrer(ctx: Contexte) {
       const nom = document.querySelector('.fichier .texte');
       if (nom) nom.textContent = f ? f.name : 'Choisir un fichier';
     }
-    plusTard(cible.id === 'disposition');
+    plusTard(remetAZero(cible.id));
   });
 
   document.getElementById('apparence-defaut')?.addEventListener('click', () => rafraichir(true));
 
   afficherValeurs();
+  ajusterGroupes();
   rafraichir();
 }
 

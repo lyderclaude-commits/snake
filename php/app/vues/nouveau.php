@@ -65,10 +65,18 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
             $groupes = [
               'Formats Wakabi' => ['bandeau', 'angle', 'story'],
               'Réseaux sociaux' => ['instagram', 'facebook', 'tiktok'],
+              'Sur mesure' => ['vierge'],
             ];
             $par_id = [];
             foreach (dispositions() as $d) {
                 $par_id[$d['id']] = $d;
+            }
+            // Filet : une disposition ajoutée sans être rangée dans un groupe
+            // apparaît quand même, plutôt que de disparaître du formulaire.
+            $rangees = array_merge(...array_values($groupes));
+            $orphelines = array_diff(array_keys($par_id), $rangees);
+            if ($orphelines) {
+                $groupes['Autres'] = array_values($orphelines);
             }
             foreach ($groupes as $titre_groupe => $ids): ?>
               <optgroup label="<?= e($titre_groupe) ?>">
@@ -84,6 +92,10 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
         </div>
 
         <h3 style="margin:20px 0 14px">2 · Le cadre</h3>
+        <p class="aide si-vierge" style="margin:-8px 0 12px"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
+          La page blanche n’en demande pas : son décor tient au fond, à la fenêtre photo et au texte.
+          Vous pouvez tout de même en ajouter un.
+        </p>
         <div class="champ">
           <p class="pas">Votre fichier PNG ou WebP à fond transparent</p>
           <!-- Même traitement que dans le Studio : le libellé natif s'affiche
@@ -165,6 +177,28 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
           <?php $curseur('qr_taille', 'Taille du QR', 0.12, 0.28, 0.005, $valeurs['qr_taille'],
                          'En dessous de 0,12 un téléphone peine à le lire.'); ?>
           <?php $liste('filigrane_position', 'Coin du filigrane', APPARENCE_FILIGRANE, (string) $valeurs['filigrane_position']); ?>
+        </div>
+
+        <?php
+        /**
+         * Les réglages propres à la page blanche.
+         *
+         * Ils n'apparaissent que pour elle : sur un gabarit nommé, le format
+         * fait partie de sa définition et la fenêtre photo est dessinée par
+         * le cadre. Les déplacer là n'aurait aucun sens, et casserait le
+         * cadre qu'on vient de téléverser.
+         */
+        ?>
+        <div class="reglages si-vierge"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
+          <p class="pas" style="grid-column:1/-1;margin:0 0 4px">Page blanche : le format et la fenêtre photo</p>
+          <?php $liste('format', 'Format du décor', FORMATS, (string) $valeurs['format']); ?>
+          <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond']); ?>
+          <?php $liste('photo_forme', 'Forme de la fenêtre photo', APPARENCE_FORMES, (string) $valeurs['photo_forme']); ?>
+          <?php $curseur('photo_x', 'Fenêtre : marge gauche', 0, 0.75, 0.01, $valeurs['photo_x']); ?>
+          <?php $curseur('photo_y', 'Fenêtre : marge haute', 0, 0.75, 0.01, $valeurs['photo_y']); ?>
+          <?php $curseur('photo_w', 'Fenêtre : largeur', 0.25, 1, 0.01, $valeurs['photo_w']); ?>
+          <?php $curseur('photo_h', 'Fenêtre : hauteur', 0.25, 1, 0.01, $valeurs['photo_h'],
+                         'Le fond apparaît partout où la photo ne va pas.'); ?>
         </div>
 
         <div class="apercu-boite">

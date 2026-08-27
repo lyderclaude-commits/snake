@@ -115,6 +115,68 @@ function se_chevauchent(array $a, array $b): bool
  * Lance les sept contrôles. Renvoie le rapport complet, pas seulement un
  * verdict : le relecteur doit voir POURQUOI un décor est passé.
  */
+/**
+ * Où le QR et le filigrane se posent réellement, d'après le gabarit.
+ *
+ * Ces deux zones étaient codées en dur en bas à gauche et en bas à droite.
+ * Depuis que leur coin se règle, les figer revenait à contrôler la collision
+ * ailleurs que là où elle se produit : un texte passait sous un QR déplacé
+ * sans que rien ne le signale.
+ *
+ * Les marges reprennent celles du renderer : 4 % du plus petit côté, et une
+ * zone de silence de 8 % autour du QR.
+ */
+function zones_reservees(array $gabarit): array
+{
+    $w = (float) ($gabarit['canvas']['width'] ?? 1080);
+    $h = (float) ($gabarit['canvas']['height'] ?? 1080);
+    $rapport = $h > 0 ? $w / $h : 1.0;
+
+    // Le renderer prend sa marge sur le PLUS PETIT côté : en normalisé, elle
+    // ne vaut donc pas la même chose sur les deux axes.
+    $marge_px = 0.04 * min($w, $h);
+    $marge_x = $marge_px / $w;
+    $marge_y = $marge_px / $h;
+
+    /**
+     * Le QR est dimensionné sur la LARGEUR, zone de silence comprise.
+     *
+     * Sa hauteur normalisée dépend donc du format : un sixième de la hauteur
+     * en carré, un tiers en paysage. Le supposer carré refusait des décors
+     * 4:5 et 9:16 parfaitement valides.
+     */
+    $boite_x = (float) ($gabarit['qr']['size'] ?? 0.16) * 1.16;
+    $boite_y = $boite_x * $rapport;
+    $position_qr = (string) ($gabarit['qr']['position'] ?? 'bottom-left');
+    $zone_qr = [
+        'x' => $position_qr === 'top-right' ? 1 - $boite_x - $marge_x : $marge_x,
+        'y' => $position_qr === 'bottom-left' ? 1 - $boite_y - $marge_y : $marge_y,
+        'w' => $boite_x,
+        'h' => $boite_y,
+    ];
+
+    // Le filigrane : 21 % de la largeur, et une hauteur d'environ 0,39 de sa
+    // propre largeur — la même conversion s'applique.
+    $largeur_filigrane = 0.21;
+    $hauteur_filigrane = $largeur_filigrane * 0.42 * $rapport;
+    $position_filigrane = (string) ($gabarit['watermark']['position'] ?? 'bottom-right');
+    $x_filigrane = match ($position_filigrane) {
+        'bottom-left' => $marge_x,
+        'bottom-center' => (1 - $largeur_filigrane) / 2,
+        default => 1 - $largeur_filigrane - $marge_x,
+    };
+
+    return [
+        'qr' => $zone_qr,
+        'filigrane' => [
+            'x' => $x_filigrane,
+            'y' => 1 - $hauteur_filigrane - $marge_y,
+            'w' => $largeur_filigrane,
+            'h' => $hauteur_filigrane,
+        ],
+    ];
+}
+
 function prevol(array $gabarit, ?string $cadre_url): array
 {
     $controles = [];
@@ -131,60 +193,78 @@ function prevol(array $gabarit, ?string $cadre_url): array
         return ['passe' => false, 'controles' => $controles];
     }
 
-    $chemin = chemin_cadre($cadre_url);
-    if (!$chemin || !is_file($chemin)) {
-        $ajouter('format', 'echec', 'Aucun cadre exploitable n’est attaché à ce décor.');
-        return ['passe' => false, 'controles' => $controles];
-    }
+    /**
+     * Un décor peut n'avoir AUCUN cadre.
+     *
+     * C'est le cas de la page blanche : son décor tient au fond, à la forme
+     * de la fenêtre photo et au texte. Les trois contrôles qui inspectent le
+     * fichier n'ont alors rien à inspecter — mais les trois suivants, eux,
+     * comptent toujours, et c'est là que la page blanche peut se tromper.
+     */
+    $sans_cadre = !array_filter(
+        $gabarit['layers'] ?? [],
+        fn($l) => ($l['type'] ?? '') === 'image' && ($l['id'] ?? '') === 'frame'
+    );
 
-    /* 2 — format du fichier */
-    $info = @getimagesize($chemin);
-    if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
-        $ajouter('format', 'echec', 'Le cadre doit être un PNG ou un WebP. Le SVG est refusé pour raison de sécurité.');
-        return ['passe' => false, 'controles' => $controles];
-    }
-    $img = charger_image($chemin);
-    if (!$img) {
-        $ajouter('format', 'echec', 'Le fichier du cadre est illisible ou corrompu.');
-        return ['passe' => false, 'controles' => $controles];
-    }
-    imagealphablending($img, false);
-    imagesavealpha($img, true);
-    $ajouter('format', 'ok', sprintf('Cadre %s, %d × %d px.', $info[2] === IMAGETYPE_PNG ? 'PNG' : 'WebP', $info[0], $info[1]));
-
-    /* 3 — poids */
-    $poids = filesize($chemin) ?: 0;
-    if ($poids > POIDS_MAX) {
-        $ajouter('poids', 'echec', sprintf(
-            'Le cadre pèse %d Ko. Au-delà de %d Ko, il ne se charge pas en 3G.',
-            (int) round($poids / 1024),
-            (int) round(POIDS_MAX / 1024)
-        ));
+    $img = null;
+    if ($sans_cadre) {
+        $ajouter('format', 'ok', 'Aucun cadre : le décor tient au fond, à la fenêtre photo et au texte.');
+        $ajouter('poids', 'ok', 'Rien à charger en plus de la photo de l’invité.');
+        $ajouter('photo-visible', 'ok', 'La photo est entièrement visible : aucun cadre ne la recouvre.');
     } else {
-        $ajouter('poids', 'ok', sprintf('%d Ko — soutenable en 3G.', (int) round($poids / 1024)));
-    }
-
-    /* 4 — la photo doit se voir */
-    $slot = null;
-    foreach ($gabarit['layers'] as $l) {
-        if (($l['type'] ?? '') === 'photoSlot') {
-            $slot = $l['rect'];
+        $chemin = chemin_cadre($cadre_url);
+        if (!$chemin || !is_file($chemin)) {
+            $ajouter('format', 'echec', 'Aucun cadre exploitable n’est attaché à ce décor.');
+            return ['passe' => false, 'controles' => $controles];
         }
-    }
-    $opaque = $slot ? part_opaque($img, $slot['x'], $slot['y'], $slot['w'], $slot['h']) : 1.0;
-    if ($opaque > OPACITE_LIMITE) {
-        $ajouter('photo-visible', 'echec', sprintf(
-            'Le cadre recouvre %d %% de la zone photo : l’invité n’apparaîtra pas. Rendez le centre transparent.',
-            (int) round($opaque * 100)
-        ));
-    } else {
-        $ajouter('photo-visible', 'ok', sprintf('La photo apparaît sur %d %% de la zone.', (int) round((1 - $opaque) * 100)));
+
+        /* 2 — format du fichier */
+        $info = @getimagesize($chemin);
+        if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
+            $ajouter('format', 'echec', 'Le cadre doit être un PNG ou un WebP. Le SVG est refusé pour raison de sécurité.');
+            return ['passe' => false, 'controles' => $controles];
+        }
+        $img = charger_image($chemin);
+        if (!$img) {
+            $ajouter('format', 'echec', 'Le fichier du cadre est illisible ou corrompu.');
+            return ['passe' => false, 'controles' => $controles];
+        }
+        imagealphablending($img, false);
+        imagesavealpha($img, true);
+        $ajouter('format', 'ok', sprintf('Cadre %s, %d × %d px.', $info[2] === IMAGETYPE_PNG ? 'PNG' : 'WebP', $info[0], $info[1]));
+
+        /* 3 — poids */
+        $poids = filesize($chemin) ?: 0;
+        if ($poids > POIDS_MAX) {
+            $ajouter('poids', 'echec', sprintf(
+                'Le cadre pèse %d Ko. Au-delà de %d Ko, il ne se charge pas en 3G.',
+                (int) round($poids / 1024),
+                (int) round(POIDS_MAX / 1024)
+            ));
+        } else {
+            $ajouter('poids', 'ok', sprintf('%d Ko — soutenable en 3G.', (int) round($poids / 1024)));
+        }
+
+        /* 4 — la photo doit se voir */
+        $slot = null;
+        foreach ($gabarit['layers'] as $l) {
+            if (($l['type'] ?? '') === 'photoSlot') {
+                $slot = $l['rect'];
+            }
+        }
+        $opaque = $slot ? part_opaque($img, $slot['x'], $slot['y'], $slot['w'], $slot['h']) : 1.0;
+        if ($opaque > OPACITE_LIMITE) {
+            $ajouter('photo-visible', 'echec', sprintf(
+                'Le cadre recouvre %d %% de la zone photo : l’invité n’apparaîtra pas. Rendez le centre transparent.',
+                (int) round($opaque * 100)
+            ));
+        } else {
+            $ajouter('photo-visible', 'ok', sprintf('La photo apparaît sur %d %% de la zone.', (int) round((1 - $opaque) * 100)));
+        }
     }
 
     /* 5 — collisions avec le filigrane et le QR */
-    $zone_filigrane = ['x' => 0.74, 'y' => 0.86, 'w' => 0.24, 'h' => 0.12];
-    $taille_qr = (float) ($gabarit['qr']['size'] ?? 0.16);
-    $zone_qr = ['x' => 0.04, 'y' => 0.96 - $taille_qr, 'w' => $taille_qr + 0.03, 'h' => $taille_qr + 0.03];
+    ['filigrane' => $zone_filigrane, 'qr' => $zone_qr] = zones_reservees($gabarit);
 
     $collisions = [];
     foreach ($gabarit['layers'] as $l) {
@@ -236,7 +316,9 @@ function prevol(array $gabarit, ?string $cadre_url): array
         $ajouter('contraste', 'ok', 'Les textes sont clairs, lisibles sur toute photo.');
     }
 
-    imagedestroy($img);
+    if ($img) {
+        imagedestroy($img);
+    }
 
     $passe = true;
     foreach ($controles as $c) {

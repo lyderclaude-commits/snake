@@ -178,10 +178,17 @@ switch ($page) {
         if (!in_array($disposition, array_column(dispositions(), 'id'), true)) {
             $disposition = 'bandeau';
         }
-        // `reinit` : la disposition vient de changer, on repart de ses
-        // réglages d'usine plutôt que de traîner ceux de la précédente.
+        /**
+         * `reinit` : la disposition ou le format viennent de changer, on
+         * repart des réglages d'usine plutôt que de traîner les précédents.
+         *
+         * Le format demandé est transmis : sans lui, remettre à zéro une
+         * page blanche la ramenait au carré, et le choix de format ne
+         * tenait jamais plus d'un aller-retour.
+         */
+        $format = (string) ($_POST['format'] ?? '1:1');
         $apparence = ($_POST['reinit'] ?? '') === '1'
-            ? apparence_par_defaut($disposition)
+            ? apparence_par_defaut($disposition, isset(FORMATS[$format]) ? $format : '1:1')
             : apparence_propre($disposition, $_POST);
 
         $cadre = (string) ($_POST['cadre_url'] ?? '');
@@ -189,7 +196,9 @@ switch ($page) {
             $nom = basename((string) $_POST['cadre_fourni']);
             $cadre = isset(cadres_fournis()[$nom]) ? url('public/cadres/' . $nom) : '';
         }
-        if ($cadre === '') {
+        // Une page blanche s'affiche SANS cadre : lui en prêter un pour
+        // l'aperçu montrerait un décor qu'on n'enregistrera pas.
+        if ($cadre === '' && $disposition !== 'vierge') {
             $cadre = cadre_du_format($disposition);
         }
 

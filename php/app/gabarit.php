@@ -30,6 +30,7 @@ function dispositions(): array
         ['id' => 'instagram', 'nom' => 'Post Instagram',  'aide' => '4:5 · le format qui prend le plus de place dans le fil', 'ratio' => '4:5'],
         ['id' => 'facebook',  'nom' => 'Post Facebook',   'aide' => '1:1 · carré, jamais recadré par le fil',                 'ratio' => '1:1'],
         ['id' => 'tiktok',    'nom' => 'TikTok & Reels',  'aide' => '9:16 · tout remonté au-dessus des boutons de l’appli',   'ratio' => '9:16'],
+        ['id' => 'vierge',    'nom' => 'Page blanche',    'aide' => 'tout au choix : format, fond, zone photo, formes',       'ratio' => 'libre'],
     ];
 }
 
@@ -74,8 +75,36 @@ function statut_libelle(string $s): string
 
 /* ---------------- dimensions et positions ---------------- */
 
-function canevas(string $disposition): array
+/** Les quatre formats qu'une page blanche peut prendre. */
+const FORMATS = [
+    '1:1'  => 'Carré · 1080 × 1080',
+    '4:5'  => 'Portrait · 1080 × 1350',
+    '9:16' => 'Vertical plein écran · 1080 × 1920',
+    '16:9' => 'Paysage · 1920 × 1080',
+];
+
+function format_canevas(string $format): array
 {
+    return match ($format) {
+        '4:5'  => ['w' => 1080, 'h' => 1350, 'ratio' => '4:5'],
+        '9:16' => ['w' => 1080, 'h' => 1920, 'ratio' => '9:16'],
+        '16:9' => ['w' => 1920, 'h' => 1080, 'ratio' => '16:9'],
+        default => ['w' => 1080, 'h' => 1080, 'ratio' => '1:1'],
+    };
+}
+
+/**
+ * Le canevas d'une disposition.
+ *
+ * Les gabarits nommés imposent leur format — c'est ce qui les rend prêts à
+ * publier. La page blanche, elle, le demande : c'est le premier des choix
+ * qu'elle laisse.
+ */
+function canevas(string $disposition, string $format = ''): array
+{
+    if ($disposition === 'vierge') {
+        return format_canevas($format);
+    }
     return match ($disposition) {
         'story', 'tiktok' => ['w' => 1080, 'h' => 1920, 'ratio' => '9:16'],
         'instagram'       => ['w' => 1080, 'h' => 1350, 'ratio' => '4:5'],
@@ -99,7 +128,7 @@ function canevas(string $disposition): array
  * de sa zone de silence) à x = 0,74 (début du filigrane). Un bloc de texte
  * qui en sort passe SOUS l'un des deux, et le pré-vol le refuse.
  */
-function apparence_par_defaut(string $disposition): array
+function apparence_par_defaut(string $disposition, string $format = '1:1'): array
 {
     $commun = [
         'texte_couleur' => 'brand.paper',
@@ -107,6 +136,12 @@ function apparence_par_defaut(string $disposition): array
         'qr_position' => 'bottom-left',
         'qr_taille' => 0.16,
         'filigrane_position' => 'bottom-right',
+        // Ces quatre-là ne bougent que sur la page blanche : ailleurs, la
+        // photo remplit le cadre, qui est dessiné pour ça.
+        'format' => '1:1',
+        'fond' => 'brand.ink',
+        'photo_x' => 0.0, 'photo_y' => 0.0, 'photo_w' => 1.0, 'photo_h' => 1.0,
+        'photo_forme' => 'rect',
     ];
 
     // `array_merge` et non `+` : avec l'union, ce sont les valeurs de GAUCHE
@@ -142,6 +177,17 @@ function apparence_par_defaut(string $disposition): array
             'qr_position' => 'top-left', 'qr_taille' => 0.17,
             'filigrane_position' => 'bottom-center',
         ],
+        /**
+         * La page blanche : aucun cadre, une fenêtre photo en haut, le texte
+         * dessous, et tout le bas laissé au QR et au filigrane.
+         *
+         * Les hauteurs sont CALCULÉES à partir du format choisi, elles ne
+         * peuvent pas être écrites une fois pour toutes : le QR est dimensionné
+         * sur la largeur, donc en paysage il mange un tiers de la hauteur là
+         * où il n'en prend qu'un sixième en vertical. Des valeurs figées
+         * posaient le texte sous le QR dès qu'on passait en 16:9.
+         */
+        'vierge' => page_blanche($format),
         default => [
             'bloc_x' => 0.25, 'bloc_y' => 0.795, 'bloc_w' => 0.48,
             'accroche_taille' => 0.058, 'champ_taille' => 0.03,
@@ -264,6 +310,45 @@ function ratio_lisible(int $w, int $h): string
     return $w . '×' . $h;
 }
 
+/**
+ * Les repères d'une page blanche, déduits de son format.
+ *
+ * On part du bas : le QR et sa marge occupent une hauteur qui dépend du
+ * format, le bloc de texte se cale juste au-dessus, et la fenêtre photo
+ * prend tout ce qui reste en haut.
+ */
+function page_blanche(string $format): array
+{
+    $c = format_canevas($format);
+    $rapport = $c['w'] / $c['h'];
+
+    // En paysage, un QR à 16 % de la largeur prendrait un tiers de la
+    // hauteur : on le réduit plutôt que de sacrifier la photo.
+    $taille_qr = $rapport > 1.3 ? 0.12 : 0.16;
+
+    // Hauteurs normalisées : le renderer dimensionne le QR sur la LARGEUR.
+    $hauteur_qr = $taille_qr * 1.16 * $rapport;
+    $marge = 0.04 * min(1.0, $rapport);
+    $plancher = 1 - $hauteur_qr - $marge - 0.02;
+
+    $accroche = 0.06;
+    $champ = 0.03;
+    $hauteur_bloc = $accroche * 1.55 + 0.004 + $champ * 1.83;
+
+    $bloc_y = max(0.2, round($plancher - $hauteur_bloc, 3));
+    $photo_y = 0.05;
+    $photo_h = max(0.25, round($bloc_y - 0.03 - $photo_y, 3));
+
+    return [
+        'bloc_x' => 0.08, 'bloc_y' => $bloc_y, 'bloc_w' => 0.84,
+        'accroche_taille' => $accroche, 'champ_taille' => $champ,
+        'photo_x' => 0.06, 'photo_y' => $photo_y, 'photo_w' => 0.88, 'photo_h' => $photo_h,
+        'photo_forme' => 'arrondi',
+        'qr_taille' => $taille_qr,
+        'format' => $format,
+    ];
+}
+
 /** Les valeurs qu'un formulaire a le droit de proposer. */
 const APPARENCE_COULEURS = [
     'brand.paper' => 'Blanc',
@@ -276,6 +361,7 @@ const APPARENCE_COULEURS = [
 const APPARENCE_ALIGNEMENTS = ['left' => 'À gauche', 'center' => 'Centré', 'right' => 'À droite'];
 const APPARENCE_QR = ['bottom-left' => 'En bas à gauche', 'top-left' => 'En haut à gauche', 'top-right' => 'En haut à droite'];
 const APPARENCE_FILIGRANE = ['bottom-right' => 'En bas à droite', 'bottom-left' => 'En bas à gauche', 'bottom-center' => 'En bas au centre'];
+const APPARENCE_FORMES = ['rect' => 'Rectangle', 'arrondi' => 'Coins arrondis', 'cercle' => 'Cercle'];
 
 /**
  * Nettoie une apparence venue d'un formulaire.
@@ -286,7 +372,10 @@ const APPARENCE_FILIGRANE = ['bottom-right' => 'En bas à droite', 'bottom-left'
  */
 function apparence_propre(string $disposition, array $saisie): array
 {
-    $d = apparence_par_defaut($disposition);
+    // Le format d'abord : c'est de lui que dépendent toutes les hauteurs de
+    // départ d'une page blanche.
+    $format = (string) ($saisie['format'] ?? '');
+    $d = apparence_par_defaut($disposition, isset(FORMATS[$format]) ? $format : '1:1');
 
     $borne = function (string $cle, float $min, float $max) use ($saisie, $d): float {
         if (!isset($saisie[$cle]) || !is_numeric($saisie[$cle])) {
@@ -302,6 +391,13 @@ function apparence_propre(string $disposition, array $saisie): array
     return [
         'texte_couleur' => $parmi('texte_couleur', APPARENCE_COULEURS),
         'texte_align' => $parmi('texte_align', APPARENCE_ALIGNEMENTS),
+        'format' => $parmi('format', FORMATS),
+        'fond' => $parmi('fond', APPARENCE_COULEURS),
+        'photo_x' => $borne('photo_x', 0, 0.75),
+        'photo_y' => $borne('photo_y', 0, 0.75),
+        'photo_w' => $borne('photo_w', 0.25, 1),
+        'photo_h' => $borne('photo_h', 0.25, 1),
+        'photo_forme' => $parmi('photo_forme', APPARENCE_FORMES),
         'bloc_x' => $borne('bloc_x', 0, 0.8),
         'bloc_y' => $borne('bloc_y', 0.02, 0.92),
         'bloc_w' => $borne('bloc_w', 0.15, 1),
@@ -354,9 +450,46 @@ class GabaritInvalide extends RuntimeException
  */
 function construire_gabarit(array $i): array
 {
-    $c = canevas($i['disposition']);
     $a = apparence_propre($i['disposition'], $i['apparence'] ?? []);
+    $c = canevas($i['disposition'], $a['format']);
     $t = rectangles_textes($a);
+
+    /**
+     * La zone photo ne sort pas du canevas, et le masque suit la forme
+     * demandée. `radius` est une fraction du plus petit côté de la zone :
+     * 0,5 donnerait un ovale, 0,08 des coins arrondis discrets.
+     */
+    $photo = [
+        'x' => $a['photo_x'],
+        'y' => $a['photo_y'],
+        'w' => min($a['photo_w'], 1 - $a['photo_x']),
+        'h' => min($a['photo_h'], 1 - $a['photo_y']),
+    ];
+    $masque = match ($a['photo_forme']) {
+        'cercle' => ['kind' => 'circle'],
+        'arrondi' => ['kind' => 'rect', 'radius' => 0.08],
+        default => ['kind' => 'rect', 'radius' => 0],
+    };
+
+    /**
+     * Le cadre est un calque FACULTATIF.
+     *
+     * Une page blanche n'en a pas : son décor tient au fond, à la forme de
+     * la fenêtre photo et au texte. Ajouter un calque image vide donnerait un
+     * gabarit qui référence un fichier inexistant, et le rendu s'arrêterait
+     * là où il devrait continuer.
+     */
+    $calques = [
+        ['type' => 'photoSlot', 'id' => 'photo',
+         'rect' => $photo,
+         'fit' => 'cover', 'mask' => $masque,
+         'minScale' => 0.5, 'maxScale' => 4, 'allowRotation' => false],
+    ];
+    if (($i['cadre_url'] ?? '') !== '') {
+        $calques[] = ['type' => 'image', 'id' => 'frame', 'src' => $i['cadre_url'],
+                      'rect' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
+                      'opacity' => 1, 'blendMode' => 'normal'];
+    }
 
     $gabarit = [
         'id' => nouvel_id(),
@@ -371,19 +504,13 @@ function construire_gabarit(array $i): array
         'partnerId' => $i['partenaire_id'] ?? null,
         'expiresAt' => $i['expire_le'] ?: null,
         'moderation' => new stdClass(),
-        'canvas' => ['ratio' => $c['ratio'], 'width' => $c['w'], 'height' => $c['h'], 'background' => 'brand.ink'],
+        'canvas' => ['ratio' => $c['ratio'], 'width' => $c['w'], 'height' => $c['h'], 'background' => $a['fond']],
         // Tous les champs sont écrits EXPLICITEMENT, y compris ceux que la
         // version TypeScript laissait remplir par zod. Le renderer les lit
         // sans les vérifier : un `mask` absent, et il ne dessine plus rien.
         // scripts/verifier-gabarit.ts compare cette structure au vrai schéma.
         'layers' => [
-            ['type' => 'photoSlot', 'id' => 'photo',
-             'rect' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
-             'fit' => 'cover', 'mask' => ['kind' => 'rect', 'radius' => 0],
-             'minScale' => 0.5, 'maxScale' => 4, 'allowRotation' => false],
-            ['type' => 'image', 'id' => 'frame', 'src' => $i['cadre_url'],
-             'rect' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
-             'opacity' => 1, 'blendMode' => 'normal'],
+            ...$calques,
             ['type' => 'text', 'id' => 'claim', 'value' => $i['accroche'],
              'editable' => false, 'placeholder' => '', 'maxLength' => 40,
              'uppercase' => in_array($i['disposition'], ['bandeau', 'facebook'], true),
@@ -429,6 +556,14 @@ function valider_gabarit(array $g): void
     $slots = array_filter($couches, fn($l) => ($l['type'] ?? '') === 'photoSlot');
     if (count($slots) !== 1) {
         throw new GabaritInvalide('Un décor doit contenir exactement un emplacement photo.');
+    }
+
+    $r = reset($slots)['rect'] ?? null;
+    if ($r && ($r['w'] < 0.24 || $r['h'] < 0.24)) {
+        throw new GabaritInvalide(
+            'L’emplacement photo doit occuper au moins un quart de la largeur et de la hauteur : '
+            . 'en dessous, l’invité n’y tient plus.'
+        );
     }
 
     $iPhoto = array_key_first($slots);
