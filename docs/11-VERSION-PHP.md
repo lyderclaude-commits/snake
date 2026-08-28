@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **125 scénarios, 125 réussis**
+Les deux ont été vérifiés de bout en bout : **183 scénarios, 183 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -51,10 +51,15 @@ exportée dans le navigateur ; le serveur ne reçoit que le jeton du badge.
 | Base | SQLite | SQLite **ou** MySQL |
 | Validation du gabarit | zod | code PHP, vérifié contre zod |
 | QR Code | bibliothèque `qrcode` | encodeur écrit ici, vérifié contre elle |
-| Poids du JavaScript | 128 Ko | **11 Ko** |
+| Poids du JavaScript | 128 Ko | **12 Ko** |
 
-Les 11 Ko ne sont pas une coquetterie : la contrainte C1 est un Android
-d'entrée de gamme sur données mobiles.
+Les 12 Ko ne sont pas une coquetterie : la contrainte C1 est un Android
+d'entrée de gamme sur données mobiles. C'est le poids de ce que télécharge
+un **invité** — le Studio. Le formulaire de décor (12 Ko) et l'écran de
+contrôle d'entrée (4 Ko) ont leurs propres fichiers, et ne sont chargés que
+par l'équipe. Le seul gros morceau du projet, le lecteur de QR de secours
+(127 Ko), n'arrive que sur un navigateur sans `BarcodeDetector`, et
+seulement quand on ouvre la caméra.
 
 ---
 
@@ -105,8 +110,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 163 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit et SMTP contre de vraies implémentations
+npm run php:e2e          # 183 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, et une sauvegarde vraiment restaurée
 ```
 
 Contre une base MySQL :
@@ -115,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 163 scénarios
+### Les 183 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -144,13 +149,15 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **La page blanche** | Son fond n'apparaît que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **La fenêtre photo** | Chaque gabarit part avec l'ouverture de son cadre, un cadre 4:5 téléversé impose son format et son ouverture, « Relever sur le cadre » retrouve les mêmes valeurs après qu'on les a déréglées |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
-| **Le menu de l'équipe** | Six destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
+| **Le menu de l'équipe** | Sept destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
 | WhatsApp | Le repli « appui long » là où le téléchargement direct est inerte |
 | **Le lien partagé** | Titre, description et vignette annoncés ; la vignette se télécharge, fait 1200 × 630, est un vrai JPEG, se met en cache et ne change pas d'une demande à l'autre |
 | **Le transport e-mail** | L'essai d'envoi arrive sur un vrai serveur SMTP ; l'inscription reçoit son lien ; soumettre est refusé tant que l'adresse n'est pas confirmée, accepté ensuite ; le lien ne sert qu'une fois ; l'équipe est prévenue, et la décision revient au partenaire |
+| **Les sauvegardes** | L'archive s'écrit, se télécharge, est un vrai zip, n'est pas mise en cache ; un nom qui remonte l'arborescence est refusé ; le déclencheur du cron rejette une clé fausse |
+| **Le QR à la caméra** | Le filtre accepte un code nu et une adresse de badge, rejette un QR étranger ; une **fausse caméra** diffuse le QR d'un badge réellement émis, l'entrée est validée, la page ne se recharge pas, le journal se met à jour |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -577,6 +584,108 @@ cache garderait l'ancienne pendant des semaines.
 
 ---
 
+## Les sauvegardes
+
+Ce qui disparaît si le serveur brûle : les comptes, les campagnes, les
+badges émis, les présences scannées — et les **cadres**, qui sont des
+fichiers et que personne ne pense à sauver avec la base.
+
+**Administration → Sauvegardes.** Une archive contient les deux, et sous la
+forme qui sert vraiment à restaurer :
+
+| Fichier | Ce qu'on en fait |
+|---|---|
+| `base.sql` *(MySQL)* | Se réimporte dans phpMyAdmin, dans une base vide. |
+| `wakabi.sqlite` *(SQLite)* | Remplace le fichier du même nom dans `donnees/`. |
+| `cadres/` | Se recopie dans `donnees/cadres/`. |
+| `LISEZ-MOI.txt` | Les gestes exacts, dans l'archive. Une sauvegarde qu'on ne sait pas remettre en place n'est qu'un fichier de plus. |
+
+`config.php` n'y est **pas** : il décrit votre serveur — identifiants de base
+de données, chemins — et n'a rien à faire dans une archive qui circule.
+Gardez-en une copie à part.
+
+En SQLite, la copie passe par `VACUUM INTO` : un instantané cohérent même si
+quelqu'un écrit pendant ce temps, là où un simple `copy()` peut attraper une
+base à moitié écrite. En MySQL, le dump est écrit **en PHP** et non par
+`mysqldump` : `exec()` est désactivée sur la plupart des mutualisés, et une
+sauvegarde qui dépend d'un binaire absent ne se découvre qu'au moment de
+restaurer.
+
+L'archive est un ZIP écrit à la main, pour la même raison que le reste :
+`ZipArchive` n'est pas toujours compilée sur un mutualisé. Elle s'écrit au
+fil de l'eau dans un fichier, jamais assemblée en mémoire — une base de dix
+mille badges avec ses cadres dépasserait la limite d'un hébergement partagé,
+et tomber en panne de RAM le jour où l'on sauvegarde serait une plaisanterie.
+
+### Tous les jours, sans y penser
+
+L'écran donne la ligne à coller dans **Tâches Cron** de cPanel :
+
+```
+curl -s "https://votre-site/index.php?p=sauvegarde-auto&cle=…"
+```
+
+La clé remplace le mot de passe — la comparaison se fait en temps constant,
+parce qu'un `===` répond d'autant plus tard que le préfixe est juste, et que
+cette différence suffit à deviner une clé caractère par caractère. Les sept
+dernières archives sont gardées, les plus anciennes s'effacent : sans
+rotation, un disque plein empêcherait d'écrire la sauvegarde suivante,
+c'est-à-dire exactement au moment où l'on en aurait besoin.
+
+> **Une sauvegarde gardée sur le serveur qu'elle sauvegarde ne sauvegarde
+> rien.** Téléchargez-la, et gardez-en une copie ailleurs.
+
+### Elle est éprouvée en la RESTAURANT
+
+`npx tsx scripts/verifier-sauvegarde.ts` ne se contente pas d'écrire une
+archive : il la décompresse avec le vrai `unzip`, la recharge dans une base
+**vide**, et compare table par table ce qu'il retrouve à ce qu'il avait mis
+— accents, apostrophes, guillemets et antislashs compris. Les deux moteurs
+y passent. Une archive qu'on n'a jamais remise en place n'est pas une
+sauvegarde.
+
+---
+
+## Le QR lu à la caméra
+
+Saisir dix caractères par personne marche — mais pas devant une file. Le
+geste devient : approcher le téléphone du badge, entendre le bip, passer au
+suivant. **La page ne se recharge pas** : la caméra reste ouverte et seule la
+réponse change, sinon chaque invité coûterait une mise au point.
+
+Deux décodeurs, dans cet ordre :
+
+1. **`BarcodeDetector`**, présent depuis Chrome 83 — donc sur la quasi-
+   totalité des téléphones Android. Rien à télécharger, décodage confié au
+   système, et c'est le cas courant à une porte de Lomé ou d'Abidjan.
+2. **jsQR**, chargé *seulement* si le premier manque — Safari,
+   essentiellement. 127 Ko qu'on ne fait pas payer à ceux qui n'en ont pas
+   besoin. Licence Apache-2.0, texte complet dans `public/jsqr.LICENSE.txt`.
+
+Le formulaire de saisie reste là et fonctionne sans une ligne de
+JavaScript : la caméra est un raccourci, pas une dépendance. Une douchette,
+qui se comporte comme un clavier, marche toujours aussi.
+
+Trois détails qui font la différence à une porte :
+
+- **Un badge n'est envoyé qu'une fois** tant qu'on ne voit pas un autre code.
+  La caméra lit douze fois par seconde ; sans ce garde, la deuxième réponse
+  serait « déjà scanné » — un refus affiché sur un badge qu'on vient de
+  valider.
+- **Un bip**, synthétisé et non téléchargé : grave pour un refus. L'agent
+  regarde le badge et la file, pas l'écran.
+- **Un QR étranger ne part pas au serveur.** Seuls les dix caractères d'un
+  badge, ou l'adresse `?p=qr&jeton=…` qu'un badge encode, sont reconnus.
+
+> **La caméra exige HTTPS.** `getUserMedia` n'existe qu'en contexte sûr : sur
+> un site en `http://`, le bouton le dit au lieu de rester muet.
+
+La recette éprouve tout le chemin avec une **fausse caméra** : Chromium
+diffuse une vidéo qui montre le QR d'un badge réellement émis, et la
+validation doit apparaître sans que la page se recharge.
+
+---
+
 ## Mettre à jour
 
 ```bash
@@ -600,8 +709,8 @@ phpMyAdmin.
 | Point | Sans quoi |
 |---|---|
 | **Les vrais cadres** | Les décors installés sont des placeholders — les vôtres se téléversent depuis le formulaire. |
-| **Lecture caméra du QR** | L'agent d'entrée saisit le code. Ça marche, ça ne tient pas une file d'attente. |
-| **Sauvegardes** | Sauvegardez `donnees/` (ou exportez la base MySQL depuis cPanel), et sortez la copie du serveur. |
 
-Le SMTP, lui, ne « reste » plus : il se règle depuis **Administration →
-Réglages**, et s'essaie d'un bouton. Voir la section suivante.
+Trois lignes ont quitté ce tableau : le **SMTP** se règle depuis
+Administration → Réglages, les **sauvegardes** depuis Administration →
+Sauvegardes, et le QR se **lit à la caméra** sur l'écran de contrôle
+d'entrée. Les trois ont leur section plus bas.

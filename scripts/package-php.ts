@@ -39,9 +39,12 @@ mkdirSync(join(RACINE, 'donnees/cadres'), { recursive: true });
 // Les vignettes de partage : créées à la demande, mais un hébergement aux
 // droits stricts refuse parfois un mkdir. Le dossier part donc avec le zip.
 mkdirSync(join(RACINE, 'donnees/og'), { recursive: true });
+// Idem pour les sauvegardes : le cron ne doit pas échouer sur un mkdir.
+mkdirSync(join(RACINE, 'donnees/sauvegardes'), { recursive: true });
 writeFileSync(join(RACINE, 'donnees/.htaccess'), 'Deny from all\nRequire all denied\n');
 writeFileSync(join(RACINE, 'donnees/cadres/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/og/.gitkeep'), '');
+writeFileSync(join(RACINE, 'donnees/sauvegardes/.gitkeep'), '');
 
 // `studio/` contient les sources TypeScript : inutiles en production.
 rmSync(join(RACINE, 'studio'), { recursive: true, force: true });

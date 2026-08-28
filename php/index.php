@@ -17,6 +17,8 @@ require __DIR__ . '/app/depot.php';
 require __DIR__ . '/app/prevol.php';
 require __DIR__ . '/app/courriel.php';
 require __DIR__ . '/app/og.php';
+require __DIR__ . '/app/zip.php';
+require __DIR__ . '/app/sauvegarde.php';
 require __DIR__ . '/app/qr.php';
 require __DIR__ . '/app/icones.php';
 require __DIR__ . '/app/avatars.php';
@@ -194,6 +196,38 @@ switch ($page) {
     case 'reglages':
         require RACINE . '/app/actions/reglages.php';
 
+    case 'sauvegardes':
+    case 'sauvegarder':
+    case 'telecharger-sauvegarde':
+    case 'supprimer-sauvegarde':
+        require RACINE . '/app/actions/sauvegardes.php';
+
+    /**
+     * Le point d'entrée du cron, hors session.
+     *
+     * Une tâche planifiée n'a pas de cookie : elle présente une clé. Le
+     * `hash_equals` n'est pas de la coquetterie — comparer deux chaînes avec
+     * `===` rend une réponse d'autant plus tardive que le préfixe est juste,
+     * et cette différence de quelques microsecondes suffit à deviner une clé
+     * caractère par caractère.
+     */
+    case 'sauvegarde-auto':
+        header('Content-Type: text/plain; charset=utf-8');
+        if (!hash_equals(cle_sauvegarde(), (string) ($_GET['cle'] ?? ''))) {
+            http_response_code(403);
+            exit("Clé invalide.\n");
+        }
+        try {
+            $f = ecrire_sauvegarde(dossier_sauvegardes() . '/' . nom_sauvegarde());
+            $effacees = tourner_sauvegardes();
+            printf("OK %s (%d Ko), %d ancienne(s) effacée(s).\n",
+                   basename($f), (int) round(filesize($f) / 1024), $effacees);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo 'ÉCHEC ', $e->getMessage(), "\n";
+        }
+        exit;
+
     /* ---- confirmation d'adresse ---- */
 
     /**
@@ -248,6 +282,31 @@ switch ($page) {
     case 'qr':
         $b = badge_lire((string) ($_GET['jeton'] ?? ''));
         vue('qr', ['titre' => 'Badge Wakabi Boost', 'b' => $b, 'jeton' => (string) ($_GET['jeton'] ?? '')]);
+
+    /**
+     * Le scan sans rechargement de page, pour la caméra.
+     *
+     * Une file d'attente ne supporte pas un aller-retour complet par
+     * invité : la page se recharge, la caméra se rallume, l'agent réattend
+     * la mise au point. Ici, la caméra reste ouverte et seule la réponse
+     * change à l'écran. Le formulaire, lui, continue de marcher sans
+     * JavaScript — c'est la même fonction qui rend le verdict.
+     */
+    case 'api-scan':
+        $u = exiger_role('equipe');
+        verifier_csrf();
+        $jeton = strtoupper(trim((string) ($_POST['jeton'] ?? '')));
+        if ($jeton === '') {
+            json_repondre(['ok' => false, 'message' => 'Aucun code lu.', 'detail' => '']);
+        }
+        $v = verdict_scan(badge_scanner($jeton, $u['id']));
+        $v['jeton'] = $jeton;
+        $v['passages'] = array_map(fn($p) => [
+            'heure' => substr((string) $p['scanne_le'], 11, 5),
+            'porteur' => $p['porteur'] ?: 'Badge anonyme',
+            'decor' => $p['decor'],
+        ], passages_recents());
+        json_repondre($v);
 
     case 'scan':
         require RACINE . '/app/actions/scan.php';

@@ -7,6 +7,11 @@
  */
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { createServer } from 'node:net';
+import { writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import QRCode from 'qrcode';
+import { jetonDuQr } from '../php/studio/scanner';
 
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
@@ -66,6 +71,40 @@ function ouvrirSmtp(): Promise<{ fermer: () => void }> {
   return new Promise((r) => serveur.listen(SMTP_PORT, '127.0.0.1', () => r({
     fermer: () => serveur.close(),
   })));
+}
+
+/**
+ * Une vidéo Y4M montrant un QR, pour la fausse caméra de Chromium.
+ *
+ * C'est la seule façon d'éprouver la lecture au vol sans une main et un
+ * téléphone : le navigateur diffuse ce fichier comme s'il venait de
+ * l'objectif, et tout le reste du chemin est le vrai chemin.
+ */
+async function videoQr(texte: string, chemin: string): Promise<void> {
+  const L = 640, H = 480, IMAGES = 16;
+  const qr = QRCode.create(texte, { errorCorrectionLevel: 'M' });
+  const n = qr.modules.size;
+  const bits = qr.modules.data;
+
+  const pas = Math.floor(320 / (n + 8));
+  const taille = pas * (n + 8);
+  const x0 = Math.floor((L - taille) / 2);
+  const y0 = Math.floor((H - taille) / 2);
+
+  const Y = Buffer.alloc(L * H, 255);
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (!bits[r * n + c]) continue;
+      const px = x0 + (c + 4) * pas;
+      const py = y0 + (r + 4) * pas;
+      for (let j = 0; j < pas; j++) Y.fill(0, (py + j) * L + px, (py + j) * L + px + pas);
+    }
+  }
+  // Un QR est noir et blanc : les plans de chrominance restent neutres.
+  const UV = Buffer.alloc((L / 2) * (H / 2), 128);
+  const blocs: Buffer[] = [Buffer.from(`YUV4MPEG2 W${L} H${H} F12:1 Ip A1:1 C420jpeg\n`)];
+  for (let i = 0; i < IMAGES; i++) blocs.push(Buffer.from('FRAME\n'), Y, UV, UV);
+  writeFileSync(chemin, Buffer.concat(blocs));
 }
 
 const ADMIN = {
@@ -292,17 +331,17 @@ const run = async () => {
   await p.fill('input[name=jeton]', jeton);
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
-  ok('entrée validée', /Entrée validée/.test(await p.locator('[role=status]').first().innerText()));
+  ok('entrée validée', /Entrée validée/.test(await p.locator('#resultat').innerText()));
 
   await p.fill('input[name=jeton]', jeton);
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
-  ok('rescan refusé (idempotent)', /déjà été scanné/.test(await p.locator('[role=status]').first().innerText()));
+  ok('rescan refusé (idempotent)', /déjà été scanné/.test(await p.locator('#resultat').innerText()));
 
   await p.fill('input[name=jeton]', 'ZZZZZZZZZZ');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
-  ok('code inconnu refusé', /inconnu/i.test(await p.locator('[role=status]').first().innerText()));
+  ok('code inconnu refusé', /inconnu/i.test(await p.locator('#resultat').innerText()));
 
   console.log('\n━━ 6. Koris crédités ━━');
   await connexion(p, VISITEUR.email, VISITEUR.mdp);
@@ -721,10 +760,10 @@ const run = async () => {
   const entrees = (await p.locator('.barre nav a').evaluateAll(
     (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
   ));
-  ok('les six destinations sont sous un seul intitulé',
+  ok('les sept destinations sont sous un seul intitulé',
      (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
-     && (await p.locator('.barre .deroulant .volet a').count()) === 6,
-     `${await p.locator('.barre .deroulant .volet a').count()} entrées`);
+     && (await p.locator('.barre .deroulant .volet a').count()) === 7,
+     `${await p.locator(".barre .deroulant .volet a").count()} entrées`);
   ok('notifications et déconnexion restent hors du déroulant',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
      && (await p.locator('.barre nav > form[action*="deconnexion"] button').count()) === 1);
@@ -901,7 +940,97 @@ const run = async () => {
   ok('la vitrine aussi porte une vignette',
      (await meta('meta[property="og:image"]')).includes('p=og'));
 
-  console.log('\n━━ 19. Le transport e-mail ━━');
+  console.log('\n━━ 19. Sauvegardes ━━');
+
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+  await p.goto(`${BASE}/index.php?p=sauvegardes`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de sauvegarde est réservé à l’équipe', p.url().includes('p=sauvegardes'));
+  ok('la ligne de cron est donnée toute faite',
+     /curl -s "http.*p=sauvegarde-auto&cle=[0-9a-f]{32}"/.test(await p.locator('pre').first().innerText()),
+     (await p.locator('pre').first().innerText()).slice(0, 60));
+
+  const avantSauv = await p.locator('a:has-text("Télécharger")').count();
+  await p.locator('button:has-text("Créer une sauvegarde")').click();
+  await p.waitForLoadState('domcontentloaded');
+  ok('la sauvegarde s’écrit', /écrite/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await p.locator('.msg.ok').first().innerText().catch(() => '')).slice(0, 64));
+  ok('elle apparaît dans la liste',
+     (await p.locator('a:has-text("Télécharger")').count()) === avantSauv + 1);
+
+  const lienSauv = await p.locator('a:has-text("Télécharger")').first().getAttribute('href');
+  const zip = await p.request.get(new URL(lienSauv!, BASE).toString());
+  const octetsZip = await zip.body();
+  ok('l’archive se télécharge', zip.status() === 200, `HTTP ${zip.status()}`);
+  ok('c’est bien un zip', octetsZip[0] === 0x50 && octetsZip[1] === 0x4b,
+     `${Math.round(octetsZip.length / 1024)} Ko`);
+  ok('elle n’est pas mise en cache par un intermédiaire',
+     (zip.headers()['cache-control'] ?? '').includes('no-store'));
+
+  // Le nom vient de l'URL : c'est par là qu'on tenterait de sortir du dossier.
+  const evasion = await p.request.get(
+    `${BASE}/index.php?p=telecharger-sauvegarde&f=${encodeURIComponent('../../config.php')}`,
+    { maxRedirects: 0 });
+  ok('un nom qui remonte l’arborescence est refusé',
+     evasion.status() >= 300 && !(await evasion.text()).includes('motdepasse'),
+     `HTTP ${evasion.status()}`);
+
+  const sansCle = await p.request.get(`${BASE}/index.php?p=sauvegarde-auto&cle=faux`);
+  ok('le déclencheur du cron refuse une clé fausse', sansCle.status() === 403, `HTTP ${sansCle.status()}`);
+
+  console.log('\n━━ 20. Le QR lu à la caméra ━━');
+
+  /* --- le filtre : ce qui part au serveur, et ce qui n'y va pas --- */
+  ok('un code nu est accepté', jetonDuQr('A7K2M9XQ4P') === 'A7K2M9XQ4P');
+  ok('un code en minuscules est remonté', jetonDuQr('a7k2m9xq4p') === 'A7K2M9XQ4P');
+  ok('le jeton est extrait de l’adresse du QR',
+     jetonDuQr('https://boost.wakabileguide.com/index.php?p=qr&jeton=A7K2M9XQ4P') === 'A7K2M9XQ4P');
+  ok('un QR étranger est ignoré', jetonDuQr('https://exemple.tg/promo') === null);
+  ok('un code trop court est ignoré', jetonDuQr('A7K2M9') === null);
+
+  /* --- la lecture, avec une vraie vidéo dans une vraie caméra --- */
+  // Un badge tout neuf, émis par la même API que le Studio de l'invité.
+  await p.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
+  const badge = await p.evaluate(`fetch(window.WAKABI.base + '?p=api-badge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decor: window.WAKABI.decorId }),
+    }).then((r) => r.json()).then((d) => d.jeton)`) as string;
+  ok('un badge est émis pour l’essai', /^[A-Z0-9]{10}$/.test(badge ?? ''), badge ?? 'aucun');
+
+  const film = join(tmpdir(), `wakabi-qr-${marque}.y4m`);
+  await videoQr(`${BASE}/index.php?p=qr&jeton=${badge}`, film);
+
+  // Un navigateur à part : les options de fausse caméra se donnent au
+  // lancement, et on ne va pas les imposer à toute la recette.
+  const camera = await chromium.launch({
+    executablePath: EXE,
+    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+           `--use-file-for-fake-video-capture=${film}`],
+  });
+  const ctxCam = await camera.newContext({
+    viewport: { width: 430, height: 932 },
+    permissions: ['camera'],
+  });
+  const pc = await ctxCam.newPage();
+  surveiller(pc);
+  await connexion(pc, ADMIN.email, ADMIN.mdp);
+  await pc.goto(`${BASE}/index.php?p=scan`, { waitUntil: 'domcontentloaded' });
+  await pc.waitForTimeout(600);
+
+  ok('le bouton de caméra est proposé', (await pc.locator('#camera').count()) === 1);
+  ok('la saisie manuelle reste disponible', (await pc.locator('#jeton').count()) === 1);
+  await pc.click('#camera');
+  await pc.waitForSelector('#camera-verdict:not([hidden])', { timeout: 20_000 }).catch(() => {});
+  const verdictCam = (await pc.locator('#camera-verdict').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok('la caméra lit le badge et valide l’entrée', /Entrée validée/.test(verdictCam), verdictCam.slice(0, 60));
+  ok('la page ne s’est PAS rechargée', pc.url().endsWith('p=scan'),
+     'la caméra reste ouverte d’un badge à l’autre');
+  ok('le journal des passages se met à jour sans rechargement',
+     (await pc.locator('#passages .rangee').count()) > 0);
+
+  await camera.close();
+  rmSync(film, { force: true });
+
+  console.log('\n━━ 21. Le transport e-mail ━━');
 
   /**
    * Placé en DERNIER, et remis à zéro à la fin.

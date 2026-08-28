@@ -17,10 +17,10 @@
     "e2e": "tsx scripts/e2e-app.ts",
     "e2e:full": "tsx scripts/e2e-full.ts",
     "package:cpanel": "npm run build && tsx scripts/package-cpanel.ts",
-    "php:bundle": "esbuild php/studio/entry.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/studio.js --alias:@=./src && esbuild php/studio/apercu.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/apercu.js --alias:@=./src",
+    "php:bundle": "esbuild php/studio/entry.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/studio.js --alias:@=./src && esbuild php/studio/apercu.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/apercu.js --alias:@=./src && esbuild php/studio/scanner.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/scanner.js --alias:@=./src && esbuild node_modules/jsqr/dist/jsQR.js --bundle --format=iife --global-name=jsQR --target=es2019 --minify --banner:js=\"/*! jsQR v1.4.0 — Cosmo Wolfe — licence Apache-2.0, texte complet dans jsqr.LICENSE.txt */\" --outfile=php/public/jsqr.js && cp node_modules/jsqr/LICENSE php/public/jsqr.LICENSE.txt",
     "php:serve": "php -S 127.0.0.1:3600 -t php",
     "php:e2e": "tsx scripts/e2e-php.ts",
-    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts && tsx scripts/verifier-courriel.ts",
+    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts && tsx scripts/verifier-courriel.ts && tsx scripts/verifier-sauvegarde.ts",
     "package:php": "tsx scripts/package-php.ts"
   },
   "dependencies": {
@@ -43,6 +43,7 @@
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "esbuild": "0.25.10",
+    "jsqr": "^1.4.0",
     "playwright-core": "^1.55.0",
     "tailwindcss": "4.1.13",
     "tsx": "4.20.6",

@@ -301,6 +301,33 @@ function presence(string $decor_id): array
     return ['emis' => $emis, 'scannes' => $scannes, 'taux' => $emis ? $scannes / $emis : 0.0];
 }
 
+/**
+ * Le verdict d'un scan, en français, à partir de son résultat brut.
+ *
+ * Une seule traduction pour les DEUX chemins : le formulaire, qui recharge
+ * la page, et l'API que la caméra appelle. Deux formulations séparées
+ * finiraient par se contredire — et c'est la phrase que lit l'agent à
+ * l'entrée, sous la pression d'une file d'attente.
+ */
+function verdict_scan(array $r): array
+{
+    return match (true) {
+        $r['ok'] => [
+            'ok' => true,
+            'message' => 'Entrée validée : ' . $r['decor'],
+            'detail' => $r['porteur']
+                ? $r['porteur'] . ' · ' . $r['koris'] . ' Koris crédités'
+                : 'Badge anonyme : présence comptée, aucun Kori',
+        ],
+        ($r['raison'] ?? '') === 'deja' => [
+            'ok' => false,
+            'message' => 'Ce badge a déjà été scanné.',
+            'detail' => 'Un badge ne vaut qu’une entrée.',
+        ],
+        default => ['ok' => false, 'message' => 'Code inconnu.', 'detail' => 'Vérifiez les 10 caractères.'],
+    };
+}
+
 /* ================= réglages ================= */
 
 /**
