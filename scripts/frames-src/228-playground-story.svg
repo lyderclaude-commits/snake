@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <!--
+    228 BASKET PLAYGROUND — Lomé 2026, cadre 9:16 (story et statut WhatsApp).
+
+    Même habillage que le 4:5, recalé sur la géométrie de la disposition
+    « Story verticale » : l'accroche tombe à 0,826 de la hauteur, le QR
+    occupe 43 → 243 px en bas à gauche et le filigrane 810 → 1037 px en bas
+    à droite. Le socle démarre donc plus bas, et la fenêtre photo respire.
+  -->
+  <defs>
+    <linearGradient id="haut" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07090C" stop-opacity="0.86"/>
+      <stop offset="0.55" stop-color="#07090C" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#07090C" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="socle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07090C" stop-opacity="0"/>
+      <stop offset="1" stop-color="#07090C" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="liseré" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5E50A" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#F5E50A" stop-opacity="1"/>
+      <stop offset="1" stop-color="#F5E50A" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="liseré-vert" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2FD645" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#2FD645" stop-opacity="1"/>
+      <stop offset="1" stop-color="#2FD645" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="coinBallon"><rect x="700" y="0" width="380" height="260"/></clipPath>
+  </defs>
+
+  <rect x="0" y="0" width="1080" height="290" fill="url(#haut)"/>
+
+  <g clip-path="url(#coinBallon)" fill="none" stroke="#F5E50A" stroke-opacity="0.22" stroke-width="7">
+    <circle cx="915" cy="70" r="150"/>
+    <path d="M765 70h300M915 -80v300M800 -35c70 55 70 155 0 210M1030 -35c-70 55-70 155 0 210"/>
+  </g>
+
+  <g transform="translate(46 106) skewX(-9)" font-family="Plus Jakarta Sans" font-weight="800">
+    <text x="0" y="0" font-size="48" fill="#2FD645" letter-spacing="-1">228</text>
+    <text x="96" y="0" font-size="48" fill="#FFFFFF" letter-spacing="0.5">BASKET</text>
+    <text x="0" y="58" font-size="57" fill="#FFFFFF" letter-spacing="-0.5">PLAYGROUND</text>
+  </g>
+  <rect x="40" y="182" width="352" height="6" fill="#F5E50A"/>
+
+  <g transform="translate(1034 56)">
+    <rect x="-232" y="0" width="232" height="52" rx="26" fill="#E01E2B"/>
+    <text x="-116" y="35" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="800"
+          font-size="25" letter-spacing="2.5" fill="#FFFFFF">LOMÉ 2026</text>
+  </g>
+
+  <rect x="0" y="240" width="9" height="1200" fill="url(#liseré)"/>
+  <rect x="1071" y="240" width="9" height="1200" fill="url(#liseré-vert)"/>
+
+  <rect x="0" y="1400" width="1080" height="140" fill="url(#socle)"/>
+  <rect x="0" y="1538" width="1080" height="382" fill="#07090C"/>
+
+  <path d="M0 1468 H1080 V1538 H0 Z" fill="#F5E50A"/>
+  <g fill="#07090C">
+    <path d="M14 1468 l30 0 -22 70 -30 0 Z"/>
+    <path d="M58 1468 l30 0 -22 70 -30 0 Z"/>
+    <path d="M102 1468 l30 0 -22 70 -30 0 Z"/>
+    <path d="M952 1468 l30 0 -22 70 -30 0 Z"/>
+    <path d="M996 1468 l30 0 -22 70 -30 0 Z"/>
+    <path d="M1040 1468 l30 0 -22 70 -30 0 Z"/>
+  </g>
+  <text x="540" y="1514" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="800"
+        font-size="30" letter-spacing="0.5" fill="#07090C">11 &amp; 12 SEPT. 2026 · STADE OMNISPORTS DE LOMÉ</text>
+
+  <rect x="0" y="1538" width="1080" height="4" fill="#2FD645"/>
+
+  <g font-family="Plus Jakarta Sans" font-weight="800" font-size="23" letter-spacing="4.5">
+    <text x="270" y="1576" fill="#FFFFFF">#THEGAME<tspan fill="#2FD645">RETURNS</tspan></text>
+  </g>
+  <text x="1037" y="1576" text-anchor="end" font-family="Plus Jakarta Sans" font-weight="600"
+        font-size="20" letter-spacing="1.6" fill="#FFFFFF" fill-opacity="0.55">3X3 · DUNK · CONCERT</text>
+
+  <g fill="#F5E50A">
+    <path d="M0 1920 l34 -36 34 36 Z"/><path d="M68 1920 l34 -36 34 36 Z"/><path d="M136 1920 l34 -36 34 36 Z"/>
+    <path d="M204 1920 l34 -36 34 36 Z"/><path d="M272 1920 l34 -36 34 36 Z"/><path d="M340 1920 l34 -36 34 36 Z"/>
+    <path d="M408 1920 l34 -36 34 36 Z"/><path d="M476 1920 l34 -36 34 36 Z"/><path d="M544 1920 l34 -36 34 36 Z"/>
+    <path d="M612 1920 l34 -36 34 36 Z"/><path d="M680 1920 l34 -36 34 36 Z"/><path d="M748 1920 l34 -36 34 36 Z"/>
+    <path d="M816 1920 l34 -36 34 36 Z"/><path d="M884 1920 l34 -36 34 36 Z"/><path d="M952 1920 l34 -36 34 36 Z"/>
+    <path d="M1020 1920 l34 -36 34 36 Z"/>
+  </g>
+</svg>

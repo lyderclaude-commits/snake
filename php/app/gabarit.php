@@ -254,6 +254,8 @@ function cadres_fournis(): array
         'instagram.png' => 'Instagram',
         'facebook.png' => 'Facebook',
         'tiktok.png' => 'TikTok',
+        '228-playground.png' => '228 Basket Playground',
+        '228-playground-story.png' => '228 Basket Playground · story',
     ];
 
     $liste = [];

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <!--
+    228 BASKET PLAYGROUND — Lomé 2026, cadre 4:5.
+
+    Le centre reste VIDE : c'est là que la photo de l'invité apparaît. Tout
+    l'habillage tient dans la bande haute (0 → 230), les deux liserés
+    latéraux et le socle bas (900 → 1350).
+
+    Trois zones sont réservées au moteur de rendu et ne portent donc aucun
+    dessin : l'accroche et le prénom au centre du socle, le QR en bas à
+    gauche (43 → 243 px), le filigrane en bas à droite (810 → 1037 px).
+  -->
+  <defs>
+    <linearGradient id="haut" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07090C" stop-opacity="0.86"/>
+      <stop offset="0.55" stop-color="#07090C" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#07090C" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="socle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07090C" stop-opacity="0"/>
+      <stop offset="1" stop-color="#07090C" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="liseré" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5E50A" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#F5E50A" stop-opacity="1"/>
+      <stop offset="1" stop-color="#F5E50A" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="liseré-vert" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2FD645" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#2FD645" stop-opacity="1"/>
+      <stop offset="1" stop-color="#2FD645" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="coinBallon"><rect x="700" y="0" width="380" height="245"/></clipPath>
+  </defs>
+
+  <!-- ============ bande haute ============ -->
+  <rect x="0" y="0" width="1080" height="260" fill="url(#haut)"/>
+
+  <!-- Ballon en fil, coupé par le bord : le motif du visuel d'origine, en
+       texture plutôt qu'en illustration. -->
+  <g clip-path="url(#coinBallon)" fill="none" stroke="#F5E50A" stroke-opacity="0.22" stroke-width="7">
+    <circle cx="915" cy="60" r="150"/>
+    <path d="M765 60h300M915 -90v300M800 -45c70 55 70 155 0 210M1030 -45c-70 55-70 155 0 210"/>
+  </g>
+
+  <!-- Signature de l'événement -->
+  <g transform="translate(46 96) skewX(-9)" font-family="Plus Jakarta Sans" font-weight="800">
+    <text x="0" y="0" font-size="48" fill="#2FD645" letter-spacing="-1">228</text>
+    <text x="96" y="0" font-size="48" fill="#FFFFFF" letter-spacing="0.5">BASKET</text>
+    <text x="0" y="58" font-size="57" fill="#FFFFFF" letter-spacing="-0.5">PLAYGROUND</text>
+  </g>
+  <!-- Le filet passe SOUS le bloc, pas au travers : à 112 il barrait
+       « PLAYGROUND » en son milieu. -->
+  <rect x="40" y="172" width="352" height="6" fill="#F5E50A"/>
+
+  <!-- Lomé 2026 -->
+  <g transform="translate(1034 46)">
+    <rect x="-232" y="0" width="232" height="52" rx="26" fill="#E01E2B"/>
+    <text x="-116" y="35" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="800"
+          font-size="25" letter-spacing="2.5" fill="#FFFFFF">LOMÉ 2026</text>
+  </g>
+
+  <!-- ============ liserés latéraux ============ -->
+  <rect x="0" y="210" width="9" height="700" fill="url(#liseré)"/>
+  <rect x="1071" y="210" width="9" height="700" fill="url(#liseré-vert)"/>
+
+  <!-- ============ socle ============ -->
+  <rect x="0" y="880" width="1080" height="130" fill="url(#socle)"/>
+  <rect x="0" y="1008" width="1080" height="342" fill="#07090C"/>
+
+  <!-- Barre d'information, hachurée aux deux bouts comme sur l'affiche -->
+  <path d="M0 938 H1080 V1008 H0 Z" fill="#F5E50A"/>
+  <g fill="#07090C">
+    <path d="M14 938 l30 0 -22 70 -30 0 Z"/>
+    <path d="M58 938 l30 0 -22 70 -30 0 Z"/>
+    <path d="M102 938 l30 0 -22 70 -30 0 Z"/>
+    <path d="M952 938 l30 0 -22 70 -30 0 Z"/>
+    <path d="M996 938 l30 0 -22 70 -30 0 Z"/>
+    <path d="M1040 938 l30 0 -22 70 -30 0 Z"/>
+  </g>
+  <text x="540" y="984" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="800"
+        font-size="30" letter-spacing="0.5" fill="#07090C">11 &amp; 12 SEPT. 2026 · STADE OMNISPORTS DE LOMÉ</text>
+
+  <!-- Filet vert : la couture entre la barre et le socle -->
+  <rect x="0" y="1008" width="1080" height="4" fill="#2FD645"/>
+
+  <!-- Ligne de rappel : le mot-dièse calé sur la marge de l'accroche
+       (x = 0,25 × 1080), le programme aligné à droite. Les deux tiennent la
+       largeur du socle et empêchent le bloc de pencher d'un côté. -->
+  <g font-family="Plus Jakarta Sans" font-weight="800" font-size="23" letter-spacing="4.5">
+    <text x="270" y="1058" fill="#FFFFFF">#THEGAME<tspan fill="#2FD645">RETURNS</tspan></text>
+  </g>
+  <text x="1037" y="1058" text-anchor="end" font-family="Plus Jakarta Sans" font-weight="600"
+        font-size="20" letter-spacing="1.6" fill="#FFFFFF" fill-opacity="0.55">3X3 · DUNK · CONCERT</text>
+
+  <!-- Chevrons de pied de page -->
+  <g fill="#F5E50A">
+    <path d="M0 1350 l34 -36 34 36 Z"/><path d="M68 1350 l34 -36 34 36 Z"/><path d="M136 1350 l34 -36 34 36 Z"/>
+    <path d="M204 1350 l34 -36 34 36 Z"/><path d="M272 1350 l34 -36 34 36 Z"/><path d="M340 1350 l34 -36 34 36 Z"/>
+    <path d="M408 1350 l34 -36 34 36 Z"/><path d="M476 1350 l34 -36 34 36 Z"/><path d="M544 1350 l34 -36 34 36 Z"/>
+    <path d="M612 1350 l34 -36 34 36 Z"/><path d="M680 1350 l34 -36 34 36 Z"/><path d="M748 1350 l34 -36 34 36 Z"/>
+    <path d="M816 1350 l34 -36 34 36 Z"/><path d="M884 1350 l34 -36 34 36 Z"/><path d="M952 1350 l34 -36 34 36 Z"/>
+    <path d="M1020 1350 l34 -36 34 36 Z"/>
+  </g>
+</svg>

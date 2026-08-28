@@ -365,13 +365,21 @@ En bas d'un décor, la bande réellement libre va de x = 0,24 (fin du QR et de
 sa zone de silence) à x = 0,74 (début du filigrane). Un bloc de texte qui en
 sort passe sous l'un des deux, et le pré-vol le refuse à la soumission.
 
-### Six cadres livrés
+### Les cadres livrés
 
-`public/cadres/` contient un cadre par gabarit. Le formulaire propose
+`public/cadres/` contient un cadre par gabarit, plus **deux cadres de
+campagne réelle** (228 Basket Playground, en 4:5 et en 9:16) qui servent
+d'exemple de ce qu'un cadre d'événement peut être. Le formulaire propose
 « partez d'un cadre fourni » : de quoi créer un décor Instagram ou TikTok
 **sans passer par un graphiste**, le temps que les vrais visuels arrivent.
 Un fichier déposé dans ce dossier apparaît dans la liste tout seul, avec son
 format lu dans l'image.
+
+Les cadres sont dessinés en SVG dans `scripts/frames-src/` puis rasterisés
+par `npm run frames`, qui **embarque la police de la charte en base64** dans
+la page de rendu : sans cela, Chromium reçoit le SVG par `setContent` — dont
+la base est `about:blank` — et le texte du cadre sortirait dans la police
+système sans que rien ne le signale.
 
 ---
 
