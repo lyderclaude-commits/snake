@@ -182,13 +182,19 @@ switch ($page) {
          * `reinit` : la disposition ou le format viennent de changer, on
          * repart des réglages d'usine plutôt que de traîner les précédents.
          *
-         * Le format demandé est transmis : sans lui, remettre à zéro une
-         * page blanche la ramenait au carré, et le choix de format ne
-         * tenait jamais plus d'un aller-retour.
+         * La NUANCE compte : changer de gabarit (`reinit=disposition`) en
+         * reprend aussi le format d'origine — un gabarit Instagram est 4:5,
+         * sans quoi il resterait au carré du gabarit qu'on vient de quitter.
+         * Changer de format (`reinit=format`), au contraire, garde celui
+         * qu'on vient de choisir, et ne recalcule que ce qui en dépend.
          */
-        $format = (string) ($_POST['format'] ?? '1:1');
-        $apparence = ($_POST['reinit'] ?? '') === '1'
-            ? apparence_par_defaut($disposition, isset(FORMATS[$format]) ? $format : '1:1')
+        $format = (string) ($_POST['format'] ?? '');
+        $reinit = (string) ($_POST['reinit'] ?? '');
+        $apparence = $reinit !== ''
+            ? apparence_par_defaut(
+                $disposition,
+                $reinit === 'format' && isset(FORMATS[$format]) ? $format : ''
+            )
             : apparence_propre($disposition, $_POST);
 
         $cadre = (string) ($_POST['cadre_url'] ?? '');

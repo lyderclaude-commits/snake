@@ -6,8 +6,11 @@
  * remplacera par ses propres visuels de campagne via le back-office.
  */
 import { chromium } from 'playwright-core';
+import sharp from 'sharp';
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fenetreOuverte, fenetreArrondie } from '../src/core/photoWindow';
+import type { Fenetre } from '../src/core/photoWindow';
 
 const SRC = 'scripts/frames-src';
 /**
@@ -37,6 +40,17 @@ const POLICES = ['600', '800']
   })
   .join('');
 
+/**
+ * Où chaque cadre laisse passer la photo, relevé à la fabrication.
+ *
+ * Sans ce relevé, un décor bâti sur un cadre fourni cadre la photo de
+ * l'invité sur le canevas ENTIER, alors que le dessin ne laisse voir qu'une
+ * bande : le visage tombe où il veut. Mesurer ici plutôt que d'écrire les
+ * chiffres à la main, c'est garantir qu'ils ne mentent jamais — ils sont
+ * refaits à chaque `npm run frames`, en même temps que les PNG.
+ */
+const FENETRES: Record<string, Fenetre> = {};
+
 const run = async () => {
   const browser = await chromium.launch({ executablePath: EXE });
   for (const file of readdirSync(SRC).filter((f) => f.endsWith('.svg'))) {
@@ -57,10 +71,26 @@ const run = async () => {
     for (const dossier of OUT) {
       writeFileSync(join(dossier, file.replace(/\.svg$/, '.png')), buf);
     }
-    console.log(`  ✓ ${file.replace(/\.svg$/, '.png')}  ${w}×${h}  ${(buf.length / 1024).toFixed(0)} Ko`);
+    const nom = file.replace(/\.svg$/, '.png');
+    const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const trouvee = fenetreOuverte(data, info.width, info.height);
+    let ouverture = '—';
+    if (trouvee) {
+      FENETRES[nom] = fenetreArrondie(trouvee);
+      const f = FENETRES[nom];
+      ouverture = `${Math.round(f.x * 100)},${Math.round(f.y * 100)} `
+                + `${Math.round(f.w * 100)}×${Math.round(f.h * 100)} % ${f.forme}`;
+    }
+    console.log(`  ✓ ${nom}  ${w}×${h}  ${(buf.length / 1024).toFixed(0)} Ko  fenêtre ${ouverture}`);
     await page.close();
   }
   await browser.close();
+
+  // Le manifeste part avec les cadres : c'est le serveur PHP qui le lit
+  // pour donner à chaque gabarit sa fenêtre photo de départ.
+  const manifeste = JSON.stringify(FENETRES, null, 1) + '\n';
+  for (const dossier of OUT) writeFileSync(join(dossier, 'fenetres.json'), manifeste);
+  console.log(`  ✓ fenetres.json  ${Object.keys(FENETRES).length} ouvertures relevées`);
 };
 
 run().catch((e) => {

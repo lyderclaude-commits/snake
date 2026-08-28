@@ -141,7 +141,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les sept gabarits** | Les sept formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
 | **Le zoom libre** | Le curseur descend sous le cadrage « remplir », « Tout afficher » réduit l'image entière, le minimum est atteignable, « Remplir » revient au plein |
 | **Un décor sans texte** | Accepté sans accroche ni libellé, publié, et son Studio n'affiche aucun champ à remplir |
-| **La page blanche** | Ses réglages n'apparaissent que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
+| **La page blanche** | Son fond n'apparaît que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
+| **La fenêtre photo** | Chaque gabarit part avec l'ouverture de son cadre, un cadre 4:5 téléversé impose son format et son ouverture, « Relever sur le cadre » retrouve les mêmes valeurs après qu'on les a déréglées |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
 | **Le menu de l'équipe** | Cinq destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
@@ -329,6 +330,59 @@ gauche**, seul coin que TikTok laisse tranquille. Le filigrane, lui, reste en
 bas — les trois positions permises par le contrat sont toutes en bas ; en
 partage hors TikTok il est parfaitement visible.
 
+### La fenêtre photo, et le format qui vient du cadre
+
+Un décor disait où mettre le texte, le QR et le filigrane — mais pas **où la
+photo de l'invité devait tomber**. La zone photo couvrait le canevas entier :
+la photo était donc cadrée sur toute la surface alors que le cadre n'en
+laisse voir qu'une bande, et le visage de l'invité tombait où il voulait.
+Zoomer ou glisser ne rattrapait rien, puisque les deux gestes se
+rapportaient eux aussi au canevas entier.
+
+Deux choses viennent maintenant du cadre lui-même :
+
+| Ce qui est relevé | Où | Comment |
+|---|---|---|
+| **L'ouverture** — marges, largeur, hauteur, forme | `photo_x/y/w/h`, `photo_forme` | le plus grand ensemble de pixels transparents **d'un seul tenant** |
+| **Le format** | `format` | les proportions du fichier, ramenées au plus proche des quatre |
+
+Le format compte autant que l'ouverture : le renderer étire le cadre sur tout
+le canevas, donc une affiche 4:5 posée sur un décor carré **perdait un quart
+de sa hauteur**, visages compris. Le pré-vol le signale désormais dans son
+contrôle de format si les deux ne s'accordent pas.
+
+Le relevé se fait à trois moments, et c'est la même mesure aux trois :
+
+1. **À la fabrication des cadres livrés.** `npm run frames` écrit
+   `public/cadres/fenetres.json` en même temps que les PNG, à partir des
+   mêmes pixels : les deux ne peuvent pas se contredire. Chaque gabarit part
+   donc avec la fenêtre de son cadre, sans que personne touche un curseur.
+2. **Au téléversement d'un cadre**, dans le formulaire : le navigateur lit le
+   canal alpha sur un canevas hors écran, pose le format, puis la fenêtre.
+3. **À la demande**, avec le bouton « Relever sur le cadre » — pour un décor
+   déjà enregistré, ou après avoir déplacé les curseurs.
+
+« D'un seul tenant » n'est pas un détail : les bords adoucis d'un logo posé
+dans un coin sont eux aussi transparents, et une boîte englobante de tous les
+pixels percés rendrait le canevas entier — c'est-à-dire très exactement le
+réglage qu'on cherche à corriger.
+
+Une seule implémentation sert les trois moments (`src/core/photoWindow.ts`),
+appelée par Node à la fabrication et par le navigateur au téléversement. Deux
+mesures qui ne diraient pas la même chose vaudraient moins qu'une.
+
+Sur l'aperçu du formulaire, **un pointillé montre la fenêtre** — deux traits,
+un sombre et un clair, pour rester lisible sur un cadre noir comme sur un
+cadre blanc. Il n'apparaît ni dans le Studio de l'invité, ni à l'export. Un
+cadre entièrement opaque n'a pas d'ouverture à relever : le formulaire le dit
+et laisse les curseurs, que le pointillé rend utilisables.
+
+Les décors enregistrés **avant** cette version portent encore une zone photo
+qui couvre tout : la migration de données (v4) pose l'ouverture sur ceux qui
+sont bâtis sur un cadre fourni, dont on connaît l'ouverture au pixel près. Un
+cadre téléversé n'est pas touché — personne ici ne sait ce qu'il contient, et
+son auteur le relève d'un bouton.
+
 ### La page blanche
 
 Le septième gabarit ne ressemble à rien, et c'est le but. **Aucun cadre** :
@@ -337,13 +391,14 @@ ajoute quatre réglages aux autres :
 
 | Réglage | Ce qu'il fait |
 |---|---|
-| **Format** | 1:1, 4:5, 9:16 ou 16:9 — les gabarits nommés imposent le leur, celle-ci le demande |
 | **Couleur de fond** | visible partout où la photo ne va pas |
-| **Forme de la fenêtre photo** | rectangle, coins arrondis ou cercle |
-| **Fenêtre photo** | marges, largeur et hauteur |
+
+Le format et la fenêtre photo, eux, ne lui appartiennent plus en propre :
+tous les gabarits les exposent, pour la raison dite plus haut. Sur la page
+blanche, ils partent simplement d'un calcul plutôt que d'un cadre.
 
 Un cadre reste possible si vous en avez un : il se pose par-dessus comme
-ailleurs.
+ailleurs, et impose alors son format et son ouverture comme partout.
 
 Les hauteurs de départ sont **calculées à partir du format**, pas écrites une
 fois pour toutes : le QR est dimensionné sur la largeur, donc en paysage il
@@ -411,7 +466,8 @@ d'exemple de ce qu'un cadre d'événement peut être. Le formulaire propose
 « partez d'un cadre fourni » : de quoi créer un décor Instagram ou TikTok
 **sans passer par un graphiste**, le temps que les vrais visuels arrivent.
 Un fichier déposé dans ce dossier apparaît dans la liste tout seul, avec son
-format lu dans l'image.
+format lu dans l'image — et son ouverture, si `fenetres.json` la connaît ;
+sinon le formulaire la relève au moment où on le choisit.
 
 Les cadres sont dessinés en SVG dans `scripts/frames-src/` puis rasterisés
 par `npm run frames`, qui **embarque la police de la charte en base64** dans

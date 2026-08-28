@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function assurer_schema(): void
 {
@@ -65,6 +65,14 @@ function migrer_schema(PDO $pdo, bool $mysql): void
  * créé avant la mise à jour, et l'invité ne pourrait toujours pas faire
  * tenir une image entière.
  *
+ * v4 — la fenêtre photo suit l'ouverture du cadre. Les décors enregistrés
+ * avant portent une zone photo qui couvre le canevas ENTIER : la photo de
+ * l'invité y est cadrée sur toute la surface alors que le cadre ne laisse
+ * voir qu'une bande, et son visage tombe où il veut. Pour les décors bâtis
+ * sur un cadre FOURNI, l'ouverture est connue au millimètre : on la pose.
+ * Un cadre téléversé, lui, n'est pas touché — personne ici ne sait ce qu'il
+ * contient, et son auteur peut le relever d'un bouton dans le formulaire.
+ *
  * Idempotent par construction : on ne touche que ce qui dépasse encore.
  */
 function migrer_donnees(PDO $pdo): void
@@ -81,10 +89,41 @@ function migrer_donnees(PDO $pdo): void
         if (!is_array($g) || !isset($g['layers'])) {
             continue;
         }
+        // Le cadre du décor, s'il vient de ceux que l'application fournit.
+        // Le garde `function_exists` n'est pas de la superstition : une
+        // migration qui provoque une erreur fatale laisse une installation à
+        // moitié à jour, et c'est le pire état possible.
+        $ouverture = null;
+        if (function_exists('fenetres_relevees')) {
+            foreach ($g['layers'] as $l) {
+                if (($l['type'] ?? '') === 'image' && ($l['src'] ?? '') !== '') {
+                    $ouverture = fenetres_relevees()[basename((string) $l['src'])] ?? null;
+                }
+            }
+        }
+
         $change = false;
         foreach ($g['layers'] as $k => $l) {
-            if (($l['type'] ?? '') === 'photoSlot' && (float) ($l['minScale'] ?? 1) > 0.2) {
+            if (($l['type'] ?? '') !== 'photoSlot') {
+                continue;
+            }
+            if ((float) ($l['minScale'] ?? 1) > 0.2) {
                 $g['layers'][$k]['minScale'] = 0.2;
+                $change = true;
+            }
+            $r = $l['rect'] ?? [];
+            $entier = (float) ($r['x'] ?? 0) <= 0.001 && (float) ($r['y'] ?? 0) <= 0.001
+                   && (float) ($r['w'] ?? 1) >= 0.999 && (float) ($r['h'] ?? 1) >= 0.999;
+            if ($ouverture && $entier) {
+                $g['layers'][$k]['rect'] = [
+                    'x' => $ouverture['photo_x'], 'y' => $ouverture['photo_y'],
+                    'w' => $ouverture['photo_w'], 'h' => $ouverture['photo_h'],
+                ];
+                $g['layers'][$k]['mask'] = match ($ouverture['photo_forme']) {
+                    'cercle' => ['kind' => 'circle'],
+                    'arrondi' => ['kind' => 'rect', 'radius' => 0.08],
+                    default => ['kind' => 'rect', 'radius' => 0],
+                };
                 $change = true;
             }
         }

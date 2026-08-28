@@ -231,7 +231,26 @@ function prevol(array $gabarit, ?string $cadre_url): array
         }
         imagealphablending($img, false);
         imagesavealpha($img, true);
-        $ajouter('format', 'ok', sprintf('Cadre %s, %d × %d px.', $info[2] === IMAGETYPE_PNG ? 'PNG' : 'WebP', $info[0], $info[1]));
+        /**
+         * Le cadre et le canevas doivent avoir les mêmes proportions.
+         *
+         * Le renderer étire le cadre sur tout le canevas : une affiche 4:5
+         * sur un décor carré perd un quart de sa hauteur, visages compris.
+         * Le formulaire relève le format au téléversement, donc arriver ici
+         * en désaccord veut dire qu'on l'a changé après — d'où l'alerte
+         * plutôt que le refus : c'est peut-être voulu, mais ça se voit.
+         */
+        $ratio_cadre = ratio_lisible((int) $info[0], (int) $info[1]);
+        $ratio_toile = (string) ($gabarit['canvas']['ratio'] ?? '');
+        $type = $info[2] === IMAGETYPE_PNG ? 'PNG' : 'WebP';
+        if ($ratio_toile !== '' && $ratio_cadre !== $ratio_toile) {
+            $ajouter('format', 'alerte', sprintf(
+                'Cadre %s %d × %d px (%s) sur un décor %s : il sera étiré. Alignez le format du décor sur celui du cadre.',
+                $type, $info[0], $info[1], $ratio_cadre, $ratio_toile
+            ));
+        } else {
+            $ajouter('format', 'ok', sprintf('Cadre %s, %d × %d px (%s).', $type, $info[0], $info[1], $ratio_cadre));
+        }
 
         /* 3 — poids */
         $poids = filesize($chemin) ?: 0;

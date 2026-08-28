@@ -415,6 +415,50 @@ const run = async () => {
   ok('TikTok remonte le QR hors de la zone de la légende',
      (await p.inputValue('#r-qr_position')) === 'top-left');
 
+  /* ---- la fenêtre photo suit l'ouverture du cadre ---- */
+
+  // Un gabarit part avec la fenêtre de SON cadre : sans ça, la photo de
+  // l'invité est cadrée sur le canevas entier alors que le dessin n'en
+  // laisse voir qu'une bande, et son visage tombe où il veut.
+  const fenetre = async () => ({
+    format: await p.inputValue('#r-format'),
+    x: Number(await p.inputValue('#r-photo_x')),
+    y: Number(await p.inputValue('#r-photo_y')),
+    w: Number(await p.inputValue('#r-photo_w')),
+    h: Number(await p.inputValue('#r-photo_h')),
+  });
+  let f = await fenetre();
+  ok('le gabarit part avec la fenêtre de son cadre', f.h < 0.95 && f.h > 0.3,
+     `hauteur ${f.h}`);
+
+  await p.selectOption('#disposition', 'bandeau');
+  await p.waitForTimeout(1100);
+  ok('changer de gabarit reprend SON format d’origine', (await fenetre()).format === '1:1',
+     (await fenetre()).format);
+
+  // Un cadre 4:5 posé sur un gabarit carré : le décor prend le format du
+  // CADRE, sinon il serait étiré d'un quart, et relève son ouverture.
+  await p.setInputFiles('input[name=cadre]', 'php/public/cadres/228-playground.png');
+  await p.waitForTimeout(3200);
+  f = await fenetre();
+  ok('le cadre téléversé impose son format', f.format === '4:5', f.format);
+  ok('l’ouverture du cadre est relevée toute seule',
+     f.y > 0.1 && f.y < 0.25 && f.h > 0.4 && f.h < 0.6,
+     `y=${f.y} h=${f.h}`);
+  ok('l’aperçu suit le format du cadre', Math.abs((await forme()) - 0.8) < 0.03,
+     `${(await forme()).toFixed(2)} attendu 0.80`);
+
+  // Le relevé se redemande à la main, et retombe sur les mêmes valeurs.
+  await p.evaluate(`
+    (() => { const e = document.getElementById('r-photo_y');
+             e.value = '0.5'; e.dispatchEvent(new Event('input', { bubbles: true })); })()
+  `);
+  await p.waitForTimeout(700);
+  await p.click('#detecter-fenetre');
+  await p.waitForTimeout(2600);
+  ok('« relever sur le cadre » retrouve l’ouverture',
+     Math.abs((await fenetre()).y - f.y) < 0.02, `${(await fenetre()).y} attendu ${f.y}`);
+
   await p.selectOption('#disposition', 'instagram');
   await p.waitForTimeout(1100);
 

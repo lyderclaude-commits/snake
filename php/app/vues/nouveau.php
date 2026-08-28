@@ -20,7 +20,7 @@ $curseur = function (string $nom, string $libelle, float $min, float $max, float
     </div>
     <?php
 };
-$liste = function (string $nom, string $libelle, array $choix, string $valeur) {
+$liste = function (string $nom, string $libelle, array $choix, string $valeur, string $aide = '') {
     ?>
     <div class="champ reglage">
       <label for="r-<?= e($nom) ?>"><?= e($libelle) ?></label>
@@ -29,6 +29,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
           <option value="<?= e((string) $k) ?>" <?= (string) $valeur === (string) $k ? 'selected' : '' ?>><?= e($v) ?></option>
         <?php endforeach; ?>
       </select>
+      <?php if ($aide !== ''): ?><p class="aide"><?= e($aide) ?></p><?php endif; ?>
     </div>
     <?php
 };
@@ -187,24 +188,46 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
 
         <?php
         /**
-         * Les réglages propres à la page blanche.
+         * Le format, pour TOUS les gabarits.
          *
-         * Ils n'apparaissent que pour elle : sur un gabarit nommé, le format
-         * fait partie de sa définition et la fenêtre photo est dessinée par
-         * le cadre. Les déplacer là n'aurait aucun sens, et casserait le
-         * cadre qu'on vient de téléverser.
+         * Il n'appartenait qu'à la page blanche, et un cadre 4:5 téléversé
+         * sur un gabarit carré s'aplatissait d'un quart sans que rien ne le
+         * dise. Le cadre impose son format : le formulaire le relève tout
+         * seul au téléversement, et laisse la main pour les cas où l'on sait
+         * ce qu'on fait.
+         *
+         * La fenêtre photo, pour TOUS les gabarits aussi.
+         *
+         * Par défaut elle occupe le canevas entier : la photo est cadrée sur
+         * l'image complète, et seule la part qui tombe dans l'ouverture du
+         * cadre se voit. Dès que le cadre a une ouverture précise — un
+         * médaillon, un rectangle incliné, un côté d'affiche — il faut le
+         * dire ici, sinon l'invité règle son visage à l'aveugle et le
+         * résultat n'est jamais celui qu'on attend.
+         *
+         * Une fois la fenêtre déclarée, tout se joue à l'intérieur : « remplir »
+         * remplit l'ouverture, le zoom et le glissement s'y rapportent.
          */
         ?>
+        <div class="reglages fenetre-photo" style="grid-column:1/-1">
+          <div class="rangee" style="grid-column:1/-1;justify-content:space-between;align-items:baseline">
+            <p class="pas" style="margin:0">Le format et la fenêtre photo</p>
+            <button class="bouton fant petit" type="button" id="detecter-fenetre">Relever sur le cadre</button>
+          </div>
+          <?php $liste('format', 'Format du décor', FORMATS, (string) $valeurs['format'],
+                       'Celui du cadre, sans quoi il serait étiré.'); ?>
+          <?php $liste('photo_forme', 'Forme de la fenêtre', APPARENCE_FORMES, (string) $valeurs['photo_forme']); ?>
+          <?php $curseur('photo_x', 'Fenêtre : marge gauche', 0, 0.9, 0.005, $valeurs['photo_x']); ?>
+          <?php $curseur('photo_y', 'Fenêtre : marge haute', 0, 0.9, 0.005, $valeurs['photo_y']); ?>
+          <?php $curseur('photo_w', 'Fenêtre : largeur', 0.08, 1, 0.005, $valeurs['photo_w']); ?>
+          <?php $curseur('photo_h', 'Fenêtre : hauteur', 0.08, 1, 0.005, $valeurs['photo_h'],
+                         'Le pointillé sur l’aperçu montre où la photo de l’invité se placera.'); ?>
+        </div>
+
         <div class="reglages si-vierge"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
-          <p class="pas" style="grid-column:1/-1;margin:0 0 4px">Page blanche : le format et la fenêtre photo</p>
-          <?php $liste('format', 'Format du décor', FORMATS, (string) $valeurs['format']); ?>
-          <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond']); ?>
-          <?php $liste('photo_forme', 'Forme de la fenêtre photo', APPARENCE_FORMES, (string) $valeurs['photo_forme']); ?>
-          <?php $curseur('photo_x', 'Fenêtre : marge gauche', 0, 0.75, 0.01, $valeurs['photo_x']); ?>
-          <?php $curseur('photo_y', 'Fenêtre : marge haute', 0, 0.75, 0.01, $valeurs['photo_y']); ?>
-          <?php $curseur('photo_w', 'Fenêtre : largeur', 0.25, 1, 0.01, $valeurs['photo_w']); ?>
-          <?php $curseur('photo_h', 'Fenêtre : hauteur', 0.25, 1, 0.01, $valeurs['photo_h'],
-                         'Le fond apparaît partout où la photo ne va pas.'); ?>
+          <p class="pas" style="grid-column:1/-1;margin:0 0 4px">Page blanche : le fond</p>
+          <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond'],
+                       'Il apparaît partout où la photo ne va pas.'); ?>
         </div>
 
         <div class="apercu-boite">

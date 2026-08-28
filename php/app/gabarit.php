@@ -96,13 +96,17 @@ function format_canevas(string $format): array
 /**
  * Le canevas d'une disposition.
  *
- * Les gabarits nommés imposent leur format — c'est ce qui les rend prêts à
- * publier. La page blanche, elle, le demande : c'est le premier des choix
- * qu'elle laisse.
+ * Chaque gabarit nommé a son format d'origine — c'est ce qui le rend prêt à
+ * publier. Mais un format explicite l'emporte toujours, parce qu'un CADRE
+ * impose le sien : étirer une affiche 4:5 sur un canevas carré l'aplatit
+ * d'un quart, et aucun réglage de fenêtre photo ne rattrape ça.
+ *
+ * Appelée sans format, la fonction rend le canevas d'origine : c'est ce que
+ * veulent les appelants qui cherchent « le format de ce gabarit ».
  */
 function canevas(string $disposition, string $format = ''): array
 {
-    if ($disposition === 'vierge') {
+    if ($disposition === 'vierge' || isset(FORMATS[$format])) {
         return format_canevas($format);
     }
     return match ($disposition) {
@@ -110,6 +114,12 @@ function canevas(string $disposition, string $format = ''): array
         'instagram'       => ['w' => 1080, 'h' => 1350, 'ratio' => '4:5'],
         default           => ['w' => 1080, 'h' => 1080, 'ratio' => '1:1'],
     };
+}
+
+/** Le format d'origine d'une disposition, sous forme de clé de FORMATS. */
+function format_natif(string $disposition): string
+{
+    return $disposition === 'vierge' ? '1:1' : canevas($disposition)['ratio'];
 }
 
 /**
@@ -128,18 +138,45 @@ function canevas(string $disposition, string $format = ''): array
  * de sa zone de silence) à x = 0,74 (début du filigrane). Un bloc de texte
  * qui en sort passe SOUS l'un des deux, et le pré-vol le refuse.
  */
-function apparence_par_defaut(string $disposition, string $format = '1:1'): array
+function apparence_par_defaut(string $disposition, string $format = ''): array
 {
+    /**
+     * Le format d'origine de la disposition, sauf demande explicite.
+     *
+     * Écrire `'format' => '1:1'` ici revenait à rendre tous les gabarits
+     * carrés dès que le canevas suivrait le format : story et TikTok se
+     * seraient écrasés de moitié. Le format d'origine est la seule valeur
+     * par défaut qui ne change rien pour personne.
+     */
+    $natif = format_natif($disposition);
+    $effectif = isset(FORMATS[$format]) ? $format : $natif;
+
     $commun = [
         'texte_couleur' => 'brand.paper',
         'texte_align' => 'left',
         'qr_position' => 'bottom-left',
         'qr_taille' => 0.16,
         'filigrane_position' => 'bottom-right',
-        // Ces quatre-là ne bougent que sur la page blanche : ailleurs, la
-        // photo remplit le cadre, qui est dessiné pour ça.
-        'format' => '1:1',
+        'format' => $effectif,
         'fond' => 'brand.ink',
+    ];
+
+    /**
+     * La fenêtre photo part de l'OUVERTURE du cadre de la disposition.
+     *
+     * À défaut, c'est le canevas entier — et là, la photo est cadrée sur
+     * toute la surface alors que le dessin n'en laisse voir qu'une bande :
+     * le visage de l'invité tombe où il veut. C'est le défaut qu'on corrige
+     * ici, pour tout le monde d'un coup, sans que personne ait à toucher un
+     * curseur. Les valeurs viennent de `public/cadres/fenetres.json`, relevé
+     * sur les pixels des cadres au moment où ils sont fabriqués.
+     *
+     * `+=` et non `array_merge` : ici c'est bien la GAUCHE qu'on veut voir
+     * l'emporter — l'ouverture relevée d'abord, le canevas entier seulement
+     * s'il n'y a rien à relever.
+     */
+    $commun += fenetres_relevees()[cadre_prefere($disposition)] ?? [];
+    $commun += [
         'photo_x' => 0.0, 'photo_y' => 0.0, 'photo_w' => 1.0, 'photo_h' => 1.0,
         'photo_forme' => 'rect',
     ];
@@ -147,7 +184,7 @@ function apparence_par_defaut(string $disposition, string $format = '1:1'): arra
     // `array_merge` et non `+` : avec l'union, ce sont les valeurs de GAUCHE
     // qui l'emportent, et le QR de TikTok serait retombé en bas à gauche,
     // c'est-à-dire sous la légende de l'application.
-    return array_merge($commun, match ($disposition) {
+    $propre = match ($disposition) {
         'angle' => [
             'bloc_x' => 0.25, 'bloc_y' => 0.79, 'bloc_w' => 0.48,
             'accroche_taille' => 0.05, 'champ_taille' => 0.026,
@@ -187,12 +224,28 @@ function apparence_par_defaut(string $disposition, string $format = '1:1'): arra
          * où il n'en prend qu'un sixième en vertical. Des valeurs figées
          * posaient le texte sous le QR dès qu'on passait en 16:9.
          */
-        'vierge' => page_blanche($format),
+        'vierge' => page_blanche($effectif),
         default => [
             'bloc_x' => 0.25, 'bloc_y' => 0.795, 'bloc_w' => 0.48,
             'accroche_taille' => 0.058, 'champ_taille' => 0.03,
         ],
-    });
+    };
+
+    /**
+     * Format changé : les repères d'origine ne valent plus.
+     *
+     * Les hauteurs ci-dessus sont calées au millième pour le format de leur
+     * disposition. Sur un autre, elles posent le texte sous le QR — qui est
+     * dimensionné sur la LARGEUR et occupe donc une part de hauteur très
+     * différente selon le format. On les recalcule alors comme pour une page
+     * blanche, en gardant ce qui tient à la disposition et non au format :
+     * la place du QR et celle du filigrane.
+     */
+    if ($effectif !== $natif && $disposition !== 'vierge') {
+        $propre = array_merge($propre, page_blanche($effectif));
+    }
+
+    return array_merge($commun, $propre);
 }
 
 /**
@@ -258,6 +311,8 @@ function cadres_fournis(): array
         '228-playground-story.png' => '228 Basket Playground · story',
     ];
 
+    $fenetres = fenetres_relevees();
+
     $liste = [];
     foreach (glob(RACINE . '/public/cadres/*.{png,webp}', GLOB_BRACE) ?: [] as $chemin) {
         $nom = basename($chemin);
@@ -270,9 +325,57 @@ function cadres_fournis(): array
             'ratio' => ratio_lisible((int) $taille[0], (int) $taille[1]),
             'w' => (int) $taille[0],
             'h' => (int) $taille[1],
+            'fenetre' => $fenetres[$nom] ?? null,
         ];
     }
     return $liste;
+}
+
+/**
+ * L'ouverture de chaque cadre fourni, relevée à la fabrication.
+ *
+ * `public/cadres/fenetres.json` est écrit par `npm run frames`, en même
+ * temps que les PNG et à partir des mêmes pixels : les deux ne peuvent pas
+ * se contredire. Sans ce relevé, un décor bâti sur un cadre fourni cadre la
+ * photo de l'invité sur le canevas ENTIER alors que le dessin ne laisse
+ * voir qu'une bande — et le visage tombe où il veut.
+ *
+ * Fichier absent ou illisible : on retombe sur le canevas entier, c'est-à-
+ * dire le comportement d'avant. Un manifeste manquant ne casse rien.
+ */
+function fenetres_relevees(): array
+{
+    static $lu = null;
+    if ($lu !== null) {
+        return $lu;
+    }
+    $lu = [];
+    $chemin = RACINE . '/public/cadres/fenetres.json';
+    $brut = is_readable($chemin) ? @file_get_contents($chemin) : false;
+    $donnees = $brut === false ? null : json_decode($brut, true);
+    if (!is_array($donnees)) {
+        return $lu;
+    }
+    foreach ($donnees as $nom => $f) {
+        if (!is_array($f) || !isset($f['x'], $f['y'], $f['w'], $f['h'])) {
+            continue;
+        }
+        $lu[basename((string) $nom)] = [
+            'photo_x' => max(0.0, min(0.9, (float) $f['x'])),
+            'photo_y' => max(0.0, min(0.9, (float) $f['y'])),
+            'photo_w' => max(0.08, min(1.0, (float) $f['w'])),
+            'photo_h' => max(0.08, min(1.0, (float) $f['h'])),
+            'photo_forme' => isset(APPARENCE_FORMES[$f['forme'] ?? '']) ? (string) $f['forme'] : 'rect',
+        ];
+    }
+    return $lu;
+}
+
+/** Le cadre fourni qui va avec une disposition, quand on n'en téléverse pas. */
+function cadre_prefere(string $disposition): string
+{
+    return ['instagram' => 'instagram.png', 'facebook' => 'facebook.png',
+            'tiktok' => 'tiktok.png', 'story' => 'story.png'][$disposition] ?? 'jy-serai.png';
 }
 
 /**
@@ -285,8 +388,7 @@ function cadres_fournis(): array
 function cadre_du_format(string $disposition): string
 {
     $voulu = canevas($disposition)['ratio'];
-    $prefere = ['instagram' => 'instagram.png', 'facebook' => 'facebook.png',
-                'tiktok' => 'tiktok.png', 'story' => 'story.png'][$disposition] ?? 'jy-serai.png';
+    $prefere = cadre_prefere($disposition);
 
     $fournis = cadres_fournis();
     if (isset($fournis[$prefere])) {
@@ -377,7 +479,7 @@ function apparence_propre(string $disposition, array $saisie): array
     // Le format d'abord : c'est de lui que dépendent toutes les hauteurs de
     // départ d'une page blanche.
     $format = (string) ($saisie['format'] ?? '');
-    $d = apparence_par_defaut($disposition, isset(FORMATS[$format]) ? $format : '1:1');
+    $d = apparence_par_defaut($disposition, isset(FORMATS[$format]) ? $format : '');
 
     $borne = function (string $cle, float $min, float $max) use ($saisie, $d): float {
         if (!isset($saisie[$cle]) || !is_numeric($saisie[$cle])) {
@@ -395,10 +497,14 @@ function apparence_propre(string $disposition, array $saisie): array
         'texte_align' => $parmi('texte_align', APPARENCE_ALIGNEMENTS),
         'format' => $parmi('format', FORMATS),
         'fond' => $parmi('fond', APPARENCE_COULEURS),
-        'photo_x' => $borne('photo_x', 0, 0.75),
-        'photo_y' => $borne('photo_y', 0, 0.75),
-        'photo_w' => $borne('photo_w', 0.25, 1),
-        'photo_h' => $borne('photo_h', 0.25, 1),
+        // Bornes larges : l'ouverture d'un cadre peut être un médaillon
+        // dans un coin. Les serrer reviendrait à refuser des cadres dont
+        // la fenêtre est petite ou basse — et à rendre inexploitable la
+        // détection automatique, qui rapporte ce que le fichier contient.
+        'photo_x' => $borne('photo_x', 0, 0.9),
+        'photo_y' => $borne('photo_y', 0, 0.9),
+        'photo_w' => $borne('photo_w', 0.08, 1),
+        'photo_h' => $borne('photo_h', 0.08, 1),
         'photo_forme' => $parmi('photo_forme', APPARENCE_FORMES),
         'bloc_x' => $borne('bloc_x', 0, 0.8),
         'bloc_y' => $borne('bloc_y', 0.02, 0.92),
