@@ -13,6 +13,28 @@
   <?php if (!empty($_GET['err'])): ?><div class="msg err" role="alert"><?= e($_GET['err']) ?></div><?php endif; ?>
 
   <?php
+  /**
+   * Le rappel de confirmation, tant qu'elle manque.
+   *
+   * Placé ici et pas au moment de soumettre : découvrir la condition au
+   * moment où l'on croit avoir fini, c'est l'apprendre trop tard. Il
+   * n'apparaît que si l'on sait envoyer le lien — sinon il désignerait un
+   * obstacle qui n'existe pas.
+   */
+  ?>
+  <?php if (verification_exigee() && !email_verifie($me)): ?>
+    <div class="msg err" style="margin-bottom:16px">
+      <strong>Confirmez votre adresse pour pouvoir soumettre</strong>
+      <p style="margin:.35em 0 .7em">Un lien est parti vers <?= e($me['email']) ?>. C’est par là que
+      vous arrivera la décision de relecture — nous devons donc savoir que l’adresse existe.</p>
+      <form method="post" action="<?= e(url('?p=renvoyer-verification')) ?>" style="margin:0">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <button class="bouton petit" type="submit">M’envoyer un nouveau lien</button>
+      </form>
+    </div>
+  <?php endif; ?>
+
+  <?php
   $emis = 0; $vus = 0; $presents = 0;
   foreach ($liste as $d) { $p = presence($d['id']); $emis += $p['emis']; $presents += $p['scannes']; $vus += (int) $d['vues']; }
   ?>

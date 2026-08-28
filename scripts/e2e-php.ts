@@ -6,6 +6,7 @@
  * façon de savoir que le portage n'a rien perdu en route.
  */
 import { chromium, type Browser, type Page } from 'playwright-core';
+import { createServer } from 'node:net';
 
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
@@ -25,6 +26,47 @@ const ok = (label: string, cond: boolean, detail = '') => {
   cond ? pass++ : fail++;
   console.log(`  ${cond ? '✓' : '✗'} ${label}${detail ? ' — ' + detail : ''}`);
 };
+
+/**
+ * Un serveur SMTP de recette, pour vérifier qu'un message part VRAIMENT.
+ *
+ * Sans lui, on ne testerait que des écrans : « le formulaire dit que c'est
+ * envoyé ». Ce qui compte est qu'un serveur d'en face reçoive un message
+ * adressé à la bonne personne — c'est la seule chose que le partenaire
+ * constatera, lui.
+ */
+const SMTP_PORT = 3931;
+const recus: string[] = [];
+
+function ouvrirSmtp(): Promise<{ fermer: () => void }> {
+  const serveur = createServer((c) => {
+    let tampon = '';
+    let data = false;
+    c.write('220 recette ESMTP\r\n');
+    c.on('data', (b) => {
+      tampon += b.toString();
+      let i: number;
+      while ((i = tampon.indexOf('\r\n')) >= 0) {
+        const l = tampon.slice(0, i);
+        tampon = tampon.slice(i + 2);
+        if (data) {
+          if (l === '.') { data = false; c.write('250 ok\r\n'); }
+          else recus[recus.length - 1] += l + '\n';
+          continue;
+        }
+        const h = l.toUpperCase();
+        if (h.startsWith('EHLO')) c.write('250-recette\r\n250 SIZE 10240000\r\n');
+        else if (h === 'DATA') { data = true; recus.push(''); c.write('354 go\r\n'); }
+        else if (h === 'QUIT') { c.write('221 bye\r\n'); c.end(); }
+        else c.write('250 ok\r\n');
+      }
+    });
+    c.on('error', () => { /* le client raccroche : sans intérêt */ });
+  });
+  return new Promise((r) => serveur.listen(SMTP_PORT, '127.0.0.1', () => r({
+    fermer: () => serveur.close(),
+  })));
+}
 
 const ADMIN = {
   email: process.env.WAKABI_ADMIN ?? 'lyder@wakabileguide.com',
@@ -679,9 +721,10 @@ const run = async () => {
   const entrees = (await p.locator('.barre nav a').evaluateAll(
     (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
   ));
-  ok('les cinq destinations sont sous un seul intitulé',
+  ok('les six destinations sont sous un seul intitulé',
      (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
-     && (await p.locator('.barre .deroulant .volet a').count()) === 5);
+     && (await p.locator('.barre .deroulant .volet a').count()) === 6,
+     `${await p.locator('.barre .deroulant .volet a').count()} entrées`);
   ok('notifications et déconnexion restent hors du déroulant',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
      && (await p.locator('.barre nav > form[action*="deconnexion"] button').count()) === 1);
@@ -805,6 +848,159 @@ const run = async () => {
   ok('repli « appui long » proposé dans WhatsApp', await w.locator('#bloc-partage').isVisible());
   ok('l’image y est bien fournie',
      (await w.locator('#apercu-partage').getAttribute('src'))?.startsWith('blob:') ?? false);
+
+  console.log('\n━━ 18. Le lien partagé dans WhatsApp ━━');
+
+  /**
+   * Ce qu'un lien de décor montre AVANT le clic.
+   *
+   * Tout le produit repose sur ce partage : un lien nu — un titre gris et
+   * rien d'autre — coûte des ouvertures qu'aucune autre optimisation ne
+   * rattrape.
+   */
+  await p.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
+  const meta = async (sel: string) =>
+    (await p.locator(sel).first().getAttribute('content').catch(() => null)) ?? '';
+
+  ok('le lien porte un titre de partage', (await meta('meta[property="og:title"]')).length > 3,
+     await meta('meta[property="og:title"]'));
+  ok('le lien porte une description', (await meta('meta[property="og:description"]')).length > 3);
+  ok('la carte est annoncée en grand format',
+     (await meta('meta[name="twitter:card"]')) === 'summary_large_image');
+  ok('l’adresse canonique désigne le décor',
+     (await p.locator('link[rel=canonical]').first().getAttribute('href') ?? '').includes('slug=jy-serai'));
+
+  const vignette = await meta('meta[property="og:image"]');
+  ok('une vignette est annoncée', vignette.includes('p=og') && vignette.includes('slug=jy-serai'), vignette.slice(0, 70));
+  ok('la vignette porte une empreinte de version', /[?&]v=[0-9a-f]{8}/.test(vignette),
+     'sinon WhatsApp garderait l’ancienne image');
+  ok('les dimensions annoncées sont celles attendues',
+     (await meta('meta[property="og:image:width"]')) === '1200'
+     && (await meta('meta[property="og:image:height"]')) === '630');
+
+  const img = await p.request.get(vignette);
+  ok('la vignette se télécharge', img.status() === 200, `HTTP ${img.status()}`);
+  ok('la vignette est une image JPEG',
+     (img.headers()['content-type'] ?? '').includes('image/jpeg'), img.headers()['content-type']);
+  ok('la vignette pèse un poids raisonnable',
+     (await img.body()).length > 5_000 && (await img.body()).length < 400_000,
+     `${Math.round((await img.body()).length / 1024)} Ko`);
+  // Les deux premiers octets d'un JPEG, et les dimensions dans son en-tête.
+  const octets = await img.body();
+  ok('le fichier est bien un JPEG valide', octets[0] === 0xFF && octets[1] === 0xD8);
+  ok('la vignette est mise en cache durablement',
+     (img.headers()['cache-control'] ?? '').includes('max-age='),
+     img.headers()['cache-control']);
+
+  // Une deuxième demande doit servir le fichier déjà calculé, à l'identique.
+  const img2 = await p.request.get(vignette);
+  ok('la vignette est stable d’une demande à l’autre',
+     Buffer.compare(octets, await img2.body()) === 0);
+
+  await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+  ok('la vitrine aussi porte une vignette',
+     (await meta('meta[property="og:image"]')).includes('p=og'));
+
+  console.log('\n━━ 19. Le transport e-mail ━━');
+
+  /**
+   * Placé en DERNIER, et remis à zéro à la fin.
+   *
+   * Brancher le transport change le comportement du reste — la confirmation
+   * d'adresse devient exigible — et un scénario ne doit pas décider du
+   * décor dans lequel jouent les précédents.
+   */
+  const smtp = await ouvrirSmtp();
+  const pe = await browser.newPage();
+  pe.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+
+  await connexion(pe, ADMIN.email, ADMIN.mdp);
+  await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de réglages est réservé à l’équipe', pe.url().includes('p=reglages'));
+  ok('le transport part éteint',
+     /éteint/i.test(await pe.locator('.msg').first().innerText()));
+
+  await pe.fill('#smtp_hote', '127.0.0.1');
+  await pe.fill('#smtp_port', String(SMTP_PORT));
+  await pe.selectOption('#smtp_securite', 'aucune');
+  await pe.fill('#courriel_expediteur', 'boost@wakabileguide.com');
+  await pe.fill('#essai_vers', ADMIN.email);
+  await pe.click('button[value=essai]');
+  await pe.waitForLoadState('domcontentloaded');
+  ok('l’essai d’envoi aboutit',
+     /Message remis au serveur SMTP/.test(await pe.locator('.msg').first().innerText()),
+     (await pe.locator('.msg').first().innerText()).replace(/\s+/g, ' ').slice(0, 70));
+  ok('le serveur a bien reçu l’essai', recus.length === 1, `${recus.length} message(s)`);
+  ok('l’essai est adressé à la bonne personne',
+     (recus[0] ?? '').includes('<' + ADMIN.email + '>'));
+  ok('le sujet accentué voyage encodé', /^Subject: =\?UTF-8\?B\?/m.test(recus[0] ?? ''));
+
+  // Un partenaire tout neuf : il doit confirmer avant de soumettre.
+  const NEUF = { email: `verif-${marque}@exemple.tg`, mdp: 'partenaire-2026-solide' };
+  const ctxv = await browser.newContext();
+  const pv = await ctxv.newPage();
+  await pv.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  await pv.selectOption('select[name=role]', 'partenaire');
+  await pv.fill('input[name=nom]', 'Partenaire à vérifier');
+  await pv.fill('input[name=email]', NEUF.email);
+  await pv.fill('input[name=mot_de_passe]', NEUF.mdp);
+  await pv.click('main button[type=submit]');
+  await pv.waitForLoadState('domcontentloaded');
+  ok('le lien de confirmation part à l’inscription', recus.length === 2, `${recus.length} message(s)`);
+  ok('la bannière réclame la confirmation',
+     /Confirmez votre adresse/.test(await pv.locator('.msg.err').first().innerText().catch(() => '')));
+
+  // Un décor, et une soumission qui doit être refusée.
+  await pv.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pv.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pv.fill('input[name=titre]', `Décor à vérifier ${marque}`);
+  await pv.fill('input[name=redirection]', 'https://wakabileguide.com/p/verif');
+  await pv.click('main button[type=submit]');
+  await pv.waitForLoadState('domcontentloaded');
+  await pv.locator('form[action*="p=soumettre"] button').first().click();
+  await pv.waitForLoadState('domcontentloaded');
+  ok('soumettre est refusé tant que l’adresse n’est pas confirmée',
+     /Confirmez d’abord votre adresse/.test(await pv.locator('.msg.err').first().innerText().catch(() => '')));
+
+  // Le lien reçu, cliqué : il vaut une fois.
+  const lienBrut = (recus[1] ?? '').match(/https?:\/\/\S*p=verifier[^\s"<]*/)?.[0]?.replace(/&amp;/g, '&') ?? '';
+  ok('le message porte bien un lien de confirmation', lienBrut !== '', lienBrut.slice(0, 60));
+  await pv.goto(lienBrut, { waitUntil: 'domcontentloaded' });
+  ok('le lien confirme l’adresse', /Adresse confirmée/.test(await pv.locator('h1').first().innerText()));
+  await pv.goto(lienBrut, { waitUntil: 'domcontentloaded' });
+  ok('le lien ne sert qu’une fois',
+     /n’a pas fonctionné/.test(await pv.locator('h1').first().innerText()));
+
+  await pv.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  ok('la bannière disparaît une fois l’adresse confirmée',
+     (await pv.locator('.msg.err:has-text("Confirmez votre adresse")').count()) === 0);
+
+  // Et maintenant, la soumission passe — et prévient l'équipe.
+  const avantEquipe = recus.length;
+  await pv.locator('form[action*="p=soumettre"] button').first().click();
+  await pv.waitForLoadState('domcontentloaded');
+  ok('soumettre passe une fois l’adresse confirmée',
+     /24 h/.test(await pv.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('l’équipe est prévenue par courriel', recus.length > avantEquipe,
+     `${recus.length - avantEquipe} message(s)`);
+
+  // La décision, elle, revient au partenaire.
+  const avantDecision = recus.length;
+  await pe.goto(`${BASE}/index.php?p=relecture`, { waitUntil: 'domcontentloaded' });
+  await pe.locator(`.carte:has-text("Décor à vérifier ${marque}") button:has-text("Approuver")`).first().click();
+  await pe.waitForLoadState('domcontentloaded');
+  ok('la décision part par courriel', recus.length > avantDecision,
+     `${recus.length - avantDecision} message(s)`);
+  ok('la décision est adressée au partenaire',
+     (recus[recus.length - 1] ?? '').includes('<' + NEUF.email + '>'));
+
+  // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
+  await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pe.fill('#smtp_hote', '');
+  await pe.click('button[value=enregistrer]');
+  await pe.waitForLoadState('domcontentloaded');
+  ok('le transport se rééteint', /éteint/i.test(await pe.locator('.msg').last().innerText()));
+  smtp.fermer();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

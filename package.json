@@ -20,7 +20,7 @@
     "php:bundle": "esbuild php/studio/entry.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/studio.js --alias:@=./src && esbuild php/studio/apercu.ts --bundle --format=iife --target=es2019 --minify --outfile=php/public/apercu.js --alias:@=./src",
     "php:serve": "php -S 127.0.0.1:3600 -t php",
     "php:e2e": "tsx scripts/e2e-php.ts",
-    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts",
+    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts && tsx scripts/verifier-courriel.ts",
     "package:php": "tsx scripts/package-php.ts"
   },
   "dependencies": {

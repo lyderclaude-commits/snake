@@ -15,6 +15,8 @@ require __DIR__ . '/app/gabarit.php';
 require __DIR__ . '/app/auth.php';
 require __DIR__ . '/app/depot.php';
 require __DIR__ . '/app/prevol.php';
+require __DIR__ . '/app/courriel.php';
+require __DIR__ . '/app/og.php';
 require __DIR__ . '/app/qr.php';
 require __DIR__ . '/app/icones.php';
 require __DIR__ . '/app/avatars.php';
@@ -38,6 +40,10 @@ function vue(string $nom, array $donnees = []): never
 {
     $_titre = $donnees['titre'] ?? 'Wakabi Boost';
     $_description = $donnees['description'] ?? null;
+    // Ce qui part dans les balises de partage. Mis de côté comme le titre :
+    // une variable de boucle du même nom dans une vue les écraserait.
+    $_og_titre = $donnees['og_titre'] ?? null;
+    $_og_image = $donnees['og_image'] ?? null;
 
     extract($donnees, EXTR_SKIP);
     $me = utilisateur_courant();
@@ -48,6 +54,8 @@ function vue(string $nom, array $donnees = []): never
 
     $titre = $_titre;
     $description = $_description;
+    $og_titre = $_og_titre;
+    $og_image = $_og_image;
     require RACINE . '/app/vues/layout.php';
     exit;
 }
@@ -60,6 +68,29 @@ switch ($page) {
 
     case 'accueil':
         vue('accueil', ['titre' => 'Wakabi Boost — le badge qui remplit la salle']);
+
+    /**
+     * La vignette de partage.
+     *
+     * Servie par PHP et non depuis `public/` : elle est CALCULÉE, elle
+     * dépend d'un décor, et elle doit se refaire quand le cadre change.
+     * L'en-tête de cache est très long parce que l'adresse porte déjà une
+     * empreinte de la date de modification : une nouvelle image, c'est une
+     * nouvelle adresse.
+     */
+    case 'og':
+        $slug = (string) ($_GET['slug'] ?? '');
+        $d = $slug !== '' ? decor_par_slug($slug) : null;
+        $fichier = fichier_og($d && $d['statut'] === 'publie' ? $d : null);
+        if (!$fichier) {
+            http_response_code(404);
+            exit;
+        }
+        header('Content-Type: image/jpeg');
+        header('Content-Length: ' . filesize($fichier));
+        header('Cache-Control: public, max-age=31536000, immutable');
+        readfile($fichier);
+        exit;
 
     case 'decors':
         vue('decors', ['titre' => 'Décors — Wakabi Boost', 'liste' => decors_publies()]);
@@ -79,7 +110,16 @@ switch ($page) {
             vue('introuvable', ['titre' => 'Décor introuvable']);
         }
         evenement($d['id'], 'vue');
-        vue('studio', ['titre' => $d['titre'] . ' — Wakabi Boost', 'd' => $d, 'g' => $g]);
+        vue('studio', [
+            'titre' => $d['titre'] . ' — Wakabi Boost',
+            // Ce que WhatsApp montrera du lien : le nom de la campagne, ce
+            // qu'on y fait, et le badge lui-même.
+            'description' => ($d['sous_titre'] ?: 'Créez votre badge en 30 secondes, et partagez-le.'),
+            'og_titre' => $d['titre'],
+            'og_image' => url_og($d),
+            'd' => $d,
+            'g' => $g,
+        ]);
 
     /* ---- comptes ---- */
 
@@ -150,6 +190,58 @@ switch ($page) {
     case 'role':
     case 'suspendre':
         require RACINE . '/app/actions/comptes.php';
+
+    case 'reglages':
+        require RACINE . '/app/actions/reglages.php';
+
+    /* ---- confirmation d'adresse ---- */
+
+    /**
+     * Volontairement accessible SANS être connecté.
+     *
+     * Le lien est cliqué depuis une boîte mail, souvent sur un autre
+     * appareil que celui de l'inscription. Exiger une session ici ferait
+     * tomber la moitié des confirmations sur un écran de connexion, et
+     * personne ne comprendrait pourquoi.
+     */
+    case 'verifier':
+        $r = consommer_jeton_verification((string) ($_GET['j'] ?? ''));
+        vue('verification', [
+            'titre' => $r['ok'] ? 'Adresse confirmée' : 'Lien de confirmation',
+            'resultat' => $r,
+        ]);
+
+    case 'renvoyer-verification':
+        $moi = utilisateur_courant();
+        if (!$moi) {
+            rediriger('?p=connexion');
+        }
+        verifier_csrf();
+        if (email_verifie($moi)) {
+            rediriger('?p=compte&ok=' . rawurlencode('Votre adresse est déjà confirmée.'));
+        }
+        /**
+         * Un bouton « renvoyer » sans compteur est un robot d'envoi.
+         *
+         * L'adresse visée est la sienne, donc le risque est faible — mais
+         * c'est notre serveur SMTP qui expédierait, et un hébergeur coupe un
+         * compte qui envoie mille messages en une heure. Le même compteur
+         * que la connexion, la même fenêtre.
+         */
+        $cle_renvoi = 'verif|' . $moi['id'];
+        if (debit_depasse($cle_renvoi)) {
+            rediriger(($moi['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte') . '&err=' . rawurlencode(
+                'Trop de demandes. Réessayez dans ' . FENETRE_MINUTES . ' minutes — et regardez vos indésirables.'
+            ));
+        }
+        debit_noter($cle_renvoi);
+        $envoi = envoyer_verification($moi);
+        $retour = $moi['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte';
+        rediriger($retour . ($envoi['ok'] ? '&ok=' : '&err=') . rawurlencode(
+            $envoi['ok']
+                ? 'Message envoyé à ' . $moi['email'] . '. Regardez aussi les indésirables.'
+                : $envoi['message']
+        ));
 
     /* ---- QR, badges, entrée ---- */
 

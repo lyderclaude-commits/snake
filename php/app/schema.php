@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 function assurer_schema(): void
 {
@@ -41,11 +41,25 @@ function assurer_schema(): void
  */
 function migrer_schema(PDO $pdo, bool $mysql): void
 {
+    /**
+     * D'abord les tables, ENSUITE les colonnes.
+     *
+     * `creer_schema()` n'était joué qu'à l'installation : une table ajoutée
+     * après coup n'aurait donc existé que chez les nouveaux, et l'écran qui
+     * s'en sert serait tombé en erreur chez tous les autres. Tout y est en
+     * `CREATE TABLE IF NOT EXISTS`, donc le rejouer ne coûte rien et ferme
+     * le trou pour de bon.
+     */
+    creer_schema($pdo, $mysql);
+
     $court = $mysql ? 'VARCHAR(190)' : 'TEXT';
 
     foreach ([
         // v2 — la formule commerciale du compte, alignée sur les offres.
         "ALTER TABLE utilisateurs ADD COLUMN formule $court NOT NULL DEFAULT 'decouverte'",
+        // v5 — la vérification d'adresse : un jeton à la fois, daté.
+        "ALTER TABLE utilisateurs ADD COLUMN verif_jeton $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN verif_expire_le $court NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -157,7 +171,24 @@ function creer_schema(PDO $pdo, bool $mysql): void
             ville             $court NULL,
             suspendu          INT NOT NULL DEFAULT 0,
             email_verifie_le  $court NULL,
+            verif_jeton       $court NULL,
+            verif_expire_le   $court NULL,
             cree_le           $court NOT NULL
+        )$moteur",
+
+        /**
+         * Les réglages que l'équipe change SANS toucher à config.php.
+         *
+         * `config.php` est écrit par l'installateur, en 0600, et une
+         * décompression du zip par-dessus ne doit surtout pas le réécrire :
+         * ce n'est pas l'endroit d'un réglage qu'on ajuste depuis
+         * l'application. Le transport e-mail, lui, se règle et se teste en
+         * ligne — donc ici.
+         */
+        "CREATE TABLE IF NOT EXISTS reglages (
+            cle    $court PRIMARY KEY,
+            valeur $txt NULL,
+            maj_le $court NOT NULL
         )$moteur",
 
         "CREATE TABLE IF NOT EXISTS decors (

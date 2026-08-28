@@ -174,3 +174,101 @@ function cle_debit(string $email): string
 {
     return mb_strtolower(trim($email)) . '|' . ($_SERVER['REMOTE_ADDR'] ?? '?');
 }
+
+/* ================= vérification de l'adresse e-mail ================= */
+
+/** 48 h : assez pour un week-end, assez court pour qu'un lien volé expire. */
+const VERIF_HEURES = 48;
+
+/**
+ * Pose un jeton de vérification et rend le lien à envoyer.
+ *
+ * Un seul jeton vivant par compte : en redemander un invalide le précédent.
+ * C'est ce qu'attend quelqu'un qui clique « renvoyer » parce que le premier
+ * message est perdu — deux liens valides en même temps, eux, ne servent
+ * qu'à compliquer le retrait.
+ */
+function creer_jeton_verification(string $utilisateur_id): string
+{
+    $jeton = bin2hex(random_bytes(24));
+    db()->prepare('UPDATE utilisateurs SET verif_jeton = ?, verif_expire_le = ? WHERE id = ?')
+        ->execute([$jeton, maintenant(time() + VERIF_HEURES * 3600), $utilisateur_id]);
+    return $jeton;
+}
+
+function lien_verification(string $jeton): string
+{
+    return base_url() . '/index.php?p=verifier&j=' . rawurlencode($jeton);
+}
+
+/**
+ * Consomme un jeton. À usage unique, et daté.
+ *
+ * @return array{ok: bool, message: string, utilisateur: ?array}
+ */
+function consommer_jeton_verification(string $jeton): array
+{
+    if ($jeton === '') {
+        return ['ok' => false, 'message' => 'Lien de vérification incomplet.', 'utilisateur' => null];
+    }
+    $s = db()->prepare('SELECT * FROM utilisateurs WHERE verif_jeton = ?');
+    $s->execute([$jeton]);
+    $u = $s->fetch() ?: null;
+    if (!$u) {
+        return ['ok' => false, 'message' => 'Ce lien a déjà servi, ou il a été remplacé par un plus récent.', 'utilisateur' => null];
+    }
+    if (($u['verif_expire_le'] ?? '') !== '' && $u['verif_expire_le'] < maintenant()) {
+        return ['ok' => false, 'message' => 'Ce lien a expiré. Demandez-en un nouveau depuis votre compte.', 'utilisateur' => $u];
+    }
+    db()->prepare('UPDATE utilisateurs SET email_verifie_le = ?, verif_jeton = NULL, verif_expire_le = NULL WHERE id = ?')
+        ->execute([maintenant(), $u['id']]);
+    return ['ok' => true, 'message' => 'Votre adresse est vérifiée. Merci !', 'utilisateur' => $u];
+}
+
+/**
+ * L'adresse de ce compte est-elle confirmée ?
+ *
+ * Faux tant que le transport n'est pas branché serait cruel dans l'autre
+ * sens : ici on répond sur le FAIT, et c'est l'appelant qui décide s'il en
+ * fait une condition — voir `verification_exigee()`.
+ */
+function email_verifie(?array $u): bool
+{
+    return $u !== null && !empty($u['email_verifie_le']);
+}
+
+/**
+ * Peut-on EXIGER une adresse vérifiée ?
+ *
+ * Seulement si l'on est capable d'envoyer le lien. Exiger une vérification
+ * qu'on ne sait pas transmettre, ce n'est pas une sécurité : c'est une
+ * porte fermée à clé, sur une application qui marchait la veille.
+ */
+function verification_exigee(): bool
+{
+    return function_exists('courriel_branche') && courriel_branche();
+}
+
+/**
+ * Envoie (ou renvoie) le message de vérification.
+ *
+ * @return array{ok: bool, message: string}
+ */
+function envoyer_verification(array $u): array
+{
+    if (!verification_exigee()) {
+        return ['ok' => false, 'message' => 'Aucun transport e-mail n’est réglé : impossible d’envoyer le lien.'];
+    }
+    $lien = lien_verification(creer_jeton_verification((string) $u['id']));
+    return courriel_mis_en_page(
+        (string) $u['email'],
+        (string) $u['nom'],
+        'Confirmez votre adresse — Wakabi Boost',
+        'Bienvenue, ' . $u['nom'] . ' !',
+        "Il reste une chose à faire : confirmer que cette adresse est bien la vôtre.\n\n"
+        . 'Le lien ci-dessous est valable ' . VERIF_HEURES . " heures et ne sert qu'une fois.\n\n"
+        . 'Si vous n’êtes pas à l’origine de cette inscription, ignorez ce message : sans confirmation, le compte reste inactif.',
+        $lien,
+        'Confirmer mon adresse'
+    );
+}

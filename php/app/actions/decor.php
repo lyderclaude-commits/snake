@@ -40,6 +40,26 @@ if ($page === 'soumettre') {
     }
 
     /**
+     * L'adresse doit être confirmée avant de demander une relecture.
+     *
+     * Un décor part en file d'attente, l'équipe le relit, décide — et la
+     * décision s'envoie par courriel. À une adresse dont personne n'a
+     * vérifié qu'elle existe, tout ce travail tombe dans le vide.
+     *
+     * La garde ne s'applique QUE si l'on sait envoyer le lien : sans
+     * transport réglé, exiger une confirmation reviendrait à fermer
+     * l'application à clé. L'équipe, elle, n'y est jamais soumise — son
+     * compte est créé par une autre personne de l'équipe.
+     */
+    if ($u['role'] === 'partenaire' && verification_exigee() && !email_verifie($u)) {
+        rediriger('?p=partenaire&err=' . urlencode(
+            'Confirmez d’abord votre adresse e-mail : c’est par là que part la décision de '
+            . 'relecture. Le lien vous a été envoyé à ' . $u['email'] . ' — vous pouvez le '
+            . 'redemander depuis cette page.'
+        ));
+    }
+
+    /**
      * Le quota de l'offre se joue ICI.
      *
      * Un brouillon ne coûte rien : personne ne le voit. Ce qui occupe une

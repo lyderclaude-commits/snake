@@ -19,6 +19,19 @@ function config(): array
     if ($c !== null) {
         return $c;
     }
+    /**
+     * `WAKABI_CONFIG` détourne la configuration, pour les essais.
+     *
+     * Vérifier le transport e-mail demande une base à soi : écrire dans
+     * celle de développement pour éprouver un envoi serait un drôle de
+     * remède. La variable n'est lisible que dans l'environnement du
+     * processus — quelqu'un capable de l'y poser tient déjà le serveur.
+     */
+    $essai = getenv('WAKABI_CONFIG');
+    if (is_string($essai) && $essai !== '' && is_file($essai)) {
+        return $c = require $essai;
+    }
+
     $fichier = RACINE . '/config.php';
     if (!is_file($fichier)) {
         // Pas encore installé : l'installateur prend la main.
@@ -121,9 +134,15 @@ function est_mysql(): bool
 
 /* ---------------- utilitaires ---------------- */
 
-function maintenant(): string
+/**
+ * L'horodatage du projet : UTC, ISO 8601, triable comme du texte.
+ *
+ * L'argument sert aux échéances — « dans 48 heures » s'écrit alors dans le
+ * même format que tout le reste, donc se compare avec un simple `<`.
+ */
+function maintenant(?int $horodatage = null): string
 {
-    return gmdate('Y-m-d\TH:i:s\Z');
+    return gmdate('Y-m-d\TH:i:s\Z', $horodatage ?? time());
 }
 
 function nouvel_id(): string

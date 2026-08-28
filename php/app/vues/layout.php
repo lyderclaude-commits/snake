@@ -9,7 +9,40 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2563EB">
 <title><?= e($titre ?? 'Wakabi Boost') ?></title>
-<meta name="description" content="<?= e($description ?? 'Créez votre badge et partagez-le. Wakabi Boost, le guide des bons plans.') ?>">
+<?php
+/**
+ * Les balises de partage.
+ *
+ * Un lien collé dans WhatsApp arrivait nu : un titre gris, rien d'autre.
+ * Or c'est par ce lien que tout circule — c'est la boucle qui remplit la
+ * salle. Une vignette et un titre valent ici plus que bien des écrans.
+ *
+ * `og:url` porte l'adresse CANONIQUE : sans elle, un lien recopié avec des
+ * paramètres de suivi se partage comme une page différente, et les
+ * compteurs de partage repartent de zéro à chaque copie.
+ */
+$_desc = $description ?? 'Créez votre badge et partagez-le. Wakabi Boost, le guide des bons plans.';
+$_ogt = $og_titre ?? ($titre ?? 'Wakabi Boost');
+$_ogi = $og_image ?? url_og();
+$_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'accueil'))
+      . (isset($_GET['slug']) ? '&slug=' . rawurlencode((string) $_GET['slug']) : '');
+?>
+<meta name="description" content="<?= e($_desc) ?>">
+<link rel="canonical" href="<?= e($_ogu) ?>">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wakabi Boost">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:title" content="<?= e($_ogt) ?>">
+<meta property="og:description" content="<?= e($_desc) ?>">
+<meta property="og:url" content="<?= e($_ogu) ?>">
+<meta property="og:image" content="<?= e($_ogi) ?>">
+<meta property="og:image:width" content="<?= OG_LARGEUR ?>">
+<meta property="og:image:height" content="<?= OG_HAUTEUR ?>">
+<meta property="og:image:alt" content="<?= e($_ogt) ?>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?= e($_ogt) ?>">
+<meta name="twitter:description" content="<?= e($_desc) ?>">
+<meta name="twitter:image" content="<?= e($_ogi) ?>">
 <?php $ico = logo_fichier(); ?>
 <?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?= e(url('public/wakabi.css')) ?>">
@@ -41,6 +74,7 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
                 ['?p=relecture', 'Relecture'],
                 ['?p=scan',      'Contrôle d’entrée'],
                 ['?p=comptes',   'Comptes'],
+                ['?p=reglages',  'Réglages'],
             ]],
         ],
         'partenaire' => [

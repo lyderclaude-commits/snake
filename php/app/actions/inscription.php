@@ -56,8 +56,26 @@ if ($post) {
                     '?p=comptes');
             }
         }
+        /**
+         * Le lien de confirmation part tout de suite, ou s'affiche.
+         *
+         * Sans transport réglé, l'envoyer est impossible : on montre alors le
+         * lien à l'écran plutôt que de faire semblant. C'est moins joli, mais
+         * une inscription qui attend un message qui n'arrivera jamais est
+         * bien pire.
+         */
+        $bienvenue = '';
+        if (verification_exigee()) {
+            $envoi = envoyer_verification(['id' => $id, 'email' => $valeurs['email'], 'nom' => $valeurs['nom']]);
+            $bienvenue = $envoi['ok']
+                ? 'Bienvenue ! Confirmez votre adresse : un message vient de partir vers '
+                  . $valeurs['email'] . ' (regardez aussi les indésirables).'
+                : 'Bienvenue ! L’envoi du lien de confirmation a échoué : ' . $envoi['message'];
+        }
+
         connecter($id);
-        rediriger($valeurs['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte');
+        $vers = $valeurs['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte';
+        rediriger($bienvenue === '' ? $vers : $vers . '&ok=' . rawurlencode($bienvenue));
     }
 }
 

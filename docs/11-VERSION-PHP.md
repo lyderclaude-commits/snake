@@ -105,8 +105,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 125 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR et gabarit contre les implémentations d'origine
+npm run php:e2e          # 163 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit et SMTP contre de vraies implémentations
 ```
 
 Contre une base MySQL :
@@ -115,7 +115,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 125 scénarios
+### Les 163 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -144,11 +144,13 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **La page blanche** | Son fond n'apparaît que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **La fenêtre photo** | Chaque gabarit part avec l'ouverture de son cadre, un cadre 4:5 téléversé impose son format et son ouverture, « Relever sur le cadre » retrouve les mêmes valeurs après qu'on les a déréglées |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
-| **Le menu de l'équipe** | Cinq destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
+| **Le menu de l'équipe** | Six destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
 | WhatsApp | Le repli « appui long » là où le téléchargement direct est inerte |
+| **Le lien partagé** | Titre, description et vignette annoncés ; la vignette se télécharge, fait 1200 × 630, est un vrai JPEG, se met en cache et ne change pas d'une demande à l'autre |
+| **Le transport e-mail** | L'essai d'envoi arrive sur un vrai serveur SMTP ; l'inscription reçoit son lien ; soumettre est refusé tant que l'adresse n'est pas confirmée, accepté ensuite ; le lien ne sert qu'une fois ; l'équipe est prévenue, et la décision revient au partenaire |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -486,6 +488,95 @@ Un `public/logo.svg` est pris en compte s'il n'y a pas de PNG.
 
 ---
 
+## Le transport e-mail
+
+Tout le circuit existait — décisions de modération, motifs de refus,
+notifications — mais **rien ne quittait le serveur** : un partenaire ne
+savait qu'en revenant sur le site si son décor avait été relu.
+
+Cela se règle dans **Administration → Réglages** : serveur, port,
+chiffrement, identifiant, adresse expéditrice. Chez LWS, ces valeurs
+figurent dans l'espace client, rubrique « comptes e-mail ».
+
+**Un bouton envoie un message d'essai**, et c'est le cœur de l'écran : un
+SMTP mal réglé ne se voit nulle part ailleurs. Les messages partent en
+arrière-plan, personne ne les attend, et on découvrirait la panne le jour où
+un partenaire dirait n'avoir jamais reçu sa décision.
+
+| Réglage | Ce qu'il attend |
+|---|---|
+| **Serveur** | `mail.votredomaine.tld`. Vide = transport éteint. |
+| **Port et chiffrement** | 587 avec STARTTLS dans la quasi-totalité des cas ; 465 en TLS implicite sinon. |
+| **Identifiant** | Le plus souvent l'adresse e-mail elle-même. |
+| **Mot de passe** | Jamais réaffiché. Laissé vide, il est gardé tel quel. |
+| **Adresse expéditrice** | Doit appartenir au domaine du serveur d'envoi — une adresse gmail part en indésirables. |
+
+Le client SMTP est **écrit à la main**, sans Composer ni `vendor/` : la
+version PHP se déploie en décompressant un zip sur un mutualisé, et une
+dépendance à installer en ligne de commande annulerait cette promesse. Il
+parle STARTTLS et TLS implicite, s'authentifie en LOGIN ou en PLAIN, encode
+les sujets accentués, et protège les points en début de ligne — sans quoi un
+texte contenant une ligne réduite à « . » couperait le message en deux.
+
+`npx tsx scripts/verifier-courriel.ts` le met à l'épreuve d'un vrai serveur
+SMTP ouvert pour l'occasion : ordre des commandes, authentification en deux
+temps, en-têtes, sujet accentué décodé, point protégé. Vingt-quatre
+vérifications qu'aucune recette de navigateur ne pourrait faire — rien de
+tout cela n'est visible à l'écran.
+
+### La confirmation d'adresse
+
+Une inscription reçoit un lien valable **48 heures, à usage unique**. Tant
+qu'elle n'a pas confirmé, une personne partenaire **ne peut pas soumettre**
+de décor à la relecture : la décision part par courriel, et l'envoyer à une
+adresse que personne n'a vérifiée reviendrait à travailler pour rien.
+
+**Cette exigence ne s'applique que si le transport est réglé.** Réclamer une
+confirmation qu'on est incapable d'envoyer ne serait pas une sécurité, mais
+une porte fermée à clé sur une application qui marchait la veille. Sans
+SMTP, le lien s'affiche à l'écran à l'inscription, et la soumission reste
+ouverte.
+
+Un serveur qui ne répond plus ne fait perdre qu'**une** attente par requête,
+de huit secondes : le premier échec conclut pour les envois suivants de la
+même page. Sans cela, approuver un décor qui prévient l'auteur et l'équipe
+aurait gelé l'écran presque une minute.
+
+---
+
+## Le lien partagé dans WhatsApp
+
+Un lien de décor collé dans une conversation arrivait **nu** : un titre gris,
+rien d'autre. Or c'est par ce lien que tout circule — c'est la boucle qui
+remplit la salle, et aucune autre optimisation ne rattrape les ouvertures
+qu'un lien sans image ne provoque pas.
+
+Chaque page porte désormais ses balises `og:` et `twitter:`, et chaque décor
+a **sa vignette 1200 × 630**, composée par le serveur :
+
+1. le décor agrandi et flouté remplit le fond — les grandes marges d'un
+   badge carré dans un rectangle sont ainsi habitées par le décor lui-même,
+   pas par un aplat ;
+2. le badge net par-dessus, à la taille que la hauteur permet, avec la photo
+   d'exemple dans **la fenêtre déclarée par le gabarit** et le masque
+   qu'elle porte — ronde si elle est ronde ;
+3. le QR, à la place exacte que le gabarit lui donne, et qui mène vraiment à
+   la page du décor ;
+4. le logo, discret, en bas à droite.
+
+L'image est composée avec **GD**, la même extension que le pré-vol : rien à
+installer. Aucun texte n'y est dessiné — GD écrirait avec FreeType, qui
+réclame une police TrueType, et le projet n'embarque que des WOFF2 pour le
+navigateur. Le titre voyage de toute façon dans `og:title`, et s'affiche à
+côté de la vignette.
+
+La vignette est **calculée une fois puis relue** dans `donnees/og/`. Son
+adresse porte une empreinte de la date de modification du décor : changer le
+cadre change l'adresse, donc l'image que WhatsApp affiche. Sans cela, son
+cache garderait l'ancienne pendant des semaines.
+
+---
+
 ## Mettre à jour
 
 ```bash
@@ -508,7 +599,9 @@ phpMyAdmin.
 
 | Point | Sans quoi |
 |---|---|
-| **SMTP** | Aucun e-mail n'est envoyé. Les notifications sont dans l'application, pas dans la boîte de réception. |
-| **Les vrais cadres** | Les trois décors installés sont des placeholders. |
+| **Les vrais cadres** | Les décors installés sont des placeholders — les vôtres se téléversent depuis le formulaire. |
 | **Lecture caméra du QR** | L'agent d'entrée saisit le code. Ça marche, ça ne tient pas une file d'attente. |
 | **Sauvegardes** | Sauvegardez `donnees/` (ou exportez la base MySQL depuis cPanel), et sortez la copie du serveur. |
+
+Le SMTP, lui, ne « reste » plus : il se règle depuis **Administration →
+Réglages**, et s'essaie d'un bouton. Voir la section suivante.

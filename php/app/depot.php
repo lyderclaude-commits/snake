@@ -301,13 +301,97 @@ function presence(string $decor_id): array
     return ['emis' => $emis, 'scannes' => $scannes, 'taux' => $emis ? $scannes / $emis : 0.0];
 }
 
+/* ================= réglages ================= */
+
+/**
+ * Les réglages que l'équipe change en ligne, par opposition à `config.php`.
+ *
+ * `config.php` décrit la MACHINE — base de données, chemins — et il est
+ * écrit une fois par l'installateur. Ce qui se règle en marchant, comme le
+ * transport e-mail, vit ici : une décompression du zip par-dessus ne
+ * l'efface pas, et un mauvais réglage se corrige sans FTP.
+ */
+function reglages_bdd(array $cles): array
+{
+    if (!$cles) {
+        return [];
+    }
+    $trous = implode(',', array_fill(0, count($cles), '?'));
+    try {
+        $s = db()->prepare("SELECT cle, valeur FROM reglages WHERE cle IN ($trous)");
+        $s->execute(array_values($cles));
+    } catch (PDOException) {
+        // Table absente : installation pas encore migrée. Les valeurs de
+        // départ suffisent, et surtout la page ne tombe pas.
+        return [];
+    }
+    $out = [];
+    foreach ($s->fetchAll() as $r) {
+        $out[$r['cle']] = (string) ($r['valeur'] ?? '');
+    }
+    return $out;
+}
+
+function reglages_bdd_poser(array $valeurs): void
+{
+    $now = maintenant();
+    $pdo = db();
+    // Pas d'UPSERT : sa syntaxe diffère entre MySQL et SQLite, et deux
+    // requêtes triviales valent mieux qu'un dialecte à maintenir en double.
+    $maj = $pdo->prepare('UPDATE reglages SET valeur = ?, maj_le = ? WHERE cle = ?');
+    $ins = $pdo->prepare('INSERT INTO reglages (cle, valeur, maj_le) VALUES (?,?,?)');
+    foreach ($valeurs as $cle => $valeur) {
+        $maj->execute([(string) $valeur, $now, (string) $cle]);
+        if ($maj->rowCount() === 0) {
+            try {
+                $ins->execute([(string) $cle, (string) $valeur, $now]);
+            } catch (PDOException) {
+                // Course entre deux enregistrements simultanés : la valeur
+                // de l'autre est aussi bonne que la nôtre.
+            }
+        }
+    }
+}
+
 /* ================= notifications ================= */
 
-function notifier(string $utilisateur_id, string $genre, string $titre, ?string $corps = null, ?string $lien = null): void
-{
+/**
+ * Notifie dans l'application, ET par courriel quand le transport est branché.
+ *
+ * Les deux vont ensemble : une notification qu'il faut venir chercher ne
+ * prévient personne. Un envoi qui échoue ne remonte pas — la décision de
+ * modération qui l'a déclenché reste prise, et on ne va pas la refuser
+ * parce qu'un serveur SMTP a hoqueté.
+ */
+function notifier(
+    string $utilisateur_id,
+    string $genre,
+    string $titre,
+    ?string $corps = null,
+    ?string $lien = null,
+    bool $par_courriel = true
+): void {
     db()->prepare('INSERT INTO notifications (id, utilisateur_id, genre, titre, corps, lien, cree_le)
                    VALUES (?,?,?,?,?,?,?)')
         ->execute([nouvel_id(), $utilisateur_id, $genre, $titre, $corps, $lien, maintenant()]);
+
+    if (!$par_courriel || !function_exists('courriel_branche') || !courriel_branche()) {
+        return;
+    }
+    $u = utilisateur_par_id($utilisateur_id);
+    if (!$u || ($u['suspendu'] ?? 0)) {
+        return;
+    }
+    $url = $lien ? base_url() . '/index.php' . (str_starts_with($lien, '?') ? $lien : '?' . ltrim($lien, '?')) : '';
+    courriel_mis_en_page(
+        (string) $u['email'],
+        (string) $u['nom'],
+        $titre,
+        $titre,
+        (string) ($corps ?? ''),
+        $url,
+        'Ouvrir Wakabi Boost'
+    );
 }
 
 function notifications_de(string $utilisateur_id, int $limite = 20): array
