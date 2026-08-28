@@ -148,12 +148,32 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <p class="aide">Laissez les deux vides pour un décor sans aucun texte : le cadre parle tout seul,
           et l’invité n’a rien à saisir.</p>
         </div>
+        <?php
+        /**
+         * « Toutes les villes » est une ligne d'offre, pas une case.
+         *
+         * Le ciblage multi-villes s'achète à partir de Croissance. On
+         * n'enlève pas l'option en silence : elle reste visible, désactivée,
+         * avec ce qu'il faut pour l'obtenir — cacher une fonctionnalité
+         * empêche de la vendre.
+         */
+        $peut_cibler = capacite($me, 'ciblage');
+        ?>
         <div class="champ"><label for="ville">Ville</label>
           <select id="ville" name="ville">
             <?php foreach (['all' => 'Toutes', 'lome' => 'Lomé', 'cotonou' => 'Cotonou', 'abidjan' => 'Abidjan'] as $k => $v): ?>
-              <option value="<?= e($k) ?>" <?= $valeurs['ville'] === $k ? 'selected' : '' ?>><?= e($v) ?></option>
+              <option value="<?= e($k) ?>"
+                      <?= $valeurs['ville'] === $k ? 'selected' : '' ?>
+                      <?= $k === 'all' && !$peut_cibler ? 'disabled' : '' ?>>
+                <?= e($v) ?><?= $k === 'all' && !$peut_cibler ? ' — offre Croissance' : '' ?>
+              </option>
             <?php endforeach; ?>
-          </select></div>
+          </select>
+          <?php if (!$peut_cibler): ?>
+            <p class="aide">Une campagne porte sur une ville. Le ciblage sur toutes les villes
+            arrive avec l’offre Croissance.</p>
+          <?php endif; ?>
+        </div>
         <div class="champ"><label for="redirection">Page de destination après téléchargement</label>
           <input id="redirection" name="redirection" type="url" required value="<?= e($valeurs['redirection']) ?>">
           <p class="aide">Doit pointer vers un domaine Wakabi

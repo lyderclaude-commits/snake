@@ -94,16 +94,44 @@ $ouvert = $ouvert ?? false;
   <!-- ---------- la liste ---------- -->
   <div class="tableau">
     <table>
-      <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th><th>Rôle et offre</th><th>État</th></tr></thead>
+      <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
+      <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
       <tbody>
       <?php foreach ($liste as $c): ?>
         <tr>
-          <td><b><?= e($c['nom']) ?></b><br><span class="aide"><?= e($c['email']) ?></span></td>
+          <td>
+            <a href="<?= e(url('?p=organisateur&id=' . rawurlencode((string) $c['id']))) ?>"><b><?= e($c['nom']) ?></b></a>
+            <br><span class="aide"><?= e($c['email']) ?></span>
+            <?php if (empty($c['email_verifie_le'])): ?>
+              <br><span class="aide" style="color:var(--orange)">adresse non confirmée</span>
+            <?php endif; ?>
+          </td>
           <td><?= e($c['organisation'] ?: 'Non renseignée') ?><br><span class="aide"><?= e($c['ville'] ?: '') ?></span></td>
           <td class="mono chiffre">
             <?= (int) $c['decors'] ?>
             <?php if ((int) $c['actives']): ?>
               <br><span class="aide"><?= (int) $c['actives'] ?> active<?= (int) $c['actives'] > 1 ? 's' : '' ?></span>
+            <?php endif; ?>
+          </td>
+          <?php
+          /**
+           * La consommation du mois, dans la liste.
+           *
+           * C'est le chiffre qu'on cherche quand quelqu'un écrit « mes
+           * invités ne peuvent plus télécharger » : il faut le voir sans
+           * ouvrir une fiche, sur la ligne du compte.
+           */
+          $q = $c['role'] === 'partenaire' ? quota($c, 'telechargements') : -1;
+          $pris = $c['role'] === 'partenaire' ? telechargements_du_mois((string) $c['id']) : 0;
+          ?>
+          <td class="mono chiffre">
+            <?php if ($c['role'] !== 'partenaire'): ?>
+              <span class="aide">—</span>
+            <?php elseif ($q < 0): ?>
+              <?= $pris ?><br><span class="aide">sans limite</span>
+            <?php else: ?>
+              <span<?= $pris >= $q ? ' style="color:var(--rouge);font-weight:800"' : '' ?>><?= $pris ?> / <?= $q ?></span>
+              <?php if ($pris >= $q): ?><br><span class="aide">quota plein</span><?php endif; ?>
             <?php endif; ?>
           </td>
           <td>

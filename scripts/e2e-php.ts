@@ -170,6 +170,10 @@ const run = async () => {
     page.on('console', (c) => {
       if (c.type() !== 'error') return;
       const source = c.location().url || '';
+      // Un 429 est une RÉPONSE, pas une panne : c'est le serveur qui refuse
+      // un badge parce que l'offre de l'organisateur est épuisée, et la
+      // recette le provoque exprès. Le navigateur le journalise quand même.
+      if (/429/.test(c.text())) return;
       if (source === '' || source.startsWith(notre_origine)) {
         errs.push('CONSOLE ' + c.text());
       }
@@ -242,8 +246,15 @@ const run = async () => {
   console.log('\n━━ 2. Le Studio, sans compte ━━');
   await inscription(p, VISITEUR.email, VISITEUR.mdp, 'participant', 'Visiteur');
   const soldeAvant = Number((await p.locator('.stat.o b').first().innerText()).replace(/\D/g, ''));
-  await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
-  await p.locator('a[href*="p=decor&slug="]').first().click();
+  /**
+   * Le décor de démonstration, nommément — pas « le premier du catalogue ».
+   *
+   * Il appartient à l'équipe, donc son offre ne bouge jamais : les Koris et
+   * le filigrane y sont ce qu'ils doivent être. Ouvrir le premier venu
+   * faisait dépendre le résultat de l'ordre du catalogue, et donc des
+   * décors qu'une exécution précédente y avait laissés.
+   */
+  await p.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
   // `networkidle` et non `waitForSelector` : le canevas est dans le DOM avant
   // que le script différé ne s'exécute, et poser la photo trop tôt n'appelle
   // aucun gestionnaire — le test échouait sans que l'application soit en cause.
@@ -760,9 +771,9 @@ const run = async () => {
   const entrees = (await p.locator('.barre nav a').evaluateAll(
     (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
   ));
-  ok('les sept destinations sont sous un seul intitulé',
+  ok('les huit destinations sont sous un seul intitulé',
      (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
-     && (await p.locator('.barre .deroulant .volet a').count()) === 7,
+     && (await p.locator('.barre .deroulant .volet a').count()) === 8,
      `${await p.locator(".barre .deroulant .volet a").count()} entrées`);
   ok('notifications et déconnexion restent hors du déroulant',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
@@ -940,7 +951,207 @@ const run = async () => {
   ok('la vitrine aussi porte une vignette',
      (await meta('meta[property="og:image"]')).includes('p=og'));
 
-  console.log('\n━━ 19. Sauvegardes ━━');
+  console.log('\n━━ 19. Chaque offre donne ce qu’elle vend ━━');
+
+  /**
+   * Le cœur commercial du produit.
+   *
+   * Une ligne vendue sur la vitrine que le code n'applique pas est une
+   * promesse non tenue dans un sens — et de l'argent laissé sur la table
+   * dans l'autre. On vérifie donc chaque ligne : ce qui compte, ce qui
+   * bloque, et ce qui change quand l'équipe fait monter quelqu'un d'offre.
+   */
+  const ORG = { email: `offre-${marque}@exemple.tg`, mdp: 'partenaire-2026-solide' };
+  const ctxOrg = await browser.newContext();
+  const po = await ctxOrg.newPage();
+  surveiller(po);
+  await po.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  await po.selectOption('select[name=role]', 'partenaire');
+  await po.fill('input[name=nom]', 'Organisateur Découverte');
+  await po.fill('input[name=email]', ORG.email);
+  await po.fill('input[name=mot_de_passe]', ORG.mdp);
+  await po.click('main button[type=submit]');
+  await po.waitForLoadState('domcontentloaded');
+
+  /* --- ce que Découverte montre --- */
+  await po.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  const compteurs = (await po.locator('.marche .haut').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+  ok('le tableau de bord annonce l’offre', /Découverte/.test(await po.locator('.carte h3').first().innerText()));
+  ok('les compteurs montrent le consommé sur le quota',
+     compteurs.some((t) => /Campagnes actives 0 \/ 1/.test(t))
+     && compteurs.some((t) => /Téléchargements .* 0 \/ 50/.test(t)),
+     compteurs.join(' | '));
+  ok('ce qui n’est pas dans l’offre est montré, pas caché',
+     (await po.locator('.liste-offre').nth(1).locator('li').count()) >= 8,
+     `${await po.locator('.liste-offre').nth(1).locator('li').count()} lignes barrées`);
+  ok('chaque ligne fermée dit quelle offre l’ouvre',
+     /Avec l’offre Impact/.test(await po.locator('.liste-offre').nth(1).innerText()));
+  ok('les présences scannées sont verrouillées en Découverte',
+     /offre Impact/.test(await po.locator('.stat.verrou span').innerText()));
+
+  /* --- les liens courts sont fermés, et le disent --- */
+  await po.goto(`${BASE}/index.php?p=liens`, { waitUntil: 'domcontentloaded' });
+  ok('les liens courts sont fermés en Découverte',
+     /arrivent avec l’offre Impact/.test(await po.locator('.carte h3').first().innerText()));
+  ok('aucun formulaire de création n’est proposé', (await po.locator('#cible').count()) === 0);
+
+  /* --- le ciblage toutes villes est fermé, côté écran ET côté serveur --- */
+  await po.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  ok('« Toutes les villes » est désactivé en Découverte',
+     await po.locator('#ville option[value=all]').isDisabled());
+  await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await po.fill('input[name=titre]', `Ciblage refusé ${marque}`);
+  await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/ciblage');
+  // L'option est désactivée dans le menu : on force la valeur, comme le
+  // ferait quelqu'un qui poste le formulaire à la main.
+  await po.evaluate(`(() => {
+    const s = document.getElementById('ville');
+    s.querySelector('option[value=all]').disabled = false;
+    s.value = 'all';
+  })()`);
+  await po.click('#form-decor button[type=submit]');
+  await po.waitForLoadState('domcontentloaded');
+  ok('le serveur refuse « toutes les villes » même forcé',
+     /offre Croissance/.test(await po.locator('.msg.err').first().innerText().catch(() => '')),
+     (await po.locator('.msg.err').first().innerText().catch(() => '')).slice(0, 60));
+
+  /* --- côté équipe : la fiche du compte, et les leviers --- */
+  await connexion(p, ADMIN.email, ADMIN.mdp);
+  await p.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const lienFiche = await p.locator(`tr:has-text("${ORG.email}") a`).first().getAttribute('href');
+  ok('la liste des comptes mène à la fiche', !!lienFiche, lienFiche ?? 'absent');
+  ok('la liste montre la consommation du mois',
+     (await p.locator('thead th').allInnerTexts()).some((t) => /ce mois/i.test(t)));
+
+  await p.goto(new URL(lienFiche!, BASE).toString(), { waitUntil: 'domcontentloaded' });
+  ok('la fiche du compte s’ouvre', (await p.locator('h1').innerText()) === 'Organisateur Découverte');
+  ok('elle dit ce qui est ouvert et ce qui est fermé',
+     (await p.locator('.liste-offre').nth(1).locator('li').count()) >= 8);
+  ok('elle signale l’adresse non confirmée',
+     /non confirmée/.test(await p.locator('.pastille').allInnerTexts().then((t) => t.join(' '))));
+
+  /* --- l'équipe fait monter d'offre, et tout suit --- */
+  await p.selectOption('#f-formule', 'croissance');
+  await p.locator('button:has-text("Appliquer")').click();
+  await p.waitForLoadState('domcontentloaded');
+  ok('l’offre change depuis la fiche',
+     /Croissance/.test(await p.locator('.pastille').allInnerTexts().then((t) => t.join(' '))));
+  ok('les lignes ouvertes suivent l’offre',
+     (await p.locator('.liste-offre').first().locator('li').count()) >= 7,
+     `${await p.locator('.liste-offre').first().locator('li').count()} ouvertes`);
+
+  await p.fill('#f-bonus', '250');
+  await p.locator('button:has-text("Accorder")').click();
+  await p.waitForLoadState('domcontentloaded');
+  ok('la soupape de téléchargements s’ajoute au quota',
+     /2 ?250/.test((await p.locator('.marche .haut').allInnerTexts()).join(' ').replace(/\s+/g, ' ')),
+     (await p.locator('.marche .haut').allInnerTexts()).join(' | ').replace(/\s+/g, ' '));
+
+  /* --- l'organisateur voit le changement, et ses liens s'ouvrent --- */
+  await po.goto(`${BASE}/index.php?p=liens`, { waitUntil: 'domcontentloaded' });
+  ok('les liens courts s’ouvrent avec la nouvelle offre', (await po.locator('#cible').count()) === 1);
+  await po.fill('#cible', 'https://wakabileguide.com/p/affiche');
+  await po.fill('#titre-lien', 'Affiche du 12 septembre');
+  await po.click('button:has-text("Créer le lien")');
+  await po.waitForLoadState('domcontentloaded');
+  const url_courte = (await po.locator('.msg.ok').first().innerText()).replace(/^.*?(http\S+).*$/s, '$1');
+  ok('le lien court est créé', /p=l&c=[A-Za-z0-9]{6}/.test(url_courte), url_courte.slice(0, 60));
+
+  const avantClic = await po.request.get(url_courte, { maxRedirects: 0 });
+  ok('suivre le lien redirige vers la cible',
+     avantClic.status() === 302
+     && (avantClic.headers()['location'] ?? '').includes('wakabileguide.com/p/affiche'),
+     `HTTP ${avantClic.status()} → ${avantClic.headers()['location'] ?? ''}`);
+  await po.goto(`${BASE}/index.php?p=liens`, { waitUntil: 'domcontentloaded' });
+  ok('le clic est compté', /1\s*clic/.test(await po.locator('.carte').last().innerText()));
+
+  const inconnu = await po.request.get(`${BASE}/index.php?p=l&c=ZZZZZZ`);
+  ok('un code inconnu répond 404', inconnu.status() === 404, `HTTP ${inconnu.status()}`);
+
+  /* --- le quota de téléchargements REFUSE, il ne se contente pas d'afficher --- */
+
+  /**
+   * Le scénario le plus important de cette section.
+   *
+   * Le tableau de bord affichait autrefois « repère indicatif : aucun badge
+   * n'est refusé à vos invités » — autrement dit une ligne vendue que rien
+   * n'appliquait. On vérifie donc le refus lui-même : le compte est ramené
+   * à Découverte, sa campagne est publiée, et on demande des badges jusqu'à
+   * ce que le serveur dise non.
+   */
+  await p.goto(new URL(lienFiche!, BASE).toString(), { waitUntil: 'domcontentloaded' });
+  await p.fill('#f-bonus', '0');
+  await p.locator('button:has-text("Accorder")').click();
+  await p.waitForLoadState('domcontentloaded');
+  await p.selectOption('#f-formule', 'decouverte');
+  await p.locator('button:has-text("Appliquer")').click();
+  await p.waitForLoadState('domcontentloaded');
+  ok('le compte est ramené en Découverte',
+     /Découverte/.test(await p.locator('.pastille').allInnerTexts().then((t) => t.join(' '))));
+
+  // Une campagne à lui, publiée par l'équipe pour aller vite.
+  const titreQuota = `Quota ${marque}`;
+  await po.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await po.fill('input[name=titre]', titreQuota);
+  await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/quota');
+  await po.click('#form-decor button[type=submit]');
+  await po.waitForLoadState('domcontentloaded');
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreQuota)}`, { waitUntil: 'domcontentloaded' });
+  await p.locator(`.carte:has-text("${titreQuota}") button:has-text("Publier")`).first().click().catch(() => {});
+  await p.waitForLoadState('domcontentloaded');
+
+  await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  const versQuota = await p.locator(`a:has-text("${titreQuota}")`).first().getAttribute('href');
+  ok('la campagne de l’organisateur est en ligne', !!versQuota, versQuota ?? 'absente');
+
+  if (versQuota) {
+    await p.goto(new URL(versQuota, BASE).toString(), { waitUntil: 'domcontentloaded' });
+    const decorId = await p.evaluate('window.WAKABI.decorId') as string;
+
+    // Cinquante badges, c'est le quota de Découverte : on les prend tous,
+    // puis on demande le cinquante-et-unième.
+    const demander = () => p.evaluate(`fetch(window.WAKABI.base + '?p=api-badge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decor: ${JSON.stringify(decorId)} }),
+      }).then((r) => r.status)`) as Promise<number>;
+    const noter = () => p.evaluate(`fetch(window.WAKABI.base + '?p=api-telechargement', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decor: ${JSON.stringify(decorId)} }),
+      }).then((r) => r.status)`);
+
+    let refuseA = -1;
+    for (let i = 1; i <= 52 && refuseA < 0; i++) {
+      if (await demander() === 429) refuseA = i;
+      else await noter();
+    }
+    ok('le badge est refusé une fois le quota atteint', refuseA === 51,
+       refuseA < 0 ? 'jamais refusé' : `refusé au ${refuseA}ᵉ`);
+
+    const refus = await p.evaluate(`fetch(window.WAKABI.base + '?p=api-badge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decor: ${JSON.stringify(decorId)} }),
+      }).then((r) => r.json())`) as { erreur?: string; quota?: boolean };
+    ok('le refus s’explique à l’invité', /badges pour ce mois/.test(refus.erreur ?? ''),
+       (refus.erreur ?? '').slice(0, 56));
+
+    // L'organisateur est prévenu : c'est SA campagne qui s'arrête.
+    await po.goto(`${BASE}/index.php?p=notifications`, { waitUntil: 'domcontentloaded' });
+    ok('l’organisateur est prévenu que son quota est plein',
+       /quota de téléchargements est atteint/.test(await po.locator('main').innerText()));
+
+    // Et la soupape rouvre immédiatement, sans changer d'offre.
+    await p.goto(new URL(lienFiche!, BASE).toString(), { waitUntil: 'domcontentloaded' });
+    await p.fill('#f-bonus', '10');
+    await p.locator('button:has-text("Accorder")').click();
+    await p.waitForLoadState('domcontentloaded');
+    await p.goto(new URL(versQuota, BASE).toString(), { waitUntil: 'domcontentloaded' });
+    ok('la soupape rouvre le robinet sans changer d’offre', await demander() === 200);
+  }
+
+  await ctxOrg.close();
+
+  console.log('\n━━ 20. Sauvegardes ━━');
 
   await connexion(p, ADMIN.email, ADMIN.mdp);
   await p.goto(`${BASE}/index.php?p=sauvegardes`, { waitUntil: 'domcontentloaded' });
@@ -977,7 +1188,7 @@ const run = async () => {
   const sansCle = await p.request.get(`${BASE}/index.php?p=sauvegarde-auto&cle=faux`);
   ok('le déclencheur du cron refuse une clé fausse', sansCle.status() === 403, `HTTP ${sansCle.status()}`);
 
-  console.log('\n━━ 20. Le QR lu à la caméra ━━');
+  console.log('\n━━ 21. Le QR lu à la caméra ━━');
 
   /* --- le filtre : ce qui part au serveur, et ce qui n'y va pas --- */
   ok('un code nu est accepté', jetonDuQr('A7K2M9XQ4P') === 'A7K2M9XQ4P');
@@ -1030,7 +1241,7 @@ const run = async () => {
   await camera.close();
   rmSync(film, { force: true });
 
-  console.log('\n━━ 21. Le transport e-mail ━━');
+  console.log('\n━━ 22. Le transport e-mail ━━');
 
   /**
    * Placé en DERNIER, et remis à zéro à la fin.

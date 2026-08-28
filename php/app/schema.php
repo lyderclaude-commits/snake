@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 function assurer_schema(): void
 {
@@ -41,6 +41,7 @@ function assurer_schema(): void
  */
 function migrer_schema(PDO $pdo, bool $mysql): void
 {
+    $txt = $mysql ? 'TEXT' : 'TEXT';
     /**
      * D'abord les tables, ENSUITE les colonnes.
      *
@@ -60,6 +61,11 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         // v5 — la vérification d'adresse : un jeton à la fois, daté.
         "ALTER TABLE utilisateurs ADD COLUMN verif_jeton $court NULL",
         "ALTER TABLE utilisateurs ADD COLUMN verif_expire_le $court NULL",
+        // v6 — l'offre s'applique vraiment : une soupape de téléchargements
+        // accordée à la main, et la clé de lecture de l'offre Mouvement.
+        'ALTER TABLE utilisateurs ADD COLUMN bonus_telechargements INT NOT NULL DEFAULT 0',
+        "ALTER TABLE utilisateurs ADD COLUMN cle_api $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN note_equipe $txt NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -173,6 +179,9 @@ function creer_schema(PDO $pdo, bool $mysql): void
             email_verifie_le  $court NULL,
             verif_jeton       $court NULL,
             verif_expire_le   $court NULL,
+            bonus_telechargements INT NOT NULL DEFAULT 0,
+            cle_api           $court NULL,
+            note_equipe       $txt NULL,
             cree_le           $court NOT NULL
         )$moteur",
 
@@ -185,6 +194,25 @@ function creer_schema(PDO $pdo, bool $mysql): void
          * l'application. Le transport e-mail, lui, se règle et se teste en
          * ligne — donc ici.
          */
+        /**
+         * Les liens courts : une adresse à soi, et le compte des clics.
+         *
+         * `code` est la partie visible — `wkb.link/AbC123`. Il est unique,
+         * et c'est la clé sur laquelle on redirige : un index dessus, sinon
+         * chaque clic ferait un balayage complet de la table.
+         */
+        "CREATE TABLE IF NOT EXISTS liens (
+            id         $id PRIMARY KEY,
+            code       $court NOT NULL UNIQUE,
+            cible      $txt NOT NULL,
+            titre      $court NULL,
+            auteur_id  $id NOT NULL,
+            decor_id   $id NULL,
+            clics      INT NOT NULL DEFAULT 0,
+            dernier_clic $court NULL,
+            cree_le    $court NOT NULL
+        )$moteur",
+
         "CREATE TABLE IF NOT EXISTS reglages (
             cle    $court PRIMARY KEY,
             valeur $txt NULL,
@@ -281,6 +309,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_notifications_utilisateur ON notifications (utilisateur_id)',
         'CREATE INDEX idx_tentatives_cle ON tentatives (cle)',
         'CREATE INDEX idx_decors_statut ON decors (statut)',
+        'CREATE INDEX idx_liens_auteur ON liens (auteur_id)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

@@ -111,6 +111,10 @@ switch ($page) {
             http_response_code(404);
             vue('introuvable', ['titre' => 'Décor introuvable']);
         }
+        // L'offre de l'auteur décide du filigrane et de la redirection —
+        // à cet instant, pas au jour où le décor a été créé.
+        $g = gabarit_selon_offre($g, utilisateur_par_id((string) $d['auteur_id']));
+
         evenement($d['id'], 'vue');
         vue('studio', [
             'titre' => $d['titre'] . ' — Wakabi Boost',
@@ -162,6 +166,31 @@ switch ($page) {
     case 'soumettre':
         require RACINE . '/app/actions/decor.php';
 
+    case 'liens':
+    case 'creer-lien':
+    case 'supprimer-lien':
+        require RACINE . '/app/actions/liens.php';
+
+    /**
+     * Suivre un lien court. Publique, et volontairement minuscule.
+     *
+     * Une redirection 302 et rien d'autre : pas de session démarrée, pas de
+     * gabarit HTML rendu. C'est la page la plus sollicitée d'une campagne
+     * qui marche, et chaque milliseconde y est multipliée par le nombre de
+     * personnes qui cliquent.
+     */
+    case 'l':
+        $cible = suivre_lien(trim((string) ($_GET['c'] ?? '')));
+        if (!$cible) {
+            http_response_code(404);
+            vue('introuvable', ['titre' => 'Lien introuvable']);
+        }
+        header('Location: ' . $cible, true, 302);
+        // Un lien court ne doit pas se figer dans un cache : sa cible peut
+        // changer, et son compteur ne verrait plus passer personne.
+        header('Cache-Control: no-store');
+        exit;
+
     /* ---- équipe ---- */
 
     case 'admin':
@@ -191,6 +220,9 @@ switch ($page) {
     case 'creer-compte':
     case 'role':
     case 'suspendre':
+    case 'bonus':
+    case 'note-compte':
+    case 'organisateur':
         require RACINE . '/app/actions/comptes.php';
 
     case 'reglages':
@@ -398,6 +430,18 @@ switch ($page) {
         $d = decor_par_id((string) ($corps['decor'] ?? ''));
         if (!$d || $d['statut'] !== 'publie') {
             json_repondre(['erreur' => 'Décor introuvable.'], 404);
+        }
+        /**
+         * Le quota de l'organisateur est opposé ICI, et nulle part ailleurs.
+         *
+         * C'est l'émission du badge qui coûte : c'est donc elle qu'on
+         * refuse. Le message part à l'INVITÉ, qui n'y est pour rien — il
+         * doit comprendre que ce n'est ni sa faute ni une panne.
+         */
+        $limite = quota_telechargements($d);
+        if (!$limite['ok']) {
+            alerter_quota_plein($d);
+            json_repondre(['erreur' => $limite['message'], 'quota' => true], 429);
         }
         $jeton = badge_emettre($d['id'], $me['id'] ?? null);
         json_repondre(['jeton' => $jeton, 'qr' => Qr::dataUri(url('?p=qr&jeton=' . $jeton), 512)]);

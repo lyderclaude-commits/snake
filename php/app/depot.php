@@ -245,7 +245,18 @@ function badge_scanner(string $jeton, string $agent_id): array
     }
 
     $now = maintenant();
-    $koris = $b['utilisateur_id'] ? KORIS_PAR_SCAN : 0;
+
+    /**
+     * Les Koris sont une ligne de l'offre de l'ORGANISATEUR.
+     *
+     * « QR Code Koris » est barré sur Découverte et coché à partir
+     * d'Impact : la présence est comptée dans les deux cas — c'est la
+     * mesure qui fait la valeur du produit — mais elle ne récompense
+     * l'invité que si la campagne qui l'a émis y donne droit.
+     */
+    $decor = decor_par_id((string) $b['decor_id']);
+    $auteur = $decor ? utilisateur_par_id((string) $decor['auteur_id']) : null;
+    $koris = ($b['utilisateur_id'] && capacite($auteur, 'koris')) ? KORIS_PAR_SCAN : 0;
 
     $s = db()->prepare('UPDATE badges SET scanne_le = ?, scanne_par = ?, koris = ?
                         WHERE jeton = ? AND scanne_le IS NULL');
@@ -256,9 +267,9 @@ function badge_scanner(string $jeton, string $agent_id): array
 
     // Les Koris ne vont qu'à un compte identifié : un badge créé sans compte
     // reste comptabilisé en présence, mais ne rapporte rien.
-    if ($b['utilisateur_id']) {
+    if ($koris > 0) {
         db()->prepare('INSERT INTO koris (utilisateur_id, montant, motif, badge_jeton, cree_le) VALUES (?,?,?,?,?)')
-            ->execute([$b['utilisateur_id'], KORIS_PAR_SCAN, 'Présence : ' . $b['decor_titre'], $b['jeton'], $now]);
+            ->execute([$b['utilisateur_id'], $koris, 'Présence : ' . $b['decor_titre'], $b['jeton'], $now]);
     }
 
     return ['ok' => true, 'koris' => $koris, 'decor' => $b['decor_titre'], 'porteur' => $b['porteur']];
@@ -315,9 +326,13 @@ function verdict_scan(array $r): array
         $r['ok'] => [
             'ok' => true,
             'message' => 'Entrée validée : ' . $r['decor'],
-            'detail' => $r['porteur']
-                ? $r['porteur'] . ' · ' . $r['koris'] . ' Koris crédités'
-                : 'Badge anonyme : présence comptée, aucun Kori',
+            'detail' => match (true) {
+                $r['koris'] > 0 => $r['porteur'] . ' · ' . $r['koris'] . ' Koris crédités',
+                // La présence compte toujours : c'est elle qu'on vend. Seule
+                // la récompense de l'invité dépend de l'offre.
+                (bool) $r['porteur'] => $r['porteur'] . ' · présence comptée',
+                default => 'Badge anonyme : présence comptée, aucun Kori',
+            },
         ],
         ($r['raison'] ?? '') === 'deja' => [
             'ok' => false,
@@ -326,6 +341,257 @@ function verdict_scan(array $r): array
         ],
         default => ['ok' => false, 'message' => 'Code inconnu.', 'detail' => 'Vérifiez les 10 caractères.'],
     };
+}
+
+/* ================= liens courts ================= */
+
+/**
+ * Un code court, lisible à voix haute.
+ *
+ * Ni `0`/`O` ni `1`/`l`/`I` : un lien se dicte au téléphone et se recopie
+ * d'une affiche. Six caractères sur cet alphabet donnent plus d'un
+ * milliard de combinaisons — largement de quoi ne jamais tirer deux fois le
+ * même, et on vérifie quand même.
+ */
+function nouveau_code_lien(): string
+{
+    $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    do {
+        $code = '';
+        for ($i = 0; $i < 6; $i++) {
+            $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        $s = db()->prepare('SELECT 1 FROM liens WHERE code = ?');
+        $s->execute([$code]);
+    } while ($s->fetch());
+    return $code;
+}
+
+/**
+ * L'adresse publique d'un lien court.
+ *
+ * `?p=l&c=…` et non un chemin : la version PHP n'a qu'un point d'entrée et
+ * ne suppose aucune réécriture d'URL — c'est ce qui lui permet de se
+ * déployer en décompressant un zip. Le jour où `wkb.link` pointera ici, une
+ * seule règle de réécriture suffira à raccourcir encore.
+ */
+function lien_court_url(string $code): string
+{
+    return base_url() . '/index.php?p=l&c=' . rawurlencode($code);
+}
+
+function liens_de(string $auteur_id, int $limite = 200): array
+{
+    $s = db()->prepare("SELECT l.*, d.titre AS decor_titre FROM liens l
+        LEFT JOIN decors d ON d.id = l.decor_id
+        WHERE l.auteur_id = ? ORDER BY l.cree_le DESC LIMIT $limite");
+    $s->execute([$auteur_id]);
+    return $s->fetchAll();
+}
+
+function compter_liens(string $auteur_id): int
+{
+    return compter('SELECT COUNT(*) AS n FROM liens WHERE auteur_id = ?', [$auteur_id]);
+}
+
+function creer_lien(string $auteur_id, string $cible, string $titre, ?string $decor_id = null): string
+{
+    $code = nouveau_code_lien();
+    db()->prepare('INSERT INTO liens (id, code, cible, titre, auteur_id, decor_id, clics, cree_le)
+                   VALUES (?,?,?,?,?,?,0,?)')
+        ->execute([nouvel_id(), $code, $cible, $titre ?: null, $auteur_id, $decor_id, maintenant()]);
+    return $code;
+}
+
+function supprimer_lien(string $auteur_id, string $code): bool
+{
+    $s = db()->prepare('DELETE FROM liens WHERE code = ? AND auteur_id = ?');
+    $s->execute([$code, $auteur_id]);
+    return $s->rowCount() > 0;
+}
+
+/**
+ * Suit un lien et compte le clic.
+ *
+ * Le compteur est incrémenté en SQL et non lu-puis-écrit : deux personnes
+ * qui cliquent dans la même seconde compteraient sinon pour une.
+ */
+function suivre_lien(string $code): ?string
+{
+    $s = db()->prepare('SELECT cible FROM liens WHERE code = ?');
+    $s->execute([$code]);
+    $cible = $s->fetchColumn();
+    if (!$cible) {
+        return null;
+    }
+    db()->prepare('UPDATE liens SET clics = clics + 1, dernier_clic = ? WHERE code = ?')
+        ->execute([maintenant(), $code]);
+    return (string) $cible;
+}
+
+/* ================= ce que l'offre autorise ================= */
+
+/**
+ * L'organisateur d'un décor peut-il encore émettre un badge ce mois-ci ?
+ *
+ * C'est ICI que l'offre devient réelle. Le tableau de bord affichait un
+ * « repère indicatif » et ne refusait rien : une ligne vendue 5 000 FCFA
+ * que personne n'appliquait. Le compteur est mensuel, remis à zéro le 1er,
+ * et l'équipe n'y est jamais soumise.
+ *
+ * @return array{ok: bool, message: string, reste: int, quota: int, consomme: int}
+ */
+function quota_telechargements(array $decor): array
+{
+    $auteur = utilisateur_par_id((string) $decor['auteur_id']);
+    if (!$auteur) {
+        // Compte supprimé : le décor n'a plus de propriétaire à limiter.
+        return ['ok' => true, 'message' => '', 'reste' => -1, 'quota' => -1, 'consomme' => 0];
+    }
+
+    $max = quota($auteur, 'telechargements');
+    $consomme = telechargements_du_mois((string) $auteur['id']);
+    if ($max < 0) {
+        return ['ok' => true, 'message' => '', 'reste' => -1, 'quota' => -1, 'consomme' => $consomme];
+    }
+
+    $reste = max(0, $max - $consomme);
+    return [
+        'ok' => $reste > 0,
+        'message' => $reste > 0 ? '' :
+            'Cette campagne a atteint son nombre de badges pour ce mois-ci. '
+            . 'Revenez le 1er du mois prochain, ou prévenez l’organisateur.',
+        'reste' => $reste,
+        'quota' => $max,
+        'consomme' => $consomme,
+    ];
+}
+
+/**
+ * Prévient l'organisateur que son quota est plein — une fois par mois.
+ *
+ * Sans le « une fois », chaque invité refusé enverrait un courriel : le
+ * jour où la campagne marche vraiment, l'organisateur recevrait deux cents
+ * messages disant qu'elle marche trop bien.
+ */
+function alerter_quota_plein(array $decor): void
+{
+    $cle = 'quota_alerte|' . $decor['auteur_id'] . '|' . gmdate('Y-m');
+    if ((reglages_bdd([$cle])[$cle] ?? '') !== '') {
+        return;
+    }
+    reglages_bdd_poser([$cle => maintenant()]);
+
+    $auteur = utilisateur_par_id((string) $decor['auteur_id']);
+    if (!$auteur) {
+        return;
+    }
+    notifier(
+        (string) $auteur['id'],
+        'compte',
+        'Votre quota de téléchargements est atteint',
+        'Votre offre ' . formule_libelle($auteur['formule'] ?? null) . ' couvre '
+        . quota($auteur, 'telechargements') . ' badges par mois, et ils sont pris. '
+        . 'Vos invités ne peuvent plus télécharger jusqu’au 1er du mois prochain. '
+        . 'Passer à l’offre supérieure rouvre immédiatement le robinet.',
+        '?p=partenaire'
+    );
+}
+
+/**
+ * Tout ce que l'équipe doit voir d'un compte, en une requête par sujet.
+ *
+ * Le tableau de bord d'un organisateur lui montre SON compte ; celui-ci
+ * montre le même compte vu de l'autre côté du guichet, avec ce qu'un
+ * commercial demande toujours : depuis quand, combien, et est-ce que ça
+ * bute sur une limite.
+ */
+function fiche_compte(string $id): ?array
+{
+    $u = utilisateur_par_id($id);
+    if (!$u) {
+        return null;
+    }
+    $decors = decors_de($id);
+
+    $emis = $scannes = $vues = $telecharges = 0;
+    foreach ($decors as $d) {
+        $p = presence((string) $d['id']);
+        $emis += $p['emis'];
+        $scannes += $p['scannes'];
+        $vues += (int) $d['vues'];
+        $telecharges += (int) $d['telechargements'];
+    }
+
+    return [
+        'compte' => $u,
+        'bilan' => bilan_offre($u),
+        'decors' => $decors,
+        'liens' => liens_de($id, 20),
+        'totaux' => [
+            'campagnes' => count($decors),
+            'vues' => $vues,
+            'telecharges' => $telecharges,
+            'badges' => $emis,
+            'presences' => $scannes,
+            'taux' => $emis ? $scannes / $emis : 0.0,
+            'koris' => koris_solde($id),
+            'clics' => compter('SELECT COALESCE(SUM(clics),0) AS n FROM liens WHERE auteur_id = ?', [$id]),
+        ],
+    ];
+}
+
+/**
+ * Le bilan complet d'un compte face à son offre.
+ *
+ * Une seule fonction, deux lecteurs : l'organisateur sur son tableau de
+ * bord, et l'équipe sur la fiche du compte. Deux calculs séparés finiraient
+ * par ne plus dire la même chose — et c'est précisément le genre de
+ * désaccord qu'on découvre en pleine discussion commerciale.
+ */
+function bilan_offre(array $u): array
+{
+    $o = offre($u);
+    $lignes = [];
+
+    foreach (['campagnes', 'telechargements', 'liens_courts'] as $cle) {
+        $max = quota($u, $cle);
+        $consomme = match ($cle) {
+            'campagnes' => campagnes_actives((string) $u['id']),
+            'telechargements' => telechargements_du_mois((string) $u['id']),
+            'liens_courts' => compter_liens((string) $u['id']),
+        };
+        $lignes[$cle] = [
+            'nature' => 'compteur',
+            'libelle' => OFFRE_LIGNES[$cle][0],
+            'aide' => OFFRE_LIGNES[$cle][2],
+            'inclus' => $max !== 0,
+            'max' => $max,
+            'consomme' => $consomme,
+            'reste' => $max < 0 ? -1 : max(0, $max - $consomme),
+            'part' => $max <= 0 ? 0 : min(100, (int) round($consomme / $max * 100)),
+        ];
+    }
+
+    foreach (OFFRE_LIGNES as $cle => [$libelle, $nature, $aide]) {
+        if ($nature === 'compteur') {
+            continue;
+        }
+        $lignes[$cle] = [
+            'nature' => $nature,
+            'libelle' => $libelle,
+            'aide' => $aide,
+            'inclus' => capacite($u, $cle),
+            'debloque' => capacite($u, $cle) ? null : offre_qui_debloque($cle),
+        ];
+    }
+
+    return [
+        'offre' => $o,
+        'cle' => $u['formule'] ?? 'decouverte',
+        'bonus' => max(0, (int) ($u['bonus_telechargements'] ?? 0)),
+        'lignes' => $lignes,
+    ];
 }
 
 /* ================= réglages ================= */

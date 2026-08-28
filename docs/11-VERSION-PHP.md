@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **183 scénarios, 183 réussis**
+Les deux ont été vérifiés de bout en bout : **211 scénarios, 211 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +110,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 183 scénarios, dans un vrai navigateur
+npm run php:e2e          # 211 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, et une sauvegarde vraiment restaurée
 ```
 
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 183 scénarios
+### Les 211 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -157,6 +157,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Le lien partagé** | Titre, description et vignette annoncés ; la vignette se télécharge, fait 1200 × 630, est un vrai JPEG, se met en cache et ne change pas d'une demande à l'autre |
 | **Le transport e-mail** | L'essai d'envoi arrive sur un vrai serveur SMTP ; l'inscription reçoit son lien ; soumettre est refusé tant que l'adresse n'est pas confirmée, accepté ensuite ; le lien ne sert qu'une fois ; l'équipe est prévenue, et la décision revient au partenaire |
 | **Les sauvegardes** | L'archive s'écrit, se télécharge, est un vrai zip, n'est pas mise en cache ; un nom qui remonte l'arborescence est refusé ; le déclencheur du cron rejette une clé fausse |
+| **Chaque offre** | Le tableau de bord annonce l'offre et ses compteurs ; ce qui n'est pas compris est montré barré avec l'offre qui l'ouvre ; les liens courts et le ciblage sont fermés en Découverte — dans le menu **et** côté serveur ; l'équipe change l'offre depuis la fiche et tout suit ; le badge est **refusé au 51ᵉ** téléchargement, l'invité sait pourquoi, l'organisateur est prévenu, et la soupape rouvre le robinet |
+| **Les liens courts** | Créés, suivis en 302 vers la cible, le clic compté, un code inconnu en 404 |
 | **Le QR à la caméra** | Le filtre accepte un code nu et une adresse de badge, rejette un QR étranger ; une **fausse caméra** diffuse le QR d'un badge réellement émis, l'entrée est validée, la page ne se recharge pas, le journal se met à jour |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -289,32 +291,113 @@ un décor disparu.
 
 ---
 
-## Les offres, et ce qu'elles autorisent
+## Les offres, et ce qu'elles donnent vraiment
 
-Les quatre offres de la vitrine existent dans le produit. Elles sont
-déclarées **une seule fois**, dans `app/auth.php` :
+Les quatre offres de la vitrine existent dans le produit, et **chaque ligne
+vendue est appliquée par le code**. Elles sont déclarées une seule fois,
+dans `app/auth.php` — et la grille tarifaire de la page d'accueil en est
+maintenant *déduite*, ligne à ligne. Elle était recopiée à la main : le jour
+où une offre changeait dans le produit, la vitrine continuait d'en promettre
+une autre.
 
-| Offre | Campagnes actives | Téléchargements / mois | Prix |
-|---|---|---|---|
-| Découverte | 1 | 50 | gratuit |
-| Impact | 3 | 500 | 5 000 FCFA |
-| Croissance | 5 | 2 000 | 12 000 FCFA |
-| Mouvement | illimité | illimité | 30 000 FCFA |
+### Trois natures de lignes, et il faut les distinguer
 
-Ce que le produit applique aujourd'hui :
+| Nature | Exemples | Qui l'applique |
+|---|---|---|
+| **Compteurs** | campagnes actives, téléchargements / mois, liens courts | Le produit. Opposables : au-delà, ça refuse. |
+| **Capacités** | filigrane, Koris, redirection, statistiques, ciblage, API | Le produit, à la ligne près. |
+| **Services** | diffusion à la base, Telegram et Push, article sponsorisé, account manager | **L'équipe.** Ils demandent une intervention humaine. Le produit dit qu'ils sont dus et les montre sur la fiche du compte ; prétendre qu'il les exécute serait pire que de l'écrire. |
 
-- **le quota de campagnes est bloquant**, au moment de la soumission. Un
-  brouillon ne coûte rien : ce qui occupe une place, c'est une campagne en
-  ligne ou en route vers la relecture ;
-- **le compteur de téléchargements est indicatif**. Il est affiché à
-  l'organisateur, mais **aucun badge n'est refusé à un invité** : couper un
-  invité au milieu de sa création parce que l'organisateur a atteint son
-  quota est une décision commerciale, pas technique. Elle vous appartient.
+| | Découverte | Impact | Croissance | Mouvement |
+|---|:--:|:--:|:--:|:--:|
+| Campagnes actives | 1 | 3 | 5 | ∞ |
+| Téléchargements / mois | 50 | 500 | 2 000 | ∞ |
+| Liens courts | — | 20 | 100 | ∞ |
+| Badges sans filigrane | ✕ | ✓ | ✓ | ✓ |
+| QR Code Koris | ✕ | ✓ | ✓ | ✓ |
+| Redirection après téléchargement | ✕ | ✓ | ✓ | ✓ |
+| Statistiques complètes | ✕ | ✓ | ✓ | ✓ |
+| Ciblage toutes villes | ✕ | ✕ | ✓ | ✓ |
+| Accès API REST | ✕ | ✕ | ✕ | ✓ |
+
+### Où chaque ligne mord
+
+- **Campagnes actives** — refusé à la soumission. Un brouillon ne coûte
+  rien : ce qui occupe une place, c'est une campagne en ligne ou en route
+  vers la relecture.
+- **Téléchargements** — refusé à l'**émission du badge**, c'est-à-dire au
+  geste qui coûte. Le compteur était autrefois « indicatif » : une ligne
+  vendue 5 000 FCFA que rien n'appliquait. L'invité reçoit un message qui
+  dit que ce n'est ni sa faute ni une panne, et l'organisateur est prévenu —
+  **une seule fois par mois**, sinon le jour où sa campagne marche vraiment
+  il recevrait deux cents courriels disant qu'elle marche trop bien.
+- **Filigrane et redirection** — appliqués au moment de **servir** le décor,
+  jamais figés à sa création. Une offre appartient au compte à l'instant
+  présent : quelqu'un qui passe à Impact voit le filigrane disparaître de
+  ses campagnes existantes le soir même, et celui dont l'offre retombe le
+  retrouve. Un seul endroit d'application, donc : deux — un à l'écriture, un
+  à la lecture — finiraient par diverger.
+- **Koris** — crédités au scan seulement si l'offre de l'organisateur les
+  comprend. La **présence** est comptée dans tous les cas : c'est la mesure
+  qui fait la valeur du produit ; seule la récompense de l'invité se vend.
+- **Ciblage** — l'option « Toutes les villes » est désactivée dans le menu,
+  et **vérifiée côté serveur**. Une option désactivée est un indice visuel,
+  pas une serrure.
+- **Statistiques** — Découverte voit les vues et les téléchargements, ce
+  qu'un générateur d'images quelconque sait déjà compter. La présence réelle
+  et le taux de conversion sont ce que personne d'autre ne mesure : c'est
+  donc ce qui s'achète.
+
+### Ce que l'organisateur voit
+
+Son tableau de bord porte **chaque ligne de son offre** : les compteurs avec
+le consommé, le restant et une barre ; puis ce qui est compris ; puis ce qui
+ne l'est pas, **avec l'offre qui l'ouvre**. Cacher ce qu'on n'a pas
+empêcherait de le vendre ; le montrer barré, avec son prix d'entrée, est
+plus honnête et plus utile.
+
+### Ce que l'équipe voit et peut faire
+
+**Comptes** liste désormais la consommation du mois de chaque organisateur —
+le chiffre qu'on cherche quand quelqu'un écrit « mes invités ne peuvent plus
+télécharger » — et signale les adresses non confirmées.
+
+Chaque nom mène à sa **fiche** : offre, consommation face au quota, ce qui
+est ouvert et ce qui est fermé, campagnes, liens courts, badges, présences,
+taux de conversion, Koris. Et les leviers :
+
+| Levier | Ce qu'il fait |
+|---|---|
+| **Rôle et offre** | Prend effet immédiatement, y compris sur les campagnes déjà en ligne. La personne est prévenue, et le message nomme ce qui change. |
+| **Soupape de téléchargements** | S'ajoute au quota sans changer l'offre. De quoi passer un pic d'un soir sans faire monter quelqu'un d'une offre qu'il ne veut pas. |
+| **Suspension** | Coupe immédiatement les sessions ouvertes. |
+| **Note interne** | Invisible pour l'organisateur : « payé jusqu'en décembre », « article sponsorisé publié le 12/09 ». |
 
 Une inscription publique démarre **toujours** en Découverte. Le bouton
 « Choisir Impact » de la vitrine transmet l'offre visée : la personne le lit
 sur le formulaire, et l'équipe reçoit une notification pour activer l'offre
-après paiement. C'est l'équipe qui bascule l'offre depuis **Comptes**.
+après paiement.
+
+---
+
+## Les liens courts
+
+Une adresse courte à mettre sur une affiche ou dans un message, et le nombre
+de personnes qui l'ont réellement suivie. C'est une ligne d'offre : aucune
+sur Découverte, 20 sur Impact, 100 sur Croissance, sans limite sur Mouvement.
+
+Le code fait six caractères sur un alphabet qui exclut `0`/`O` et
+`1`/`l`/`I` : un lien se dicte au téléphone et se recopie d'une affiche.
+L'adresse est `?p=l&c=…` et non un chemin — la version PHP n'a qu'un point
+d'entrée et ne suppose aucune réécriture d'URL, c'est ce qui lui permet de
+se déployer en décompressant un zip. Le jour où `wkb.link` pointera ici, une
+seule règle de réécriture suffira à raccourcir encore.
+
+La cible doit être `http://` ou `https://` : sans ce filtre, un lien court
+deviendrait un `javascript:` déguisé derrière un domaine de confiance — le
+raccourcisseur d'URL est l'endroit exact où ce genre de chose se glisse. Le
+compteur de clics est incrémenté en SQL et non lu-puis-écrit : deux
+personnes qui cliquent dans la même seconde compteraient sinon pour une.
 
 ---
 

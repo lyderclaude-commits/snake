@@ -760,3 +760,32 @@ function valider_gabarit(array $g): void
         throw new GabaritInvalide('Un refus ou une demande de correction exige un motif.');
     }
 }
+
+/**
+ * Ce que l'offre de l'auteur change dans un décor, au moment de le SERVIR.
+ *
+ * Et non au moment de l'enregistrer, volontairement. Une offre appartient
+ * au compte à l'instant présent, pas au décor le jour de sa création : un
+ * organisateur qui passe à Impact doit voir le filigrane disparaître de ses
+ * campagnes existantes le soir même, sans qu'on aille réécrire ses gabarits
+ * en base. Et celui dont l'offre retombe à Découverte le retrouve, sans
+ * qu'un décor d'hier lui garde un avantage qu'il ne paie plus.
+ *
+ * Un seul endroit d'application, donc : ici. Deux — un à l'écriture, un à
+ * la lecture — finiraient par diverger, et personne ne saurait lequel dit
+ * vrai.
+ */
+function gabarit_selon_offre(array $gabarit, ?array $auteur): array
+{
+    // Le filigrane reste tant que l'offre ne le retire pas. C'est ce que
+    // Découverte paie de sa gratuité, et ce qu'Impact achète.
+    $gabarit['watermark']['enabled'] = !capacite($auteur, 'sans_filigrane');
+
+    // Sans redirection, l'invité reste sur Wakabi après son badge : la page
+    // de l'organisateur est une ligne de l'offre, pas un acquis.
+    if (!capacite($auteur, 'redirection')) {
+        $gabarit['share']['redirectUrl'] = base_url() . '/index.php?p=decors';
+        $gabarit['share']['redirectLabel'] = 'Voir les autres décors';
+    }
+    return $gabarit;
+}

@@ -230,6 +230,26 @@ a{color:var(--primary-d);text-underline-offset:3px}
 .stat span{display:block;font-size:.8rem;color:var(--text3);margin-top:5px}
 .stat.p b{color:var(--primary)} .stat.v b{color:var(--teal)} .stat.o b{color:var(--orange)}
 
+/* Un indicateur que l'offre ne donne pas : présent, mais visiblement fermé.
+   Le retirer ferait croire qu'il n'existe pas ; le montrer grisé dit à la
+   fois ce qui manque et ce qu'il faut pour l'avoir. */
+.stat.verrou{border-style:dashed;background:transparent}
+.stat.verrou b{color:var(--text3);font-size:1.15rem}
+.stat.verrou span{color:var(--text3)}
+
+/* La liste des lignes d'une offre : cochées, ou barrées avec leur prix
+   d'entrée. Deux colonnes côte à côte sur grand écran, empilées sinon. */
+.liste-offre{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.liste-offre li{display:grid;grid-template-columns:18px 1fr;gap:9px;align-items:start;font-size:.88rem}
+.liste-offre .oui{color:var(--teal);font-weight:800}
+.liste-offre .non{color:var(--text3);font-weight:800}
+.liste-offre .hors{color:var(--text3)}
+.liste-offre .aide{margin:2px 0 0;font-size:.78rem;line-height:1.45}
+.liste-offre .etiquette{
+  display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:999px;
+  padding:1px 8px;font-size:.68rem;font-weight:700;color:var(--text3);margin-left:6px;box-shadow:none;
+}
+
 /* formulaires */
 label{display:block;font-size:.82rem;font-weight:600;color:var(--text2);margin-bottom:5px}
 input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],select,textarea{

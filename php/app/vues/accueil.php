@@ -272,21 +272,84 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <p><strong>−50 % les 3 premiers mois</strong>, offre de lancement.</p>
     </div>
     <div class="grille offres">
-      <?php foreach ([
-        ['decouverte', 'Pour tester', 'Découverte', 0, 0, 'Commencer gratuitement', false, null,
-          [['1 campagne active', 1], ['50 téléchargements badge / mois', 1], ['Studio complet', 1],
-           ['Stats de base', 1], ['Filigrane discret sur les badges', 0], ['QR Code Koris', 0]]],
-        ['impact', 'Entrée sérieuse', 'Impact', 5000, 2500, 'Choisir Impact', true, null,
-          [['3 campagnes actives', 1], ['500 téléchargements / badge', 1], ['Sans filigrane', 1],
-           ['Redirection après téléchargement', 1], ['20 liens courts wkb.link', 1],
-           ['QR Code Koris intégré', 1], ['Stats complètes « J’y serai »', 1], ['Achat de crédits WhatsApp', 1]]],
-        ['croissance', 'Clients actifs', 'Croissance', 12000, 6000, 'Choisir Croissance', false, 'Tout Impact, plus :',
-          [['5 campagnes actives', 1], ['2 000 téléchargements', 1], ['Ciblage ville + intérêt', 1],
-           ['Diffusion à la base Wakabi', 1], ['100 liens courts', 1], ['Campagnes Telegram + Push', 1]]],
-        ['mouvement', 'Pros & institutions', 'Mouvement', 30000, 15000, 'Nous contacter', false, 'Tout Croissance, plus :',
-          [['Campagnes illimitées', 1], ['Téléchargements illimités', 1], ['Accès API REST', 1],
-           ['Web Push illimité', 1], ['Article sponsorisé blog Wakabi', 1], ['Account manager dédié', 1]]],
-      ] as [$cle, $tag, $nom, $prix, $lancement, $cta, $phare, $prefixe, $lignes]): ?>
+      <?php
+      /**
+       * Les prix et les lignes viennent de `FORMULES`, pas d'une liste écrite ici.
+       *
+       * Cette grille était recopiée à la main : le jour où une offre a
+       * changé dans le produit, la vitrine a continué d'en promettre une
+       * autre. Elle est maintenant DÉDUITE de la table que le code
+       * applique, ligne à ligne. Une promesse et son application ne peuvent
+       * plus diverger : elles n'ont qu'une source.
+       */
+      $lignes_offre = function (string $cle): array {
+          $f = FORMULES[$cle];
+          $out = [];
+          // Les compteurs, formulés comme on les vend.
+          $out[] = [$f['campagnes'] < 0 ? 'Campagnes illimitées'
+                    : $f['campagnes'] . ' campagne' . ($f['campagnes'] > 1 ? 's' : '') . ' active'
+                      . ($f['campagnes'] > 1 ? 's' : ''), 1];
+          $out[] = [$f['telechargements'] < 0 ? 'Téléchargements illimités'
+                    : number_format($f['telechargements'], 0, ',', ' ') . ' téléchargements / mois', 1];
+          if ($f['liens_courts'] !== 0) {
+              $out[] = [$f['liens_courts'] < 0 ? 'Liens courts illimités'
+                        : $f['liens_courts'] . ' liens courts wkb.link', 1];
+          }
+          // Le Studio est dans toutes les offres, y compris la gratuite :
+          // c'est le produit lui-même, et le dire ici évite qu'on croie
+          // l'offre d'essai amputée.
+          $out[] = ['Studio complet', 1];
+          if ($f['stats'] !== 'completes') {
+              $out[] = ['Statistiques de base', 1];
+          }
+
+          // Puis les capacités et les services, dans l'ordre de la table.
+          $barrees = 0;
+          foreach (OFFRE_LIGNES as $k => [$libelle, $nature, ]) {
+              if ($nature === 'compteur') {
+                  continue;
+              }
+              $ouvert = $k === 'stats' ? $f['stats'] === 'completes' : (bool) $f[$k];
+              if ($ouvert) {
+                  $out[] = [$libelle, 1];
+                  continue;
+              }
+              // Deux lignes barrées suffisent à situer une offre d'entrée.
+              // Les dix y tiendraient, mais la carte deviendrait un
+              // catalogue de ce qu'on n'a pas — la liste complète est sur le
+              // tableau de bord, là où elle sert à décider.
+              if ($cle === 'decouverte' && $barrees < 2) {
+                  $out[] = [$libelle, 0];
+                  $barrees++;
+              }
+          }
+          return $out;
+      };
+      /** Ce que l'offre précédente donnait déjà : inutile de le relister. */
+      $nouveautes = function (string $cle, ?string $avant) use ($lignes_offre): array {
+          if (!$avant) {
+              return $lignes_offre($cle);
+          }
+          $deja = [];
+          foreach ($lignes_offre($avant) as [$t, $ok]) {
+              if ($ok) {
+                  $deja[$t] = true;
+              }
+          }
+          return array_values(array_filter($lignes_offre($cle),
+              fn($l) => !isset($deja[$l[0]])));
+      };
+      foreach ([
+        ['decouverte', 'Pour tester', 'Commencer gratuitement', false, null, null],
+        ['impact', 'Entrée sérieuse', 'Choisir Impact', true, null, null],
+        ['croissance', 'Clients actifs', 'Choisir Croissance', false, 'Tout Impact, plus :', 'impact'],
+        ['mouvement', 'Pros & institutions', 'Nous contacter', false, 'Tout Croissance, plus :', 'croissance'],
+      ] as [$cle, $tag, $cta, $phare, $prefixe, $avant]):
+        $nom = FORMULES[$cle]['nom'];
+        $prix = FORMULES[$cle]['prix'];
+        $lancement = FORMULES[$cle]['lancement'];
+        $lignes = $nouveautes($cle, $avant);
+      ?>
         <div class="offre<?= $phare ? ' phare' : '' ?>">
           <?php if ($phare): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
           <span class="tag"><?= e($tag) ?></span>

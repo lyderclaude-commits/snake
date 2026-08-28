@@ -75,12 +75,14 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
                 ['?p=scan',      'Contrôle d’entrée'],
                 ['?p=comptes',   'Comptes'],
                 ['?p=reglages',  'Réglages'],
+                ['?p=liens',     'Liens courts'],
                 ['?p=sauvegardes', 'Sauvegardes'],
             ]],
         ],
         'partenaire' => [
             ['?p=decors',     'Le catalogue'],
             ['?p=partenaire', 'Mes campagnes'],
+            ['?p=liens',      'Liens courts'],
         ],
         'participant' => [
             ['?p=decors', 'Les décors'],

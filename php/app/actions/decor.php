@@ -225,6 +225,19 @@ if ($post) {
 
     // L'accroche et le libellé du champ sont facultatifs : un décor peut se
     // passer de texte, le cadre porte déjà ce qu'il y a à dire.
+    /**
+     * Le ciblage multi-villes est vérifié ICI, pas seulement dans le menu.
+     *
+     * L'option est affichée désactivée dans le formulaire, ce qui suffit à
+     * l'usage — mais une option désactivée est un indice visuel, pas une
+     * serrure : rien n'empêche d'envoyer la valeur à la main. Tout ce qui
+     * se vend se vérifie côté serveur.
+     */
+    if (!$erreur && $valeurs['ville'] === 'all' && !capacite($u, 'ciblage')) {
+        $erreur = 'Le ciblage sur toutes les villes arrive avec l’offre Croissance. '
+                . 'Choisissez la ville de votre événement.';
+    }
+
     if (!$erreur && $valeurs['titre'] === '') {
         $erreur = 'Donnez un titre à votre décor.';
     } elseif (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['disposition'] !== 'vierge') {

@@ -82,7 +82,7 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
     <h3 style="margin:0 0 4px">Tous les jours, sans y penser</h3>
     <p class="aide" style="margin:0 0 14px">Dans cPanel, ouvrez <strong>Tâches Cron</strong>,
     choisissez « Une fois par jour », et collez cette ligne :</p>
-    <pre style="overflow-x:auto;background:var(--fond2);padding:12px;border-radius:10px;margin:0"><code>curl -s "<?= e($url_cron) ?>"</code></pre>
+    <pre style="overflow-x:auto;background:var(--bg2);padding:12px;border-radius:10px;margin:0"><code>curl -s "<?= e($url_cron) ?>"</code></pre>
     <p class="aide" style="margin:12px 0 0">
       La clé de cette adresse remplace le mot de passe : elle seule autorise la tâche.
       Ne la publiez pas. Les <?= SAUVEGARDES_GARDEES ?> dernières archives sont gardées,

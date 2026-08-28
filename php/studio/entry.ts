@@ -43,6 +43,8 @@ function demarrer(ctx: Contexte) {
     qr: null,
   };
   let jeton: string | null = null;
+  // Vrai dès que l'offre de l'organisateur ferme le robinet pour le mois.
+  let bloque = false;
 
   // Champs éditables décrits par le gabarit — l'éditeur n'invente rien.
   const champs = (tpl.layers ?? []).filter((l: any) => l.type === 'text' && l.editable);
@@ -144,6 +146,27 @@ function demarrer(ctx: Contexte) {
     }
   });
 
+  /**
+   * Le badge est refusé quand l'organisateur a épuisé son offre du mois.
+   *
+   * L'invité n'y est pour rien : lui laisser une page muette, sans QR et
+   * sans explication, lui ferait croire à une panne — et il réessaierait.
+   * On le dit, et on ferme le téléchargement plutôt que de livrer un badge
+   * sans jeton qui ne vaudrait rien à l'entrée.
+   */
+  function bloquer(message: string) {
+    bloque = true;
+    const etat = $('#etat');
+    if (etat) etat.textContent = message;
+    for (const sel of ['#telecharger', '#partager']) {
+      const b = document.querySelector(sel) as HTMLButtonElement | null;
+      if (b) {
+        b.disabled = true;
+        b.title = message;
+      }
+    }
+  }
+
   async function emettreBadge() {
     try {
       const r = await fetch(ctx.base + '?p=api-badge', {
@@ -152,6 +175,10 @@ function demarrer(ctx: Contexte) {
         body: JSON.stringify({ decor: ctx.decorId }),
       });
       const d = await r.json();
+      if (d.quota) {
+        bloquer(d.erreur || 'Cette campagne a atteint son nombre de badges pour ce mois-ci.');
+        return;
+      }
       if (!d.jeton) return;
       jeton = d.jeton;
       spec.qr = await loadImage(d.qr);
@@ -308,6 +335,9 @@ function demarrer(ctx: Contexte) {
   /* ---------------- export ---------------- */
 
   $('#telecharger').addEventListener('click', async () => {
+    // Le bouton est déjà désactivé dans ce cas ; la garde couvre le clavier
+    // et tout ce qui déclencherait l'événement sans passer par la souris.
+    if (bloque) return;
     const bouton = $('#telecharger') as HTMLButtonElement;
     bouton.disabled = true;
     bouton.textContent = 'Préparation…';
