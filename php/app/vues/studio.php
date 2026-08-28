@@ -26,14 +26,33 @@
           <p class="aide">Elle reste sur votre téléphone : rien n’est envoyé au serveur.</p>
         </div>
 
+        <?php
+        /**
+         * Les bornes du zoom viennent du gabarit, pas d'une valeur écrite ici.
+         *
+         * Le curseur descendait à 0,5 alors que le cadrage refusait tout ce
+         * qui passait sous 1 : sa moitié gauche ne faisait rien. Il suit
+         * maintenant ce que le décor autorise réellement.
+         */
+        $emplacement = ['minScale' => 0.2, 'maxScale' => 4];
+        foreach ($g['layers'] ?? [] as $l) {
+            if (($l['type'] ?? '') === 'photoSlot') {
+                $emplacement = $l + $emplacement;
+            }
+        }
+        ?>
         <div id="outils" hidden>
           <div class="champ">
-            <label for="zoom">Zoom</label>
-            <input id="zoom" type="range" min="0.5" max="4" step="0.01" value="1">
+            <label for="zoom">Zoom <output id="zoom-valeur" for="zoom"></output></label>
+            <input id="zoom" type="range" value="1" step="0.01"
+                   min="<?= e((string) $emplacement['minScale']) ?>"
+                   max="<?= e((string) $emplacement['maxScale']) ?>">
+            <p class="aide">Dézoomez pour faire tenir toute l’image : le fond du décor apparaît autour.</p>
           </div>
           <div class="rangee">
+            <button class="bouton fant petit" id="ajuster" type="button">Tout afficher</button>
+            <button class="bouton fant petit" id="recentrer" type="button">Remplir</button>
             <button class="bouton fant petit" id="miroir" type="button">Miroir</button>
-            <button class="bouton fant petit" id="recentrer" type="button">Recentrer</button>
           </div>
           <div class="champ" style="margin-top:14px">
             <label for="teinte">Teinte Wakabi</label>

@@ -2,8 +2,16 @@
  * Cadrage de la photo dans son emplacement.
  *
  * Deux règles tiennent tout l'éditeur :
- *  - `scale` est un multiplicateur du cadrage « cover » ;
- *  - la photo ne doit JAMAIS laisser apparaître un vide dans l'emplacement.
+ *  - `scale` est un multiplicateur du cadrage « cover » : 1 remplit
+ *    exactement l'emplacement, au-dessus on agrandit, en dessous on réduit ;
+ *  - la photo reste DANS son emplacement, quoi qu'il arrive.
+ *
+ * La deuxième règle a longtemps été « la photo ne laisse jamais de vide »,
+ * ce qui interdisait toute échelle inférieure à 1. Une affiche panoramique
+ * ou une image carrée dans un décor vertical devenaient alors impossibles à
+ * cadrer autrement qu'en coupant l'essentiel. Sous 1, la photo est
+ * simplement plus petite que son emplacement et le fond du décor apparaît
+ * autour : c'est un choix de mise en page, pas un défaut.
  */
 
 import type { PhotoState } from './types';
@@ -36,9 +44,35 @@ export function coverScale(
 }
 
 /**
- * Ramène le décalage dans les bornes où la photo couvre encore tout
- * l'emplacement. Sans cela, un glissement un peu vif laisse un bord vide —
- * le défaut le plus visible d'un générateur de ce genre.
+ * Multiplicateur qui fait tenir l'image ENTIÈRE dans l'emplacement.
+ *
+ * Exprimé par rapport au cadrage « cover », puisque c'est l'unité de
+ * `scale`. Toujours ≤ 1 : c'est le « tout afficher » d'un éditeur photo, et
+ * la réponse en un geste à « ma photo ne rentre pas ».
+ */
+export function containScale(
+  imgW: number,
+  imgH: number,
+  slotW: number,
+  slotH: number,
+): number {
+  const cover = coverScale(imgW, imgH, slotW, slotH);
+  if (cover <= 0) return 1;
+  return Math.min(slotW / imgW, slotH / imgH) / cover;
+}
+
+/**
+ * Ramène la photo dans les bornes de son emplacement.
+ *
+ * La marge de manœuvre est la DIFFÉRENCE, en valeur absolue, entre l'image
+ * dessinée et l'emplacement : au-dessus de 1 on fait glisser une image plus
+ * grande que la fenêtre, en dessous on déplace une image plus petite à
+ * l'intérieur. Un seul calcul couvre les deux, et dans les deux cas la
+ * photo ne peut pas sortir du cadre.
+ *
+ * `bornes` limite l'échelle à ce que le gabarit autorise. Sans elle, la
+ * valeur passe telle quelle : les appelants qui bornent déjà de leur côté
+ * n'ont rien à changer.
  *
  * Toutes les valeurs sont en unités normalisées du canevas.
  */
@@ -49,18 +83,21 @@ export function clampPhoto(
   imgH: number,
   canvasW: number,
   canvasH: number,
+  bornes?: { min: number; max: number },
 ): PhotoState {
   const slotPxW = slot.w * canvasW;
   const slotPxH = slot.h * canvasH;
 
-  const scale = Math.max(1, photo.scale);
+  const scale = bornes
+    ? Math.min(bornes.max, Math.max(bornes.min, photo.scale))
+    : Math.max(0.01, photo.scale);
   const s = coverScale(imgW, imgH, slotPxW, slotPxH) * scale;
   const drawnW = imgW * s;
   const drawnH = imgH * s;
 
   // Marge de manœuvre en pixels, puis ramenée en unités normalisées.
-  const slackX = Math.max(0, (drawnW - slotPxW) / 2) / canvasW;
-  const slackY = Math.max(0, (drawnH - slotPxH) / 2) / canvasH;
+  const slackX = Math.abs(drawnW - slotPxW) / 2 / canvasW;
+  const slackY = Math.abs(drawnH - slotPxH) / 2 / canvasH;
 
   return {
     ...photo,

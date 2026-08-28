@@ -137,10 +137,16 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur) {
           <input id="titre" name="titre" type="text" required value="<?= e($valeurs['titre']) ?>"></div>
         <div class="champ"><label for="sous_titre">Sous-titre</label>
           <input id="sous_titre" name="sous_titre" type="text" value="<?= e($valeurs['sous_titre']) ?>"></div>
-        <div class="champ"><label for="accroche">Accroche sur le badge</label>
-          <input id="accroche" name="accroche" type="text" required value="<?= e($valeurs['accroche']) ?>"></div>
-        <div class="champ"><label for="champ_libelle">Libellé du champ à remplir</label>
-          <input id="champ_libelle" name="champ_libelle" type="text" value="<?= e($valeurs['champ_libelle']) ?>"></div>
+        <div class="champ">
+          <label for="accroche">Accroche sur le badge <span style="font-weight:400">(facultatif)</span></label>
+          <input id="accroche" name="accroche" type="text" value="<?= e($valeurs['accroche']) ?>">
+        </div>
+        <div class="champ">
+          <label for="champ_libelle">Libellé du champ à remplir <span style="font-weight:400">(facultatif)</span></label>
+          <input id="champ_libelle" name="champ_libelle" type="text" value="<?= e($valeurs['champ_libelle']) ?>">
+          <p class="aide">Laissez les deux vides pour un décor sans aucun texte : le cadre parle tout seul,
+          et l’invité n’a rien à saisir.</p>
+        </div>
         <div class="champ"><label for="ville">Ville</label>
           <select id="ville" name="ville">
             <?php foreach (['all' => 'Toutes', 'lome' => 'Lomé', 'cotonou' => 'Cotonou', 'abidjan' => 'Abidjan'] as $k => $v): ?>

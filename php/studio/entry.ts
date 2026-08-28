@@ -12,7 +12,7 @@
 
 import { renderScene } from '@/core/renderScene';
 import { decodePhoto, loadImage } from '@/core/imagePipeline';
-import { clampPhoto } from '@/core/fitPhoto';
+import { clampPhoto, containScale } from '@/core/fitPhoto';
 import { canShareFile, chooseRoute, shareFile, slugifyFilename, triggerDownload } from '@/lib/share';
 import type { LayerAssets, LoadedImage, PhotoState, RenderSpec } from '@/core/types';
 import type { Rect } from '@/core/fitPhoto';
@@ -48,16 +48,37 @@ function demarrer(ctx: Contexte) {
   const champs = (tpl.layers ?? []).filter((l: any) => l.type === 'text' && l.editable);
   for (const c of champs) spec.texts[c.id] = c.value ?? '';
 
-  const emplacement: Rect = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot')?.rect
-    ?? { x: 0, y: 0, w: 1, h: 1 };
+  const couchePhoto = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot');
+  const emplacement: Rect = couchePhoto?.rect ?? { x: 0, y: 0, w: 1, h: 1 };
 
-  /** Le garde-fou anti-vide : la photo doit toujours couvrir l'emplacement. */
+  /**
+   * Les bornes du zoom viennent du gabarit.
+   *
+   * Elles étaient écrites en dur (0,5 à 4) à trois endroits, dont un curseur
+   * dont la moitié gauche ne faisait rien : le cadrage refusait alors tout
+   * ce qui passait sous 1.
+   */
+  const bornes = {
+    min: Number(couchePhoto?.minScale ?? 0.2),
+    max: Number(couchePhoto?.maxScale ?? 4),
+  };
+
+  /** La photo reste dans son emplacement, plus petite ou plus grande que lui. */
   function recadrer(p: PhotoState): PhotoState {
     return clampPhoto(
       p, emplacement,
       (p.image as HTMLImageElement).width || 1,
       (p.image as HTMLImageElement).height || 1,
       tpl.canvas.width, tpl.canvas.height,
+      bornes,
+    );
+  }
+
+  /** L'échelle qui fait tenir l'image entière dans l'emplacement. */
+  function echelleAjustee(image: HTMLImageElement): number {
+    return containScale(
+      image.width || 1, image.height || 1,
+      emplacement.w * tpl.canvas.width, emplacement.h * tpl.canvas.height,
     );
   }
 
@@ -109,6 +130,8 @@ function demarrer(ctx: Contexte) {
       spec.photo = recadrer(spec.photo);
       $('#etat').textContent = '';
       $('#outils').hidden = false;
+      ($('#zoom') as HTMLInputElement).value = String(spec.photo.scale);
+      afficherZoom();
       const etiquette = document.querySelector('.fichier .texte');
       if (etiquette) etiquette.textContent = 'Changer la photo';
 
@@ -211,10 +234,19 @@ function demarrer(ctx: Contexte) {
 
   function zoomer(valeur: number) {
     if (!spec.photo) return;
-    spec.photo.scale = Math.min(4, Math.max(0.5, valeur));
+    spec.photo.scale = Math.min(bornes.max, Math.max(bornes.min, valeur));
     spec.photo = recadrer(spec.photo);
     ($('#zoom') as HTMLInputElement).value = String(spec.photo.scale);
+    afficherZoom();
     dessiner();
+  }
+
+  /** Le facteur en clair : « 0,42 » ne dit rien, « 42 % » se lit. */
+  function afficherZoom() {
+    const sortie = document.getElementById('zoom-valeur');
+    if (sortie && spec.photo) {
+      sortie.textContent = Math.round(spec.photo.scale * 100) + ' %';
+    }
   }
 
   $('#zoom').addEventListener('input', (e) => zoomer(Number((e.target as HTMLInputElement).value)));
@@ -225,6 +257,7 @@ function demarrer(ctx: Contexte) {
     dessiner();
   });
 
+  // « Remplir » : le cadrage d'origine, la photo couvre tout l'emplacement.
   $('#recentrer').addEventListener('click', () => {
     if (!spec.photo) return;
     spec.photo.x = 0;
@@ -232,7 +265,22 @@ function demarrer(ctx: Contexte) {
     spec.photo.scale = 1;
     spec.photo = recadrer(spec.photo);
     ($('#zoom') as HTMLInputElement).value = '1';
+    afficherZoom();
     dessiner();
+  });
+
+  /**
+   * « Tout afficher » : l'image entière tient dans l'emplacement.
+   *
+   * C'est la réponse en un geste à « ma photo ne rentre pas » — une affiche
+   * panoramique, une capture d'écran, un visuel carré dans un décor
+   * vertical. Le fond du décor apparaît autour, et c'est voulu.
+   */
+  document.getElementById('ajuster')?.addEventListener('click', () => {
+    if (!spec.photo) return;
+    spec.photo.x = 0;
+    spec.photo.y = 0;
+    zoomer(echelleAjustee(spec.photo.image as HTMLImageElement));
   });
 
   /* ---------------- teinte ---------------- */

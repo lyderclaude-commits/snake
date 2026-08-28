@@ -22,8 +22,9 @@ export interface PhotoState {
   y: number;
   /**
    * Multiplicateur appliqué au cadrage « cover ». 1 = la photo remplit
-   * exactement l'emplacement. En dessous de 1 un vide apparaîtrait, d'où
-   * le plancher dans clampPhoto().
+   * exactement l'emplacement ; au-dessus on agrandit, en dessous la photo
+   * est plus petite que son emplacement et le fond du décor apparaît
+   * autour. Les bornes viennent du gabarit (`minScale`, `maxScale`).
    */
   scale: number;
   flipX: boolean;

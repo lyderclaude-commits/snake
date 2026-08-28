@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **117 scénarios, 117 réussis**
+Les deux ont été vérifiés de bout en bout : **125 scénarios, 125 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -105,7 +105,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 117 scénarios, dans un vrai navigateur
+npm run php:e2e          # 125 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR et gabarit contre les implémentations d'origine
 ```
 
@@ -115,7 +115,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 117 scénarios
+### Les 125 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -139,6 +139,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Le menu du téléphone** | Replié à l'arrivée, ouvert au doigt, refermé, jamais hors de l'écran — et déplié sans clic sur grand écran |
 | **La marque** | Le logo dans la barre, les portraits des témoignages |
 | **Les sept gabarits** | Les sept formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
+| **Le zoom libre** | Le curseur descend sous le cadrage « remplir », « Tout afficher » réduit l'image entière, le minimum est atteignable, « Remplir » revient au plein |
+| **Un décor sans texte** | Accepté sans accroche ni libellé, publié, et son Studio n'affiche aucun champ à remplir |
 | **La page blanche** | Ses réglages n'apparaissent que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
 | **Le menu de l'équipe** | Cinq destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
@@ -348,6 +350,42 @@ fois pour toutes : le QR est dimensionné sur la largeur, donc en paysage il
 occupe un tiers de la hauteur là où il n'en prend qu'un sixième en vertical.
 Changer de format remet donc la mise en page d'aplomb.
 
+### Le cadrage de la photo
+
+`scale` est un multiplicateur du cadrage « remplir » : 1 couvre exactement
+l'emplacement, au-dessus on agrandit, **en dessous la photo devient plus
+petite que son emplacement** et le fond du décor apparaît autour.
+
+La règle était auparavant « la photo ne laisse jamais de vide », ce qui
+interdisait toute échelle inférieure à 1 — une affiche panoramique ou une
+capture d'écran devenaient impossibles à cadrer autrement qu'en coupant
+l'essentiel. Le curseur descendait bien à 0,5, mais le cadrage refusait tout
+ce qui passait sous 1 : **sa moitié gauche ne faisait rien**, et rien ne le
+signalait.
+
+Trois boutons dans le Studio :
+
+| Bouton | Ce qu'il fait |
+|---|---|
+| **Tout afficher** | l'image entière tient dans l'emplacement, en un geste |
+| **Remplir** | le cadrage plein, celui d'origine |
+| **Miroir** | retourne la photo |
+
+Ce qui n'a pas changé : la photo ne peut pas sortir de son emplacement, plus
+grande ou plus petite que lui. Les bornes viennent du gabarit (`minScale`,
+`maxScale`), plus d'une valeur écrite en dur.
+
+Les décors créés avant cette version portaient encore `minScale: 0.5` : la
+migration de schéma les rattrape, sinon la moitié basse du curseur serait
+restée morte sur tout ce qui existait déjà.
+
+### L'accroche et le champ sont facultatifs
+
+Un décor peut n'avoir **aucun texte** : le cadre porte déjà ce qu'il y a à
+dire, et l'invité n'a rien à saisir. Laissez l'accroche et le libellé vides,
+les calques correspondants ne sont pas écrits — plutôt qu'écrits vides, ce
+qui réserverait une zone de la mise en page pour rien.
+
 ### Tout se règle, sauf l'essentiel
 
 Le formulaire d'un décor expose maintenant l'apparence : couleur et
@@ -401,7 +439,7 @@ npm run package:php
 Téléversez le nouveau zip **par-dessus**, sans toucher à `config.php` ni au
 dossier `donnees/`. Vos comptes, campagnes et badges restent.
 
-**Le schéma se met à jour tout seul.** Une installation déjà en service ne
+**Le schéma ET les données se mettent à jour tout seuls.** Une installation déjà en service ne
 repasse jamais par `install.php` : une colonne ajoutée après coup n'existerait
 donc que chez les nouveaux. Le numéro de version du schéma est gardé dans
 `donnees/version-schema.txt`, et la première requête après la mise à jour

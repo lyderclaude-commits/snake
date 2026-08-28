@@ -102,7 +102,7 @@ export const PhotoSlotLayer = z.object({
       z.object({ kind: z.literal('path'), d: z.string() }),
     ])
     .default({ kind: 'rect', radius: 0 }),
-  minScale: z.number().positive().default(0.5),
+  minScale: z.number().positive().default(0.2),
   maxScale: z.number().positive().default(4),
   /**
    * Autoriser la rotation. Désactivé par défaut : mougni ne l'offre pas, et

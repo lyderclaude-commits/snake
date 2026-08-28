@@ -474,6 +474,32 @@ function construire_gabarit(array $i): array
     };
 
     /**
+     * L'accroche et le champ à remplir sont FACULTATIFS.
+     *
+     * Un décor peut n'avoir aucun texte : le cadre porte déjà tout ce qu'il
+     * y a à dire, et l'invité n'a rien à saisir. Écrire un calque avec une
+     * valeur vide reviendrait à réserver une zone de la mise en page pour
+     * rien — et le pré-vol se plaindrait ensuite d'un texte introuvable.
+     */
+    $textes = [];
+    if (trim((string) ($i['accroche'] ?? '')) !== '') {
+        $textes[] = ['type' => 'text', 'id' => 'claim', 'value' => $i['accroche'],
+             'editable' => false, 'placeholder' => '', 'maxLength' => 40,
+             'uppercase' => in_array($i['disposition'], ['bandeau', 'facebook'], true),
+             'rect' => $t['accroche'],
+             'size' => $a['accroche_taille'], 'align' => $a['texte_align'],
+             'color' => $a['texte_couleur'], 'font' => 'display', 'autoShrink' => true];
+    }
+    if (trim((string) ($i['champ_libelle'] ?? '')) !== '') {
+        $textes[] = ['type' => 'text', 'id' => 'field', 'editable' => true,
+             'placeholder' => $i['champ_libelle'], 'value' => $i['champ_valeur'],
+             'maxLength' => 42, 'uppercase' => false,
+             'rect' => $t['champ'],
+             'size' => $a['champ_taille'], 'align' => $a['texte_align'],
+             'color' => $a['texte_couleur'], 'font' => 'body', 'autoShrink' => true];
+    }
+
+    /**
      * Le cadre est un calque FACULTATIF.
      *
      * Une page blanche n'en a pas : son décor tient au fond, à la forme de
@@ -485,7 +511,9 @@ function construire_gabarit(array $i): array
         ['type' => 'photoSlot', 'id' => 'photo',
          'rect' => $photo,
          'fit' => 'cover', 'mask' => $masque,
-         'minScale' => 0.5, 'maxScale' => 4, 'allowRotation' => false],
+         // 0,2 et non 0,5 : c'est ce qui permet de faire tenir une image
+         // entière dans un décor qui n'a pas ses proportions.
+         'minScale' => 0.2, 'maxScale' => 4, 'allowRotation' => false],
     ];
     if (($i['cadre_url'] ?? '') !== '') {
         $calques[] = ['type' => 'image', 'id' => 'frame', 'src' => $i['cadre_url'],
@@ -513,18 +541,7 @@ function construire_gabarit(array $i): array
         // scripts/verifier-gabarit.ts compare cette structure au vrai schéma.
         'layers' => [
             ...$calques,
-            ['type' => 'text', 'id' => 'claim', 'value' => $i['accroche'],
-             'editable' => false, 'placeholder' => '', 'maxLength' => 40,
-             'uppercase' => in_array($i['disposition'], ['bandeau', 'facebook'], true),
-             'rect' => $t['accroche'],
-             'size' => $a['accroche_taille'], 'align' => $a['texte_align'],
-             'color' => $a['texte_couleur'], 'font' => 'display', 'autoShrink' => true],
-            ['type' => 'text', 'id' => 'field', 'editable' => true,
-             'placeholder' => $i['champ_libelle'], 'value' => $i['champ_valeur'],
-             'maxLength' => 42, 'uppercase' => false,
-             'rect' => $t['champ'],
-             'size' => $a['champ_taille'], 'align' => $a['texte_align'],
-             'color' => $a['texte_couleur'], 'font' => 'body', 'autoShrink' => true],
+            ...$textes,
         ],
         // Le filigrane et le QR se déplacent, ne se retirent pas : ce sont
         // les deux informations qui font la différence avec une image.

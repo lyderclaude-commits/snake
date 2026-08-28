@@ -13,10 +13,12 @@ import type { SpecDispatch } from '@/store/useRenderSpec';
 export function CropToolbar({
   spec,
   dispatch,
+  minScale = 0.2,
   maxScale,
 }: {
   spec: RenderSpec;
   dispatch: SpecDispatch;
+  minScale?: number;
   maxScale: number;
 }) {
   const disabled = !spec.photo;
@@ -35,7 +37,7 @@ export function CropToolbar({
       <input
         id="zoom"
         type="range"
-        min={1}
+        min={minScale}
         max={maxScale}
         step={0.01}
         value={scale}

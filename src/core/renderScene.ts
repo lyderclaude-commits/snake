@@ -196,7 +196,10 @@ function drawPhotoSlot(
     return;
   }
 
-  const s = coverScale(iw, ih, slot.w, slot.h) * Math.max(1, photo.scale);
+  // Pas de plancher à 1 : sous cette valeur la photo est plus petite que son
+  // emplacement et le fond du décor apparaît autour. C'est ce qui permet de
+  // faire tenir une image entière dans un décor qui n'a pas ses proportions.
+  const s = coverScale(iw, ih, slot.w, slot.h) * Math.max(0.01, photo.scale);
   const dw = iw * s;
   const dh = ih * s;
   const cx = slot.x + slot.w / 2 + photo.x * W;

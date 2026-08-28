@@ -203,10 +203,10 @@ if ($post) {
         }
     }
 
+    // L'accroche et le libellé du champ sont facultatifs : un décor peut se
+    // passer de texte, le cadre porte déjà ce qu'il y a à dire.
     if (!$erreur && $valeurs['titre'] === '') {
         $erreur = 'Donnez un titre à votre décor.';
-    } elseif (!$erreur && $valeurs['accroche'] === '') {
-        $erreur = 'Indiquez l’accroche affichée sur le badge.';
     } elseif (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['disposition'] !== 'vierge') {
         // La page blanche est le seul gabarit qui se passe de cadre : son
         // décor tient au fond, à la fenêtre photo et au texte.
@@ -227,8 +227,8 @@ if ($post) {
                 'disposition' => $valeurs['disposition'],
                 'cadre_url' => $valeurs['cadre_url'],
                 'accroche' => $valeurs['accroche'],
-                'champ_libelle' => $valeurs['champ_libelle'] ?: 'Ton prénom',
-                'champ_valeur' => $valeurs['champ_valeur'] ?: 'Kossi',
+                'champ_libelle' => $valeurs['champ_libelle'],
+                'champ_valeur' => $valeurs['champ_valeur'],
                 'redirection' => $valeurs['redirection'],
                 'redirection_libelle' => $valeurs['redirection_libelle'],
                 'legende' => $valeurs['legende'],

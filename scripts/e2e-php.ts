@@ -200,6 +200,43 @@ const run = async () => {
   // Playwright et bloque la suite. On le libère explicitement.
   await fichier?.delete().catch(() => {});
 
+  /**
+   * Le zoom libre : sous 1, la photo est plus petite que son emplacement.
+   *
+   * C'est ce qui permet de faire tenir une image entière dans un décor qui
+   * n'a pas ses proportions. Le curseur descendait jusqu'à 0,5 alors que le
+   * cadrage refusait tout ce qui passait sous 1 : sa moitié gauche ne
+   * faisait rien, et personne ne pouvait le voir.
+   */
+  console.log('\n━━ 3 bis. Zoom libre ━━');
+  const bornesZoom = await p.evaluate(`
+    (() => { const z = document.getElementById('zoom');
+             return { min: Number(z.min), max: Number(z.max) }; })()
+  `) as { min: number; max: number };
+  ok('le curseur descend sous le cadrage « remplir »', bornesZoom.min < 1,
+     `${bornesZoom.min} → ${bornesZoom.max}`);
+
+  await p.click('#ajuster');
+  await p.waitForTimeout(600);
+  const apresAjuste = Number(await p.inputValue('#zoom'));
+  ok('« Tout afficher » réduit sous 1', apresAjuste < 1 && apresAjuste >= bornesZoom.min,
+     `${Math.round(apresAjuste * 100)} %`);
+  ok('le facteur est annoncé en clair',
+     /%/.test(await p.evaluate("document.getElementById('zoom-valeur').textContent")));
+
+  await p.evaluate(`
+    (() => { const z = document.getElementById('zoom');
+             z.value = z.min; z.dispatchEvent(new Event('input', { bubbles: true })); })()
+  `);
+  await p.waitForTimeout(500);
+  ok('le minimum du curseur est atteignable',
+     Math.abs(Number(await p.inputValue('#zoom')) - bornesZoom.min) < 0.001,
+     await p.inputValue('#zoom'));
+
+  await p.click('#recentrer');
+  await p.waitForTimeout(500);
+  ok('« Remplir » revient au cadrage plein', Number(await p.inputValue('#zoom')) === 1);
+
   console.log('\n━━ 4. La page du QR ━━');
   let r = await p.goto(`${BASE}/index.php?p=qr&jeton=${jeton}`, { waitUntil: 'domcontentloaded' });
   ok('la page du QR répond', r?.status() === 200, `${r?.status()}`);
@@ -416,6 +453,39 @@ const run = async () => {
   ok('« réglages du gabarit » restaure les valeurs d’usine',
      (await p.inputValue('#r-qr_position')) === 'bottom-left'
      && Math.abs(Number(await p.inputValue('#r-bloc_y')) - 0.8) < 0.011);
+
+  /* ---- un décor sans aucun texte ---- */
+
+  const titreMuet = `Sans texte ${marque}`;
+  await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1100);
+  await p.selectOption('#disposition', 'facebook');
+  await p.waitForTimeout(1000);
+  await p.selectOption('#cadre_fourni', 'facebook.png');
+  await p.fill('#titre', titreMuet);
+  await p.fill('#accroche', '');
+  await p.fill('#champ_libelle', '');
+  await p.fill('#redirection', 'https://wakabileguide.com/p/sans-texte');
+  await p.waitForTimeout(800);
+  await p.click('#form-decor button[type=submit]');
+  await p.waitForLoadState('domcontentloaded');
+  ok('un décor sans accroche ni champ est accepté',
+     /créé|enregistré/i.test(await p.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await p.locator('.msg.err').first().innerText().catch(() => '')).slice(0, 60));
+
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreMuet)}`, { waitUntil: 'domcontentloaded' });
+  await p.locator(`.carte:has-text("${titreMuet}") form[action*="p=statut"] button:has-text("Publier")`).first()
+    .click().catch(() => {});
+  await p.waitForLoadState('domcontentloaded');
+  const lienMuet = await p.locator(`.carte:has-text("${titreMuet}") a:has-text("Voir en ligne")`).first()
+    .getAttribute('href').catch(() => null);
+  if (lienMuet) {
+    await p.goto(lienMuet, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1200);
+    ok('son Studio n’affiche aucun champ à remplir',
+       (await p.locator('input[id^=champ-]').count()) === 0);
+    ok('et il s’ouvre quand même', (await p.locator('#toile').count()) > 0);
+  }
 
   /* ---- la page blanche : aucun cadre, tout au choix ---- */
 

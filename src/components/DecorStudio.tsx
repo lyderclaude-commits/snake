@@ -73,6 +73,10 @@ export function DecorStudio({ tpl, decorId, frameUrl, signedIn, stats }: StudioP
     };
   }, [decorId, spec.photo, token, tpl.qr.enabled, dispatch]);
 
+  const minScale = useMemo(() => {
+    const slot = tpl.layers.find((l) => l.type === 'photoSlot');
+    return slot && slot.type === 'photoSlot' ? slot.minScale : 0.2;
+  }, [tpl]);
   const maxScale = useMemo(() => {
     const slot = tpl.layers.find((l) => l.type === 'photoSlot');
     return slot && slot.type === 'photoSlot' ? slot.maxScale : 4;
@@ -156,7 +160,7 @@ export function DecorStudio({ tpl, decorId, frameUrl, signedIn, stats }: StudioP
 
         <div className="space-y-4">
           <PhotoDropzone onPhoto={setPhoto} hasPhoto={!!spec.photo} />
-          <CropToolbar spec={spec} dispatch={dispatch} maxScale={maxScale} />
+          <CropToolbar spec={spec} dispatch={dispatch} minScale={minScale} maxScale={maxScale} />
           <TextPanel tpl={tpl} spec={spec} dispatch={dispatch} />
           <ExportBar
             tpl={tpl}

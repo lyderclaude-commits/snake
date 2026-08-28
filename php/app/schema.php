@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function assurer_schema(): void
 {
@@ -50,6 +50,49 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         try {
             $pdo->exec($sql);
         } catch (PDOException) {
+        }
+    }
+
+    migrer_donnees($pdo);
+}
+
+/**
+ * Les rattrapages qui portent sur le CONTENU, pas sur la forme des tables.
+ *
+ * v3 — le dézoom sous le cadrage « cover » devient possible. Les décors déjà
+ * enregistrés portent encore `minScale: 0.5` dans leur gabarit : sans ce
+ * passage, la moitié basse du curseur resterait morte sur tout ce qui a été
+ * créé avant la mise à jour, et l'invité ne pourrait toujours pas faire
+ * tenir une image entière.
+ *
+ * Idempotent par construction : on ne touche que ce qui dépasse encore.
+ */
+function migrer_donnees(PDO $pdo): void
+{
+    try {
+        $decors = $pdo->query('SELECT id, gabarit FROM decors')->fetchAll();
+    } catch (PDOException) {
+        return;
+    }
+
+    $maj = $pdo->prepare('UPDATE decors SET gabarit = ? WHERE id = ?');
+    foreach ($decors as $d) {
+        $g = json_decode((string) $d['gabarit'], true);
+        if (!is_array($g) || !isset($g['layers'])) {
+            continue;
+        }
+        $change = false;
+        foreach ($g['layers'] as $k => $l) {
+            if (($l['type'] ?? '') === 'photoSlot' && (float) ($l['minScale'] ?? 1) > 0.2) {
+                $g['layers'][$k]['minScale'] = 0.2;
+                $change = true;
+            }
+        }
+        if ($change) {
+            $maj->execute([
+                json_encode($g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                $d['id'],
+            ]);
         }
     }
 }

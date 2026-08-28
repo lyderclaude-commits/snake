@@ -88,14 +88,18 @@ function reducer(tpl: DecorTemplate) {
       case 'setZoom': {
         if (!state.photo) return state;
         const slot = tpl.layers.find((l) => l.type === 'photoSlot');
-        const max =
-          slot && slot.type === 'photoSlot' ? slot.maxScale : 4;
+        // Les deux bornes viennent du gabarit. Le plancher était à 1 : sous
+        // cette valeur la photo est simplement plus petite que son
+        // emplacement, ce qui est le seul moyen d'y faire tenir une image
+        // entière dont les proportions ne sont pas celles du décor.
+        const max = slot && slot.type === 'photoSlot' ? slot.maxScale : 4;
+        const min = slot && slot.type === 'photoSlot' ? slot.minScale : 0.2;
         const next =
           action.type === 'zoom'
             ? state.photo.scale * action.factor
             : action.scale;
         return withClamp(
-          { ...state, photo: { ...state.photo, scale: Math.min(max, Math.max(1, next)) } },
+          { ...state, photo: { ...state.photo, scale: Math.min(max, Math.max(min, next)) } },
           tpl,
         );
       }
