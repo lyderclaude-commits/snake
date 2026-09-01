@@ -62,32 +62,56 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
      * l'équipe, son catalogue contient déjà un accès au décor en ligne :
      * le lien public est donc redondant, et il disparaît.
      */
+    /**
+     * Le menu suit le RÔLE, et se range par intention.
+     *
+     * L'administration tenait dans un seul déroulant. À dix entrées, il
+     * était devenu une liste où l'on cherche : « Relecture » et
+     * « Sauvegardes » y voisinaient sans rapport, et il fallait relire les
+     * dix pour en trouver une. Trois groupes courts se parcourent d'un
+     * coup d'œil parce que chacun répond à une question — qu'est-ce que je
+     * publie, à qui je parle, comment tourne la machine.
+     *
+     * Deux destinations restent HORS des groupes, et c'est délibéré :
+     *
+     *  - le tableau de bord, parce qu'il est le point de départ et qu'un
+     *    point de départ ne se cherche pas dans un tiroir ;
+     *  - le contrôle d'entrée, parce qu'il s'utilise debout à une porte,
+     *    sur un téléphone, avec une file qui attend. Deux gestes de plus
+     *    pour l'ouvrir, ce sont deux gestes répétés à chaque soirée.
+     */
     $liens = match ($me['role'] ?? '') {
-        // Cinq destinations d'administration alignées dans la barre la
-        // remplissaient d'un bout à l'autre. Elles tiennent maintenant dans
-        // un seul groupe qui se déplie ; les notifications et la déconnexion
-        // restent dehors, ce sont les deux gestes qu'on ne veut pas chercher.
         'equipe' => [
-            ['groupe', 'Administration', [
-                ['?p=admin',     'Tableau de bord'],
-                ['?p=catalogue', 'Décors'],
-                ['?p=relecture', 'Relecture'],
-                ['?p=scan',      'Contrôle d’entrée'],
-                ['?p=comptes',   'Comptes'],
-                ['?p=reglages',  'Réglages'],
-                ['?p=liens',     'Liens courts'],
-                ['?p=diffusion', 'Notifications push'],
-                ['?p=blog-admin', 'Blog'],
-                ['?p=sauvegardes', 'Sauvegardes'],
+            ['?p=admin', 'Tableau de bord'],
+            ['groupe', 'Contenus', [
+                ['?p=catalogue',      'Décors'],
+                ['?p=relecture',      'Relecture des décors'],
+                ['?p=blog-admin',     'Le blog'],
+                ['?p=blog-relecture', 'Relecture du blog'],
             ]],
-            ['?p=profil', 'Mon profil'],
+            ['groupe', 'Audience', [
+                ['?p=comptes',   'Comptes'],
+                ['?p=regie',     'Régie e-mail'],
+                ['?p=diffusion', 'Notifications push'],
+                ['?p=liens',     'Liens courts'],
+            ]],
+            ['?p=scan', 'Entrée'],
+            ['groupe', 'Système', [
+                ['?p=reglages',    'Réglages'],
+                ['?p=sauvegardes', 'Sauvegardes'],
+                ['?p=profil',      'Mon profil'],
+            ]],
         ],
         'partenaire' => [
-            ['?p=decors',     'Le catalogue'],
-            ['?p=partenaire', 'Mes campagnes'],
-            ['?p=liens',      'Liens courts'],
-            ['?p=blog',       'Le blog'],
-            ['?p=profil',     'Mon profil'],
+            ['?p=partenaire', 'Tableau de bord'],
+            ['groupe', 'Promotion', [
+                ['?p=liens',      'Liens courts'],
+                ['?p=diffusion',  'Notifications push'],
+                ['?p=regie',      'Régie e-mail'],
+                ['?p=blog-admin', 'Mes articles'],
+            ]],
+            ['?p=decors', 'Le catalogue'],
+            ['?p=profil', 'Mon profil'],
         ],
         'participant' => [
             ['?p=decors', 'Les décors'],
@@ -100,23 +124,58 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
             ['?p=blog',   'Le blog'],
         ],
     };
+
     /**
-     * Une entrée qui n'existe que si l'offre la donne.
+     * Le groupe « Promotion » ne montre que ce que l'offre donne.
      *
      * Montrer un lien qui mène à « cette page vient avec une autre offre »
      * est une façon de vendre ; le montrer À CHAQUE PAGE en est une de
      * lasser. L'organisateur qui y a droit le voit, les autres le
-     * découvrent sur la page des offres.
+     * découvrent sur la page des offres — et un groupe qui se viderait
+     * entièrement disparaît, plutôt que de rester ouvert sur rien.
      */
-    if (($me['role'] ?? '') === 'partenaire' && capacite($me, 'telegram_push')) {
-        array_splice($liens, 3, 0, [['?p=diffusion', 'Notifications push']]);
+    if (($me['role'] ?? '') === 'partenaire') {
+        foreach ($liens as $i => $entree) {
+            if (($entree[0] ?? '') !== 'groupe' || ($entree[1] ?? '') !== 'Promotion') {
+                continue;
+            }
+            $garde = [];
+            foreach ($entree[2] as $sous) {
+                $besoin = match ($sous[0]) {
+                    '?p=diffusion' => 'telegram_push',
+                    '?p=regie' => 'regie',
+                    default => null,
+                };
+                if ($besoin === null || capacite($me, $besoin)) {
+                    $garde[] = $sous;
+                }
+            }
+            if ($garde) {
+                $liens[$i][2] = $garde;
+            } else {
+                unset($liens[$i]);
+            }
+        }
+        $liens = array_values($liens);
     }
+
     $ici = (string) ($_GET['p'] ?? 'accueil');
 
-    /** Un lien de menu, marqué s'il désigne la page courante. */
-    $lien = function (string $cible, string $nom) use ($ici): string {
-        $actif = str_starts_with($cible, '?p=' . $ici);
-        return '<a href="' . e(url($cible)) . '"' . ($actif ? ' aria-current="page"' : '') . '>'
+    /**
+     * Un lien de menu, marqué s'il désigne la page courante.
+     *
+     * « Désigner » veut dire la page elle-même OU une de ses sous-pages :
+     * `?p=regie` reste marqué pendant qu'on rédige une campagne
+     * (`regie-ecrire`, `regie-campagne`), sinon le repère disparaîtrait au
+     * moment précis où l'on a besoin de savoir où l'on est. Le tiret est
+     * exigé : sans lui, `?p=decors` se marquerait sur `?p=decor`.
+     */
+    $courante = function (string $cible) use ($ici): bool {
+        $p = substr($cible, 3);
+        return $ici === $p || str_starts_with($ici, $p . '-');
+    };
+    $lien = function (string $cible, string $nom) use ($courante): string {
+        return '<a href="' . e(url($cible)) . '"' . ($courante($cible) ? ' aria-current="page"' : '') . '>'
              . e($nom) . '</a>';
     };
     ?>
@@ -142,7 +201,7 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
               // haut de la page qu'on vient d'ouvrir.
               $dedans = false;
               foreach ($sous as [$c, ]) {
-                  $dedans = $dedans || str_starts_with($c, '?p=' . $ici);
+                  $dedans = $dedans || $courante($c);
               } ?>
             <details class="deroulant">
               <summary<?= $dedans ? ' aria-current="true"' : '' ?>>

@@ -96,9 +96,7 @@ if ($page === 'soumettre') {
     }
 
     // La file d'attente ne se surveille pas toute seule.
-    foreach (equipe() as $membre) {
-        notifier($membre['id'], 'relecture', 'Un décor attend votre relecture', $d['titre'], '?p=relecture');
-    }
+    notifier_equipe('relecture', 'Un décor attend votre relecture', $d['titre'], '?p=relecture');
     rediriger('?p=partenaire&ok=' . urlencode('Soumis : réponse sous 24 h ouvrées.'));
 }
 

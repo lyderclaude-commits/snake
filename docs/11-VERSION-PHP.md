@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **260 scénarios, 260 réussis**
+Les deux ont été vérifiés de bout en bout : **305 scénarios, 305 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +110,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 260 scénarios, dans un vrai navigateur
+npm run php:e2e          # 305 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, une sauvegarde restaurée, le chiffrement push
 ```
 
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 260 scénarios
+### Les 305 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -149,7 +149,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **La page blanche** | Son fond n'apparaît que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **La fenêtre photo** | Chaque gabarit part avec l'ouverture de son cadre, un cadre 4:5 téléversé impose son format et son ouverture, « Relever sur le cadre » retrouve les mêmes valeurs après qu'on les a déréglées |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
-| **Le menu de l'équipe** | Dix destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
+| **Le menu de l'équipe** | Trois groupes nommés, aucun de plus de quatre destinations, tableau de bord et contrôle d'entrée hors des groupes ; sur téléphone tout est atteignable sans second tiroir |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
@@ -163,6 +163,9 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **L'espace profil** | Le nom et le téléphone se corrigent sans passer par l'équipe, un numéro qui n'en est pas un est refusé, le mot de passe ne change **pas** sans l'ancien, la suppression exige de recopier son adresse exactement — et le compte supprimé ne se reconnecte plus. Un compte de l'équipe n'a pas de bouton de suppression |
 | **Les notifications push** | La clé publique VAPID est servie à la page, `sw.js` répond à la racine, un abonnement est enregistré, une adresse qui n'est pas en `https` est refusée, le désabonnement efface la ligne — et un organisateur **sans l'offre** trouve un écran d'explication au lieu d'un refus sec, avec l'offre qui l'ouvre |
 | **Le blog** | Un brouillon renvoie **404** à un visiteur ; publié, il se lit sans compte ; intertitres, gras, listes, citation et liens sortants sont mis en forme ; **une balise saisie reste du texte et ne s'exécute pas** ; l'adresse d'un article publié n'est plus modifiable ; un organisateur n'écrit pas sur le blog |
+| **Le blog proposé** | Un organisateur propose, l'article n'est **pas** public, il ne se modifie plus, la rédaction le renvoie avec un motif obligatoire, l'auteur le voit et re-soumet, il paraît signé de son nom — et il ne peut plus le retirer seul une fois en ligne |
+| **La régie e-mail** | Sans l'offre, un écran d'explication et aucun lien dans le menu ; un lien hors domaine Wakabi est refusé à un organisateur, qui ne peut pas envoyer lui-même ; l'équipe prépare et envoie, un **vrai serveur SMTP** reçoit ; **chaque message porte son lien de désabonnement**, il s'ouvre sans être connecté, un clic suffit, et le désabonné ne reçoit plus rien à la campagne suivante |
+| **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -941,6 +944,165 @@ lien exécutable. Les liens sortants portent `rel="noopener nofollow"`.
   corrigé six mois plus tard remonterait en tête de liste comme s'il était
   neuf.
 - Les **lectures** sont comptées une fois par visiteur et par article.
+
+---
+
+## La régie publicitaire — `?p=regie`
+
+Un organisateur qui a rempli une salle a constitué quelque chose de précieux :
+la liste des gens qui sont venus. Sans cet écran, cette liste dort dans la base
+et il repart de zéro à chaque événement. C'est la différence entre un
+générateur de badges et un outil de fidélisation.
+
+| Qui | Ce qu'il peut viser |
+|---|---|
+| **L'équipe** | Tout le monde, les organisateurs, les participants, ou une ville. Et une liste collée. |
+| **Un organisateur** (offre Croissance et au-delà) | Les invités de ses propres campagnes, ou une liste qu'il apporte. |
+
+Un organisateur ne voit **jamais** la base du guide : elle s'est constituée sur
+la promesse de nouvelles du guide, et la louer la brûlerait en trois campagnes.
+
+### Trois décisions structurent tout
+
+**1. Toute campagne d'organisateur passe par l'équipe.** C'est ce que veut dire
+« régie » : une maison qui vend de l'espace publicitaire relit ce qui part sous
+son nom. C'est aussi la seule protection réelle du domaine d'envoi — un message
+signalé comme indésirable abîme la délivrabilité de **tous** les envois du
+guide, y compris les liens de confirmation d'adresse. Le circuit est celui des
+décors, au mot près : brouillon → en relecture → prête → envoyée, ou renvoyée
+avec un motif.
+
+**2. La liste des destinataires est figée avant le premier envoi.** Un mutualisé
+coupe un script à trente secondes ; une boucle de deux mille messages finirait
+à la moitié, sans qu'on sache laquelle. Chaque destinataire est une **ligne qui
+porte son propre état** : une reprise sait exactement où elle s'est arrêtée, et
+personne ne reçoit deux fois. L'envoi part par lots de 25, à la main ou par le
+cron :
+
+```
+*/5 * * * * curl -s "https://boost.wakabileguide.com/index.php?p=regie-cron&cle=VOTRE_CLE" >/dev/null
+```
+
+La clé est la même que celle des sauvegardes, affichée dans Administration →
+Sauvegardes, et comparée en temps constant.
+
+**3. Le désabonnement est en un clic, et il est global.** Le lien est ajouté
+automatiquement au bas de chaque message, dans la seule fonction par laquelle
+ils passent tous — il ne se retire pas. Un désabonnement vaut pour toujours et
+pour tout le monde : quelqu'un qui part ne réapparaît dans aucune campagne, ni
+celle du guide ni celle d'un organisateur. La page s'ouvre **sans être
+connecté**, parce que le lien est cliqué depuis une boîte mail, souvent sur un
+autre appareil — et parce que quelqu'un qui n'arrive pas à se désabonner clique
+sur « signaler comme indésirable », le seul geste dont on ne se relève pas.
+
+### Le quota
+
+`emails_par_mois` est une ligne d'offre comme les autres, opposée **au moment de
+soumettre** — le dernier instant où l'on peut encore réduire la cible sans avoir
+dérangé personne.
+
+| Offre | E-mails par mois |
+|---|---|
+| Découverte, Impact | — |
+| Croissance | 2 000 |
+| Mouvement | sans limite |
+
+> Ce découpage suit celui de `diffusion` et `telegram_push`, qui commencent déjà
+> à Croissance. Il se change en une ligne de `FORMULES`, dans
+> `php/app/auth.php` : c'est la seule table à toucher, la vitrine et les écrans
+> la lisent.
+
+---
+
+## Le blog : proposé par les organisateurs, publié par la rédaction
+
+Un organisateur écrit lui-même et **propose** ; l'équipe **décide**. C'est le
+même circuit que les décors, avec les mêmes états et le même vocabulaire —
+brouillon, en relecture, à corriger, refusé, publié — parce que c'est le même
+geste. `transition_permise()` est d'ailleurs réutilisée telle quelle : deux
+tables de règles pour un seul circuit, c'est une des deux qu'on oubliera de
+corriger.
+
+| Étape | Ce qui se passe |
+|---|---|
+| **Écrire** | L'auteur enregistre autant de fois qu'il veut. Rien n'est visible. |
+| **Proposer** | L'article part chez la rédaction et **ne se modifie plus** — sinon quelqu'un approuverait un texte qui n'est déjà plus celui-là. |
+| **Décider** | Publier, ou renvoyer avec un motif obligatoire. L'auteur est prévenu par notification **et** par e-mail. |
+| **Publié** | Il paraît sur le blog et sur la page d'accueil, **signé du nom de l'organisateur**. |
+
+- Un article **non publié** est visible de son auteur et de la rédaction, par
+  son adresse. Un visiteur reçoit un 404.
+- Un article **en ligne** ne se retire que par la rédaction : son adresse a pu
+  être partagée, et son auteur ne décide pas seul de casser les liens des
+  autres.
+- Le statut n'est **jamais** un champ de formulaire : il appartient à
+  `article_transition()`. Le laisser entrer par la création rouvrirait
+  exactement le trou que la modération sert à fermer — un auteur qui poste
+  `statut=publie`.
+
+L'article sponsorisé vendu avec l'offre Mouvement reste un **service** : la
+rédaction peut écrire à la place d'un organisateur. Mais celui qui veut écrire
+lui-même n'a plus besoin d'attendre qu'on ait le temps.
+
+**Trois articles sont installés** avec le contenu de démonstration : deux
+publiés, un en attente de relecture signé de l'organisatrice fictive — pour que
+la file de relecture montre à quoi elle sert dès l'installation.
+
+---
+
+## Les écrans, rangés par intention
+
+L'administration tenait dans un seul déroulant. À dix entrées, c'était devenu
+une liste où l'on cherche : « Relecture » et « Sauvegardes » y voisinaient sans
+rapport, et il fallait relire les dix pour en trouver une.
+
+**Trois groupes courts**, chacun répondant à une question :
+
+| Groupe | La question |
+|---|---|
+| **Contenus** | Qu'est-ce que je publie ? *(décors, relecture, blog, relecture du blog)* |
+| **Audience** | À qui je parle ? *(comptes, régie e-mail, notifications push, liens courts)* |
+| **Système** | Comment tourne la machine ? *(réglages, sauvegardes, mon profil)* |
+
+Deux destinations restent **hors** des groupes, et c'est délibéré : le tableau
+de bord, parce qu'un point de départ ne se cherche pas dans un tiroir ; et le
+**contrôle d'entrée**, parce qu'il s'utilise debout à une porte, sur un
+téléphone, avec une file qui attend — deux gestes de plus, ce sont deux gestes
+répétés à chaque soirée.
+
+Un organisateur a le même principe, en plus court : **Tableau de bord ·
+Promotion ▾ · Le catalogue · Mon profil**. Le groupe Promotion ne montre que ce
+que l'offre donne, et disparaît entièrement s'il se viderait.
+
+### Sur téléphone
+
+Les groupes ne deviennent pas des tiroirs dans un tiroir — personne n'en veut.
+Ils deviennent de simples **intitulés** au-dessus de leurs liens : tout est
+atteignable d'un geste, et une liste de quatorze liens reste lisible.
+
+### Le tableau de bord
+
+Il sert deux usages : décider, et repartir ailleurs. Le second est le plus
+fréquent — on l'ouvre pour aller quelque part. Il est donc rangé dans cet ordre :
+
+1. **Ce qui attend une décision** — décors, articles, campagnes e-mail, envois
+   en file, comptes suspendus. Une file vide **disparaît** : une carte à zéro
+   prend la place d'une carte à trois et donne l'habitude de ne plus regarder.
+2. **Les sept derniers jours**, avec la variation.
+3. **Où aller** — toutes les destinations, dans les mêmes trois familles que la
+   barre. On n'apprend le rangement qu'une fois.
+4. Puis l'analyse : la boucle, les inscrits, les offres, le rythme, les décors
+   qui portent.
+
+Les cartes sont **appariées par hauteur** autant que par sujet : « Les offres »
+et « Derniers inscrits » côte à côte laissaient un vide d'un demi-écran, parce
+que l'une compte quatre lignes et l'autre six. Un tableau de bord troué se lit
+comme un tableau de bord cassé.
+
+Côté organisateur, le **détail de l'offre se replie** : les quatre jauges
+servent tous les jours, la liste des huit lignes incluses se lit une fois le
+jour où l'on souscrit. Dépliée en permanence, elle repoussait les campagnes —
+la raison même d'ouvrir cet écran — sous un écran et demi de texte.
 
 ---
 

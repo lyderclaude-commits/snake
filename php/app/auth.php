@@ -24,10 +24,12 @@ const KORIS_PAR_SCAN = 50;
  *
  * Trois natures de lignes, et il faut les distinguer honnêtement :
  *
- *  - les COMPTEURS (`campagnes`, `telechargements`, `liens_courts`) :
- *    -1 signifie sans limite, et ils sont réellement opposables ;
+ *  - les COMPTEURS (`campagnes`, `telechargements`, `liens_courts`,
+ *    `emails_par_mois`) : -1 signifie sans limite, et ils sont réellement
+ *    opposables ;
  *  - les CAPACITÉS (`filigrane`, `koris`, `redirection`, `ciblage`, `api`,
- *    `telegram_push`) : le produit les applique lui-même, à la ligne près ;
+ *    `telegram_push`, `regie`) : le produit les applique lui-même, à la
+ *    ligne près ;
  *  - les SERVICES (`diffusion`, `article`,
  *    `account_manager`) : ils demandent une intervention humaine ou un
  *    système extérieur. Le produit ne peut pas les « exécuter » ; il dit
@@ -43,6 +45,7 @@ const FORMULES = [
     'decouverte' => [
         'nom' => 'Découverte', 'prix' => 0, 'lancement' => 0,
         'campagnes' => 1, 'telechargements' => 50, 'liens_courts' => 0,
+        'emails_par_mois' => 0, 'regie' => false,
         'sans_filigrane' => false, 'koris' => false, 'redirection' => false,
         'stats' => 'base', 'ciblage' => false,
         'diffusion' => false, 'telegram_push' => false, 'api' => false,
@@ -51,6 +54,7 @@ const FORMULES = [
     'impact' => [
         'nom' => 'Impact', 'prix' => 5000, 'lancement' => 2500,
         'campagnes' => 3, 'telechargements' => 500, 'liens_courts' => 20,
+        'emails_par_mois' => 0, 'regie' => false,
         'sans_filigrane' => true, 'koris' => true, 'redirection' => true,
         'stats' => 'completes', 'ciblage' => false,
         'diffusion' => false, 'telegram_push' => false, 'api' => false,
@@ -59,6 +63,7 @@ const FORMULES = [
     'croissance' => [
         'nom' => 'Croissance', 'prix' => 12000, 'lancement' => 6000,
         'campagnes' => 5, 'telechargements' => 2000, 'liens_courts' => 100,
+        'emails_par_mois' => 2000, 'regie' => true,
         'sans_filigrane' => true, 'koris' => true, 'redirection' => true,
         'stats' => 'completes', 'ciblage' => true,
         'diffusion' => true, 'telegram_push' => true, 'api' => false,
@@ -67,6 +72,7 @@ const FORMULES = [
     'mouvement' => [
         'nom' => 'Mouvement', 'prix' => 30000, 'lancement' => 15000,
         'campagnes' => -1, 'telechargements' => -1, 'liens_courts' => -1,
+        'emails_par_mois' => -1, 'regie' => true,
         'sans_filigrane' => true, 'koris' => true, 'redirection' => true,
         'stats' => 'completes', 'ciblage' => true,
         'diffusion' => true, 'telegram_push' => true, 'api' => true,
@@ -89,6 +95,10 @@ const OFFRE_LIGNES = [
         'Remis à zéro le 1er de chaque mois. Au-delà, vos invités ne peuvent plus télécharger.'],
     'liens_courts' => ['Liens courts', 'compteur',
         'Des adresses courtes et traçables, avec le nombre de clics.'],
+    'emails_par_mois' => ['E-mails marketing', 'compteur',
+        'Remis à zéro le 1er de chaque mois. Chaque destinataire d’une campagne compte pour un.'],
+    'regie' => ['Régie publicitaire', 'capacite',
+        'Écrire à vos invités ou à votre propre liste, depuis le guide. Chaque campagne est relue par l’équipe avant de partir.'],
     'sans_filigrane' => ['Badges sans filigrane Wakabi', 'capacite',
         'Le filigrane discret disparaît des badges de vos invités.'],
     'koris' => ['QR Code Koris', 'capacite',

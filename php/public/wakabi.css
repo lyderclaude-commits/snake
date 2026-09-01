@@ -205,16 +205,33 @@ a{color:var(--primary-d);text-underline-offset:3px}
   .menu[open] > nav a:not(.bouton):hover,
   .menu[open] > nav a:not(.bouton)[aria-current]{background:var(--bg2)}
   .menu[open] > nav .sep{width:auto;height:1px;margin:6px 6px}
-  /* Dans le panneau du téléphone, le groupe s'efface : plus de bouton, plus
-     de volet flottant, ses liens rejoignent simplement la liste.
+  /* Dans le panneau du téléphone, le groupe ne se déplie plus : ses liens
+     rejoignent la liste, sous un simple intitulé. Le rendre cliquable
+     obligerait à deux gestes pour atteindre un lien, dans un panneau qui
+     tient déjà tout entier à l'écran — et le supprimer laisserait une
+     liste de quatorze liens où plus rien ne se repère.
      `::details-content` est le pseudo-élément par lequel Chrome masque un
      <details> replié ; sans lui, le volet reste invisible quoi qu'on écrive
      sur ses enfants. */
-  .deroulant > summary{display:none}
+  .deroulant > summary{
+    display:block;pointer-events:none;cursor:default;
+    font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text3);padding:12px 12px 5px;
+  }
+  .deroulant > summary svg{display:none}
   .deroulant::details-content{content-visibility:visible;block-size:auto}
   .deroulant > .volet{
     position:static;display:flex;flex-direction:column;gap:1px;
     min-width:0;padding:0;background:none;border:0;box-shadow:none;
+  }
+  /* Un filet à CHAQUE changement de nature, dans les deux sens : un groupe
+     qui suit un lien, et un lien qui suit un groupe. Sans le second,
+     « Entrée » se lisait comme la dernière entrée d'« Audience » — alors
+     que c'est justement le lien qu'on a sorti des groupes exprès. */
+  .deroulant + .deroulant > summary,
+  a + .deroulant > summary{border-top:1px solid var(--border);margin-top:6px}
+  .menu[open] > nav .deroulant + a:not(.bouton){
+    border-top:1px solid var(--border);margin-top:6px;padding-top:14px;
   }
   .menu[open] > nav form{display:block;margin:4px 4px 0}
   .menu[open] > nav .bouton{width:100%;justify-content:center;margin:4px 0 0}
@@ -853,3 +870,74 @@ input[type=file].fichier-natif{
 /* Une étiquette d'état dans un tableau : « En ligne » se lit d'un coup
    d'œil, « Brouillon » reste discret. */
 .etiquette.ok{border-color:#A7E3D2;background:#ECFDF7;color:#046C4E}
+
+/* ============ la régie e-mail ============ */
+
+/* Trois états de plus, dans la même grammaire que ceux des décors : on
+   apprend une fois à lire une pastille, pas deux. */
+.pastille.prete{background:#EFF6FF;color:#1D4ED8}
+.pastille.envoi{background:#FFF7ED;color:#C2410C}
+.pastille.envoye{background:#ECFDF5;color:#047857}
+
+/* Une colonne de rédaction plus large que `.etroit` — on écrit un message,
+   pas un formulaire de connexion — mais plus étroite que la pleine page :
+   un champ de texte de 1200 px se relit très mal. */
+.etroit-large{max-width:860px}
+
+/* L'aperçu du message reprend EXACTEMENT le gabarit de `gabarit_courriel()`.
+   Un aperçu qui ne ressemblerait pas au message reçu serait pire qu'aucun
+   aperçu : on validerait quelque chose d'autre. */
+.apercu-courriel{
+  border:1px solid var(--border);border-radius:var(--r16);overflow:hidden;background:#fff;
+  max-width:560px;box-shadow:var(--ombre);
+}
+.apercu-courriel .entete-courriel{
+  background:#0F172A;color:#fff;padding:14px 20px;font-weight:800;letter-spacing:.02em;font-size:.86rem;
+}
+.apercu-courriel .corps-courriel{padding:20px;color:#0F172A}
+.apercu-courriel h4{margin:0 0 12px;font-size:1.15rem;line-height:1.3;font-family:var(--display)}
+.apercu-courriel p{margin:0 0 12px;line-height:1.6;font-size:.92rem}
+.apercu-courriel .faux-bouton{
+  display:inline-block;background:#2563EB;color:#fff;font-weight:700;
+  padding:11px 20px;border-radius:10px;font-size:.9rem;
+}
+
+/* ============ les raccourcis du tableau de bord ============
+
+   Une grille de destinations, rangée dans les mêmes familles que la barre :
+   on n'apprend le rangement qu'une fois. Les cartes sont plates — sans
+   ombre — parce qu'elles ne sont pas des données, seulement des portes :
+   leur donner le même relief que les indicateurs mettrait sur le même plan
+   ce qu'on lit et ce sur quoi on clique. */
+
+.raccourcis{align-items:start;gap:14px}
+.raccourcis .pas{
+  font-family:var(--display);font-size:.68rem;font-weight:800;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--text3);
+}
+.raccourci{
+  display:block;padding:9px 11px;margin:0 -11px;border-radius:var(--r10);
+  text-decoration:none;color:inherit;
+}
+.raccourci:hover{background:var(--bg2)}
+.raccourci b{display:block;font-size:.92rem;font-weight:650;color:var(--ink)}
+.raccourci span{display:block;font-size:.79rem;color:var(--text3);margin-top:1px}
+.raccourci:hover b{color:var(--primary-d)}
+
+/* Les quatre jauges d'offre : DEUX colonnes fixes, pas un `auto-fit` qui en
+   met trois puis une seule en dessous. Une rangée orpheline se lit comme un
+   défaut d'affichage. */
+.jauges{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:700px){.jauges{grid-template-columns:1fr}}
+
+/* Le détail de l'offre, replié. Le résumé se comporte comme un lien discret :
+   il ne doit pas rivaliser avec les jauges qui sont au-dessus. */
+.detail-offre{margin-top:16px;border-top:1px solid var(--border);padding-top:14px}
+.detail-offre > summary{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;list-style:none;
+  font-size:.86rem;font-weight:600;color:var(--text2);
+}
+.detail-offre > summary::-webkit-details-marker{display:none}
+.detail-offre > summary:hover{color:var(--primary-d)}
+.detail-offre > summary svg{width:15px;height:15px;stroke-width:2;transition:transform .15s}
+.detail-offre[open] > summary svg{transform:rotate(180deg)}

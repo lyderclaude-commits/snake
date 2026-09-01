@@ -771,11 +771,12 @@ const run = async () => {
   const entrees = (await p.locator('.barre nav a').evaluateAll(
     (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
   ));
-  ok('les dix destinations sont sous un seul intitulé',
-     (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
-     && (await p.locator('.barre .deroulant .volet a').count()) === 10,
-     `${await p.locator(".barre .deroulant .volet a").count()} entrées`);
-  ok('notifications et déconnexion restent hors du déroulant',
+  // Le rangement lui-même est éprouvé à la section 29 ; ici on vérifie
+  // seulement que rien n'a débordé des groupes ni disparu.
+  ok('toutes les destinations d’administration sont rangées dans un groupe',
+     (await p.locator('.barre .deroulant .volet a').count()) === 11,
+     `${await p.locator(".barre .deroulant .volet a").count()} entrées en groupe`);
+  ok('notifications et déconnexion restent hors des déroulants',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
      && (await p.locator('.barre nav > form[action*="deconnexion"] button').count()) === 1);
   ok('aucune entrée de menu en double', new Set(entrees).size === entrees.length,
@@ -981,6 +982,10 @@ const run = async () => {
      compteurs.some((t) => /Campagnes actives 0 \/ 1/.test(t))
      && compteurs.some((t) => /Téléchargements .* 0 \/ 50/.test(t)),
      compteurs.join(' | '));
+  /* Le détail de l'offre se replie depuis la refonte du tableau de bord :
+     `innerText` d'un élément masqué rend une chaîne vide. On l'ouvre, comme
+     le ferait quelqu'un qui veut comparer. */
+  await po.locator('.detail-offre > summary').click();
   ok('ce qui n’est pas dans l’offre est montré, pas caché',
      (await po.locator('.liste-offre').nth(1).locator('li').count()) >= 8,
      `${await po.locator('.liste-offre').nth(1).locator('li').count()} lignes barrées`);
@@ -1409,10 +1414,11 @@ const run = async () => {
     + '> On a su qui venait avant d’ouvrir les portes.\n\n'
     + 'Tout est là : [le guide](https://wakabileguide.com/).\n\n'
     + 'Et ceci ne doit PAS s’exécuter : <script>window.__injecte = 1;</script>');
-  await pq.click('button[value=brouillon]');
+  await pq.click('button[value=enregistrer]');
   await pq.waitForLoadState('domcontentloaded');
-  ok('un article s’enregistre en brouillon',
-     /brouillon/i.test(await pq.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('un article s’enregistre sans être publié',
+     /enregistré/i.test(await pq.locator('.msg.ok').first().innerText().catch(() => ''))
+     && /Brouillon/.test(await pq.locator(`tr:has-text("${TITRE_ART}")`).innerText().catch(() => '')));
 
   // Un brouillon n'est PAS public : c'est le point de la relecture.
   const slugArt = (await pq.locator(`tr:has-text("${TITRE_ART}") code`).first().innerText()).trim();
@@ -1473,16 +1479,27 @@ const run = async () => {
   ok('l’adresse d’un article publié n’est plus modifiable',
      await pq.locator('#a-slug').getAttribute('readonly') !== null);
 
-  ok('un organisateur n’écrit pas sur le blog',
-     (await (await browser.newContext()).newPage()
-        .then(async (px) => {
-          await connexion(px, PART.email, PART.mdp);
-          const r = await px.request.get(`${BASE}/index.php?p=blog-admin`);
-          const refuse = r.url().includes('p=connexion') || r.status() >= 400
-            || !(await r.text()).includes('Écrire un article');
-          await px.close();
-          return refuse;
-        })));
+  /**
+   * Un organisateur ÉCRIT, mais ne PUBLIE pas.
+   *
+   * La distinction est tout le circuit : ce qui doit rester fermé n'est pas
+   * l'accès à l'écriture — c'est la mise en ligne, et la file de relecture
+   * qui la précède.
+   */
+  const ctxRedac = await browser.newContext();
+  const pRedac = await ctxRedac.newPage();
+  surveiller(pRedac);
+  await connexion(pRedac, PART.email, PART.mdp);
+  await pRedac.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur peut écrire, mais pas publier',
+     (await pRedac.locator('button[value=soumettre]').count()) === 1
+     && (await pRedac.locator('button[value=publier]').count()) === 0);
+  const fileFermee = await pRedac.request.get(`${BASE}/index.php?p=blog-relecture`);
+  ok('la file de relecture du blog reste fermée aux organisateurs',
+     fileFermee.url().includes('p=connexion') || fileFermee.status() >= 400
+     || !(await fileFermee.text()).includes('Relecture du blog'),
+     `HTTP ${fileFermee.status()}`);
+  await ctxRedac.close();
 
   /* ================================================================== */
   console.log('\n━━ 26. Les images allégées ━━');
@@ -1538,6 +1555,296 @@ const run = async () => {
   await ctxAnon.close();
   await pq.close();
 
+  /* ================================================================== */
+  console.log('\n━━ 27. Le blog proposé par un organisateur ━━');
+
+  /**
+   * Le circuit qui compte : un organisateur PROPOSE, l'équipe DÉCIDE.
+   *
+   * Sans lui, écrire sur le blog du guide demandait d'être de l'équipe —
+   * et l'article sponsorisé vendu avec l'offre Mouvement restait un
+   * service qu'il fallait réclamer par courriel.
+   */
+  const pw = await browser.newPage();
+  surveiller(pw);
+  await connexion(pw, PART.email, PART.mdp);
+
+  const ART = `Ma soirée du samedi ${marque}`;
+  await pw.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur atteint ses articles', pw.url().includes('p=blog-admin'));
+  ok('l’écran explique le circuit',
+     /rédaction relit/i.test(await pw.locator('.carte').last().innerText().catch(() => '')));
+
+  await pw.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  ok('le bouton dit « proposer », pas « publier »',
+     (await pw.locator('button[value=soumettre]').count()) === 1
+     && (await pw.locator('button[value=publier]').count()) === 0);
+
+  await pw.fill('#a-titre', ART);
+  await pw.fill('#a-chapo', 'Quatre semaines pour faire d’un mardi mort un rendez-vous.');
+  await pw.fill('#a-corps',
+    '## Ce qu’on a essayé\n\nUn nom à part, un visuel à part, et le décor publié le vendredi.\n\n'
+    + '- Semaine 1 : 40 badges\n- Semaine 4 : 180 badges\n\nLe reste a suivi tout seul.');
+  await pw.click('button[value=soumettre]');
+  await pw.waitForLoadState('domcontentloaded');
+  ok('l’article part chez la rédaction',
+     /rédaction/i.test(await pw.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('il apparaît en relecture dans sa liste',
+     /En relecture/.test(await pw.locator(`tr:has-text("${ART}")`).innerText().catch(() => '')));
+
+  // Il n'est pas public tant qu'il n'est pas publié.
+  const ctxLect = await browser.newContext();
+  const pl = await ctxLect.newPage();
+  surveiller(pl);
+  await pl.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
+  ok('un article proposé n’est PAS encore sur le blog public',
+     (await pl.locator(`a:has-text("${ART}")`).count()) === 0);
+
+  // Et son auteur ne peut plus le retoucher sous le nez du relecteur.
+  await pw.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  const lienArt = await pw.locator(`tr:has-text("${ART}") a[href*="p=blog-editer"]`).first().getAttribute('href');
+  await pw.goto(lienArt!, { waitUntil: 'domcontentloaded' });
+  ok('un article en relecture ne se modifie plus',
+     pw.url().includes('p=blog-admin')
+     && /chez la rédaction/i.test(await pw.locator('.msg.err').first().innerText().catch(() => '')));
+
+  // L'équipe le renvoie, avec un motif.
+  const pe2 = await browser.newPage();
+  surveiller(pe2);
+  await connexion(pe2, ADMIN.email, ADMIN.mdp);
+  await pe2.goto(`${BASE}/index.php?p=blog-relecture`, { waitUntil: 'domcontentloaded' });
+  ok('la file de relecture montre l’article proposé',
+     (await pe2.locator(`.carte:has-text("${ART}")`).count()) === 1);
+  ok('elle nomme l’organisateur qui l’a proposé',
+     /Proposé par/.test(await pe2.locator(`.carte:has-text("${ART}")`).innerText()));
+
+  await pe2.locator(`.carte:has-text("${ART}") button[value=corrections]`).click();
+  await pe2.waitForLoadState('domcontentloaded');
+  ok('renvoyer SANS motif est refusé',
+     /motif est obligatoire/i.test(await pe2.locator('.msg.err').first().innerText().catch(() => '')));
+
+  await pe2.goto(`${BASE}/index.php?p=blog-relecture`, { waitUntil: 'domcontentloaded' });
+  await pe2.locator(`.carte:has-text("${ART}") textarea[name=motif]`).fill('Ajoutez les chiffres réels.');
+  await pe2.locator(`.carte:has-text("${ART}") button[value=corrections]`).click();
+  await pe2.waitForLoadState('domcontentloaded');
+  ok('avec un motif, il repart chez l’auteur',
+     /Décision enregistrée/.test(await pe2.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  await pw.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  ok('l’auteur voit le motif sans avoir à le demander',
+     /Ajoutez les chiffres réels/.test(await pw.locator(`tr:has-text("${ART}")`).innerText()));
+
+  await pw.locator(`tr:has-text("${ART}") form:has(input[value=soumettre]) button`).click();
+  await pw.waitForLoadState('domcontentloaded');
+  await pe2.goto(`${BASE}/index.php?p=blog-relecture`, { waitUntil: 'domcontentloaded' });
+  await pe2.locator(`.carte:has-text("${ART}") button[value=publier]`).click();
+  await pe2.waitForLoadState('domcontentloaded');
+
+  await pl.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
+  ok('une fois publié, il est sur le blog public',
+     (await pl.locator(`a:has-text("${ART}")`).count()) >= 1);
+  const lienPub = await pl.locator(`a:has-text("${ART}")`).first().getAttribute('href');
+  await pl.goto(lienPub!, { waitUntil: 'domcontentloaded' });
+  ok('il est signé du nom de l’organisateur',
+     /Test Partenaire/.test(await pl.locator('.signature').innerText().catch(() => '')));
+
+  // Un organisateur ne retire pas seul un article déjà en ligne.
+  await pw.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  ok('un article en ligne n’a plus de bouton « supprimer » chez son auteur',
+     (await pw.locator(`tr:has-text("${ART}") button:has-text("Supprimer")`).count()) === 0);
+
+  /* ================================================================== */
+  console.log('\n━━ 28. La régie e-mail ━━');
+
+  /**
+   * L'écran de la régie, et surtout ses trois garde-fous : l'offre, la
+   * relecture, et le désabonnement. Le transport SMTP de la recette est
+   * branché à la section 22 ; on le rallume ici le temps d'un envoi réel.
+   */
+  await pe2.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  ok('l’équipe atteint la régie', pe2.url().includes('p=regie'));
+
+  // PART est en Croissance depuis la section 12 : il y a droit.
+  await pw.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur en Croissance atteint la régie', pw.url().includes('p=regie'));
+  ok('son quota mensuel d’envois est affiché',
+     /E-mails envoyés ce mois/.test(await pw.locator('.carte').first().innerText().catch(() => '')));
+
+  // CLIENT est en Impact : la régie ne lui est pas vendue.
+  const pi = await browser.newPage();
+  surveiller(pi);
+  await connexion(pi, CLIENT.email, CLIENT.mdp);
+  await pi.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  ok('sans l’offre, un écran d’explication et non un refus sec',
+     /ne comprend pas cette fonction/.test(await pi.locator('.carte').first().innerText().catch(() => '')));
+  ok('le menu ne propose pas la régie à qui n’y a pas droit',
+     (await pi.locator('nav a[href*="p=regie"]').count()) === 0);
+  await pi.close();
+
+  // Le garde-fou du lien : un organisateur ne renvoie que chez Wakabi.
+  await pw.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pw.selectOption('#r-cible', 'mes-invites');
+  await pw.fill('#r-sujet', `Offre du samedi ${marque}`);
+  await pw.fill('#r-titre', 'On remet ça samedi');
+  await pw.fill('#r-corps', 'Vous étiez là en mars. On recommence samedi, même endroit, même heure.');
+  await pw.fill('#r-lien', 'https://exemple-pirate.tg/');
+  await pw.click('main button[type=submit]');
+  await pw.waitForLoadState('domcontentloaded');
+  ok('un lien hors domaine Wakabi est refusé à un organisateur',
+     /domaine|wakabileguide/i.test(await pw.locator('.msg.err').first().innerText().catch(() => '')));
+
+  await pw.fill('#r-lien', 'https://wakabileguide.com/maquis');
+  await pw.click('main button[type=submit]');
+  await pw.waitForLoadState('domcontentloaded');
+  ok('avec un lien Wakabi, la campagne s’enregistre',
+     pw.url().includes('p=regie-campagne'));
+  ok('l’aperçu montre ce que la personne recevra',
+     (await pw.locator('.apercu-courriel').count()) === 1
+     && /On remet ça samedi/.test(await pw.locator('.apercu-courriel').innerText()));
+  ok('un organisateur ne peut pas envoyer lui-même',
+     (await pw.locator('form:has(input[value=envoyer])').count()) === 0);
+
+  const urlCamp = pw.url();
+  await pw.locator('form:has(input[value=soumettre]) button').click();
+  await pw.waitForLoadState('domcontentloaded');
+  const soumis = await pw.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('soumettre annonce le nombre de destinataires ou dit pourquoi c’est zéro',
+     /destinataire|ne toucherait personne/.test(soumis), soumis.replace(/\s+/g, ' ').slice(0, 74));
+
+  /* L'équipe reprend la main, avec un vrai SMTP en face. */
+  const smtpRegie = await ouvrirSmtp();
+  await pe2.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pe2.fill('#smtp_hote', '127.0.0.1');
+  await pe2.fill('#smtp_port', String(SMTP_PORT));
+  await pe2.selectOption('#smtp_securite', 'aucune');
+  await pe2.fill('#courriel_expediteur', 'boost@wakabileguide.com');
+  await pe2.click('button[value=enregistrer]');
+  await pe2.waitForLoadState('domcontentloaded');
+
+  // Une campagne de l'équipe, vers un segment réel, envoyée pour de vrai.
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pe2.selectOption('#r-cible', 'participants');
+  await pe2.fill('#r-sujet', `Nouveautés du guide ${marque}`);
+  await pe2.fill('#r-titre', 'Trois décors de plus cette semaine');
+  await pe2.fill('#r-corps', 'Trois nouvelles campagnes sont en ligne. Faites votre badge avant samedi.');
+  await pe2.click('main button[type=submit]');
+  await pe2.waitForLoadState('domcontentloaded');
+
+  const avantRegie = recus.length;
+  await pe2.locator('form:has(input[value=soumettre]) button').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  ok('l’équipe se relit elle-même et la campagne devient prête',
+     /prête|destinataire/i.test(await pe2.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  await pe2.locator('form:has(input[value=envoyer]) button').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  const rapport = await pe2.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('le premier lot part vraiment', /parti\(s\)/.test(rapport), rapport.replace(/\s+/g, ' ').slice(0, 60));
+  ok('un vrai serveur SMTP a reçu les messages', recus.length > avantRegie,
+     `${recus.length - avantRegie} message(s)`);
+
+  /**
+   * Le scénario le plus important de la section : le désabonnement.
+   *
+   * Un message marketing sans lien de désabonnement est illégal en Europe
+   * et signalé partout ailleurs — et un signalement abîme la
+   * délivrabilité de TOUS les envois du guide, liens de confirmation
+   * compris.
+   */
+  const dernier = recus[recus.length - 1] ?? '';
+  const lienDesab = /(https?:\/\/\S*p=desabonnement&(?:amp;)?j=[0-9a-f]{32})/.exec(dernier);
+  ok('chaque message porte un lien de désabonnement', lienDesab !== null);
+
+  if (lienDesab) {
+    const ctxD = await browser.newContext();
+    const pd2 = await ctxD.newPage();
+    surveiller(pd2);
+    await pd2.goto(lienDesab[1].replace(/&amp;/g, '&'), { waitUntil: 'domcontentloaded' });
+    ok('le lien s’ouvre SANS être connecté', /Ne plus recevoir/.test(await pd2.locator('h1').innerText()));
+    const adresse = (/[\w.+-]+@[\w.-]+/.exec(await pd2.locator('.carte').innerText()) ?? [''])[0];
+    await pd2.click('button[type=submit]');
+    await pd2.waitForLoadState('domcontentloaded');
+    ok('un clic suffit à partir', /C’est fait/.test(await pd2.locator('h1').innerText()));
+
+    // Et l'adresse sort des campagnes suivantes.
+    await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+    await pe2.selectOption('#r-cible', 'participants');
+    await pe2.fill('#r-sujet', `Après le départ ${marque}`);
+    await pe2.fill('#r-titre', 'Un autre message');
+    await pe2.fill('#r-corps', 'Ce message ne doit pas atteindre celui qui vient de se désabonner.');
+    await pe2.click('main button[type=submit]');
+    await pe2.waitForLoadState('domcontentloaded');
+    await pe2.locator('form:has(input[value=soumettre]) button').click();
+    await pe2.waitForLoadState('domcontentloaded');
+
+    const avantSecond = recus.length;
+    for (let i = 0; i < 4 && (await pe2.locator('form:has(input[value=envoyer]) button').count()); i++) {
+      await pe2.locator('form:has(input[value=envoyer]) button').first().click();
+      await pe2.waitForLoadState('domcontentloaded');
+    }
+    const vises = recus.slice(avantSecond).join('\n');
+    ok('le désabonné ne reçoit plus rien', adresse !== '' && !vises.includes(adresse),
+       adresse || 'adresse introuvable');
+  }
+
+  smtpRegie.fermer();
+  await pe2.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pe2.fill('#smtp_hote', '');
+  await pe2.click('button[value=enregistrer]');
+  await pe2.waitForLoadState('domcontentloaded');
+  await pw.close();
+  await pe2.close();
+  await ctxLect.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 29. Les menus rangés par intention ━━');
+
+  const pm = await browser.newPage();
+  surveiller(pm);
+  await connexion(pm, ADMIN.email, ADMIN.mdp);
+  await pm.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+
+  const groupes = await pm.locator('.barre .deroulant > summary').evaluateAll(
+    (n) => n.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
+  ok('l’administration tient en trois groupes nommés',
+     groupes.length === 3 && groupes.join('|') === 'Contenus|Audience|Système',
+     groupes.join(' · '));
+  ok('le tableau de bord et l’entrée restent hors des groupes — un clic',
+     (await pm.locator('.barre nav > a[href*="p=admin"]').count()) === 1
+     && (await pm.locator('.barre nav > a[href*="p=scan"]').count()) === 1);
+  ok('aucun groupe ne dépasse quatre destinations',
+     (await pm.locator('.barre .deroulant').evaluateAll(
+       (n) => n.every((e) => e.querySelectorAll('.volet a').length <= 4))));
+
+  ok('le tableau de bord mène partout en un clic',
+     (await pm.locator('.raccourci').count()) === 12,
+     `${await pm.locator('.raccourci').count()} raccourcis`);
+  ok('les raccourcis reprennent les familles du menu',
+     (await pm.locator('.raccourcis .pas').evaluateAll(
+       (n) => n.map((e) => (e.textContent ?? '').trim()).join('|'))) === 'Contenus|Audience|Système');
+
+  // Les files du tableau de bord montrent bien les trois natures d'attente.
+  ok('la file du tableau de bord compte aussi les articles et les campagnes',
+     /article\(s\) à relire|campagne\(s\) e-mail à relire|décor\(s\) à relire|Rien n’attend/
+       .test(await pm.locator('.files, .msg.ok').first().innerText().catch(() => '')));
+
+  // Sur téléphone, les groupes deviennent des intitulés, pas des tiroirs.
+  const ctxTel = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const pt2 = await ctxTel.newPage();
+  surveiller(pt2);
+  await connexion(pt2, ADMIN.email, ADMIN.mdp);
+  await pt2.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  await pt2.click('.menu > summary');
+  ok('sur téléphone, tous les liens sont atteignables sans second tiroir',
+     (await pt2.locator('.menu[open] nav .volet a:visible').count()) === 11,
+     `${await pt2.locator('.menu[open] nav .volet a:visible').count()} liens visibles`);
+  ok('les intitulés de groupe restent lisibles, et ne se cliquent pas',
+     (await pt2.locator('.menu[open] .deroulant > summary').first().isVisible())
+     && (await pt2.locator('.menu[open] .deroulant > summary').first()
+          .evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none');
+  await ctxTel.close();
+  await pm.close();
+
   console.log('\n━━ 22. Le transport e-mail ━━');
 
   /**
@@ -1562,15 +1869,24 @@ const run = async () => {
   await pe.selectOption('#smtp_securite', 'aucune');
   await pe.fill('#courriel_expediteur', 'boost@wakabileguide.com');
   await pe.fill('#essai_vers', ADMIN.email);
+  /**
+   * `recus` est un journal PARTAGÉ par toute la recette.
+   *
+   * Le compter en absolu supposait que cette section soit la seule à
+   * envoyer. Depuis la régie, elle ne l'est plus — et un test qui casse
+   * parce qu'une AUTRE section a fait son travail ne dit rien sur celle-ci.
+   */
+  const avantEssai = recus.length;
   await pe.click('button[value=essai]');
   await pe.waitForLoadState('domcontentloaded');
   ok('l’essai d’envoi aboutit',
      /Message remis au serveur SMTP/.test(await pe.locator('.msg').first().innerText()),
      (await pe.locator('.msg').first().innerText()).replace(/\s+/g, ' ').slice(0, 70));
-  ok('le serveur a bien reçu l’essai', recus.length === 1, `${recus.length} message(s)`);
-  ok('l’essai est adressé à la bonne personne',
-     (recus[0] ?? '').includes('<' + ADMIN.email + '>'));
-  ok('le sujet accentué voyage encodé', /^Subject: =\?UTF-8\?B\?/m.test(recus[0] ?? ''));
+  ok('le serveur a bien reçu l’essai', recus.length === avantEssai + 1,
+     `${recus.length - avantEssai} message(s)`);
+  const essai = recus[recus.length - 1] ?? '';
+  ok('l’essai est adressé à la bonne personne', essai.includes('<' + ADMIN.email + '>'));
+  ok('le sujet accentué voyage encodé', /^Subject: =\?UTF-8\?B\?/m.test(essai));
 
   // Un partenaire tout neuf : il doit confirmer avant de soumettre.
   const NEUF = { email: `verif-${marque}@exemple.tg`, mdp: 'partenaire-2026-solide' };
@@ -1583,7 +1899,9 @@ const run = async () => {
   await pv.fill('input[name=mot_de_passe]', NEUF.mdp);
   await pv.click('main button[type=submit]');
   await pv.waitForLoadState('domcontentloaded');
-  ok('le lien de confirmation part à l’inscription', recus.length === 2, `${recus.length} message(s)`);
+  ok('le lien de confirmation part à l’inscription', recus.length === avantEssai + 2,
+     `${recus.length - avantEssai - 1} message(s) depuis l’essai`);
+  const messageVerif = recus[recus.length - 1] ?? '';
   ok('la bannière réclame la confirmation',
      /Confirmez votre adresse/.test(await pv.locator('.msg.err').first().innerText().catch(() => '')));
 
@@ -1600,7 +1918,7 @@ const run = async () => {
      /Confirmez d’abord votre adresse/.test(await pv.locator('.msg.err').first().innerText().catch(() => '')));
 
   // Le lien reçu, cliqué : il vaut une fois.
-  const lienBrut = (recus[1] ?? '').match(/https?:\/\/\S*p=verifier[^\s"<]*/)?.[0]?.replace(/&amp;/g, '&') ?? '';
+  const lienBrut = messageVerif.match(/https?:\/\/\S*p=verifier[^\s"<]*/)?.[0]?.replace(/&amp;/g, '&') ?? '';
   ok('le message porte bien un lien de confirmation', lienBrut !== '', lienBrut.slice(0, 60));
   await pv.goto(lienBrut, { waitUntil: 'domcontentloaded' });
   ok('le lien confirme l’adresse', /Adresse confirmée/.test(await pv.locator('h1').first().innerText()));

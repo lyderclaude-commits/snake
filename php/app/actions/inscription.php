@@ -49,12 +49,10 @@ if ($post) {
         // Toute inscription publique démarre en Découverte, quelle que soit
         // l'offre cliquée : c'est l'équipe qui active le reste.
         if ($offre !== '') {
-            foreach (equipe() as $membre) {
-                notifier($membre['id'], 'compte', 'Une offre ' . formule_libelle($offre) . ' est demandée',
-                    $valeurs['nom'] . ' (' . $valeurs['email'] . ') vient de s’inscrire en visant l’offre '
-                    . formule_libelle($offre) . '. Son compte est en Découverte en attendant l’activation.',
-                    '?p=comptes');
-            }
+            notifier_equipe('compte', 'Une offre ' . formule_libelle($offre) . ' est demandée',
+                $valeurs['nom'] . ' (' . $valeurs['email'] . ') vient de s’inscrire en visant l’offre '
+                . formule_libelle($offre) . '. Son compte est en Découverte en attendant l’activation.',
+                '?p=comptes');
         }
         /**
          * Le lien de confirmation part tout de suite, ou s'affiche.

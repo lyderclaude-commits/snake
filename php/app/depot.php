@@ -626,12 +626,13 @@ function bilan_offre(array $u): array
     $o = offre($u);
     $lignes = [];
 
-    foreach (['campagnes', 'telechargements', 'liens_courts'] as $cle) {
+    foreach (['campagnes', 'telechargements', 'liens_courts', 'emails_par_mois'] as $cle) {
         $max = quota($u, $cle);
         $consomme = match ($cle) {
             'campagnes' => campagnes_actives((string) $u['id']),
             'telechargements' => telechargements_du_mois((string) $u['id']),
             'liens_courts' => compter_liens((string) $u['id']),
+            'emails_par_mois' => emails_du_mois((string) $u['id']),
         };
         $lignes[$cle] = [
             'nature' => 'compteur',
@@ -782,6 +783,20 @@ function notifications_marquer_lues(string $utilisateur_id): void
 function equipe(): array
 {
     return db()->query("SELECT * FROM utilisateurs WHERE role = 'equipe' AND suspendu = 0")->fetchAll();
+}
+
+/**
+ * Prévient toute l'équipe d'un même fait.
+ *
+ * Le motif « boucler sur `equipe()` pour notifier chacun » revenait à trois
+ * endroits ; à la quatrième copie, on finit par en oublier une et une file
+ * d'attente ne se surveille plus.
+ */
+function notifier_equipe(string $genre, string $titre, ?string $corps = null, ?string $lien = null): void
+{
+    foreach (equipe() as $membre) {
+        notifier((string) $membre['id'], $genre, $titre, $corps, $lien);
+    }
 }
 
 /* ================= pilotage ================= */
@@ -1168,41 +1183,114 @@ function slug_article_libre(string $titre, ?string $sauf = null): string
     }
 }
 
+/**
+ * Un article naît TOUJOURS en brouillon.
+ *
+ * Le statut n'est pas un champ du formulaire : il appartient à
+ * `article_transition()`, qui seule connaît le circuit. Le laisser entrer
+ * par la porte de la création rouvrirait exactement le trou que la
+ * modération sert à fermer — un auteur qui poste `statut=publie`.
+ */
 function article_creer(array $a): string
 {
     $id = nouvel_id();
     $now = maintenant();
     db()->prepare('INSERT INTO articles
-        (id, slug, titre, chapo, corps, couverture, statut, auteur_id, auteur_nom, publie_le, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+        (id, slug, titre, chapo, corps, couverture, statut, auteur_id, auteur_nom, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,\'brouillon\',?,?,?,?)')
       ->execute([
           $id, $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'],
-          $a['couverture'] ?: null, $a['statut'], $a['auteur_id'], $a['auteur_nom'],
-          $a['statut'] === 'publie' ? $now : null, $now, $now,
+          $a['couverture'] ?: null, $a['auteur_id'], $a['auteur_nom'], $now, $now,
       ]);
     return $id;
 }
 
+/**
+ * Le CONTENU d'un article, et rien d'autre.
+ *
+ * Ni le statut, ni la date de publication : ils appartiennent à
+ * `article_transition()`. Un formulaire d'édition qui pourrait aussi
+ * publier serait une modération contournable en changeant un champ caché.
+ */
 function article_maj(string $id, array $a): void
 {
-    $ancien = article_par_id($id);
-    /**
-     * La date de publication ne se réécrit pas à chaque retouche.
-     *
-     * Un article corrigé six mois plus tard remonterait en tête de liste
-     * comme s'il était neuf, et les gens qui l'ont déjà lu le reverraient
-     * en premier. On ne la pose qu'au passage EN ligne, et on la garde.
-     */
-    $publie_le = $ancien['publie_le'] ?? null;
-    if ($a['statut'] === 'publie' && !$publie_le) {
-        $publie_le = maintenant();
-    }
     db()->prepare('UPDATE articles SET slug = ?, titre = ?, chapo = ?, corps = ?, couverture = ?,
-                   statut = ?, publie_le = ?, maj_le = ? WHERE id = ?')
+                   maj_le = ? WHERE id = ?')
         ->execute([
             $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'], $a['couverture'] ?: null,
-            $a['statut'], $publie_le, maintenant(), $id,
+            maintenant(), $id,
         ]);
+}
+
+/** Les articles d'un auteur, tous états confondus. */
+function articles_de(string $auteur_id): array
+{
+    $s = db()->prepare('SELECT * FROM articles WHERE auteur_id = ? ORDER BY maj_le DESC');
+    $s->execute([$auteur_id]);
+    return $s->fetchAll();
+}
+
+/** La file de relecture du blog, la plus ancienne soumission d'abord. */
+function articles_en_attente(): array
+{
+    return db()->query("SELECT a.*, u.nom AS propose_par
+                        FROM articles a LEFT JOIN utilisateurs u ON u.id = a.auteur_id
+                        WHERE a.statut = 'en_relecture' ORDER BY a.soumis_le ASC")->fetchAll();
+}
+
+function articles_a_relire(): int
+{
+    return (int) db()->query("SELECT COUNT(*) FROM articles WHERE statut = 'en_relecture'")->fetchColumn();
+}
+
+/**
+ * Change l'état d'un article, en faisant respecter le circuit.
+ *
+ * La MÊME machine à états que les décors, littéralement : `transition_permise()`
+ * est réutilisée telle quelle. Les deux objets suivent le même parcours —
+ * quelqu'un propose, l'équipe décide — et deux tables de règles pour un
+ * seul circuit, c'est une des deux qu'on oubliera de corriger.
+ */
+function article_transition(string $id, string $vers, array $acteur, ?string $motif = null): void
+{
+    $a = article_par_id($id);
+    if (!$a) {
+        throw new TransitionRefusee('Article introuvable.');
+    }
+    $role = ($acteur['role'] ?? '') === 'equipe' ? 'equipe' : 'partenaire';
+    if (!transition_permise((string) $a['statut'], $vers, $role)) {
+        throw new TransitionRefusee(sprintf(
+            'Passage « %s → %s » non autorisé pour ce rôle.', $a['statut'], $vers
+        ));
+    }
+    if (in_array($vers, ['refuse', 'corrections'], true) && !trim((string) $motif)) {
+        throw new TransitionRefusee('Un motif est obligatoire pour refuser ou demander des corrections.');
+    }
+
+    $now = maintenant();
+    $sets = ['statut = ?', 'maj_le = ?'];
+    $vals = [$vers, $now];
+
+    if ($vers === 'en_relecture') {
+        $sets[] = 'soumis_le = ?';
+        $vals[] = $now;
+    }
+    if ($vers === 'publie') {
+        // La date de publication ne se réécrit pas : un article republié
+        // après correction ne doit pas remonter en tête comme s'il était neuf.
+        $sets[] = 'publie_le = ?';
+        $vals[] = $a['publie_le'] ?: $now;
+    }
+    if (in_array($vers, ['publie', 'refuse', 'corrections'], true)) {
+        $sets[] = 'relu_le = ?';
+        $sets[] = 'relu_par = ?';
+        $sets[] = 'motif = ?';
+        $vals[] = $now;
+        $vals[] = $acteur['id'];
+        $vals[] = trim((string) $motif) ?: null;
+    }
+    $vals[] = $id;
+    db()->prepare('UPDATE articles SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
 }
 
 function article_supprimer(string $id): void

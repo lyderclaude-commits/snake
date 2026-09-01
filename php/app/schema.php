@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 function assurer_schema(): void
 {
@@ -38,6 +38,13 @@ function assurer_schema(): void
  * Chaque ALTER est tenté puis ignoré s'il échoue : MySQL comme SQLite
  * refusent d'ajouter une colonne qui existe déjà, et c'est exactement le
  * cas qu'on veut traverser sans bruit.
+ *
+ * **Une colonne ajoutée ici doit AUSSI l'être dans `creer_schema()`.** Les
+ * deux fonctions servent deux publics : celle-ci rattrape les
+ * installations en service, l'autre bâtit les neuves — qui ne passent
+ * jamais par les ALTER. N'en corriger qu'une donne une base qui marche
+ * chez les anciens et casse à la première installation propre, c'est-à-dire
+ * chez le client qui découvre le produit.
  */
 function migrer_schema(PDO $pdo, bool $mysql): void
 {
@@ -54,6 +61,7 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     creer_schema($pdo, $mysql);
 
     $court = $mysql ? 'VARCHAR(190)' : 'TEXT';
+    $id = $mysql ? 'VARCHAR(36)' : 'TEXT';
 
     foreach ([
         // v2 — la formule commerciale du compte, alignée sur les offres.
@@ -70,6 +78,12 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         // courriel, et savoir quand il est passé pour la dernière fois.
         "ALTER TABLE utilisateurs ADD COLUMN telephone $court NULL",
         "ALTER TABLE utilisateurs ADD COLUMN vu_le $court NULL",
+        // v9 — un article se relit comme un décor : mêmes états, même
+        // vocabulaire, et un motif quand on refuse ou qu'on renvoie.
+        "ALTER TABLE articles ADD COLUMN motif $txt NULL",
+        "ALTER TABLE articles ADD COLUMN soumis_le $court NULL",
+        "ALTER TABLE articles ADD COLUMN relu_le $court NULL",
+        "ALTER TABLE articles ADD COLUMN relu_par $id NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -343,9 +357,88 @@ function creer_schema(PDO $pdo, bool $mysql): void
             auteur_id  $id NULL,
             auteur_nom $court NULL,
             vues       INT NOT NULL DEFAULT 0,
+            motif      $txt NULL,
+            soumis_le  $court NULL,
+            relu_le    $court NULL,
+            relu_par   $id NULL,
             publie_le  $court NULL,
             cree_le    $court NOT NULL,
             maj_le     $court NOT NULL
+        )$moteur",
+
+        /**
+         * La régie : une campagne e-mail, de sa rédaction à son envoi.
+         *
+         * `statut` reprend mot pour mot le vocabulaire des décors —
+         * brouillon, en_relecture, corrections, refuse, envoye — parce que
+         * c'est le même geste : quelqu'un propose, l'équipe décide. Un
+         * deuxième vocabulaire pour la même idée obligerait à se souvenir
+         * lequel s'applique où.
+         */
+        "CREATE TABLE IF NOT EXISTS campagnes_email (
+            id            $id PRIMARY KEY,
+            auteur_id     $id NULL,
+            sujet         $court NOT NULL,
+            titre         $court NOT NULL,
+            corps         $txt NOT NULL,
+            lien          $court NULL,
+            lien_libelle  $court NULL,
+            cible         $court NOT NULL DEFAULT 'mes-invites',
+            liste         $txt NULL,
+            statut        $court NOT NULL DEFAULT 'brouillon',
+            motif         $txt NULL,
+            destinataires INT NOT NULL DEFAULT 0,
+            envoyes       INT NOT NULL DEFAULT 0,
+            echecs        INT NOT NULL DEFAULT 0,
+            ouvertures    INT NOT NULL DEFAULT 0,
+            soumis_le     $court NULL,
+            relu_le       $court NULL,
+            relu_par      $id NULL,
+            envoye_le     $court NULL,
+            cree_le       $court NOT NULL,
+            maj_le        $court NOT NULL
+        )$moteur",
+
+        /**
+         * Un destinataire, une ligne — et c'est ce qui rend l'envoi repris.
+         *
+         * Un hébergement mutualisé coupe un script à trente secondes :
+         * envoyer deux mille messages dans une boucle finirait à la moitié,
+         * sans qu'on sache laquelle. La liste est donc figée AVANT le
+         * premier envoi, et chaque ligne porte son état. Une reprise sait
+         * exactement où elle s'est arrêtée, et personne ne reçoit deux fois.
+         *
+         * `jeton` sert au désabonnement et au pixel d'ouverture : il
+         * identifie la ligne sans écrire l'adresse dans une URL, qui
+         * traverse les journaux de tous les intermédiaires.
+         */
+        "CREATE TABLE IF NOT EXISTS envois_email (
+            id         $id PRIMARY KEY,
+            campagne_id $id NOT NULL,
+            email      $court NOT NULL,
+            nom        $court NULL,
+            jeton      $court NOT NULL UNIQUE,
+            statut     $court NOT NULL DEFAULT 'attente',
+            message    $txt NULL,
+            ouvert_le  $court NULL,
+            envoye_le  $court NULL,
+            cree_le    $court NOT NULL
+        )$moteur",
+
+        /**
+         * Les désabonnements, GLOBAUX et définitifs.
+         *
+         * Par adresse et non par campagne : quelqu'un qui demande à ne plus
+         * recevoir de courrier marketing le demande pour de bon, pas
+         * seulement à l'organisateur du jour. Le contraire — se
+         * réabonner tout seul à la campagne suivante — est exactement ce
+         * qui fait signaler un expéditeur comme indésirable, et c'est le
+         * domaine du guide qui en paie le prix.
+         */
+        "CREATE TABLE IF NOT EXISTS desabonnements (
+            email   $court PRIMARY KEY,
+            motif   $court NULL,
+            cree_le $court NOT NULL
         )$moteur",
 
         "CREATE TABLE IF NOT EXISTS prevol (
@@ -369,6 +462,8 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_liens_auteur ON liens (auteur_id)',
         'CREATE INDEX idx_push_utilisateur ON push (utilisateur_id)',
         'CREATE INDEX idx_articles_statut ON articles (statut)',
+        'CREATE INDEX idx_envois_campagne ON envois_email (campagne_id)',
+        'CREATE INDEX idx_campagnes_email_auteur ON campagnes_email (auteur_id)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

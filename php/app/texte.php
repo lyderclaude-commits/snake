@@ -147,9 +147,20 @@ function texte_riche(string $brut): string
  */
 function texte_extrait(string $brut, int $max = 180): string
 {
-    // Les balises deviennent des ESPACES, pas rien : sans cela, la fin d'un
-    // titre se collerait au début du paragraphe suivant.
-    $plat = strip_tags(str_replace('<', ' <', texte_riche($brut)));
+    /**
+     * Les balises de BLOC deviennent des espaces ; les balises en ligne, rien.
+     *
+     * Sans espace, la fin d'un titre se colle au début du paragraphe
+     * suivant. Mais en mettre partout coupe aussi `<strong>à part</strong>,`
+     * et rend « à part , » — une espace avant la virgule, que l'œil
+     * attrape aussitôt. La distinction n'est donc pas cosmétique : c'est
+     * la différence entre deux mots collés et une ponctuation fautive.
+     */
+    $plat = strip_tags(preg_replace(
+        '~<(/?(?:p|h[1-6]|li|ul|ol|blockquote|br|div)\b)~i',
+        ' <$1',
+        texte_riche($brut)
+    ) ?? '');
     $plat = html_entity_decode($plat, ENT_QUOTES, 'UTF-8');
     $plat = trim(preg_replace('/\s+/', ' ', $plat) ?? '');
     if (mb_strlen($plat) <= $max) {

@@ -2,8 +2,8 @@
   <section class="entete">
     <div class="rangee" style="justify-content:space-between">
       <div>
-        <h1>Mes campagnes</h1>
-        <p><?= e($me['organisation'] ?: $me['nom']) ?></p>
+        <h1>Tableau de bord</h1>
+        <p><?= e($me['organisation'] ?: $me['nom']) ?> · offre <?= e(formule_libelle($me['formule'] ?? null)) ?></p>
       </div>
       <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">Nouveau décor</a>
     </div>
@@ -94,15 +94,15 @@
       <a class="aide" href="<?= e(url('#tarifs')) ?>">Comparer les offres</a>
     </div>
 
-    <div class="grille g2" style="margin-top:14px">
-      <?php foreach (['campagnes', 'telechargements', 'liens_courts'] as $cle):
+    <div class="grille g2 jauges" style="margin-top:14px">
+      <?php foreach (['campagnes', 'telechargements', 'liens_courts', 'emails_par_mois'] as $cle):
           $l = $bilan['lignes'][$cle];
           if (!$l['inclus']) {
               continue;
           } ?>
         <div class="marche">
           <div class="haut">
-            <span><?= e($l['libelle']) ?><?= $cle === 'telechargements' ? ' ce mois' : '' ?></span>
+            <span><?= e($l['libelle']) ?><?= in_array($cle, ['telechargements', 'emails_par_mois'], true) ? ' ce mois' : '' ?></span>
             <b><?= (int) $l['consomme'] ?><?= $l['max'] < 0 ? '' : ' / ' . $l['max'] ?></b>
           </div>
           <div class="rail"><i style="width:<?= $l['max'] < 0 ? 6 : $l['part'] ?>%"></i></div>
@@ -124,6 +124,19 @@
       téléchargements accordés par l’équipe en plus de votre offre.</p>
     <?php endif; ?>
 
+    <?php
+    /**
+     * Le DÉTAIL de l'offre se replie ; les compteurs restent ouverts.
+     *
+     * Les quatre jauges servent tous les jours — c'est sur elles qu'on
+     * bute. La liste des huit lignes incluses, elle, se lit une fois le
+     * jour où l'on souscrit, et deux fois l'an quand on hésite à changer
+     * d'offre. Dépliée en permanence, elle repoussait les campagnes — la
+     * raison même d'ouvrir cet écran — sous un écran et demi de texte.
+     */
+    ?>
+    <details class="detail-offre">
+      <summary>Ce que comprend l’offre <?= e($offre['nom']) ?><?= $manquant ? ', et ce qu’elle ne comprend pas' : '' ?><?= icone('chevron') ?></summary>
     <div class="grille g2" style="margin-top:18px;gap:18px">
       <div>
         <p class="pas" style="margin:0 0 8px">Compris dans votre offre</p>
@@ -169,6 +182,7 @@
         </div>
       <?php endif; ?>
     </div>
+    </details>
   </div>
 
   <?php if ($stats_completes && $emis > 0 && $presents === 0): ?>
@@ -227,4 +241,36 @@
       </div>
     </div>
   <?php endforeach; endif; ?>
+
+  <?php
+  /**
+   * Les raccourcis, filtrés par l'offre.
+   *
+   * Le tableau de bord est le point de départ : ce à quoi on a droit doit
+   * y être à un clic. Ce à quoi on n'a PAS droit n'y figure pas — un
+   * raccourci qui mène à « cette page vient avec une autre offre » se
+   * transforme en reproche au bout de la troisième fois.
+   */
+  $raccourcis = array_filter([
+      ['?p=nouveau', 'Nouveau décor', 'Créer une campagne', true],
+      ['?p=liens', 'Liens courts', 'Adresses traçables, clics comptés', quota($me, 'liens_courts') !== 0],
+      ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', capacite($me, 'regie')],
+      ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', capacite($me, 'telegram_push')],
+      ['?p=blog-admin', 'Mes articles', 'Proposer un article au blog', true],
+      ['?p=profil', 'Mon profil', 'Nom, adresse, mot de passe', true],
+  ], fn(array $r) => $r[3]);
+  ?>
+  <h2 class="titre-bloc" style="margin-top:26px">Faire connaître vos campagnes</h2>
+  <div class="grille g3 raccourcis">
+    <?php foreach (array_chunk($raccourcis, (int) ceil(count($raccourcis) / 3)) as $colonne): ?>
+      <div class="carte plate">
+        <?php foreach ($colonne as [$ou, $nom, $quoi, ]): ?>
+          <a class="raccourci" href="<?= e(url($ou)) ?>">
+            <b><?= e($nom) ?></b>
+            <span><?= e($quoi) ?></span>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
 </div>

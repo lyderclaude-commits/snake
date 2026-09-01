@@ -12,13 +12,16 @@ $slug = trim((string) ($_GET['a'] ?? ''));
 if ($slug !== '') {
     $a = article_par_slug($slug);
     /**
-     * Un brouillon n'est visible QUE de l'équipe, et par son adresse.
+     * Un article non publié n'est visible que de SON AUTEUR et de l'équipe.
      *
      * Une relecture avant publication doit être possible sans mettre
      * l'article en ligne ; le rendre introuvable pour tout le monde
-     * obligerait à publier pour se relire.
+     * obligerait à publier pour se relire. L'auteur y a droit aussi :
+     * c'est là qu'il vérifie ce que la rédaction va lire.
      */
-    $visible = $a && ($a['statut'] === 'publie' || ($me['role'] ?? '') === 'equipe');
+    $visible = $a && ($a['statut'] === 'publie'
+        || ($me['role'] ?? '') === 'equipe'
+        || ($me && $a['auteur_id'] === $me['id']));
     if (!$visible) {
         http_response_code(404);
         vue('introuvable', ['titre' => 'Article introuvable']);

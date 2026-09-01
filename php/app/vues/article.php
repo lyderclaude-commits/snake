@@ -5,8 +5,9 @@ $brouillon = $a['statut'] !== 'publie';
 <div class="contenu lecture">
   <?php if ($brouillon): ?>
     <div class="msg err" style="margin-bottom:16px">
-      <strong>Brouillon.</strong> Cette page n’est visible que par l’équipe. Personne d’autre
-      ne peut l’atteindre, même avec l’adresse.
+      <strong>Pas encore en ligne<?= $a['statut'] === 'en_relecture' ? ' — chez la rédaction' : '' ?>.</strong>
+      Cette page n’est visible que par vous et par la rédaction. Personne d’autre ne peut
+      l’atteindre, même avec l’adresse.
     </div>
   <?php endif; ?>
 

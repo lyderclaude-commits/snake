@@ -20,6 +20,7 @@ require __DIR__ . '/app/og.php';
 require __DIR__ . '/app/zip.php';
 require __DIR__ . '/app/sauvegarde.php';
 require __DIR__ . '/app/texte.php';
+require __DIR__ . '/app/regie.php';
 require __DIR__ . '/app/images.php';
 require __DIR__ . '/app/push.php';
 require __DIR__ . '/app/qr.php';
@@ -165,7 +166,8 @@ switch ($page) {
 
     case 'blog-admin':
     case 'blog-editer':
-    case 'blog-supprimer':
+    case 'blog-relecture':
+    case 'blog-action':
         require RACINE . '/app/actions/blog-admin.php';
 
     case 'decor':
@@ -269,6 +271,60 @@ switch ($page) {
     case 'diffusion':
         require RACINE . '/app/actions/diffusion.php';
 
+    case 'regie':
+    case 'regie-ecrire':
+    case 'regie-campagne':
+    case 'regie-action':
+        require RACINE . '/app/actions/regie.php';
+
+    /**
+     * Le désabonnement. Publique, SANS session, et volontairement courte.
+     *
+     * Le lien est cliqué depuis une boîte mail, souvent sur un autre
+     * appareil. Exiger une connexion ici transformerait un geste d'une
+     * seconde en parcours, et quelqu'un qui n'arrive pas à se désabonner
+     * clique sur « signaler comme indésirable » — le seul geste dont on ne
+     * se relève pas.
+     */
+    case 'desabonnement':
+        $jeton = (string) ($_GET['j'] ?? '');
+        $envoi = $jeton !== '' ? envoi_par_jeton($jeton) : null;
+        $fait = false;
+        if ($post && $envoi) {
+            verifier_csrf();
+            desabonner((string) $envoi['email'], trim((string) ($_POST['motif'] ?? '')));
+            $fait = true;
+        }
+        vue('desabonnement', [
+            'titre' => 'Désabonnement — Wakabi Boost',
+            'envoi' => $envoi,
+            'jeton' => $jeton,
+            'adresse' => (string) ($envoi['email'] ?? ''),
+            'fait' => $fait || ($envoi && desabonne((string) $envoi['email'])),
+        ]);
+
+    /**
+     * Le drain de la file d'envoi, appelé par le cron.
+     *
+     * Sans lui, une campagne de deux mille destinataires demanderait à
+     * quelqu'un de cliquer quatre-vingts fois. La même clé et la même
+     * comparaison à temps constant que la sauvegarde automatique.
+     */
+    case 'regie-cron':
+        header('Content-Type: text/plain; charset=utf-8');
+        if (!hash_equals(cle_sauvegarde(), (string) ($_GET['cle'] ?? ''))) {
+            http_response_code(403);
+            exit("Clé invalide.\n");
+        }
+        $encours = db()->query("SELECT id FROM campagnes_email WHERE statut = 'envoi'
+                                ORDER BY maj_le LIMIT 1")->fetchColumn();
+        if (!$encours) {
+            exit("Rien à envoyer.\n");
+        }
+        $r = regie_envoyer_lot((string) $encours);
+        echo $r['message'], "\n";
+        exit;
+
     /* ---- partenaire ---- */
 
     case 'partenaire':
@@ -312,12 +368,21 @@ switch ($page) {
         vue('admin', [
             'titre' => 'Tableau de bord',
             'stats' => tableau_de_bord(),
+            // Les trois files que l'équipe alimente elle-même : décors,
+            // articles, campagnes. Elles sont comptées ici plutôt que dans
+            // `tableau_de_bord()` parce qu'elles n'ont de sens que sur cet
+            // écran — le reste du produit ne les regarde jamais.
+            'blog_a_relire' => articles_a_relire(),
+            'regie_a_relire' => campagnes_email_en_attente(),
+            'regie_en_file' => regie_en_attente_denvoi(),
             'semaine' => indicateurs(7),
             'boucle' => entonnoir(30),
             'serie' => telechargements_par_jour(),
             'formules' => comptes_par_formule(),
             'roles' => comptes_par_role(),
-            'nouveaux' => comptes_recents(6),
+            // Quatre et non six : la carte doit faire la hauteur de celle du
+            // tunnel qui lui fait face, sinon la rangée se troue.
+            'nouveaux' => comptes_recents(4),
             'tetes' => decors_en_tete(6),
         ]);
 

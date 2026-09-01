@@ -302,6 +302,13 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
               $out[] = [$f['liens_courts'] < 0 ? 'Liens courts illimités'
                         : $f['liens_courts'] . ' liens courts wkb.link', 1];
           }
+          // Un compteur qui vaut zéro ne se montre pas : « 0 e-mail par
+          // mois » se lit comme une privation, alors que l'offre n'a
+          // simplement jamais promis cette ligne.
+          if ($f['emails_par_mois'] !== 0) {
+              $out[] = [$f['emails_par_mois'] < 0 ? 'E-mails marketing illimités'
+                        : number_format($f['emails_par_mois'], 0, ',', ' ') . ' e-mails marketing / mois', 1];
+          }
           // Le Studio est dans toutes les offres, y compris la gratuite :
           // c'est le produit lui-même, et le dire ici évite qu'on croie
           // l'offre d'essai amputée.

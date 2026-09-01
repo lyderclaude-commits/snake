@@ -2,15 +2,30 @@
 /** Écrire ou reprendre un article. */
 $erreur = $erreur ?? null;
 $fige = $existant && $existant['statut'] === 'publie';
+$etats = [
+    'brouillon' => 'Brouillon', 'en_relecture' => 'En relecture', 'corrections' => 'À corriger',
+    'refuse' => 'Refusé', 'publie' => 'En ligne',
+];
 ?>
-<div class="contenu">
+<div class="contenu etroit-large">
+  <p class="fil"><a href="<?= e(url('?p=blog-admin')) ?>">← <?= $equipe ? 'Le blog' : 'Mes articles' ?></a></p>
+
   <section class="entete">
     <h1><?= $existant ? 'Modifier l’article' : 'Écrire un article' ?></h1>
-    <p>Le corps s’écrit en texte simple. Les marques ci-dessous sont les seules reconnues —
+    <p><?php if ($existant): ?>
+      <span class="pastille <?= e($existant['statut']) ?>"><?= e($etats[$existant['statut']] ?? $existant['statut']) ?></span> ·
+    <?php endif; ?>Le corps s’écrit en texte simple. Les marques ci-dessous sont les seules reconnues —
     et aucune balise HTML n’est acceptée, ce qui est exactement le but.</p>
   </section>
 
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
+
+  <?php if ($existant && $existant['motif'] && in_array($existant['statut'], ['corrections', 'refuse'], true)): ?>
+    <div class="msg err" style="margin-bottom:16px">
+      <strong><?= $existant['statut'] === 'refuse' ? 'Refusé par la rédaction' : 'La rédaction demande une correction' ?></strong>
+      <p style="margin:.35em 0 0"><?= e($existant['motif']) ?></p>
+    </div>
+  <?php endif; ?>
 
   <form method="post" action="<?= e(url('?p=blog-editer' . ($existant ? '&id=' . urlencode((string) $existant['id']) : ''))) ?>"
         enctype="multipart/form-data">
@@ -84,15 +99,24 @@ Un paragraphe. Une ligne vide en sépare deux.
                   style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.7"><?= e($valeurs['corps']) ?></textarea>
       </div>
 
-      <div class="rangee" style="margin-top:14px;gap:10px">
-        <button class="bouton" type="submit" name="action" value="publier">
-          <?= $fige ? 'Enregistrer' : 'Publier' ?>
-        </button>
-        <button class="bouton fant" type="submit" name="action" value="brouillon">
-          <?= $fige ? 'Repasser en brouillon' : 'Garder en brouillon' ?>
-        </button>
+      <div class="rangee" style="margin-top:14px;gap:10px;flex-wrap:wrap">
+        <?php if ($fige): ?>
+          <button class="bouton" type="submit" name="action" value="enregistrer">Enregistrer</button>
+        <?php elseif ($equipe): ?>
+          <button class="bouton" type="submit" name="action" value="publier">Publier</button>
+          <button class="bouton fant" type="submit" name="action" value="enregistrer">Garder en brouillon</button>
+        <?php else: ?>
+          <button class="bouton" type="submit" name="action" value="soumettre">Proposer à la rédaction</button>
+          <button class="bouton fant" type="submit" name="action" value="enregistrer">Enregistrer sans proposer</button>
+        <?php endif; ?>
         <a class="bouton fant" href="<?= e(url('?p=blog-admin')) ?>">Annuler</a>
       </div>
+
+      <?php if (!$equipe && !$fige): ?>
+        <p class="aide" style="margin:12px 0 0">Une fois proposé, l’article part chez la rédaction
+        et ne se modifie plus tant qu’elle n’a pas répondu — sinon quelqu’un approuverait un texte
+        qui n’est déjà plus celui-là.</p>
+      <?php endif; ?>
     </div>
   </form>
 </div>
