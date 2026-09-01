@@ -12,6 +12,9 @@
  */
 $organisateurs = 2340 + (int) db()->query("SELECT COUNT(*) n FROM utilisateurs WHERE role='partenaire'")->fetch()['n'];
 $vitrine = array_slice(decors_publies(8), 0, 4);
+// Le blog sur la vitrine : trois articles, et rien si la rédaction n'a
+// encore rien écrit. Une section « Le blog » vide est pire que pas de blog.
+$articles = articles_publies(3);
 $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 ?>
 
@@ -120,7 +123,11 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     <div class="grille vitrines">
       <?php foreach ($vitrine as $d): ?>
         <a class="vignette" href="<?= e(url('?p=decor&slug=' . urlencode($d['slug']))) ?>">
-          <img src="<?= e($d['cadre_url'] ?: url('public/cadres/bon-plan.png')) ?>" alt="" loading="lazy">
+          <?php $_im = image_reduite($d['cadre_url'] ?: url('public/cadres/bon-plan.png'), 320); ?>
+          <img src="<?= e($_im['src']) ?>"
+               <?= $_im['srcset'] ? 'srcset="' . e($_im['srcset']) . '" sizes="(max-width:700px) 92vw, 320px"' : '' ?>
+               <?= $_im['largeur'] ? 'width="' . $_im['largeur'] . '" height="' . $_im['hauteur'] . '"' : '' ?>
+               alt="" loading="lazy" decoding="async">
           <div class="bas">
             <b><?= e($d['titre']) ?></b>
             <span><?= (int) $d['telechargements'] ?> badges créés</span>
@@ -377,6 +384,41 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     </p>
   </div>
 </section>
+
+<!-- ---------- le blog ---------- -->
+<?php if ($articles): ?>
+<section class="bloc" style="background:var(--bg2)">
+  <div class="contenu" style="padding-bottom:0">
+    <div class="tete">
+      <p class="sur">Le blog</p>
+      <h2>Ce qu’on apprend <em>en remplissant des salles</em></h2>
+      <p>Des campagnes réelles, à Lomé, Cotonou et Abidjan. Les chiffres, et ce qui n’a pas marché.</p>
+    </div>
+    <div class="grille g3">
+      <?php foreach ($articles as $a): ?>
+        <a class="vignette article" href="<?= e(url('?p=blog&a=' . urlencode($a['slug']))) ?>">
+          <?php if ($a['couverture']):
+              $_im = image_reduite($a['couverture'], 320); ?>
+            <img src="<?= e($_im['src']) ?>"
+                 <?= $_im['srcset'] ? 'srcset="' . e($_im['srcset']) . '" sizes="(max-width:700px) 92vw, 320px"' : '' ?>
+                 <?= $_im['largeur'] ? 'width="' . $_im['largeur'] . '" height="' . $_im['hauteur'] . '"' : '' ?>
+                 alt="" loading="lazy" decoding="async">
+          <?php endif; ?>
+          <div class="bas">
+            <b><?= e($a['titre']) ?></b>
+            <span><?= e(gmdate('d/m/Y', strtotime((string) $a['publie_le']))) ?>
+              · <?= texte_minutes((string) $a['corps']) ?> min de lecture</span>
+            <span class="chapo"><?= e($a['chapo'] ?: texte_extrait((string) $a['corps'], 110)) ?></span>
+          </div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <div class="rangee" style="margin-top:20px">
+      <a class="bouton fant" href="<?= e(url('?p=blog')) ?>">Tous les articles</a>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ---------- questions ---------- -->
 <section class="bloc">

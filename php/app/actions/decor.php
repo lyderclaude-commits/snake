@@ -195,6 +195,7 @@ if ($post) {
 
     // Le cadre est téléversé AVEC le formulaire, mais son URL survit aux
     // erreurs de saisie : sinon le partenaire le reperdrait à chaque essai.
+    $allege = '';
     if (!empty($_FILES['cadre']['tmp_name']) && is_uploaded_file($_FILES['cadre']['tmp_name'])) {
         $info = @getimagesize($_FILES['cadre']['tmp_name']);
         $ext = match ($info[2] ?? 0) {
@@ -209,6 +210,19 @@ if ($post) {
         } else {
             $nom = nouvel_id() . '.' . $ext;
             move_uploaded_file($_FILES['cadre']['tmp_name'], dossier_cadres() . '/' . $nom);
+            /**
+             * Recompressé UNE fois, à l'arrivée.
+             *
+             * Un cadre sorti de Canva fait couramment 3 Mo pour 1080 px :
+             * chaque invité paierait ce transfert, sur une connexion où le
+             * mégaoctet se compte. La fonction ne garde le résultat que
+             * s'il est plus léger, et laisse l'original intact sinon.
+             */
+            $c = compresser_cadre(dossier_cadres(), $nom);
+            $nom = $c['nom'];
+            $allege = $c['apres'] < $c['avant']
+                ? sprintf(' Cadre optimisé : %s au lieu de %s.', poids($c['apres']), poids($c['avant']))
+                : '';
             $valeurs['cadre_url'] = url('?p=cadre&f=' . $nom);
         }
     }
@@ -282,7 +296,7 @@ if ($post) {
                     'expire_le' => $valeurs['expire_le'],
                 ]);
                 rediriger(($u['role'] === 'equipe' ? '?p=catalogue' : '?p=partenaire')
-                    . '&ok=' . urlencode('« ' . $valeurs['titre'] . ' » mis à jour.'));
+                    . '&ok=' . urlencode('« ' . $valeurs['titre'] . ' » mis à jour.' . $allege));
             }
 
             $id = decor_creer([
@@ -298,8 +312,8 @@ if ($post) {
                 'expire_le' => $valeurs['expire_le'],
             ]);
             rediriger($u['role'] === 'equipe'
-                ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.')
-                : '?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.'));
+                ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.' . $allege)
+                : '?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.' . $allege));
         } catch (GabaritInvalide $e) {
             // Le message vient du contrat : c'est lui qui sait pourquoi.
             $erreur = $e->getMessage();

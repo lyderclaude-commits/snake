@@ -16,6 +16,8 @@ console.log('→ bundles du Studio et de l’aperçu depuis src/core');
 for (const [source, sortie] of [
   ['php/studio/entry.ts', 'php/public/studio.js'],
   ['php/studio/apercu.ts', 'php/public/apercu.js'],
+  ['php/studio/scanner.ts', 'php/public/scanner.js'],
+  ['php/studio/push.ts', 'php/public/push.js'],
 ]) {
   execFileSync('npx', [
     'esbuild', source,
@@ -27,7 +29,14 @@ for (const [source, sortie] of [
 rmSync(SORTIE, { recursive: true, force: true });
 mkdirSync(RACINE, { recursive: true });
 
-for (const source of ['app', 'public', 'index.php', 'install.php', '.htaccess']) {
+/**
+ * `sw.js` part À LA RACINE, et pas dans public/.
+ *
+ * La portée d'un service worker est celle de son dossier : servi depuis
+ * public/, il ne pourrait rien faire pour les pages du site. C'est la
+ * seule raison pour laquelle ce fichier n'est pas rangé avec les autres.
+ */
+for (const source of ['app', 'public', 'index.php', 'install.php', 'sw.js', '.htaccess']) {
   const chemin = join('php', source);
   if (existsSync(chemin)) {
     cpSync(chemin, join(RACINE, source), { recursive: true });
@@ -41,10 +50,15 @@ mkdirSync(join(RACINE, 'donnees/cadres'), { recursive: true });
 mkdirSync(join(RACINE, 'donnees/og'), { recursive: true });
 // Idem pour les sauvegardes : le cron ne doit pas échouer sur un mkdir.
 mkdirSync(join(RACINE, 'donnees/sauvegardes'), { recursive: true });
+// Les couvertures d'articles, et le cache des images redimensionnées.
+mkdirSync(join(RACINE, 'donnees/medias'), { recursive: true });
+mkdirSync(join(RACINE, 'donnees/vignettes'), { recursive: true });
 writeFileSync(join(RACINE, 'donnees/.htaccess'), 'Deny from all\nRequire all denied\n');
 writeFileSync(join(RACINE, 'donnees/cadres/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/og/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/sauvegardes/.gitkeep'), '');
+writeFileSync(join(RACINE, 'donnees/medias/.gitkeep'), '');
+writeFileSync(join(RACINE, 'donnees/vignettes/.gitkeep'), '');
 
 // `studio/` contient les sources TypeScript : inutiles en production.
 rmSync(join(RACINE, 'studio'), { recursive: true, force: true });

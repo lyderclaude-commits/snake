@@ -343,6 +343,61 @@ function verdict_scan(array $r): array
     };
 }
 
+/**
+ * Supprime un compte, et ce qui n'a plus de sens sans lui.
+ *
+ * Ce qui S'EN VA : le compte, ses liens courts, ses notifications, ses
+ * Koris, le rattachement de ses créations et de ses badges.
+ *
+ * Ce qui RESTE : les décors publiés — d'autres personnes s'en servent, et
+ * les badges déjà téléchargés portent leur QR —, et les présences scannées,
+ * qui sont l'historique d'un événement réel. On les DÉTACHE plutôt que de
+ * les effacer : la campagne reste au catalogue, sans propriétaire, et
+ * l'équipe décide ensuite. Effacer les décors d'un partant casserait les
+ * badges de tous ses invités.
+ */
+function supprimer_compte(string $id): void
+{
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        foreach ([
+            'DELETE FROM liens WHERE auteur_id = ?',
+            'DELETE FROM notifications WHERE utilisateur_id = ?',
+            // L'abonnement push est nominatif : le garder ferait arriver
+            // des messages du guide sur le navigateur de quelqu'un qui
+            // vient de nous demander de l'oublier.
+            'DELETE FROM push WHERE utilisateur_id = ?',
+            'DELETE FROM koris WHERE utilisateur_id = ?',
+            'DELETE FROM creations WHERE utilisateur_id = ?',
+            'UPDATE badges SET utilisateur_id = NULL WHERE utilisateur_id = ?',
+            'UPDATE decors SET auteur_id = NULL WHERE auteur_id = ?',
+            'DELETE FROM utilisateurs WHERE id = ?',
+        ] as $sql) {
+            $pdo->prepare($sql)->execute([$id]);
+        }
+        $pdo->commit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
+
+/** La dernière fois qu'on a vu quelqu'un — au jour près, pas à la seconde. */
+function marquer_vu(string $id): void
+{
+    static $fait = false;
+    if ($fait) {
+        return;
+    }
+    $fait = true;
+    // Une écriture par jour et par compte : marquer chaque page vue
+    // multiplierait les écritures par le nombre de clics, pour une
+    // information dont la précision utile est la journée.
+    db()->prepare('UPDATE utilisateurs SET vu_le = ? WHERE id = ? AND (vu_le IS NULL OR vu_le < ?)')
+        ->execute([maintenant(), $id, gmdate('Y-m-d\T00:00:00\Z')]);
+}
+
 /* ================= liens courts ================= */
 
 /**
@@ -368,15 +423,32 @@ function nouveau_code_lien(): string
 }
 
 /**
- * L'adresse publique d'un lien court.
+ * L'adresse publique d'un lien court, la plus courte que l'installation permette.
  *
- * `?p=l&c=…` et non un chemin : la version PHP n'a qu'un point d'entrée et
- * ne suppose aucune réécriture d'URL — c'est ce qui lui permet de se
- * déployer en décompressant un zip. Le jour où `wkb.link` pointera ici, une
- * seule règle de réécriture suffira à raccourcir encore.
+ * Trois formes, de la meilleure à la plus sûre :
+ *
+ *  1. `https://wkb.link/AbC123` — quand un domaine dédié est réglé. C'est
+ *     la forme qu'on met sur une affiche : quinze caractères de moins que
+ *     le domaine principal, et une marque à soi.
+ *  2. `https://boost.wakabileguide.com/AbC123` — quand la réécriture d'URL
+ *     fonctionne mais qu'aucun domaine dédié n'est réglé.
+ *  3. `…/index.php?p=l&c=AbC123` — le repli qui marche partout, même sans
+ *     `mod_rewrite`. Moins joli, jamais cassé.
+ *
+ * Le choix ne se devine pas : l'équipe le règle, et l'écran des réglages
+ * vérifie que la forme courte répond vraiment avant de la proposer.
  */
 function lien_court_url(string $code): string
 {
+    $r = reglages_bdd(['domaine_liens', 'liens_chemin_court']);
+    $domaine = trim((string) ($r['domaine_liens'] ?? ''));
+
+    if ($domaine !== '') {
+        return rtrim($domaine, '/') . '/' . rawurlencode($code);
+    }
+    if (($r['liens_chemin_court'] ?? '') === '1') {
+        return base_url() . '/' . rawurlencode($code);
+    }
     return base_url() . '/index.php?p=l&c=' . rawurlencode($code);
 }
 
@@ -1032,4 +1104,136 @@ function decor_supprimer(string $id): array
     }
 
     return ['titre' => $d['titre'], 'badges' => $nb_badges, 'cadre' => $fichier];
+}
+
+/* ================= blog ================= */
+
+/**
+ * Le blog est une PAGE PUBLIQUE, pas un journal interne.
+ *
+ * Il sert deux choses à la fois, et c'est pour cela qu'il existe : il donne
+ * au guide de quoi se faire trouver par un moteur de recherche — un site
+ * dont toutes les pages sont des formulaires ne se référence pas — et il
+ * rend concret l'« article sponsorisé » vendu avec l'offre Mouvement.
+ */
+function articles_publies(int $limite = 30, int $depuis = 0): array
+{
+    $limite = max(1, min(100, $limite));
+    $depuis = max(0, $depuis);
+    $s = db()->prepare("SELECT * FROM articles WHERE statut = 'publie' AND publie_le <= ?
+                        ORDER BY publie_le DESC LIMIT $limite OFFSET $depuis");
+    $s->execute([maintenant()]);
+    return $s->fetchAll();
+}
+
+function compter_articles_publies(): int
+{
+    $s = db()->prepare("SELECT COUNT(*) FROM articles WHERE statut = 'publie' AND publie_le <= ?");
+    $s->execute([maintenant()]);
+    return (int) $s->fetchColumn();
+}
+
+/** Tous les articles, brouillons compris. Réservé à l'équipe. */
+function articles_tous(): array
+{
+    return db()->query('SELECT * FROM articles ORDER BY
+        CASE WHEN statut = \'publie\' THEN 1 ELSE 0 END, COALESCE(publie_le, maj_le) DESC')->fetchAll();
+}
+
+function article_par_slug(string $slug): ?array
+{
+    $s = db()->prepare('SELECT * FROM articles WHERE slug = ?');
+    $s->execute([$slug]);
+    return $s->fetch() ?: null;
+}
+
+function article_par_id(string $id): ?array
+{
+    $s = db()->prepare('SELECT * FROM articles WHERE id = ?');
+    $s->execute([$id]);
+    return $s->fetch() ?: null;
+}
+
+function slug_article_libre(string $titre, ?string $sauf = null): string
+{
+    $base = slugifier($titre) ?: 'article';
+    $slug = $base;
+    $n = 2;
+    while (true) {
+        $a = article_par_slug($slug);
+        if (!$a || $a['id'] === $sauf) {
+            return $slug;
+        }
+        $slug = $base . '-' . $n++;
+    }
+}
+
+function article_creer(array $a): string
+{
+    $id = nouvel_id();
+    $now = maintenant();
+    db()->prepare('INSERT INTO articles
+        (id, slug, titre, chapo, corps, couverture, statut, auteur_id, auteur_nom, publie_le, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+      ->execute([
+          $id, $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'],
+          $a['couverture'] ?: null, $a['statut'], $a['auteur_id'], $a['auteur_nom'],
+          $a['statut'] === 'publie' ? $now : null, $now, $now,
+      ]);
+    return $id;
+}
+
+function article_maj(string $id, array $a): void
+{
+    $ancien = article_par_id($id);
+    /**
+     * La date de publication ne se réécrit pas à chaque retouche.
+     *
+     * Un article corrigé six mois plus tard remonterait en tête de liste
+     * comme s'il était neuf, et les gens qui l'ont déjà lu le reverraient
+     * en premier. On ne la pose qu'au passage EN ligne, et on la garde.
+     */
+    $publie_le = $ancien['publie_le'] ?? null;
+    if ($a['statut'] === 'publie' && !$publie_le) {
+        $publie_le = maintenant();
+    }
+    db()->prepare('UPDATE articles SET slug = ?, titre = ?, chapo = ?, corps = ?, couverture = ?,
+                   statut = ?, publie_le = ?, maj_le = ? WHERE id = ?')
+        ->execute([
+            $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'], $a['couverture'] ?: null,
+            $a['statut'], $publie_le, maintenant(), $id,
+        ]);
+}
+
+function article_supprimer(string $id): void
+{
+    $a = article_par_id($id);
+    db()->prepare('DELETE FROM articles WHERE id = ?')->execute([$id]);
+
+    // La couverture s'en va avec, si aucun autre article ne s'en sert.
+    if ($a && preg_match('/[?&]f=([0-9a-f-]{36}\.(?:png|webp|jpg))(?:$|&)/', (string) $a['couverture'], $m)) {
+        $autre = db()->prepare('SELECT 1 FROM articles WHERE couverture LIKE ?');
+        $autre->execute(['%' . $m[1] . '%']);
+        if (!$autre->fetch()) {
+            @unlink(dossier_medias() . '/' . $m[1]);
+        }
+    }
+}
+
+/**
+ * Compte une lecture, une fois par visiteur et par article.
+ *
+ * Sans le garde en session, recharger la page ferait un lecteur de plus, et
+ * le chiffre qu'on montre à un annonceur ne voudrait plus rien dire.
+ */
+function article_lu(string $id): void
+{
+    demarrer_session();
+    $vus = $_SESSION['articles_vus'] ?? [];
+    if (in_array($id, $vus, true)) {
+        return;
+    }
+    $vus[] = $id;
+    $_SESSION['articles_vus'] = array_slice($vus, -50);
+    db()->prepare('UPDATE articles SET vues = vues + 1 WHERE id = ?')->execute([$id]);
 }

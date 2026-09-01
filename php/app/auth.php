@@ -26,9 +26,9 @@ const KORIS_PAR_SCAN = 50;
  *
  *  - les COMPTEURS (`campagnes`, `telechargements`, `liens_courts`) :
  *    -1 signifie sans limite, et ils sont réellement opposables ;
- *  - les CAPACITÉS (`filigrane`, `koris`, `redirection`, `ciblage`, `api`) :
- *    le produit les applique lui-même, à la ligne près ;
- *  - les SERVICES (`diffusion`, `telegram_push`, `article`,
+ *  - les CAPACITÉS (`filigrane`, `koris`, `redirection`, `ciblage`, `api`,
+ *    `telegram_push`) : le produit les applique lui-même, à la ligne près ;
+ *  - les SERVICES (`diffusion`, `article`,
  *    `account_manager`) : ils demandent une intervention humaine ou un
  *    système extérieur. Le produit ne peut pas les « exécuter » ; il dit
  *    qu'ils sont dus, et l'équipe les voit sur la fiche du compte. Prétendre
@@ -103,10 +103,10 @@ const OFFRE_LIGNES = [
         'Une clé de lecture pour brancher vos propres outils sur vos chiffres.'],
     'diffusion' => ['Diffusion à la base Wakabi', 'service',
         'Votre campagne poussée à l’audience du guide. L’équipe s’en charge.'],
-    'telegram_push' => ['Campagnes Telegram et Web Push', 'service',
-        'Canaux de diffusion animés par l’équipe.'],
+    'telegram_push' => ['Notifications push et campagnes Telegram', 'capacite',
+        'Écrire directement aux invités de vos campagnes, sur leur navigateur, même site fermé. Telegram reste animé par l’équipe.'],
     'article' => ['Article sponsorisé sur le blog', 'service',
-        'Rédigé et publié par la rédaction Wakabi.'],
+        'Votre campagne racontée sur le blog public du guide, rédigée et publiée par la rédaction Wakabi.'],
     'account_manager' => ['Account manager dédié', 'service',
         'Une personne de l’équipe suit votre compte.'],
 ];
@@ -125,10 +125,17 @@ function formule_libelle(?string $cle): string
     return FORMULES[$cle ?? '']['nom'] ?? FORMULES['decouverte']['nom'];
 }
 
-/** L'offre d'un compte, au complet. */
+/**
+ * L'offre d'un compte, au complet.
+ *
+ * `$u` peut être nul : un décor dont le propriétaire a supprimé son compte
+ * n'a plus d'offre, et il est encore au catalogue. Il retombe alors sur
+ * Découverte — le plus restrictif, qui est le bon défaut quand personne ne
+ * paie plus rien.
+ */
 function offre(?array $u): array
 {
-    $cle = $u['formule'] ?? 'decouverte';
+    $cle = $u === null ? 'decouverte' : ($u['formule'] ?? 'decouverte');
     return FORMULES[$cle] ?? FORMULES['decouverte'];
 }
 
@@ -159,7 +166,7 @@ function quota(array $u, string $quoi): int
  */
 function capacite(?array $u, string $quoi): bool
 {
-    if (($u['role'] ?? '') === 'equipe') {
+    if ($u !== null && ($u['role'] ?? '') === 'equipe') {
         return true;
     }
     $v = offre($u)[$quoi] ?? false;

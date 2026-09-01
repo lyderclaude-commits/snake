@@ -118,6 +118,84 @@ $branche = courriel_branche();
   </form>
 
   <div class="carte" style="margin-top:16px">
+    <h3 style="margin:0 0 4px">Les liens courts</h3>
+    <p class="aide" style="margin:0 0 16px">Aujourd’hui, vos liens s’écrivent
+    <code><?= e($exemple_lien) ?></code>.</p>
+
+    <form method="post" action="<?= e(url('?p=reglages')) ?>">
+      <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+      <?php
+      /* Les champs du transport voyagent avec, sinon les enregistrer ici les
+         écraserait par des valeurs vides. */
+      foreach (array_keys(COURRIEL_DEFAUTS) as $cle):
+          if ($cle === 'smtp_motdepasse') { continue; } ?>
+        <input type="hidden" name="<?= e($cle) ?>" value="<?= e((string) $valeurs[$cle]) ?>">
+      <?php endforeach; ?>
+
+      <div class="champ">
+        <label for="domaine_liens">Domaine dédié <span style="font-weight:400">(facultatif)</span></label>
+        <input id="domaine_liens" name="domaine_liens" type="text" placeholder="wkb.link"
+               value="<?= e($domaine_liens) ?>">
+        <p class="aide">Laissez vide pour utiliser le domaine du site.</p>
+      </div>
+
+      <div class="rangee" style="margin-top:12px;gap:10px">
+        <button class="bouton" type="submit" name="action" value="enregistrer">Enregistrer</button>
+        <button class="bouton fant" type="submit" name="action" value="liens">Vérifier la forme courte</button>
+      </div>
+    </form>
+
+    <p class="aide" style="margin:14px 0 0">
+      <strong><?= $chemin_court ? 'La forme courte fonctionne.' : 'La forme courte n’a pas été vérifiée.' ?></strong>
+      Le bouton demande à votre site de se répondre à lui-même : c’est la seule façon de savoir si
+      votre hébergement lit bien le fichier <code>.htaccess</code>. Tant que la réponse n’est pas
+      venue, les liens gardent la forme longue — moins jolie, jamais cassée.
+    </p>
+
+    <details style="margin-top:12px">
+      <summary class="aide" style="cursor:pointer">Brancher <code>wkb.link</code> — la marche à suivre</summary>
+      <div class="aide" style="margin-top:10px;line-height:1.7">
+        <p style="margin:0 0 8px"><strong>Le domaine ne s’invente pas côté logiciel :</strong> il faut
+        le posséder et le faire pointer ici. Trois gestes, une fois pour toutes.</p>
+        <ol style="margin:0;padding-left:1.2em">
+          <li>Achetez <code>wkb.link</code> chez un registraire (le TLD <code>.link</code>
+          coûte une dizaine d’euros par an).</li>
+          <li>Chez LWS, dans cPanel → <strong>Domaines</strong>, ajoutez-le en
+          <em>domaine additionnel</em> et faites-le pointer vers <strong>ce même dossier</strong>
+          — celui qui contient <code>index.php</code>. Puis chez le registraire, réglez les
+          serveurs DNS sur ceux de LWS.</li>
+          <li>Revenez ici, saisissez <code>wkb.link</code> ci-dessus, et cliquez
+          <em>Vérifier la forme courte</em>.</li>
+        </ol>
+        <p style="margin:8px 0 0">Les liens déjà créés continuent de fonctionner : c’est le code
+        à six caractères qui compte, pas le domaine par lequel on arrive.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="carte" style="margin-top:16px">
+    <h3 style="margin:0 0 4px">Les images</h3>
+    <p class="aide" style="margin:0 0 12px">Les vignettes du catalogue sont fabriquées et
+    mises en cache toutes seules : rien à faire pour elles. Le bouton ci-dessous s’occupe des
+    <strong>fichiers de cadres eux-mêmes</strong> — ceux que le Studio charge en entier, et qui
+    ont été téléversés avant que la compression n’existe.</p>
+
+    <form method="post" action="<?= e(url('?p=reglages')) ?>">
+      <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+      <?php foreach (array_keys(COURRIEL_DEFAUTS) as $cle):
+          if ($cle === 'smtp_motdepasse') { continue; } ?>
+        <input type="hidden" name="<?= e($cle) ?>" value="<?= e((string) $valeurs[$cle]) ?>">
+      <?php endforeach; ?>
+      <button class="bouton fant" type="submit" name="action" value="images">Alléger les cadres déjà en ligne</button>
+    </form>
+
+    <p class="aide" style="margin:12px 0 0">Par lots d’une douzaine, parce qu’un hébergement
+    mutualisé coupe un script au bout de trente secondes. Relancez jusqu’à ce que le message
+    dise que c’est terminé. L’opération ne touche jamais à un fichier qu’elle ne saurait pas
+    rendre plus léger : en cas de doute, l’original est gardé tel quel.</p>
+  </div>
+
+  <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Ce que le transport change</h3>
     <ul style="margin:0;padding-left:1.1em;line-height:1.7">
       <li>Un partenaire reçoit la décision sur son décor : approuvé, à corriger, refusé — avec le motif.</li>

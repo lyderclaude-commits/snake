@@ -19,6 +19,9 @@ require __DIR__ . '/app/courriel.php';
 require __DIR__ . '/app/og.php';
 require __DIR__ . '/app/zip.php';
 require __DIR__ . '/app/sauvegarde.php';
+require __DIR__ . '/app/texte.php';
+require __DIR__ . '/app/images.php';
+require __DIR__ . '/app/push.php';
 require __DIR__ . '/app/qr.php';
 require __DIR__ . '/app/icones.php';
 require __DIR__ . '/app/avatars.php';
@@ -29,6 +32,10 @@ demarrer_session();
 $page = (string) ($_GET['p'] ?? 'accueil');
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
 $me = utilisateur_courant();
+// « Vu le » : une écriture par jour et par compte, pas une par clic.
+if ($me) {
+    marquer_vu((string) $me['id']);
+}
 
 /**
  * Rend une vue dans le gabarit commun.
@@ -94,8 +101,72 @@ switch ($page) {
         readfile($fichier);
         exit;
 
+    /**
+     * Une vignette de cadre, fabriquée une fois puis servie du disque.
+     *
+     * `f` n'est pas un chemin : c'est une clé que `image_de_la_cle()`
+     * retraduit avec un motif strict. Un nom de fichier venu de la requête
+     * ne désigne jamais un chemin, ici pas plus qu'ailleurs.
+     *
+     * Si la fabrication échoue — GD sans WebP, image illisible — on répond
+     * l'ORIGINAL plutôt qu'une erreur : une page de catalogue sans images
+     * serait un dégât bien pire qu'une page un peu lourde.
+     */
+    case 'vignette':
+        $source = image_de_la_cle((string) ($_GET['f'] ?? ''));
+        if (!$source) {
+            http_response_code(404);
+            exit('Introuvable');
+        }
+        $fichier = vignette($source, (int) ($_GET['l'] ?? 320));
+        $type = $fichier ? 'image/webp' : ((string) (@getimagesize($source)['mime'] ?: 'image/png'));
+        $fichier ??= $source;
+        header('Content-Type: ' . $type);
+        header('Content-Length: ' . filesize($fichier));
+        // La clé du cache porte la date de la source : une image servie ici
+        // ne change jamais sous la même adresse.
+        header('Cache-Control: public, max-age=31536000, immutable');
+        readfile($fichier);
+        exit;
+
     case 'decors':
         vue('decors', ['titre' => 'Décors — Wakabi Boost', 'liste' => decors_publies()]);
+
+    /**
+     * Un média téléversé — la couverture d'un article.
+     *
+     * Comme `?p=cadre` : les fichiers vivent hors de la racine web, et un
+     * nom contrôlé ici est la seule voie d'accès. Le motif exclut toute
+     * traversée de chemin.
+     */
+    case 'media':
+        $nom = (string) ($_GET['f'] ?? '');
+        if (!preg_match('/^[0-9a-f-]{36}\.(png|webp|jpg)$/', $nom)) {
+            http_response_code(404);
+            exit('Introuvable');
+        }
+        $chemin = dossier_medias() . '/' . $nom;
+        if (!is_file($chemin)) {
+            http_response_code(404);
+            exit('Introuvable');
+        }
+        header('Content-Type: ' . match (pathinfo($nom, PATHINFO_EXTENSION)) {
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            default => 'image/jpeg',
+        });
+        header('Content-Length: ' . filesize($chemin));
+        header('Cache-Control: public, max-age=31536000, immutable');
+        readfile($chemin);
+        exit;
+
+    case 'blog':
+        require RACINE . '/app/actions/blog.php';
+
+    case 'blog-admin':
+    case 'blog-editer':
+    case 'blog-supprimer':
+        require RACINE . '/app/actions/blog-admin.php';
 
     case 'decor':
         $d = decor_par_slug((string) ($_GET['slug'] ?? ''));
@@ -140,6 +211,12 @@ switch ($page) {
         deconnecter();
         rediriger('');
 
+    case 'profil':
+    case 'profil-identite':
+    case 'profil-motdepasse':
+    case 'profil-supprimer':
+        require RACINE . '/app/actions/profil.php';
+
     case 'compte':
         $u = exiger_role('participant', 'partenaire', 'equipe');
         vue('compte', [
@@ -154,6 +231,43 @@ switch ($page) {
         $liste = notifications_de($u['id']);
         notifications_marquer_lues($u['id']);
         vue('notifications', ['titre' => 'Notifications', 'liste' => $liste]);
+
+    /**
+     * S'abonner aux notifications du navigateur. SANS compte obligatoire.
+     *
+     * C'est le point : un invité qui vient de faire son badge n'a pas de
+     * compte, et c'est précisément à lui qu'on veut pouvoir reparler. Un
+     * abonnement appartient à un navigateur ; `utilisateur_id` reste nul
+     * tant que personne n'est connecté, et se remplit à la connexion
+     * suivante puisque le même navigateur se réabonne.
+     */
+    case 'api-push-abonner':
+        verifier_csrf();
+        $endpoint = trim((string) ($_POST['endpoint'] ?? ''));
+        $p256dh = trim((string) ($_POST['p256dh'] ?? ''));
+        $auth_cle = trim((string) ($_POST['auth'] ?? ''));
+        // L'adresse vient du navigateur, mais elle sera APPELÉE par le
+        // serveur : sans ce garde, on accepterait de faire faire une requête
+        // sortante vers n'importe quoi.
+        if (!preg_match('~^https://~i', $endpoint) || $p256dh === '' || $auth_cle === '') {
+            json_repondre(['ok' => false, 'message' => 'Abonnement incomplet.'], 400);
+        }
+        push_abonner(
+            $me['id'] ?? null,
+            $endpoint,
+            $p256dh,
+            $auth_cle,
+            substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180)
+        );
+        json_repondre(['ok' => true]);
+
+    case 'api-push-desabonner':
+        verifier_csrf();
+        push_desabonner(trim((string) ($_POST['endpoint'] ?? '')));
+        json_repondre(['ok' => true]);
+
+    case 'diffusion':
+        require RACINE . '/app/actions/diffusion.php';
 
     /* ---- partenaire ---- */
 

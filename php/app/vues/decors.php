@@ -10,7 +10,11 @@
     <div class="grille g3">
       <?php foreach ($liste as $d): ?>
         <a class="vignette" href="<?= e(url('?p=decor&slug=' . urlencode($d['slug']))) ?>">
-          <img src="<?= e($d['cadre_url'] ?: url('public/cadres/bon-plan.png')) ?>" alt="" loading="lazy">
+          <?php $_im = image_reduite($d['cadre_url'] ?: url('public/cadres/bon-plan.png'), 320); ?>
+          <img src="<?= e($_im['src']) ?>"
+               <?= $_im['srcset'] ? 'srcset="' . e($_im['srcset']) . '" sizes="(max-width:700px) 92vw, 320px"' : '' ?>
+               <?= $_im['largeur'] ? 'width="' . $_im['largeur'] . '" height="' . $_im['hauteur'] . '"' : '' ?>
+               alt="" loading="lazy" decoding="async">
           <div class="bas">
             <b><?= e($d['titre']) ?></b>
             <span><?= e($d['sous_titre'] ?: ucfirst($d['ville'])) ?> · <?= (int) $d['telechargements'] ?> badges</span>

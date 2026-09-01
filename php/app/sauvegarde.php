@@ -79,7 +79,22 @@ function ecrire_sauvegarde(string $chemin): string
         }
     }
 
-    $zip->ajouter('LISEZ-MOI.txt', notice_sauvegarde($mysql, $cadres));
+    /**
+     * Les médias aussi : ce sont des ORIGINAUX, pas un cache.
+     *
+     * Une couverture d'article n'existe qu'ici — le fichier téléversé a
+     * été effacé du poste de la personne qui l'a envoyé depuis longtemps.
+     * Les vignettes, elles, restent dehors : elles se refabriquent seules
+     * à la première visite, et les inclure doublerait l'archive pour rien.
+     */
+    $medias = 0;
+    foreach (glob(dossier_medias() . '/*') ?: [] as $f) {
+        if (is_file($f) && $zip->ajouterFichier('medias/' . basename($f), $f)) {
+            $medias++;
+        }
+    }
+
+    $zip->ajouter('LISEZ-MOI.txt', notice_sauvegarde($mysql, $cadres, $medias));
     $zip->fermer();
 
     if (!is_file($chemin) || filesize($chemin) < 100) {
@@ -207,7 +222,7 @@ function valeur_sql(PDO $pdo, mixed $v): string
 /* La notice                                                           */
 /* ------------------------------------------------------------------ */
 
-function notice_sauvegarde(bool $mysql, int $cadres): string
+function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
 {
     $base = $mysql
         ? "  base.sql        le contenu complet de la base MySQL\n"
@@ -217,22 +232,24 @@ function notice_sauvegarde(bool $mysql, int $cadres): string
         ? "1. Dans cPanel, ouvrez phpMyAdmin et sélectionnez votre base.\n"
         . "2. Onglet « Importer », choisissez base.sql, lancez.\n"
         . "   La base doit être VIDE : le fichier recrée chaque table.\n"
-        . "3. Recopiez le dossier cadres/ dans donnees/cadres/ du site.\n"
+        . "3. Recopiez cadres/ et medias/ dans donnees/ du site.\n"
         : "1. Arrêtez d'utiliser le site le temps de l'opération.\n"
         . "2. Remplacez donnees/wakabi.sqlite par le fichier wakabi.sqlite ci-joint.\n"
-        . "3. Recopiez le dossier cadres/ dans donnees/cadres/ du site.\n";
+        . "3. Recopiez cadres/ et medias/ dans donnees/ du site.\n";
 
     return "SAUVEGARDE WAKABI BOOST\n"
         . "=======================\n\n"
         . "Faite le " . gmdate('d/m/Y à H:i') . " UTC.\n\n"
         . "CE QUE CONTIENT CETTE ARCHIVE\n"
         . $base
-        . "  cadres/         les $cadres fichiers de cadres téléversés\n\n"
+        . "  cadres/         les $cadres fichiers de cadres téléversés\n"
+        . "  medias/         les $medias couvertures d'articles\n\n"
         . "CE QU'ELLE NE CONTIENT PAS\n"
         . "  config.php — il décrit VOTRE serveur (identifiants de base de\n"
         . "  données, chemins) et n'a rien à faire dans une archive qui\n"
         . "  circule. Gardez-en une copie à part.\n\n"
-        . "  Les vignettes de partage : elles se recalculent toutes seules.\n\n"
+        . "  Les vignettes de partage et les images redimensionnées : elles\n"
+        . "  se recalculent toutes seules à la première visite.\n\n"
         . "RESTAURER\n"
         . $restaurer
         . "\n"

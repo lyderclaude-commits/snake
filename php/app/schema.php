@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 8;
 
 function assurer_schema(): void
 {
@@ -66,6 +66,10 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         'ALTER TABLE utilisateurs ADD COLUMN bonus_telechargements INT NOT NULL DEFAULT 0',
         "ALTER TABLE utilisateurs ADD COLUMN cle_api $court NULL",
         "ALTER TABLE utilisateurs ADD COLUMN note_equipe $txt NULL",
+        // v7 — l'espace profil : de quoi joindre quelqu'un autrement que par
+        // courriel, et savoir quand il est passé pour la dernière fois.
+        "ALTER TABLE utilisateurs ADD COLUMN telephone $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN vu_le $court NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -182,6 +186,8 @@ function creer_schema(PDO $pdo, bool $mysql): void
             bonus_telechargements INT NOT NULL DEFAULT 0,
             cle_api           $court NULL,
             note_equipe       $txt NULL,
+            telephone         $court NULL,
+            vu_le             $court NULL,
             cree_le           $court NOT NULL
         )$moteur",
 
@@ -291,6 +297,57 @@ function creer_schema(PDO $pdo, bool $mysql): void
             cree_le $court NOT NULL
         )$moteur",
 
+        /**
+         * Les abonnements aux notifications du navigateur.
+         *
+         * Un abonnement n'appartient pas à une personne mais à un
+         * NAVIGATEUR : la même personne sur son téléphone et sur son poste
+         * en a deux, et un poste partagé peut en porter un sans compte du
+         * tout — d'où `utilisateur_id` nullable. C'est ce qui permet de
+         * prévenir un visiteur qui n'a pas encore créé de compte.
+         *
+         * `endpoint` est l'adresse que le service de push nous donne ; elle
+         * dépasse allègrement les 190 caractères indexables d'un utf8mb4,
+         * et c'est pourtant la clé qui doit être unique — sans quoi la
+         * table doublerait à chaque visite. On indexe donc son empreinte,
+         * de longueur fixe, et c'est par elle qu'on retrouve une ligne.
+         */
+        "CREATE TABLE IF NOT EXISTS push (
+            id             $id PRIMARY KEY,
+            empreinte      $court NOT NULL UNIQUE,
+            utilisateur_id $id NULL,
+            endpoint       $txt NOT NULL,
+            p256dh         $court NOT NULL,
+            auth           $court NOT NULL,
+            agent          $court NULL,
+            cree_le        $court NOT NULL,
+            vu_le          $court NULL
+        )$moteur",
+
+        /**
+         * Le blog, lisible par tout le monde depuis l'accueil.
+         *
+         * Un article n'est pas une notification : il reste, il se relit, et
+         * il se partage. `slug` est ce qui apparaît dans l'adresse et ne
+         * change plus une fois l'article publié — un lien partagé ne doit
+         * pas casser parce que le titre a été retouché.
+         */
+        "CREATE TABLE IF NOT EXISTS articles (
+            id         $id PRIMARY KEY,
+            slug       $court NOT NULL UNIQUE,
+            titre      $court NOT NULL,
+            chapo      $txt NULL,
+            corps      $txt NOT NULL,
+            couverture $court NULL,
+            statut     $court NOT NULL DEFAULT 'brouillon',
+            auteur_id  $id NULL,
+            auteur_nom $court NULL,
+            vues       INT NOT NULL DEFAULT 0,
+            publie_le  $court NULL,
+            cree_le    $court NOT NULL,
+            maj_le     $court NOT NULL
+        )$moteur",
+
         "CREATE TABLE IF NOT EXISTS prevol (
             decor_id $id PRIMARY KEY,
             passe    INT NOT NULL,
@@ -310,6 +367,8 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_tentatives_cle ON tentatives (cle)',
         'CREATE INDEX idx_decors_statut ON decors (statut)',
         'CREATE INDEX idx_liens_auteur ON liens (auteur_id)',
+        'CREATE INDEX idx_push_utilisateur ON push (utilisateur_id)',
+        'CREATE INDEX idx_articles_statut ON articles (statut)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

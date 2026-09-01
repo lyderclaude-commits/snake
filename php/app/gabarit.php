@@ -18,6 +18,27 @@ const WAKABI_SIGNATURE = 'LE GUIDE DES BONS PLANS';
  */
 const WAKABI_DOMAINES = ['wakabileguide.com', 'studio.wakabileguide.com'];
 
+/**
+ * Cette adresse passe-t-elle le garde-fou ?
+ *
+ * Extrait du validateur de gabarit parce que la règle sert désormais à deux
+ * endroits — la redirection d'un décor, et le lien d'une notification push.
+ * Deux copies de ce test, c'est une copie qu'on oubliera de corriger.
+ */
+function redirection_autorisee(string $url): bool
+{
+    $hote = strtolower((string) parse_url(trim($url), PHP_URL_HOST));
+    if ($hote === '') {
+        return false;
+    }
+    foreach (WAKABI_DOMAINES as $d) {
+        if ($hote === $d || str_ends_with($hote, '.' . $d)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const STATUTS = ['brouillon', 'en_relecture', 'corrections', 'refuse', 'publie', 'expire', 'archive'];
 
 /** Dispositions proposées au partenaire. Il ne place pas ses calques à la main. */
@@ -736,14 +757,7 @@ function valider_gabarit(array $g): void
         throw new GabaritInvalide('L’adresse de redirection n’est pas une URL valide.');
     }
     if (($g['createdBy'] ?? '') === 'partenaire') {
-        $permis = false;
-        foreach (WAKABI_DOMAINES as $d) {
-            if ($hote === $d || str_ends_with($hote, '.' . $d)) {
-                $permis = true;
-                break;
-            }
-        }
-        if (!$permis) {
+        if (!redirection_autorisee($redir)) {
             throw new GabaritInvalide(sprintf(
                 'Un décor de partenaire doit rediriger vers un domaine Wakabi (%s), pas vers « %s ».',
                 implode(', ', WAKABI_DOMAINES),

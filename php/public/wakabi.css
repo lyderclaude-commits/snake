@@ -788,3 +788,68 @@ input[type=file].fichier-natif{
   .comparatif-cartes .valeur .quoi{font-weight:700;color:var(--ink)}
   .comparatif-cartes .phare .valeur .quoi{color:var(--primary-d)}
 }
+
+/* ============ le blog ============
+
+   Une colonne de lecture, et rien autour. La largeur est plafonnée à ~68
+   caractères : au-delà, l'œil perd la ligne suivante en revenant à gauche,
+   et c'est la raison pour laquelle un journal a des colonnes étroites.
+   Le corps monte à 1.05 rem, un cran au-dessus du reste du site : on lit
+   ici, on ne remplit pas un formulaire. */
+
+.lecture{max-width:780px}
+.lecture .fil{margin:0 0 18px;font-size:.86rem}
+.lecture .fil a{color:var(--text2);text-decoration:none;font-weight:600}
+.lecture .fil a:hover{color:var(--primary)}
+
+.lecture h1{
+  font-family:var(--display);font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.12;
+  letter-spacing:-.03em;margin:0 0 12px;
+}
+.lecture .signature{font-size:.85rem;color:var(--text3);margin:0 0 22px}
+.lecture .chapo-article{
+  font-size:1.12rem;line-height:1.6;color:var(--text2);font-weight:500;
+  margin:0 0 24px;padding-left:16px;border-left:3px solid var(--primary);
+}
+.lecture .couverture{
+  width:100%;height:auto;display:block;border-radius:var(--r16);
+  margin:0 0 28px;background:var(--bg2);
+}
+
+.corps-article{font-size:1.05rem;line-height:1.75;color:var(--ink)}
+.corps-article p{margin:0 0 1.15em}
+.corps-article h3{
+  font-family:var(--display);font-size:1.35rem;letter-spacing:-.02em;
+  margin:1.9em 0 .55em;line-height:1.25;
+}
+.corps-article h4{font-family:var(--display);font-size:1.08rem;margin:1.5em 0 .45em}
+.corps-article ul{margin:0 0 1.15em;padding-left:1.25em}
+.corps-article li{margin:0 0 .4em}
+.corps-article blockquote{
+  margin:1.6em 0;padding:14px 20px;background:var(--bg2);border-radius:var(--r10);
+  border-left:3px solid var(--primary);font-size:1.05rem;color:var(--text2);
+}
+.corps-article code{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:1px 6px;font-size:.9em;
+}
+.corps-article a{color:var(--primary-d);text-decoration:underline;text-underline-offset:2px}
+
+/* Une vignette d'article n'a pas de format carré imposé : la couverture
+   d'un article est un paysage, pas un badge. Sans couverture, la carte
+   reste une carte de texte — et ne montre pas un trou gris. */
+.vignette.article img{aspect-ratio:16/9}
+.vignette.article .chapo{
+  display:block;font-size:.85rem;color:var(--text2);line-height:1.5;margin-top:8px;
+}
+
+/* Visible d'un lecteur d'écran, invisible à l'œil : pour un champ dont
+   l'étiquette ferait doublon avec le titre juste au-dessus. */
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+
+/* Une étiquette d'état dans un tableau : « En ligne » se lit d'un coup
+   d'œil, « Brouillon » reste discret. */
+.etiquette.ok{border-color:#A7E3D2;background:#ECFDF7;color:#046C4E}

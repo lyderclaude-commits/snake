@@ -40,10 +40,41 @@ if ($post) {
         }
     }
 
+    /**
+     * Le domaine des liens courts, normalisé plutôt que refusé.
+     *
+     * Quelqu'un qui tape « wkb.link » a raison ; lui répondre « adresse
+     * invalide » parce qu'il manque `https://` serait pédant. On complète,
+     * et on ne refuse que ce qui ne peut pas être un domaine.
+     *
+     * Un champ ABSENT n'est pas un champ vidé : les deux formulaires de
+     * cette page enregistrent par le même chemin, et sans ce garde,
+     * enregistrer le transport effacerait le domaine des liens.
+     */
+    $domaine = isset($_POST['domaine_liens']) ? trim((string) $_POST['domaine_liens']) : null;
+    if ($domaine !== null && $domaine !== '') {
+        if (!preg_match('~^https?://~i', $domaine)) {
+            $domaine = 'https://' . $domaine;
+        }
+        $domaine = rtrim($domaine, '/');
+        $hote = parse_url($domaine, PHP_URL_HOST);
+        if (!$hote || !str_contains($hote, '.')) {
+            $erreur = 'Ce domaine ne ressemble pas à un domaine. Exemple : wkb.link';
+        }
+    }
+    if ($erreur === null && $domaine !== null) {
+        $saisie['domaine_liens'] = $domaine;
+    }
+
     $vers = trim((string) ($_POST['essai_vers'] ?? ''));
     $essai = ($_POST['action'] ?? '') === 'essai';
+    $tester_liens = ($_POST['action'] ?? '') === 'liens';
+    $alleger = ($_POST['action'] ?? '') === 'images';
 
-    if ($saisie['smtp_hote'] !== '' && $saisie['courriel_expediteur'] === '') {
+    if ($erreur !== null) {
+        // Le domaine des liens a déjà été refusé plus haut : on n'ira pas
+        // enregistrer le reste par-dessus une saisie qu'on vient de rejeter.
+    } elseif ($saisie['smtp_hote'] !== '' && $saisie['courriel_expediteur'] === '') {
         $erreur = 'Indiquez l’adresse expéditrice : un serveur SMTP refuse un message sans elle.';
     } elseif ($saisie['courriel_expediteur'] !== ''
               && !filter_var($saisie['courriel_expediteur'], FILTER_VALIDATE_EMAIL)) {
@@ -76,6 +107,42 @@ if ($post) {
             } else {
                 $erreur = 'Réglages enregistrés, mais l’essai a échoué. ' . $r['message'];
             }
+        } elseif ($tester_liens) {
+            /**
+             * On DEMANDE à l'installation de se répondre, on ne suppose pas.
+             *
+             * `mod_rewrite` peut être absent, ou `AllowOverride` interdire
+             * le `.htaccess` : la règle serait alors ignorée en silence, et
+             * l'application distribuerait des adresses qui ne mènent nulle
+             * part. Le résultat est enregistré, et c'est lui qui décide de
+             * la forme des liens ensuite.
+             */
+            $marche = chemin_court_marche();
+            reglages_bdd_poser(['liens_chemin_court' => $marche ? '1' : '']);
+            $message = $marche
+                ? 'La forme courte répond : vos liens s’écrivent maintenant ' . lien_court_url('AbC123') . '.'
+                : null;
+            $erreur = $marche ? null :
+                'La forme courte ne répond pas. Votre hébergement ignore le fichier .htaccess, ou '
+                . 'mod_rewrite n’y est pas actif. Les liens gardent la forme longue, qui marche partout.';
+        } elseif ($alleger) {
+            /**
+             * Alléger ce qui est DÉJÀ en ligne.
+             *
+             * Les décors publiés avant cette version portent encore le
+             * fichier tel qu'il a été téléversé. Par lots, parce qu'un
+             * mutualisé coupe un script à trente secondes.
+             */
+            $b = alleger_cadres();
+            $message = $b['traites'] === 0
+                ? 'Tous les cadres sont déjà optimisés. Rien à faire.'
+                : sprintf(
+                    '%d cadre(s) traité(s), %d allégé(s) : %s au lieu de %s.%s',
+                    $b['traites'], $b['allegees'], poids($b['apres']), poids($b['avant']),
+                    $b['restants'] > 0
+                        ? ' Il en reste ' . $b['restants'] . ' — relancez pour continuer.'
+                        : ' C’est terminé.'
+                );
         } else {
             $message = courriel_branche()
                 ? 'Réglages enregistrés. Envoyez-vous un essai pour en avoir le cœur net.'
@@ -84,9 +151,14 @@ if ($post) {
     }
 }
 
+$liens = reglages_bdd(['domaine_liens', 'liens_chemin_court']);
+
 vue('reglages', [
     'titre' => 'Réglages',
     'valeurs' => $valeurs,
+    'domaine_liens' => (string) ($liens['domaine_liens'] ?? ''),
+    'chemin_court' => ($liens['liens_chemin_court'] ?? '') === '1',
+    'exemple_lien' => lien_court_url('AbC123'),
     'a_mot_de_passe' => (reglages_bdd(['smtp_motdepasse'])['smtp_motdepasse'] ?? '') !== '',
     'message' => $message,
     'erreur' => $erreur,

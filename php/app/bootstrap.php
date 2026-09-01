@@ -95,6 +95,23 @@ function dossier_cadres(): string
     return $d;
 }
 
+/**
+ * Les images téléversées AUTRES que les cadres : couvertures d'articles.
+ *
+ * Un dossier à part, parce que la règle de service n'est pas la même : un
+ * cadre est un calque à trous qu'on superpose, une couverture est une
+ * photo qu'on affiche. Les mélanger obligerait à deviner lequel est
+ * lequel au moment de le servir.
+ */
+function dossier_medias(): string
+{
+    $d = dossier_donnees() . '/medias';
+    if (!is_dir($d)) {
+        @mkdir($d, 0775, true);
+    }
+    return $d;
+}
+
 /* ---------------- base de données ---------------- */
 
 function db(): PDO

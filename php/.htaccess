@@ -6,6 +6,16 @@
   RewriteRule ^donnees/ - [F,L]
   RewriteRule ^app/ - [F,L]
   RewriteRule ^config\.php$ - [F,L]
+
+  # Les liens courts : wkb.link/AbC123 plutôt que ?p=l&c=AbC123.
+  #
+  # Exactement six caractères de l'alphabet des codes, et seulement si
+  # aucun fichier ni dossier de ce nom n'existe : sans ces deux gardes, la
+  # règle avalerait un jour un fichier légitime, et personne ne saurait
+  # pourquoi une page a disparu.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^([A-HJ-NP-Za-hj-np-z2-9]{6})$ index.php?p=l&c=$1 [L,QSA]
 </IfModule>
 
 <IfModule mod_headers.c>

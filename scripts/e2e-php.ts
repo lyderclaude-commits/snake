@@ -771,9 +771,9 @@ const run = async () => {
   const entrees = (await p.locator('.barre nav a').evaluateAll(
     (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()),
   ));
-  ok('les huit destinations sont sous un seul intitulé',
+  ok('les dix destinations sont sous un seul intitulé',
      (await p.locator('.barre .deroulant > summary').innerText()).trim().startsWith('Administration')
-     && (await p.locator('.barre .deroulant .volet a').count()) === 8,
+     && (await p.locator('.barre .deroulant .volet a').count()) === 10,
      `${await p.locator(".barre .deroulant .volet a").count()} entrées`);
   ok('notifications et déconnexion restent hors du déroulant',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
@@ -1160,13 +1160,21 @@ const run = async () => {
      /curl -s "http.*p=sauvegarde-auto&cle=[0-9a-f]{32}"/.test(await p.locator('pre').first().innerText()),
      (await p.locator('pre').first().innerText()).slice(0, 60));
 
-  const avantSauv = await p.locator('a:has-text("Télécharger")').count();
   await p.locator('button:has-text("Créer une sauvegarde")').click();
   await p.waitForLoadState('domcontentloaded');
-  ok('la sauvegarde s’écrit', /écrite/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')),
-     (await p.locator('.msg.ok').first().innerText().catch(() => '')).slice(0, 64));
+  const avis = await p.locator('.msg.ok').first().innerText().catch(() => '');
+  ok('la sauvegarde s’écrit', /écrite/.test(avis), avis.slice(0, 64));
+  /**
+   * On cherche LE FICHIER, pas un compteur.
+   *
+   * Sept archives sont gardées : au-delà, en créer une en efface une autre,
+   * et le total ne bouge plus. Un test qui compte finirait donc par échouer
+   * le jour où l'installation a servi — c'est-à-dire toujours.
+   */
+  const nomSauv = (/wakabi-[0-9-]+\.zip/.exec(avis) ?? [''])[0];
   ok('elle apparaît dans la liste',
-     (await p.locator('a:has-text("Télécharger")').count()) === avantSauv + 1);
+     nomSauv !== '' && (await p.locator(`a[href*="${nomSauv}"]:has-text("Télécharger")`).count()) === 1,
+     nomSauv);
 
   const lienSauv = await p.locator('a:has-text("Télécharger")').first().getAttribute('href');
   const zip = await p.request.get(new URL(lienSauv!, BASE).toString());
@@ -1240,6 +1248,295 @@ const run = async () => {
 
   await camera.close();
   rmSync(film, { force: true });
+
+  /* ================================================================== */
+  console.log('\n━━ 23. L’espace profil ━━');
+
+  /**
+   * Un compte n'appartient pas à l'application.
+   *
+   * Sans ces écrans, chaque changement de nom ou de numéro passe par
+   * l'équipe — un humain sur le chemin d'un changement d'adresse.
+   */
+  const PROFIL = { email: `profil-${marque}@exemple.tg`, mdp: 'profil-2026-solide' };
+  const ctxp = await browser.newContext();
+  const pp = await ctxp.newPage();
+  surveiller(pp);
+  await inscription(pp, PROFIL.email, PROFIL.mdp, 'participant', 'Ancien Nom');
+
+  await pp.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('le profil est accessible à un participant', pp.url().includes('p=profil'));
+  ok('le profil affiche ce qu’on est', (await pp.inputValue('#p-nom')) === 'Ancien Nom');
+
+  await pp.fill('#p-nom', 'Nouveau Nom');
+  await pp.fill('#p-telephone', '+228 90 11 22 33');
+  await pp.selectOption('#p-ville', 'lome');
+  await pp.click('form[action*="p=profil-identite"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('le nom se corrige sans passer par l’équipe',
+     /Profil enregistré/.test(await pp.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('la correction est bien enregistrée', (await pp.inputValue('#p-nom')) === 'Nouveau Nom');
+  ok('le téléphone aussi', (await pp.inputValue('#p-telephone')) === '+228 90 11 22 33');
+
+  await pp.fill('#p-telephone', 'pas-un-numero');
+  await pp.click('form[action*="p=profil-identite"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('un numéro qui n’en est pas un est refusé',
+     /numéro de téléphone/.test(await pp.locator('.msg.err').first().innerText().catch(() => '')));
+
+  // Le mot de passe : l'ancien est exigé.
+  await pp.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  await pp.fill('#p-actuel', 'ce-n-est-pas-le-bon');
+  await pp.fill('#p-nouveau', 'nouveau-mot-de-passe-2026');
+  await pp.click('form[action*="p=profil-motdepasse"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('changer de mot de passe SANS l’ancien est refusé',
+     /mot de passe actuel est faux/.test(await pp.locator('.msg.err').first().innerText().catch(() => '')));
+
+  await pp.fill('#p-actuel', PROFIL.mdp);
+  await pp.fill('#p-nouveau', 'nouveau-mot-de-passe-2026');
+  await pp.click('form[action*="p=profil-motdepasse"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('avec l’ancien, il change',
+     /Mot de passe changé/.test(await pp.locator('.msg.ok').first().innerText().catch(() => '')));
+  await connexion(pp, PROFIL.email, 'nouveau-mot-de-passe-2026');
+  ok('le nouveau mot de passe ouvre la session', !pp.url().includes('p=connexion'));
+
+  // La suppression : il faut recopier son adresse, exactement.
+  await pp.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  await pp.click('details:has(summary:has-text("Supprimer mon compte")) > summary');
+  await pp.fill('#p-confirmation', 'nimporte-quoi@exemple.tg');
+  await pp.click('form[action*="p=profil-supprimer"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('supprimer sans recopier son adresse est refusé',
+     /recopiez votre adresse/i.test(await pp.locator('.msg.err').first().innerText().catch(() => '')));
+
+  await pp.click('details:has(summary:has-text("Supprimer mon compte")) > summary');
+  await pp.fill('#p-confirmation', PROFIL.email);
+  await pp.click('form[action*="p=profil-supprimer"] button[type=submit]');
+  await pp.waitForLoadState('domcontentloaded');
+  ok('avec son adresse exacte, le compte part',
+     pp.url().includes('p=connexion')
+     && /supprimé/.test(await pp.locator('.msg.ok').first().innerText().catch(() => '')),
+     pp.url().split('index.php')[1]?.slice(0, 40) ?? pp.url());
+  await connexion(pp, PROFIL.email, 'nouveau-mot-de-passe-2026');
+  ok('le compte supprimé ne se reconnecte plus', pp.url().includes('p=connexion'));
+
+  // L'équipe, elle, ne se supprime pas elle-même.
+  const pq = await browser.newPage();
+  surveiller(pq);
+  await connexion(pq, ADMIN.email, ADMIN.mdp);
+  await pq.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('un compte de l’équipe n’a pas de bouton de suppression',
+     (await pq.locator('form[action*="p=profil-supprimer"]').count()) === 0);
+  await ctxp.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 24. Les notifications du navigateur ━━');
+
+  /**
+   * On ne peut pas faire recevoir une VRAIE notification push dans une
+   * recette : il faudrait un service de push joignable et un navigateur
+   * enregistré chez lui. Ce qui se vérifie ici est tout ce qui est de
+   * notre côté — la clé publique servie, l'abonnement enregistré, le
+   * segment respecté, et surtout : qu'un organisateur sans l'offre ne
+   * puisse pas écrire à la base du guide.
+   */
+  await pq.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  const ctxPush = await pq.locator('#push-contexte').innerText().catch(() => '{}');
+  const cles = JSON.parse(ctxPush || '{}') as { cle?: string; csrf?: string; base?: string };
+  ok('la clé publique VAPID est servie à la page',
+     typeof cles.cle === 'string' && cles.cle.length === 87, `${(cles.cle ?? '').length} caractères`);
+  ok('le bouton d’abonnement est là', (await pq.locator('#push-bouton').count()) === 1);
+  ok('le service worker est servi à la racine',
+     (await pq.request.get(`${BASE}/sw.js`)).status() === 200);
+
+  // Un abonnement, posé directement : c'est ce que ferait le navigateur.
+  const FAUX_ENDPOINT = `https://fcm.googleapis.com/fcm/send/recette-${marque}`;
+  const abo = await pq.request.post(`${BASE}/index.php?p=api-push-abonner`, {
+    form: {
+      csrf: cles.csrf ?? '',
+      endpoint: FAUX_ENDPOINT,
+      p256dh: 'BLc4xRzKlKORKWlbdgFaBrrPK3ydWAHo4M0gs0i1oEKgPpWC5cW8OCzVrOQRv-1npXRWk8udNW3ZulJC2rLKzlI',
+      auth: 'aUdiN0dyMkFtbFJIcTBQTw',
+    },
+  });
+  ok('un abonnement est accepté', abo.ok(), `HTTP ${abo.status()}`);
+
+  const aboMauvais = await pq.request.post(`${BASE}/index.php?p=api-push-abonner`, {
+    form: { csrf: cles.csrf ?? '', endpoint: 'http://ailleurs.example/x', p256dh: 'a', auth: 'b' },
+  });
+  ok('une adresse qui n’est pas en https est refusée', aboMauvais.status() === 400,
+     `HTTP ${aboMauvais.status()}`);
+
+  await pq.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  ok('l’équipe atteint l’écran de diffusion', pq.url().includes('p=diffusion'));
+  ok('le nombre d’abonnés est affiché', /abonné\(s\)/.test(await pq.locator('#d-segment').innerText()));
+
+  // Un organisateur sur Découverte : la fonction ne lui est pas vendue.
+  // CLIENT et non PART : PART a été passé en Croissance à la section 12,
+  // et Croissance comprend justement cette fonction. CLIENT est sur Impact.
+  const pd = await browser.newPage();
+  surveiller(pd);
+  await connexion(pd, CLIENT.email, CLIENT.mdp);
+  await pd.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur sans l’offre voit un écran d’explication, pas un refus sec',
+     /ne comprend pas cette fonction/.test(await pd.locator('.carte').first().innerText().catch(() => '')));
+  ok('l’écran dit avec quelle offre elle arrive',
+     /offre Croissance/i.test(await pd.locator('.carte').first().innerText().catch(() => '')));
+  ok('le menu ne propose pas une page qu’il ne peut pas ouvrir',
+     (await pd.locator('nav a[href*="p=diffusion"]').count()) === 0);
+  await pd.close();
+
+  // Désabonner : la ligne s'en va vraiment.
+  const desabo = await pq.request.post(`${BASE}/index.php?p=api-push-desabonner`, {
+    form: { csrf: cles.csrf ?? '', endpoint: FAUX_ENDPOINT },
+  });
+  ok('le désabonnement est accepté', desabo.ok(), `HTTP ${desabo.status()}`);
+
+  /* ================================================================== */
+  console.log('\n━━ 25. Le blog ━━');
+
+  const TITRE_ART = `Remplir une salle sans affiche ${marque}`;
+  await pq.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await pq.fill('#a-titre', TITRE_ART);
+  await pq.fill('#a-chapo', 'Une soirée de 400 personnes, et pas une affiche imprimée.');
+  await pq.fill('#a-corps',
+    '## Ce qui a marché\n\n'
+    + 'À Lomé, **400 personnes** sont venues sans une seule affiche.\n\n'
+    + '- 1 200 badges créés en 9 jours\n'
+    + '- 62 % présentés à l’entrée\n\n'
+    + '> On a su qui venait avant d’ouvrir les portes.\n\n'
+    + 'Tout est là : [le guide](https://wakabileguide.com/).\n\n'
+    + 'Et ceci ne doit PAS s’exécuter : <script>window.__injecte = 1;</script>');
+  await pq.click('button[value=brouillon]');
+  await pq.waitForLoadState('domcontentloaded');
+  ok('un article s’enregistre en brouillon',
+     /brouillon/i.test(await pq.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  // Un brouillon n'est PAS public : c'est le point de la relecture.
+  const slugArt = (await pq.locator(`tr:has-text("${TITRE_ART}") code`).first().innerText()).trim();
+  const ctxAnon = await browser.newContext();
+  const pa = await ctxAnon.newPage();
+  surveiller(pa);
+  const brouillonPublic = await pa.request.get(`${BASE}/index.php?p=blog&a=${slugArt}`);
+  ok('un brouillon renvoie 404 à un visiteur', brouillonPublic.status() === 404,
+     `HTTP ${brouillonPublic.status()}`);
+
+  await pq.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  await pq.click(`tr:has-text("${TITRE_ART}") a[href*="p=blog-editer"]`);
+  await pq.waitForLoadState('domcontentloaded');
+  await pq.click('button[value=publier]');
+  await pq.waitForLoadState('domcontentloaded');
+  ok('l’article se publie',
+     /en ligne/.test(await pq.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  await pa.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
+  ok('le blog est lisible SANS compte', pa.url().includes('p=blog'));
+  ok('l’article publié apparaît dans la liste',
+     (await pa.locator(`a:has-text("${TITRE_ART}")`).count()) >= 1);
+
+  await pa.goto(`${BASE}/index.php?p=blog&a=${slugArt}`, { waitUntil: 'domcontentloaded' });
+  ok('l’article s’ouvre pour tout le monde',
+     (await pa.locator('h1').first().innerText()) === TITRE_ART);
+  ok('les intertitres sont mis en forme',
+     (await pa.locator('.corps-article h3').count()) === 1);
+  ok('le gras est mis en forme',
+     (await pa.locator('.corps-article strong').first().innerText()) === '400 personnes');
+  ok('la liste est une vraie liste', (await pa.locator('.corps-article li').count()) === 2);
+  ok('la citation est une citation', (await pa.locator('.corps-article blockquote').count()) === 1);
+  ok('un lien sortant s’ouvre à part et ne nous engage pas',
+     (await pa.locator('.corps-article a[rel="noopener nofollow"]').count()) === 1);
+
+  /**
+   * Le scénario qui compte : le corps est du TEXTE.
+   *
+   * Une balise saisie dans le champ ne doit jamais devenir une balise de la
+   * page — sans quoi n'importe quel article poserait un `<script>` sur une
+   * page lue par tout le monde.
+   */
+  ok('une balise saisie reste du texte et ne s’exécute pas',
+     (await pa.evaluate(() => (window as unknown as { __injecte?: number }).__injecte)) === undefined
+       && (await pa.locator('.corps-article script').count()) === 0
+       && /<script>/.test(await pa.locator('.corps-article').innerText()));
+
+  await pa.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  ok('la vitrine montre le blog',
+     (await pa.locator(`a:has-text("${TITRE_ART}")`).count()) >= 1);
+  ok('la vitrine mène au blog complet',
+     (await pa.locator('a[href*="p=blog"]').count()) >= 2);
+
+  // L'adresse est figée une fois publié : les liens partagés doivent tenir.
+  await pq.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  await pq.click(`tr:has-text("${TITRE_ART}") a[href*="p=blog-editer"]`);
+  await pq.waitForLoadState('domcontentloaded');
+  ok('l’adresse d’un article publié n’est plus modifiable',
+     await pq.locator('#a-slug').getAttribute('readonly') !== null);
+
+  ok('un organisateur n’écrit pas sur le blog',
+     (await (await browser.newContext()).newPage()
+        .then(async (px) => {
+          await connexion(px, PART.email, PART.mdp);
+          const r = await px.request.get(`${BASE}/index.php?p=blog-admin`);
+          const refuse = r.url().includes('p=connexion') || r.status() >= 400
+            || !(await r.text()).includes('Écrire un article');
+          await px.close();
+          return refuse;
+        })));
+
+  /* ================================================================== */
+  console.log('\n━━ 26. Les images allégées ━━');
+
+  /**
+   * La vraie mesure, pas la présence d'un attribut : ce qui compte est le
+   * nombre d'octets qu'un visiteur télécharge pour voir le catalogue.
+   */
+  await pa.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  const imgs = await pa.locator('.vignette img').evaluateAll(
+    (n) => n.map((e) => ({
+      src: (e as HTMLImageElement).getAttribute('src') ?? '',
+      srcset: (e as HTMLImageElement).getAttribute('srcset') ?? '',
+      w: (e as HTMLImageElement).getAttribute('width'),
+      h: (e as HTMLImageElement).getAttribute('height'),
+      lazy: (e as HTMLImageElement).getAttribute('loading'),
+    })));
+  ok('le catalogue a des vignettes', imgs.length > 0, `${imgs.length} images`);
+  ok('elles passent toutes par le redimensionneur',
+     imgs.every((i) => i.src.includes('p=vignette')));
+  ok('chacune propose plusieurs tailles au navigateur',
+     imgs.every((i) => i.srcset.split(',').length >= 2));
+  ok('chacune annonce ses dimensions — la page ne saute pas au chargement',
+     imgs.every((i) => i.w && i.h));
+  ok('elles ne sont chargées qu’en arrivant à l’écran',
+     imgs.every((i) => i.lazy === 'lazy'));
+
+  const rVig = await pa.request.get(imgs[0].src);
+  ok('la vignette est servie en WebP',
+     (rVig.headers()['content-type'] ?? '') === 'image/webp',
+     rVig.headers()['content-type']);
+  ok('elle est mise en cache pour de bon',
+     /immutable/.test(rVig.headers()['cache-control'] ?? ''));
+
+  const poidsVignette = (await rVig.body()).length;
+  ok('une vignette pèse moins de 40 Ko', poidsVignette < 40 * 1024,
+     `${Math.round(poidsVignette / 1024)} Ko`);
+
+  // Le catalogue entier, en octets réellement transférés.
+  let totalVignettes = 0;
+  for (const i of imgs.slice(0, 12)) {
+    totalVignettes += (await (await pa.request.get(i.src)).body()).length;
+  }
+  ok('douze décors tiennent sous 200 Ko d’images',
+     totalVignettes < 200 * 1024, `${Math.round(totalVignettes / 1024)} Ko pour ${Math.min(12, imgs.length)}`);
+
+  // Une clé bricolée ne doit pas ouvrir un fichier du serveur.
+  for (const mauvaise of ['p:../../config.php', 'c:../config.php', 'x:jy-serai.png', '../../config.php']) {
+    const r = await pa.request.get(`${BASE}/index.php?p=vignette&f=${encodeURIComponent(mauvaise)}&l=320`);
+    ok(`« ${mauvaise} » est refusé`, r.status() === 404, `HTTP ${r.status()}`);
+  }
+
+  await ctxAnon.close();
+  await pq.close();
 
   console.log('\n━━ 22. Le transport e-mail ━━');
 

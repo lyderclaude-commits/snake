@@ -110,6 +110,18 @@
       </div>
     </div>
   </div>
+
+  <?php
+  /**
+   * L'abonnement aux notifications, ICI plutôt que dans un bandeau.
+   *
+   * C'est le moment où quelqu'un vient de faire son badge : il a un lien
+   * avec l'événement, et c'est là qu'accepter des nouvelles a du sens. Un
+   * bandeau au premier chargement de l'accueil se ferme sans être lu.
+   */
+  $_push_titre = 'Être prévenu des prochaines campagnes';
+  require RACINE . '/app/vues/partiels/push-abonnement.php';
+  ?>
 </div>
 
 <script>

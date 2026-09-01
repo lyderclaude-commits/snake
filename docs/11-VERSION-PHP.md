@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **211 scénarios, 211 réussis**
+Les deux ont été vérifiés de bout en bout : **260 scénarios, 260 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,8 +110,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 211 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit, SMTP, et une sauvegarde vraiment restaurée
+npm run php:e2e          # 260 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, une sauvegarde restaurée, le chiffrement push
 ```
 
 Contre une base MySQL :
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 211 scénarios
+### Les 260 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -149,7 +149,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **La page blanche** | Son fond n'apparaît que pour elle, le format s'applique, un décor sans aucun cadre est accepté, publié, et son Studio s'ouvre — format, fond et fenêtre ronde conservés à la réouverture |
 | **La fenêtre photo** | Chaque gabarit part avec l'ouverture de son cadre, un cadre 4:5 téléversé impose son format et son ouverture, « Relever sur le cadre » retrouve les mêmes valeurs après qu'on les a déréglées |
 | **L'apparence** | Un décor créé sans téléverser le moindre cadre, rouvert au bon format, coin du QR et hauteur du texte conservés, retour aux réglages d'usine |
-| **Le menu de l'équipe** | Sept destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
+| **Le menu de l'équipe** | Dix destinations sous un seul intitulé, notifications et déconnexion hors du déroulant |
 | **Le comparatif au téléphone** | Deux cartes, une par camp, huit lignes chacune, la carte Wakabi mise en avant, le tableau effacé — et l'inverse sur grand écran |
 | Sécurité | Sept routes refusées à un anonyme, participant écarté de l'administration, fichiers internes non servis |
 | Limitation de débit | « Trop de tentatives. Réessayez dans 15 minutes. » |
@@ -160,6 +160,10 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Chaque offre** | Le tableau de bord annonce l'offre et ses compteurs ; ce qui n'est pas compris est montré barré avec l'offre qui l'ouvre ; les liens courts et le ciblage sont fermés en Découverte — dans le menu **et** côté serveur ; l'équipe change l'offre depuis la fiche et tout suit ; le badge est **refusé au 51ᵉ** téléchargement, l'invité sait pourquoi, l'organisateur est prévenu, et la soupape rouvre le robinet |
 | **Les liens courts** | Créés, suivis en 302 vers la cible, le clic compté, un code inconnu en 404 |
 | **Le QR à la caméra** | Le filtre accepte un code nu et une adresse de badge, rejette un QR étranger ; une **fausse caméra** diffuse le QR d'un badge réellement émis, l'entrée est validée, la page ne se recharge pas, le journal se met à jour |
+| **L'espace profil** | Le nom et le téléphone se corrigent sans passer par l'équipe, un numéro qui n'en est pas un est refusé, le mot de passe ne change **pas** sans l'ancien, la suppression exige de recopier son adresse exactement — et le compte supprimé ne se reconnecte plus. Un compte de l'équipe n'a pas de bouton de suppression |
+| **Les notifications push** | La clé publique VAPID est servie à la page, `sw.js` répond à la racine, un abonnement est enregistré, une adresse qui n'est pas en `https` est refusée, le désabonnement efface la ligne — et un organisateur **sans l'offre** trouve un écran d'explication au lieu d'un refus sec, avec l'offre qui l'ouvre |
+| **Le blog** | Un brouillon renvoie **404** à un visiteur ; publié, il se lit sans compte ; intertitres, gras, listes, citation et liens sortants sont mis en forme ; **une balise saisie reste du texte et ne s'exécute pas** ; l'adresse d'un article publié n'est plus modifiable ; un organisateur n'écrit pas sur le blog |
+| **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -769,6 +773,228 @@ validation doit apparaître sans que la page se recharge.
 
 ---
 
+## L'espace profil — `?p=profil`
+
+**Tous les rôles**, participant compris. Un compte n'appartient pas à
+l'application : la personne qui l'a créé doit pouvoir corriger son nom,
+changer d'adresse, refaire son mot de passe et s'en aller. Sans ces gestes,
+chaque correction passe par l'équipe — donc un humain sur le chemin d'un
+changement de numéro de téléphone.
+
+**Trois formulaires distincts**, et c'est voulu :
+
+| Formulaire | Ce qu'il demande |
+|---|---|
+| **Mes informations** | Nom, adresse e-mail, structure, ville, téléphone. Rien d'autre. |
+| **Mon mot de passe** | Le mot de passe **actuel**, puis le nouveau. |
+| **Supprimer mon compte** | De recopier son adresse e-mail, exactement. |
+
+Les mêler obligerait à ressaisir son mot de passe pour changer une ville.
+
+> **Changer d'adresse redemande une confirmation.** Sinon une adresse
+> confirmée servirait de laissez-passer définitif : il suffirait de la
+> remplacer par n'importe quelle autre pour garder le bénéfice d'une
+> vérification qui ne porte plus sur rien.
+
+**Ce qui part, et ce qui reste**, à la suppression — l'écran le dit avant de
+cliquer, pas après :
+
+- **s'en va** : le compte, ses liens courts, ses notifications, ses Koris,
+  ses abonnements push ;
+- **reste** : les présences déjà scannées (c'est l'historique d'événements
+  réels), et les campagnes publiées, qui restent au catalogue sans
+  propriétaire. Les badges que les invités ont téléchargés portent leur QR :
+  les effacer les casserait tous.
+
+**Un compte de l'équipe ne se supprime pas lui-même** — même règle que la
+suspension, et pour la même raison : une installation sans administrateur ne
+se répare que par la base de données.
+
+---
+
+## Les notifications du navigateur
+
+Une notification qui arrive **quand le site est fermé** : c'est la seule
+façon de reparler à quelqu'un qui a téléchargé un badge il y a trois
+semaines. Ni compte à créer, ni application à installer.
+
+### Ce qui a été écrit à la main, et pourquoi
+
+Le protocole tient en trois pièces, et il n'y a **pas de Composer** ici :
+
+1. **VAPID** (RFC 8292) — un JWT signé ES256 qui dit au service de push
+   « c'est bien ce serveur ». La paire est créée à la première demande, et
+   **seule sa clé privée est stockée** : la publique en est déduite à chaque
+   fois. Les garder à part ouvrait la porte à un trio incohérent — une
+   publique d'une paire, une privée d'une autre — et les envois seraient
+   refusés sans qu'aucun message ne dise pourquoi. **Elle ne change plus
+   jamais** : la clé publique est scellée dans chaque abonnement par le
+   navigateur, et une nouvelle paire les invaliderait tous d'un coup.
+2. **Le chiffrement** (RFC 8291, `aes128gcm`) — le contenu est chiffré **pour
+   le navigateur destinataire**. Ni Google ni Mozilla ne peuvent le lire : ils
+   ne transportent qu'une enveloppe close.
+3. **L'envoi** — un POST vers l'adresse que le navigateur a donnée.
+
+> **`npx tsx scripts/verifier-push.ts`** compare le chiffrement de
+> `php/app/push.php`, **octet pour octet**, à une implémentation Node
+> indépendante du même RFC, sur des clés et un sel fixés. Un chiffrement
+> écrit à la main qu'on n'a pas vérifié est un chiffrement dont on ne sait
+> rien : le service accepte le POST, répond 201, et la notification
+> n'apparaît jamais — aucune erreur nulle part. 17 vérifications, dont la
+> signature VAPID en `r‖s` (le piège du DER d'OpenSSL) et la stabilité de la
+> paire de clés.
+
+### S'abonner
+
+Le bouton est dans **Mon profil**, et **sous le badge** que l'invité vient de
+télécharger — c'est là qu'on accepte le plus : la personne a un lien avec
+l'événement à cet instant précis. La demande de permission part d'un **clic**,
+jamais du chargement de la page : les navigateurs pénalisent durablement un
+site qui demande sans geste, et un visiteur surpris refuse.
+
+Un abonnement appartient à un **navigateur**, pas à une personne : le même
+invité sur son téléphone et sur son poste en a deux, et un poste sans compte
+peut en porter un. C'est précisément ce qui permet de reparler à un visiteur
+qui n'a jamais créé de compte.
+
+### Envoyer — `?p=diffusion`
+
+| Qui | Ce qu'il peut viser |
+|---|---|
+| **L'équipe** | Tout le monde, les organisateurs, ou une ville. |
+| **Un organisateur** (offre Croissance et au-delà) | **Uniquement les invités de ses propres campagnes.** |
+
+La distinction n'est pas de la politesse : la base d'abonnés est celle du
+guide, elle s'est constituée sur la promesse de nouvelles du guide, et la
+louer à qui paie une offre la brûlerait en trois messages.
+
+- Le **lien** d'une notification d'organisateur passe le même garde-fou que
+  la redirection d'un décor : un domaine Wakabi. Une notification signée
+  Wakabi qui ouvre un site tiers, c'est notre nom qui sert de caution.
+- Un **compteur d'envois** : un bouton de diffusion de masse sans compteur
+  est une arme.
+- Les abonnements **périmés** — navigateur vidé, notifications refusées — sont
+  effacés automatiquement à l'envoi suivant, sur les réponses 404 et 410.
+
+> **Il faut HTTPS.** Sans certificat, `navigator.serviceWorker` n'existe pas
+> et le navigateur refuse tout abonnement. L'écran le dit plutôt que de
+> laisser cliquer un bouton mort.
+
+`sw.js` est servi **à la racine** de l'application, pas depuis `public/` : la
+portée d'un service worker est celle de son dossier. Il ne fait qu'une chose,
+afficher la notification et ouvrir le bon onglet — **pas de cache**, parce
+qu'un service worker qui met en cache sert un jour une vieille page à
+quelqu'un qui vient de mettre à jour.
+
+---
+
+## Le blog — `?p=blog`
+
+Lisible par **tout le monde**, sans compte, et repris sur la page d'accueil.
+Il sert deux choses à la fois : il donne au guide de quoi **se faire trouver**
+par un moteur de recherche — un site dont toutes les pages sont des
+formulaires ne se référence pas — et il rend concret l'**article sponsorisé**
+vendu avec l'offre Mouvement.
+
+**L'écriture est réservée à l'équipe** (`?p=blog-admin`), y compris pour un
+compte Mouvement : l'article y est vendu comme un service, rédigé et publié
+par la rédaction. Un champ de saisie libre sur une page publique confié à des
+comptes clients, c'est le début d'une modération qu'on n'a pas les moyens de
+tenir.
+
+### Le corps est du TEXTE, et c'est une décision de sécurité
+
+Un champ où l'on collerait du HTML serait une faille béante : quiconque
+publie pourrait poser un `<script>` sur une page lue par tout le monde. Un
+éditeur riche règle cela avec une liste blanche de balises — c'est-à-dire
+avec un analyseur HTML complet, qu'il faudrait écrire ici, sans
+bibliothèque, et maintenir.
+
+On prend l'autre chemin : le corps est **échappé d'abord, entièrement**, et
+seulement ensuite quelques marques d'écriture sont reconnues pour poser les
+balises. **Aucune balise ne peut venir de la saisie** — elles sont toutes
+écrites par `php/app/texte.php`.
+
+```
+## Un intertitre
+### Un sous-titre
+Un paragraphe. Une ligne vide en sépare deux.
+- un point de liste
+> une citation
+**gras**, *italique*, `code`
+[le texte du lien](https://wakabileguide.com)
+```
+
+C'est la syntaxe que les gens connaissent de WhatsApp. Un lien n'accepte que
+`http` et `https` — sans quoi un `[cliquez](javascript:…)` deviendrait un
+lien exécutable. Les liens sortants portent `rel="noopener nofollow"`.
+
+### Le reste
+
+- **Un brouillon n'est visible que de l'équipe**, par son adresse : une
+  relecture avant publication doit être possible sans mettre l'article en
+  ligne. Un visiteur reçoit un 404.
+- **L'adresse est figée** une fois l'article publié. Elle a pu être partagée,
+  mise en favori, indexée : la recalculer parce qu'on a corrigé une faute
+  dans le titre casserait tous ces liens en silence.
+- **La date de publication ne se réécrit pas** à chaque retouche : un article
+  corrigé six mois plus tard remonterait en tête de liste comme s'il était
+  neuf.
+- Les **lectures** sont comptées une fois par visiteur et par article.
+
+---
+
+## Les images allégées
+
+Le catalogue affichait une douzaine de décors dans des vignettes de 300 px —
+en téléchargeant à chaque fois le **cadre entier**, un PNG de 1080 px et
+140 Ko, pour l'afficher en timbre-poste. Une page coûtait près d'un
+mégaoctet, sur des connexions où le mégaoctet se paie et se compte.
+
+Trois gestes, dans cet ordre d'importance :
+
+| Geste | Gain | Où |
+|---|---|---|
+| **Redimensionner** | de loin le plus gros | `?p=vignette` — 320, 640, 960 px |
+| **Changer de format** | 2 à 4× | WebP, transparence comprise |
+| **Recompresser à l'arrivée** | variable, parfois énorme | au téléversement, une fois |
+
+Chaque `<img>` du catalogue et du blog porte un `srcset` : le navigateur
+choisit la taille qui convient à son écran. Les dimensions sont écrites dans
+la balise — **la page ne saute plus** au fur et à mesure que les images
+arrivent, et quelqu'un qui lisait la deuxième ligne ne se retrouve plus à la
+cinquième.
+
+Les vignettes sont fabriquées **à la demande** puis gardées sur disque : la
+première visite paie, les suivantes non. La **date de modification** de la
+source entre dans la clé du cache — un cadre remplacé produit une vignette
+refaite, sans qu'on ait à vider quoi que ce soit à la main.
+
+> **`?p=vignette&f=…` ne prend jamais un chemin.** Elle prend une clé —
+> `c:` un cadre téléversé, `p:` un cadre livré, `m:` une couverture
+> d'article — retraduite par un motif strict. Un nom de fichier venu de la
+> requête ne désigne jamais un chemin, ici pas plus qu'ailleurs.
+
+### Ce qui est déjà en ligne
+
+Les vignettes règlent le catalogue, mais pas le **Studio** : là, c'est le
+cadre entier qui est chargé, parce que c'est lui qu'on dessine. Un décor mis
+en ligne avant cette version porte donc encore son fichier d'origine.
+
+**Administration → Réglages → Les images → « Alléger les cadres déjà en
+ligne »** s'en occupe, **par lots d'une douzaine** — un mutualisé coupe un
+script au bout de trente secondes, et traiter cent cadres d'un coup finirait
+en page blanche à mi-parcours, avec la moitié du travail faite et aucun moyen
+de savoir laquelle. L'écran dit où il en est et propose de continuer.
+
+L'opération ne garde le résultat **que s'il est plus léger** : sur un cadre
+très plat — deux aplats et un trait — le PNG gagne parfois, et garder le plus
+lourd « parce que c'est le format moderne » serait absurde. En cas de pépin,
+l'original est laissé intact : une image un peu lourde vaut infiniment mieux
+qu'un cadre perdu.
+
+---
+
 ## Mettre à jour
 
 ```bash
@@ -792,6 +1018,7 @@ phpMyAdmin.
 | Point | Sans quoi |
 |---|---|
 | **Les vrais cadres** | Les décors installés sont des placeholders — les vôtres se téléversent depuis le formulaire. |
+| **Un domaine `wkb.link`** | Il s'achète et se fait pointer ici : le logiciel ne peut pas l'inventer. La marche à suivre est dans Administration → Réglages. |
 
 Trois lignes ont quitté ce tableau : le **SMTP** se règle depuis
 Administration → Réglages, les **sauvegardes** depuis Administration →

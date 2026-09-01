@@ -1,5 +1,10 @@
 <div class="etroit">
   <h1 style="margin-bottom:.4em">Connexion</h1>
+  <?php
+  /* Un message VENU D'AILLEURS — un compte supprimé, une session expirée.
+     Il a sa place ici : c'est l'écran où l'on revient après être parti. */
+  $venu = trim((string) ($_GET['ok'] ?? '')); ?>
+  <?php if ($venu !== ''): ?><div class="msg ok" role="status"><?= e($venu) ?></div><?php endif; ?>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
   <form method="post" class="carte">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">

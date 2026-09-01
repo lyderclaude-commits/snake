@@ -76,22 +76,41 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
                 ['?p=comptes',   'Comptes'],
                 ['?p=reglages',  'Réglages'],
                 ['?p=liens',     'Liens courts'],
+                ['?p=diffusion', 'Notifications push'],
+                ['?p=blog-admin', 'Blog'],
                 ['?p=sauvegardes', 'Sauvegardes'],
             ]],
+            ['?p=profil', 'Mon profil'],
         ],
         'partenaire' => [
             ['?p=decors',     'Le catalogue'],
             ['?p=partenaire', 'Mes campagnes'],
             ['?p=liens',      'Liens courts'],
+            ['?p=blog',       'Le blog'],
+            ['?p=profil',     'Mon profil'],
         ],
         'participant' => [
             ['?p=decors', 'Les décors'],
+            ['?p=blog',   'Le blog'],
             ['?p=compte', 'Mon compte'],
+            ['?p=profil', 'Mon profil'],
         ],
         default => [
             ['?p=decors', 'Les décors'],
+            ['?p=blog',   'Le blog'],
         ],
     };
+    /**
+     * Une entrée qui n'existe que si l'offre la donne.
+     *
+     * Montrer un lien qui mène à « cette page vient avec une autre offre »
+     * est une façon de vendre ; le montrer À CHAQUE PAGE en est une de
+     * lasser. L'organisateur qui y a droit le voit, les autres le
+     * découvrent sur la page des offres.
+     */
+    if (($me['role'] ?? '') === 'partenaire' && capacite($me, 'telegram_push')) {
+        array_splice($liens, 3, 0, [['?p=diffusion', 'Notifications push']]);
+    }
     $ici = (string) ($_GET['p'] ?? 'accueil');
 
     /** Un lien de menu, marqué s'il désigne la page courante. */
