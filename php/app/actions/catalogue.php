@@ -57,6 +57,9 @@ if ($page === 'supprimer') {
         rediriger('?p=catalogue&err=' . urlencode($e->getMessage()));
     }
 
+    journal_ecrire($u, 'decor.supprime', 'decor', $id, (string) $bilan['titre'],
+        $bilan['badges'] ? $bilan['badges'] . ' badge(s) détruit(s)' : null);
+
     $message = sprintf(
         '« %s » supprimé%s%s.',
         $bilan['titre'],
@@ -70,11 +73,16 @@ if ($page === 'supprimer') {
 
 $filtre = (string) ($_GET['statut'] ?? '');
 $cherche = (string) ($_GET['q'] ?? '');
+$page_n = max(1, (int) ($_GET['n'] ?? 1));
+$combien = decors_catalogue_combien($filtre ?: null, $cherche);
 
 vue('catalogue', [
     'titre' => 'Tous les décors',
-    'liste' => decors_catalogue($filtre ?: null, $cherche),
+    'liste' => decors_catalogue($filtre ?: null, $cherche, $page_n),
     'compteurs' => decors_par_statut(),
     'filtre' => $filtre,
     'cherche' => $cherche,
+    'page_n' => $page_n,
+    'combien' => $combien,
+    'pages' => max(1, (int) ceil($combien / CATALOGUE_PAR_PAGE)),
 ]);

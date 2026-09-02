@@ -21,7 +21,7 @@
     "php:serve": "php -S 127.0.0.1:3600 -t php",
     "php:e2e": "tsx scripts/e2e-php.ts",
     "php:apercus": "tsx scripts/apercus.ts",
-    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts && tsx scripts/verifier-courriel.ts && tsx scripts/verifier-sauvegarde.ts && tsx scripts/verifier-push.ts && tsx scripts/verifier-editeur.ts",
+    "php:verifier": "tsx scripts/verifier-qr.ts && tsx scripts/verifier-gabarit.ts && tsx scripts/verifier-courriel.ts && tsx scripts/verifier-sauvegarde.ts && tsx scripts/verifier-restauration.ts && tsx scripts/verifier-push.ts && tsx scripts/verifier-editeur.ts && tsx scripts/verifier-otp.ts",
     "package:php": "tsx scripts/package-php.ts"
   },
   "dependencies": {

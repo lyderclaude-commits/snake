@@ -52,14 +52,16 @@ if ($slug !== '') {
  */
 const BLOG_PAR_PAGE = 9;
 $page_n = max(1, (int) ($_GET['n'] ?? 1));
-$total = compter_articles_publies();
+$cherche = trim((string) ($_GET['q'] ?? ''));
+$total = compter_articles_publies_cherches($cherche);
 
 vue('blog', [
-    'titre' => 'Le blog — Wakabi Boost',
+    'titre' => $cherche !== '' ? 'Recherche « ' . $cherche . ' » — Le blog' : 'Le blog — Wakabi Boost',
     'description' => 'Nos conseils pour remplir une salle à Lomé, Cotonou et Abidjan : '
         . 'campagnes de badges, affichage, présence à l’entrée.',
-    'liste' => articles_publies(BLOG_PAR_PAGE, ($page_n - 1) * BLOG_PAR_PAGE),
+    'liste' => articles_publies(BLOG_PAR_PAGE, ($page_n - 1) * BLOG_PAR_PAGE, $cherche),
     'page_n' => $page_n,
+    'cherche' => $cherche,
     'pages' => max(1, (int) ceil($total / BLOG_PAR_PAGE)),
     'total' => $total,
 ]);

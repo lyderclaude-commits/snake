@@ -42,6 +42,57 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
     </form>
   </div>
 
+  <?php
+  /**
+   * Ce qu'on s'apprête à écraser, avant de l'écraser.
+   *
+   * L'écran d'inspection n'est pas une politesse : il dit combien de
+   * comptes et de décors l'archive contient, et de quand elle date. C'est
+   * la seule occasion de s'apercevoir qu'on a cliqué sur la mauvaise.
+   */
+  ?>
+  <?php if ($inspection): ?>
+    <div class="carte" style="margin-top:16px;border-color:var(--orange)">
+      <h3 style="margin:0 0 4px">Restaurer « <?= e($archive_vue) ?> » ?</h3>
+      <p class="aide" style="margin:0 0 14px">Archive du <strong><?= e($inspection['date']) ?></strong>,
+      base <?= e(strtoupper($inspection['moteur'])) ?>.</p>
+
+      <div class="grille g2 jauges" style="margin-bottom:14px">
+        <?php foreach ([
+            ['Comptes', $inspection['comptes']],
+            ['Décors', $inspection['decors']],
+            ['Articles', $inspection['articles']],
+            ['Cadres et médias', $inspection['cadres'] + $inspection['medias']],
+        ] as [$quoi, $combien]): ?>
+          <div class="marche">
+            <div class="haut"><span><?= e($quoi) ?> dans l’archive</span><b><?= (int) $combien ?></b></div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+
+      <div class="msg err" style="margin-bottom:14px">
+        <strong>Tout ce qui est en base aujourd’hui sera remplacé</strong> par le contenu de
+        cette archive : comptes, décors, badges émis, articles, campagnes. Les cadres et les
+        médias de l’archive sont réécrits par-dessus ; ceux qu’elle ne connaît pas restent.
+        <br>Une sauvegarde de l’état actuel est prise automatiquement juste avant : se
+        tromper d’archive reste rattrapable.
+      </div>
+
+      <form method="post" action="<?= e(url('?p=restaurer')) ?>">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="f" value="<?= e($archive_vue) ?>">
+        <input type="hidden" name="quoi" value="restaurer">
+        <label for="conf-restaurer">Recopiez le nom du fichier pour confirmer</label>
+        <div class="rangee" style="gap:8px;flex-wrap:wrap;margin-top:6px">
+          <input id="conf-restaurer" name="confirmation" type="text" autocomplete="off"
+                 placeholder="<?= e($archive_vue) ?>" style="flex:1;min-width:240px">
+          <button class="bouton danger" type="submit">Restaurer maintenant</button>
+          <a class="bouton fant" href="<?= e(url('?p=sauvegardes')) ?>">Annuler</a>
+        </div>
+      </form>
+    </div>
+  <?php endif; ?>
+
   <div class="carte" style="margin-top:16px">
     <div class="rangee" style="justify-content:space-between;align-items:baseline">
       <h3 style="margin:0">Sur le serveur</h3>
@@ -61,6 +112,11 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
           </div>
           <div class="rangee" style="gap:8px;flex-wrap:nowrap">
             <a class="bouton petit" href="<?= e(url('?p=telecharger-sauvegarde&f=' . rawurlencode($s['nom']))) ?>">Télécharger</a>
+            <form method="post" action="<?= e(url('?p=restaurer')) ?>" style="margin:0">
+              <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+              <input type="hidden" name="f" value="<?= e($s['nom']) ?>">
+              <button class="bouton fant petit" type="submit">Restaurer…</button>
+            </form>
             <form method="post" action="<?= e(url('?p=supprimer-sauvegarde')) ?>" style="margin:0">
               <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
               <input type="hidden" name="f" value="<?= e($s['nom']) ?>">

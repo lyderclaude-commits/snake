@@ -262,6 +262,59 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
     </div>
   </form>
 
+  <?php
+  /**
+   * Confier CETTE campagne, et rien d'autre.
+   *
+   * Le choix était binaire jusqu'ici : garder son compte pour soi, ou
+   * donner son mot de passe. C'est le mot de passe qui circulait — avec
+   * les statistiques, la régie, les liens et la facturation au bout.
+   *
+   * Seul l'auteur invite : un équipier qui pourrait en inviter d'autres
+   * ferait perdre à l'auteur la vue de qui travaille chez lui.
+   */
+  ?>
+  <?php if ($modifie && ($modifie['auteur_id'] === $me['id'] || droit($me, 'decors_tous'))): ?>
+    <?php $equipiers = equipiers_de((string) $modifie['id']); ?>
+    <div class="carte" style="margin-top:18px">
+      <h3 style="margin:0 0 4px">Qui travaille sur cette campagne</h3>
+      <p class="aide" style="margin:0 0 14px">Invitez un graphiste, un stagiaire, un
+      co-organisateur : la personne pourra modifier <strong>cette campagne uniquement</strong>
+      et la soumettre à la relecture. Elle ne verra ni vos autres campagnes, ni vos liens, ni
+      votre régie, ni vos factures.</p>
+
+      <?php if ($equipiers): ?>
+        <ul class="liste-comptes" style="margin-bottom:14px">
+          <?php foreach ($equipiers as $eq): ?>
+            <li>
+              <span><b><?= e((string) $eq['nom']) ?></b>
+                <span class="aide"><?= e((string) $eq['email']) ?></span></span>
+              <form method="post" action="<?= e(url('?p=equipier')) ?>" style="margin:0">
+                <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+                <input type="hidden" name="id" value="<?= e((string) $modifie['id']) ?>">
+                <input type="hidden" name="quoi" value="retirer">
+                <input type="hidden" name="qui" value="<?= e((string) $eq['utilisateur_id']) ?>">
+                <button class="bouton fant petit" type="submit">Retirer</button>
+              </form>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+
+      <form method="post" action="<?= e(url('?p=equipier')) ?>" class="rangee"
+            style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="id" value="<?= e((string) $modifie['id']) ?>">
+        <div class="champ" style="margin:0;flex:1;min-width:220px">
+          <label for="eq-email">Adresse e-mail de la personne</label>
+          <input id="eq-email" name="email" type="email" required
+                 placeholder="elle doit déjà avoir un compte">
+        </div>
+        <button class="bouton fant" type="submit">Lui confier</button>
+      </form>
+    </div>
+  <?php endif; ?>
+
   <div class="carte plate" style="margin-top:18px">
     <h3 style="margin-bottom:10px">Ce que la relecture vérifie</h3>
     <ul style="color:var(--text2);margin:0;padding-left:1.1em;font-size:.92rem">

@@ -228,7 +228,7 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         ? "  base.sql        le contenu complet de la base MySQL\n"
         : "  wakabi.sqlite   la base entière, en un fichier\n";
 
-    $restaurer = $mysql
+    $manuel = $mysql
         ? "1. Dans cPanel, ouvrez phpMyAdmin et sélectionnez votre base.\n"
         . "2. Onglet « Importer », choisissez base.sql, lancez.\n"
         . "   La base doit être VIDE : le fichier recrée chaque table.\n"
@@ -236,6 +236,16 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         : "1. Arrêtez d'utiliser le site le temps de l'opération.\n"
         . "2. Remplacez donnees/wakabi.sqlite par le fichier wakabi.sqlite ci-joint.\n"
         . "3. Recopiez cadres/ et medias/ dans donnees/ du site.\n";
+
+    $restaurer = "LE PLUS SIMPLE — depuis le site lui-même\n"
+        . "  Administration > Sauvegardes. Chaque archive présente sur le\n"
+        . "  serveur porte un bouton « Restaurer ». L'écran montre d'abord ce\n"
+        . "  qu'elle contient, puis demande de recopier son nom. Une copie de\n"
+        . "  l'état actuel est prise juste avant : se tromper reste rattrapable.\n"
+        . "  Si cette archive n'est plus sur le serveur, reversez-la dans\n"
+        . "  donnees/sauvegardes/ et elle réapparaîtra dans la liste.\n\n"
+        . "À LA MAIN — si le site ne répond plus du tout\n"
+        . $manuel;
 
     return "SAUVEGARDE WAKABI BOOST\n"
         . "=======================\n\n"
@@ -258,4 +268,202 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         . "  sauvegarde rien. Téléchargez-la, et gardez-en une copie\n"
         . "  ailleurs — un disque, un espace en ligne, peu importe, mais\n"
         . "  pas la même machine.\n";
+}
+
+/* ------------------------------------------------------------------ */
+/* Restaurer                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ce qu'une archive contient, SANS rien toucher.
+ *
+ * On regarde avant d'agir : le nombre de comptes et de décors qu'on
+ * s'apprête à remettre, la date, le moteur. Restaurer à l'aveugle, c'est
+ * découvrir après coup qu'on vient d'écraser une semaine avec une archive
+ * de l'an dernier — et il n'y a pas de retour en arrière.
+ *
+ * @return array{moteur: string, date: string, comptes: int, decors: int,
+ *                articles: int, cadres: int, medias: int, notice: ?string}
+ */
+function inspecter_sauvegarde(string $archive): array
+{
+    $z = new LecteurZip($archive);
+    $noms = $z->noms();
+
+    $vu = [
+        'moteur' => $z->contient('base.sql') ? 'mysql' : ($z->contient('wakabi.sqlite') ? 'sqlite' : ''),
+        'date' => gmdate('d/m/Y à H:i', (int) @filemtime($archive)) . ' UTC',
+        'comptes' => 0, 'decors' => 0, 'articles' => 0,
+        'cadres' => count(array_filter($noms, fn(string $n) => str_starts_with($n, 'cadres/'))),
+        'medias' => count(array_filter($noms, fn(string $n) => str_starts_with($n, 'medias/'))),
+        'notice' => $z->lire('LISEZ-MOI.txt'),
+    ];
+    if ($vu['moteur'] === '') {
+        throw new RuntimeException('Cette archive ne contient aucune base : '
+            . 'ce n’est pas une sauvegarde Wakabi Boost.');
+    }
+
+    if ($vu['moteur'] === 'sqlite') {
+        // On ouvre la copie à part, en lecture : compter dans un fichier
+        // qu'on n'a pas encore mis en place est la seule façon honnête de
+        // dire à quelqu'un ce qu'il s'apprête à restaurer.
+        $tmp = dossier_sauvegardes() . '/.inspection-' . bin2hex(random_bytes(6)) . '.sqlite';
+        if ($z->extraire('wakabi.sqlite', $tmp) > 0) {
+            try {
+                $pdo = new PDO('sqlite:' . $tmp, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                foreach (['comptes' => 'utilisateurs', 'decors' => 'decors', 'articles' => 'articles'] as $k => $t) {
+                    try {
+                        $vu[$k] = (int) $pdo->query("SELECT COUNT(*) FROM $t")->fetchColumn();
+                    } catch (PDOException) {
+                    }
+                }
+            } catch (PDOException) {
+            }
+            @unlink($tmp);
+        }
+    } else {
+        // Un dump SQL : on compte les lignes d'INSERT, ce qui suffit à
+        // situer l'ordre de grandeur sans exécuter quoi que ce soit.
+        $sql = (string) $z->lire('base.sql');
+        foreach (['comptes' => 'utilisateurs', 'decors' => 'decors', 'articles' => 'articles'] as $k => $t) {
+            $vu[$k] = substr_count($sql, "INSERT INTO `$t`");
+        }
+    }
+
+    return $vu;
+}
+
+/**
+ * Remet une archive en place. Le geste le plus dangereux du produit.
+ *
+ * Trois précautions, dans cet ordre :
+ *
+ *  1. **Une sauvegarde de l'état actuel est prise d'abord**, et son nom
+ *     est rendu. Se tromper d'archive doit rester rattrapable ; sans ce
+ *     filet, la restauration est un aller simple.
+ *  2. **La base est remplacée avant les fichiers.** Si l'écriture échoue,
+ *     on s'arrête là : mieux vaut une base intacte avec des cadres à
+ *     moitié remplacés que l'inverse.
+ *  3. **Les cadres et médias sont AJOUTÉS, pas substitués.** Un fichier
+ *     présent des deux côtés est réécrit ; un fichier que l'archive ne
+ *     connaît pas reste. On ne supprime rien : une image orpheline ne
+ *     coûte que de la place, une image manquante casse un badge déjà
+ *     entre les mains d'un invité.
+ *
+ * @return array{filet: string, tables: int, cadres: int, medias: int}
+ */
+function restaurer_sauvegarde(string $archive): array
+{
+    $vu = inspecter_sauvegarde($archive);
+    $z = new LecteurZip($archive);
+
+    // 1. le filet
+    $filet = ecrire_sauvegarde(dossier_sauvegardes() . '/avant-restauration-'
+        . gmdate('Ymd-His') . '.zip');
+
+    // 2. la base
+    $tables = 0;
+    if ($vu['moteur'] === 'sqlite') {
+        if (est_mysql()) {
+            throw new RuntimeException('Cette archive vient d’une installation SQLite, '
+                . 'et celle-ci tourne sur MySQL. Les deux ne se remplacent pas l’une l’autre.');
+        }
+        $cible = (string) (config()['fichier'] ?? dossier_donnees() . '/wakabi.sqlite');
+        $neuf = $cible . '.neuf';
+        if ($z->extraire('wakabi.sqlite', $neuf) < 1) {
+            throw new RuntimeException('La base contenue dans l’archive est illisible.');
+        }
+        // On ferme la connexion avant de remplacer le fichier sous elle :
+        // sur certains systèmes, écraser une base ouverte laisse la
+        // connexion pointer sur l'ancien inode, et l'écran suivant montre
+        // encore les données d'avant.
+        db_fermer();
+        if (!@rename($neuf, $cible)) {
+            @unlink($neuf);
+            throw new RuntimeException('Impossible de remplacer donnees/wakabi.sqlite — '
+                . 'le dossier est-il accessible en écriture ?');
+        }
+        $tables = (int) db()->query(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")->fetchColumn();
+    } else {
+        if (!est_mysql()) {
+            throw new RuntimeException('Cette archive vient d’une installation MySQL, '
+                . 'et celle-ci tourne sur SQLite. Les deux ne se remplacent pas l’une l’autre.');
+        }
+        $sql = (string) $z->lire('base.sql');
+        if (trim($sql) === '') {
+            throw new RuntimeException('Le dump contenu dans l’archive est vide.');
+        }
+        $pdo = db();
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+        foreach (decouper_sql($sql) as $requete) {
+            if (trim($requete) === '') {
+                continue;
+            }
+            $pdo->exec($requete);
+            if (stripos($requete, 'CREATE TABLE') !== false) {
+                $tables++;
+            }
+        }
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+    }
+
+    // 3. les fichiers
+    $cadres = $medias = 0;
+    foreach ($z->noms() as $nom) {
+        if (str_starts_with($nom, 'cadres/') && strlen($nom) > 7) {
+            $cadres += $z->extraire($nom, dossier_cadres() . '/' . basename($nom)) > 0 ? 1 : 0;
+        } elseif (str_starts_with($nom, 'medias/') && strlen($nom) > 7) {
+            $medias += $z->extraire($nom, dossier_medias() . '/' . basename($nom)) > 0 ? 1 : 0;
+        }
+    }
+
+    // Les vignettes décrivent les images d'AVANT : on les jette plutôt que
+    // de servir le cache d'une base qui n'existe plus.
+    foreach (glob(dossier_vignettes() . '/*') ?: [] as $f) {
+        @unlink($f);
+    }
+
+    return ['filet' => basename($filet), 'tables' => $tables,
+            'cadres' => $cadres, 'medias' => $medias];
+}
+
+/**
+ * Découpe un dump en requêtes, en respectant les chaînes.
+ *
+ * Un simple `explode(';')` couperait au milieu d'un texte contenant un
+ * point-virgule — et il y en a dans les articles, dans les notes, et dans
+ * la moindre adresse recopiée.
+ */
+function decouper_sql(string $sql): array
+{
+    $out = [];
+    $courant = '';
+    $dans = false;
+    $echappe = false;
+    $n = strlen($sql);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $sql[$i];
+        $courant .= $c;
+        if ($echappe) {
+            $echappe = false;
+            continue;
+        }
+        if ($c === '\\') {
+            $echappe = true;
+            continue;
+        }
+        if ($c === "'") {
+            $dans = !$dans;
+            continue;
+        }
+        if ($c === ';' && !$dans) {
+            $out[] = $courant;
+            $courant = '';
+        }
+    }
+    if (trim($courant) !== '') {
+        $out[] = $courant;
+    }
+    return $out;
 }

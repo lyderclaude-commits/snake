@@ -19,7 +19,11 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
     <div class="rangee" style="justify-content:space-between;align-items:flex-start">
       <div>
         <h1>Tous les décors</h1>
-        <p><?= $total ?> au total, tous statuts confondus : les vôtres et ceux des partenaires.</p>
+        <p><?= $total ?> au total, tous statuts confondus : les vôtres et ceux des partenaires.
+        <?php if ($filtre !== '' || $cherche !== ''): ?>
+          <br><span class="aide"><?= (int) $combien ?> correspond<?= $combien > 1 ? 'ent' : '' ?>
+          à ce que vous regardez.</span>
+        <?php endif; ?></p>
       </div>
       <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
     </div>
@@ -136,4 +140,30 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
       </div>
     </div>
   <?php endforeach; endif; ?>
+
+  <?php
+  /**
+   * Les pages portent le filtre ET la recherche.
+   *
+   * Une pagination qui les perd ramène l'écran au début à chaque clic —
+   * on croit alors que la page suivante n'existe pas.
+   */
+  $vers = function (int $n) use ($filtre, $cherche): string {
+      return url('?p=catalogue' . ($filtre ? '&statut=' . urlencode($filtre) : '')
+                 . ($cherche ? '&q=' . urlencode($cherche) : '')
+                 . ($n > 1 ? '&n=' . $n : ''));
+  };
+  ?>
+  <?php if ($pages > 1): ?>
+    <div class="rangee" style="justify-content:center;gap:12px;margin-top:22px;align-items:center">
+      <?php if ($page_n > 1): ?>
+        <a class="bouton fant petit" href="<?= e($vers($page_n - 1)) ?>">← Précédents</a>
+      <?php endif; ?>
+      <span class="aide">Page <?= (int) $page_n ?> sur <?= (int) $pages ?> ·
+        <?= (int) $combien ?> décor<?= $combien > 1 ? 's' : '' ?></span>
+      <?php if ($page_n < $pages): ?>
+        <a class="bouton fant petit" href="<?= e($vers($page_n + 1)) ?>">Suivants →</a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 </div>

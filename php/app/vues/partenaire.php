@@ -3,7 +3,15 @@
     <div class="rangee" style="justify-content:space-between">
       <div>
         <h1>Tableau de bord</h1>
-        <p><?= e($me['organisation'] ?: $me['nom']) ?> · offre <?= e(formule_libelle($me['formule'] ?? null)) ?></p>
+        <?php
+        /* Un compte de la MAISON n'a pas d'offre commerciale. Lui en
+           afficher une contredit ce qu'on lui dit à sa création — « sans
+           effet sur un compte de l'équipe, qui n'a jamais de quota » — et
+           donne à croire qu'il est limité alors qu'il ne l'est pas. */
+        ?>
+        <p><?= e($me['organisation'] ?: $me['nom']) ?> ·
+        <?= interne($me) ? e(role_libelle($me['role'] ?? null))
+                         : 'offre ' . e(formule_libelle($me['formule'] ?? null)) ?></p>
       </div>
       <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">Nouveau décor</a>
     </div>
@@ -90,9 +98,19 @@
   ?>
   <div class="carte" style="margin-bottom:22px">
     <div class="rangee" style="justify-content:space-between;align-items:baseline">
-      <h3 style="margin:0">Offre <?= e($offre['nom']) ?></h3>
-      <a class="aide" href="<?= e(url('#tarifs')) ?>">Comparer les offres</a>
+      <?php if (interne($me)): ?>
+        <h3 style="margin:0"><?= e(role_libelle($me['role'] ?? null)) ?></h3>
+        <span class="aide">Compte de l’équipe — aucun quota</span>
+      <?php else: ?>
+        <h3 style="margin:0">Offre <?= e($offre['nom']) ?></h3>
+        <a class="aide" href="<?= e(url('#tarifs')) ?>">Comparer les offres</a>
+      <?php endif; ?>
     </div>
+
+    <?php if (interne($me)): ?>
+      <p class="aide" style="margin:10px 0 0"><?= e(role_aide($me['role'] ?? null)) ?>
+      Les compteurs ci-dessous sont ceux de vos propres décors : ils ne butent sur rien.</p>
+    <?php endif; ?>
 
     <div class="grille g2 jauges" style="margin-top:14px">
       <?php foreach (['campagnes', 'telechargements', 'liens_courts', 'emails_par_mois'] as $cle):
@@ -135,7 +153,8 @@
      * raison même d'ouvrir cet écran — sous un écran et demi de texte.
      */
     ?>
-    <details class="detail-offre">
+    <?php /* Le détail d'une offre commerciale ne concerne pas la maison. */ ?>
+    <details class="detail-offre"<?= interne($me) ? ' hidden' : '' ?>>
       <summary>Ce que comprend l’offre <?= e($offre['nom']) ?><?= $manquant ? ', et ce qu’elle ne comprend pas' : '' ?><?= icone('chevron') ?></summary>
     <div class="grille g2" style="margin-top:18px;gap:18px">
       <div>
@@ -244,6 +263,32 @@
 
   <?php
   /**
+   * Les campagnes CONFIÉES, à part des siennes.
+   *
+   * Elles ne comptent pas dans son quota — c'est la campagne de quelqu'un
+   * d'autre — et les mêler à ses propres décors ferait croire l'inverse.
+   */
+  ?>
+  <?php if (!empty($confiees)): ?>
+    <h2 class="titre-bloc" style="margin-top:26px">Confiées par d’autres</h2>
+    <p class="aide" style="margin:0 0 14px">Vous pouvez les modifier et les soumettre à la
+    relecture. Elles ne comptent pas dans votre offre.</p>
+    <?php foreach ($confiees as $d): ?>
+      <div class="carte" style="margin-bottom:12px">
+        <div class="rangee" style="justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+          <div>
+            <strong><?= e((string) $d['titre']) ?></strong>
+            <span class="pastille <?= e((string) $d['statut']) ?>"><?= e(statut_libelle((string) $d['statut'])) ?></span>
+            <br><span class="aide">de <?= e((string) ($d['auteur_nom'] ?: 'un autre organisateur')) ?></span>
+          </div>
+          <a class="bouton fant petit" href="<?= e(url('?p=modifier&id=' . rawurlencode((string) $d['id']))) ?>">Ouvrir</a>
+        </div>
+      </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
+  <?php
+  /**
    * Les raccourcis, filtrés par l'offre.
    *
    * Le tableau de bord est le point de départ : ce à quoi on a droit doit
@@ -257,6 +302,7 @@
       ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', capacite($me, 'regie')],
       ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', capacite($me, 'telegram_push')],
       ['?p=blog-admin', 'Mes articles', 'Proposer un article au blog', true],
+      ['?p=api-doc', 'L’API', 'Vos chiffres, par programme', capacite($me, 'api')],
       ['?p=profil', 'Mon profil', 'Nom, adresse, mot de passe', true],
   ], fn(array $r) => $r[3]);
   ?>

@@ -110,6 +110,86 @@ $moi = $c['id'] === $me['id'];
     </div>
   </div>
 
+  <!-- ---------- l'abonnement ---------- -->
+  <?php if (abonnement_suivi($c)): ?>
+    <?php
+    $reste = jours_restants($c);
+    $factures = factures_de((string) $c['id']);
+    ?>
+    <div class="carte" style="margin-bottom:16px">
+      <div class="rangee" style="justify-content:space-between;align-items:baseline">
+        <h3 style="margin:0">Abonnement</h3>
+        <span class="pastille <?= $reste === null ? 'brouillon' : ($reste < 0 ? 'refuse' : ($reste <= 7 ? 'corrections' : 'publie')) ?>">
+          <?php if ($reste === null): ?>Aucune échéance
+          <?php elseif ($reste < -ABONNEMENT_GRACE): ?>Échu
+          <?php elseif ($reste < 0): ?>En retard de <?= abs($reste) ?> j
+          <?php else: ?><?= $reste ?> jour<?= $reste > 1 ? 's' : '' ?><?php endif; ?>
+        </span>
+      </div>
+
+      <p class="aide" style="margin:8px 0 14px">
+        <?php if ($reste === null): ?>
+          Offre <?= e(formule_libelle($c['formule'])) ?> sans date de fin. Enregistrez un
+          paiement pour lui en donner une — sinon rien ne relancera ce compte.
+        <?php elseif ($reste < 0): ?>
+          Échue le <?= e(date_fr((string) $c['echeance_le'])) ?>. Le compte repasse en
+          Découverte <?= ABONNEMENT_GRACE ?> jours après l’échéance.
+        <?php else: ?>
+          Payée jusqu’au <strong><?= e(date_fr((string) $c['echeance_le'])) ?></strong>.
+          Un rappel part 7 jours avant, puis la veille.
+        <?php endif; ?>
+      </p>
+
+      <form method="post" action="<?= e(url('?p=paiement')) ?>" class="rangee" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="id" value="<?= e($c['id']) ?>">
+        <div class="champ" style="margin:0">
+          <label for="p-montant">Montant reçu (F)</label>
+          <input id="p-montant" name="montant" type="number" min="0" step="500"
+                 style="width:130px" value="<?= (int) (FORMULES[$c['formule']]['prix'] ?? 0) ?>">
+        </div>
+        <div class="champ" style="margin:0">
+          <label for="p-jours">Pour combien de jours</label>
+          <input id="p-jours" name="jours" type="number" min="1" max="730"
+                 style="width:110px" value="<?= ABONNEMENT_JOURS ?>">
+        </div>
+        <button class="bouton" type="submit">Enregistrer le paiement</button>
+      </form>
+
+      <?php if ($factures): ?>
+        <div class="tableau" style="margin-top:16px">
+          <table>
+            <thead><tr><th>Facture</th><th>Période</th><th class="chiffre">Montant</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach ($factures as $f): ?>
+              <tr>
+                <td class="mono"><?= e((string) $f['numero']) ?>
+                  <br><span class="aide"><?= e(formule_libelle((string) $f['formule'])) ?></span></td>
+                <td><?= e(date_fr((string) $f['debut_le'])) ?> → <?= e(date_fr((string) $f['fin_le'])) ?></td>
+                <td class="mono chiffre"><?= number_format((int) $f['montant'], 0, ',', ' ') ?> F</td>
+                <td><a class="bouton fant petit" href="<?= e(url('?p=facture&id=' . rawurlencode((string) $f['id']))) ?>">Voir</a></td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if (otp_actif($c) && droit($me, 'comptes_internes') && !$moi): ?>
+    <div class="carte" style="margin-bottom:16px">
+      <h3 style="margin:0 0 4px">Double authentification</h3>
+      <p class="aide" style="margin:0 0 12px">En service sur ce compte. Si la personne a perdu
+      son téléphone, la lever est la seule issue — elle la remettra ensuite depuis son profil.</p>
+      <form method="post" action="<?= e(url('?p=otp-lever')) ?>">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="id" value="<?= e($c['id']) ?>">
+        <button class="bouton danger petit" type="submit">Lever la double authentification</button>
+      </form>
+    </div>
+  <?php endif; ?>
+
   <!-- ---------- les leviers ---------- -->
   <div class="carte" style="margin-bottom:16px">
     <h3 style="margin:0 0 14px">Gérer ce compte</h3>

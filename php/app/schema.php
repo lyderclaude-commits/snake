@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 function assurer_schema(): void
 {
@@ -84,6 +84,15 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         "ALTER TABLE articles ADD COLUMN soumis_le $court NULL",
         "ALTER TABLE articles ADD COLUMN relu_le $court NULL",
         "ALTER TABLE articles ADD COLUMN relu_par $id NULL",
+        // v11 — mot de passe oublié, échéances d'abonnement, double
+        // authentification de l'équipe. Chacune est AUSSI dans
+        // `creer_schema()` : voir l'avertissement en tête de fonction.
+        "ALTER TABLE utilisateurs ADD COLUMN mdp_jeton $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN mdp_expire_le $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN echeance_le $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN rappel_echeance $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN otp_secret $court NULL",
+        'ALTER TABLE utilisateurs ADD COLUMN otp_actif INT NOT NULL DEFAULT 0',
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -236,7 +245,80 @@ function creer_schema(PDO $pdo, bool $mysql): void
             note_equipe       $txt NULL,
             telephone         $court NULL,
             vu_le             $court NULL,
+            mdp_jeton         $court NULL,
+            mdp_expire_le     $court NULL,
+            echeance_le       $court NULL,
+            rappel_echeance   $court NULL,
+            otp_secret        $court NULL,
+            otp_actif         INT NOT NULL DEFAULT 0,
             cree_le           $court NOT NULL
+        )$moteur",
+
+        /**
+         * Le journal : qui a fait quoi, quand.
+         *
+         * Avec un seul administrateur, il ne sert à rien. Avec un
+         * coordinateur, un éditeur et un scanner qui arbitrent chacun de
+         * leur côté, c'est la première question qu'on se pose le jour où un
+         * décor a disparu — et sans trace écrite, la réponse est « on ne
+         * sait pas », ce qui abîme la confiance dans l'équipe entière.
+         *
+         * Le nom de l'acteur est RECOPIÉ, pas seulement son identifiant :
+         * un compte supprimé ne doit pas effacer ce qu'il a fait.
+         */
+        "CREATE TABLE IF NOT EXISTS journal (
+            id           $id PRIMARY KEY,
+            acteur_id    $id NULL,
+            acteur_nom   $court NULL,
+            acteur_role  $court NULL,
+            action       $court NOT NULL,
+            objet_type   $court NULL,
+            objet_id     $id NULL,
+            objet_titre  $court NULL,
+            detail       $txt NULL,
+            cree_le      $court NOT NULL
+        )$moteur",
+
+        /**
+         * Les échéances d'abonnement, et leur trace.
+         *
+         * Une facture n'est pas un ornement comptable : c'est ce qu'un
+         * organisateur réclame pour se faire rembourser par son propre
+         * employeur, et ce qui permet à l'équipe de dire « vous avez payé
+         * jusqu'au 12 » plutôt que de chercher dans ses souvenirs.
+         *
+         * Le montant est FIGÉ à l'émission : changer le tarif d'une offre
+         * ne doit pas réécrire les factures déjà remises.
+         */
+        "CREATE TABLE IF NOT EXISTS factures (
+            id             $id PRIMARY KEY,
+            numero         $court NOT NULL UNIQUE,
+            utilisateur_id $id NOT NULL,
+            client_nom     $court NULL,
+            client_org     $court NULL,
+            formule        $court NOT NULL,
+            montant        INT NOT NULL DEFAULT 0,
+            debut_le       $court NOT NULL,
+            fin_le         $court NOT NULL,
+            reglee_le      $court NULL,
+            note           $txt NULL,
+            emise_par      $id NULL,
+            cree_le        $court NOT NULL
+        )$moteur",
+
+        /**
+         * Confier UNE campagne sans ouvrir tout le compte.
+         *
+         * Un organisateur qui fait appel à un graphiste pour une soirée ne
+         * veut pas lui donner ses statistiques, ses liens et sa régie. Cette
+         * table dit : cette personne-là, sur ce décor-là, et rien d'autre.
+         */
+        "CREATE TABLE IF NOT EXISTS equipiers (
+            id             $id PRIMARY KEY,
+            decor_id       $id NOT NULL,
+            utilisateur_id $id NOT NULL,
+            invite_par     $id NULL,
+            cree_le        $court NOT NULL
         )$moteur",
 
         /**
@@ -498,6 +580,10 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_articles_statut ON articles (statut)',
         'CREATE INDEX idx_envois_campagne ON envois_email (campagne_id)',
         'CREATE INDEX idx_campagnes_email_auteur ON campagnes_email (auteur_id)',
+        'CREATE INDEX idx_journal_date ON journal (cree_le)',
+        'CREATE INDEX idx_factures_utilisateur ON factures (utilisateur_id)',
+        'CREATE INDEX idx_equipiers_decor ON equipiers (decor_id)',
+        'CREATE INDEX idx_equipiers_utilisateur ON equipiers (utilisateur_id)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

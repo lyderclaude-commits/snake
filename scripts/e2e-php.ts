@@ -8,7 +8,7 @@
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { createServer } from 'node:net';
 import { createServer as createServeurHttp } from 'node:http';
-import { createECDH, randomBytes } from 'node:crypto';
+import { createECDH, createHmac, randomBytes } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -61,6 +61,26 @@ function ouvrirPush(port: number): { clePublique: string; auth: string; fermer: 
     auth: randomBytes(16).toString('base64url'),
     fermer: () => serveur.close(),
   };
+}
+
+/**
+ * Le code à six chiffres, calculé comme le ferait l'application du
+ * téléphone — et non par le code qu'on éprouve.
+ *
+ * C'est tout l'intérêt : si les deux implémentations divergent, le test
+ * échoue. Une vérification qui appellerait `otp_code()` de PHP ne
+ * prouverait que sa cohérence avec elle-même.
+ */
+function totp(secret32: string): string {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = [...secret32].map((c) => A.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const cle = Buffer.from((bits.match(/.{8}/g) ?? []).map((o) => parseInt(o, 2)));
+  const tranche = Buffer.alloc(8);
+  tranche.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)));
+  const h = createHmac('sha1', cle).update(tranche).digest();
+  const d = h[19] & 0x0f;
+  const n = ((h[d] & 0x7f) << 24) | (h[d + 1] << 16) | (h[d + 2] << 8) | h[d + 3];
+  return String(n % 1000000).padStart(6, '0');
 }
 
 /**
@@ -180,6 +200,14 @@ const VISITEUR = { email: `visiteur-${marque}@exemple.tg`, mdp: 'visiteur-2026-s
 
 async function connexion(p: Page, email: string, mdp: string) {
   await p.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  // Déjà connecté ? L'écran de connexion renvoie désormais chez soi — on
+  // se déconnecte donc d'abord, comme le ferait quelqu'un qui change de
+  // compte pour de bon.
+  if (!p.url().includes('p=connexion')) {
+    await p.locator('form[action*="deconnexion"] button').first().click().catch(() => {});
+    await p.waitForLoadState('domcontentloaded');
+    await p.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  }
   await p.fill('input[name=email]', email);
   await p.fill('input[name=mot_de_passe]', mdp);
   // `main` et non la page entière : la barre porte un bouton « Déconnexion »
@@ -190,6 +218,13 @@ async function connexion(p: Page, email: string, mdp: string) {
 
 async function inscription(p: Page, email: string, mdp: string, role: string, nom: string) {
   await p.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  // On ne propose plus de créer un compte à qui en a déjà un d'ouvert :
+  // le formulaire renvoie chez soi, comme dans la vraie vie.
+  if (!p.url().includes('p=inscription')) {
+    await p.locator('form[action*="deconnexion"] button').first().click().catch(() => {});
+    await p.waitForLoadState('domcontentloaded');
+    await p.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  }
   await p.selectOption('select[name=role]', role);
   await p.fill('input[name=nom]', nom);
   await p.fill('input[name=email]', email);
@@ -512,7 +547,10 @@ const run = async () => {
   await p.waitForLoadState('domcontentloaded');
   ok('la modification est enregistrée', /mis à jour/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')));
   await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreEquipe)}`, { waitUntil: 'domcontentloaded' });
-  ok('l’adresse du décor ne change pas', (await p.locator('.aide').first().innerText()).includes(slugAvant),
+  // Dans la CARTE du décor : l'en-tête du catalogue porte lui aussi une
+  // ligne d'aide depuis qu'il annonce combien de décors le filtre décrit.
+  ok('l’adresse du décor ne change pas',
+     (await p.locator('.carte .aide').first().innerText()).includes(slugAvant),
      slugAvant);
 
   // 4. Publier depuis le catalogue
@@ -833,7 +871,7 @@ const run = async () => {
   // Le rangement lui-même est éprouvé à la section 29 ; ici on vérifie
   // seulement que rien n'a débordé des groupes ni disparu.
   ok('toutes les destinations d’administration sont rangées dans un groupe',
-     (await p.locator('.barre .deroulant .volet a').count()) === 11,
+     (await p.locator('.barre .deroulant .volet a').count()) === 12,
      `${await p.locator(".barre .deroulant .volet a").count()} entrées en groupe`);
   ok('notifications et déconnexion restent hors des déroulants',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
@@ -858,14 +896,20 @@ const run = async () => {
   ok('les fichiers internes ne fuient pas', !/PDO|function db\(/.test(corps), `HTTP ${direct?.status()}`);
 
   console.log('\n━━ 14. Limitation de débit ━━');
+  // Depuis un contexte ANONYME : c'est là qu'on essaie des mots de passe
+  // en boucle, et l'écran de connexion renvoie chez lui qui en a déjà un.
+  const ctxBrute = await browser.newContext();
+  const brute = await ctxBrute.newPage();
+  surveiller(brute);
   for (let i = 0; i < 9; i++) {
-    await a.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
-    await a.fill('input[name=email]', `brute-${marque}@exemple.tg`);
-    await a.fill('input[name=password], input[name=mot_de_passe]', 'faux' + i);
-    await a.click('main button[type=submit]');
-    await a.waitForLoadState('domcontentloaded');
+    await brute.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+    await brute.fill('input[name=email]', `brute-${marque}@exemple.tg`);
+    await brute.fill('input[name=password], input[name=mot_de_passe]', 'faux' + i);
+    await brute.click('main button[type=submit]');
+    await brute.waitForLoadState('domcontentloaded');
   }
-  const limite = await a.locator('[role=alert]').first().innerText().catch(() => '');
+  const limite = await brute.locator('[role=alert]').first().innerText().catch(() => '');
+  await ctxBrute.close();
   ok('limitation de débit active', /Trop de tentatives/.test(limite), limite.slice(0, 48));
 
   console.log('\n━━ 15. Sur un téléphone ━━');
@@ -1899,7 +1943,7 @@ const run = async () => {
   await pt2.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
   await pt2.click('.menu > summary');
   ok('sur téléphone, tous les liens sont atteignables sans second tiroir',
-     (await pt2.locator('.menu[open] nav .volet a:visible').count()) === 11,
+     (await pt2.locator('.menu[open] nav .volet a:visible').count()) === 12,
      `${await pt2.locator('.menu[open] nav .volet a:visible').count()} liens visibles`);
   ok('les intitulés de groupe restent lisibles, et ne se cliquent pas',
      (await pt2.locator('.menu[open] .deroulant > summary').first().isVisible())
@@ -2521,6 +2565,300 @@ const run = async () => {
   await ctxRe.close();
   await pre.close();
 
+  /* ================================================================== */
+  console.log('\n━━ 36. Ce que l’audit a corrigé ━━');
+
+  const pau = await browser.newPage();
+  surveiller(pau);
+  await connexion(pau, ADMIN.email, ADMIN.mdp);
+
+  /* --- nº1 : le catalogue ne tronque plus en silence --- */
+  await pau.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
+  const totalCat = Number(/(\d+) au total/.exec(await pau.locator('.entete').innerText())?.[1] ?? 0);
+  const cartesCat = await pau.locator('main .carte').count();
+  const barreCat = await pau.locator('main').innerText();
+  ok('le catalogue dit combien de pages il a',
+     totalCat <= cartesCat || /Page \d+ sur \d+/.test(barreCat),
+     `${cartesCat} carte(s) sur ${totalCat}`);
+  if (totalCat > cartesCat) {
+    await pau.locator('a:has-text("Suivants")').click();
+    await pau.waitForLoadState('domcontentloaded');
+    ok('la page suivante montre d’autres décors',
+       (await pau.locator('main').innerText()).includes('Page 2 sur'),
+       (/Page \d+ sur \d+/.exec(await pau.locator('main').innerText()) ?? [''])[0]);
+  }
+
+  /* --- nº5 : connexion et inscription renvoient chez soi --- */
+  await pau.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de connexion renvoie qui est déjà connecté',
+     !pau.url().includes('p=connexion'), pau.url().split('index.php')[1] ?? '');
+  await pau.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  ok('l’inscription aussi', !pau.url().includes('p=inscription'),
+     pau.url().split('index.php')[1] ?? '');
+
+  /* --- nº3 : l'API existe --- */
+  await pau.goto(`${BASE}/index.php?p=api-doc`, { waitUntil: 'domcontentloaded' });
+  ok('la documentation de l’API est servie',
+     (await pau.locator('main').innerText()).includes('Authorization: Bearer'));
+  await pau.locator('form[action*="api-cle"] button').first().click();
+  await pau.waitForLoadState('domcontentloaded');
+  const cleApi = (await pau.locator('.bloc-code').first().innerText()).trim();
+  ok('une clé se fabrique depuis l’écran', /^wkb_[0-9a-f]{48}$/.test(cleApi),
+     cleApi.slice(0, 12) + '…');
+
+  const api = (r: string) => `${BASE}/index.php?p=api&r=${r}`;
+  const apiSansCle = await pau.request.get(api('moi'));
+  ok('l’API refuse une requête sans clé', apiSansCle.status() === 401,
+     `HTTP ${apiSansCle.status()}`);
+  const mauvaise = await pau.request.get(api('moi'), { headers: { 'X-Api-Cle': 'wkb_faux' } });
+  ok('et distingue une clé inconnue', (await mauvaise.json()).genre === 'cle_inconnue');
+
+  const entetes = { Authorization: 'Bearer ' + cleApi };
+  const moi = await (await pau.request.get(api('moi'), { headers: entetes })).json();
+  ok('« moi » rend le compte et ses compteurs',
+     moi.ok === true && moi.compte.email === ADMIN.email && 'campagnes' in moi.compteurs,
+     moi.compte?.offre_libelle ?? '');
+  const camps = await (await pau.request.get(api('campagnes'),
+    { headers: { 'X-Api-Cle': cleApi } })).json();
+  ok('« campagnes » rend les chiffres de chacune',
+     camps.ok === true && Array.isArray(camps.campagnes)
+     && (camps.campagnes.length === 0 || 'chiffres' in camps.campagnes[0]),
+     `${camps.campagnes?.length ?? 0} campagne(s)`);
+  const inconnue = await pau.request.get(api('zzz'), { headers: entetes });
+  ok('une ressource inconnue rend 404 et non du HTML',
+     inconnue.status() === 404
+     && (inconnue.headers()['content-type'] ?? '').includes('application/json'));
+
+  /**
+   * Le garde-fou tient AUSSI par l'API.
+   *
+   * C'est le scénario qui compte : une porte dérobée est d'autant plus
+   * tentante qu'elle est en JSON. Le compte de la recette a le droit de
+   * valider, on éprouve donc le refus avec un lien qui n'est pas une
+   * adresse du tout.
+   */
+  const lienFaux = await pau.request.post(api('liens'), {
+    headers: entetes, data: { cible: 'pas-une-adresse' },
+  });
+  ok('l’API refuse une cible qui n’est pas une adresse',
+     lienFaux.status() === 422 && (await lienFaux.json()).genre === 'cible_invalide');
+  const lienBon = await pau.request.post(api('liens'), {
+    headers: entetes, data: { cible: 'https://wakabileguide.com/p/api-' + marque, titre: 'API' },
+  });
+  ok('et en crée un quand elle est bonne',
+     lienBon.status() === 201 && /^[A-Za-z0-9]{6}$/.test((await lienBon.json()).code));
+
+  /* --- le journal --- */
+  await pau.goto(`${BASE}/index.php?p=journal`, { waitUntil: 'domcontentloaded' });
+  ok('le journal est servi à qui gère les comptes',
+     pau.url().includes('p=journal') && (await pau.locator('main').innerText()).includes('Journal'));
+
+  /* --- l'échéance, la facture --- */
+  const ABONNE = { email: `abonne-${marque}@exemple.tg`, mdp: 'abonne-2026-solide' };
+  const csrfC = await pau.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' })
+    .then(() => pau.locator('.formulaire-compte input[name=csrf]').inputValue());
+  await pau.request.post(`${BASE}/index.php?p=creer-compte`, {
+    form: { csrf: csrfC, nom: 'Abonné payant', email: ABONNE.email, role: 'partenaire',
+            formule: 'croissance', mot_de_passe: ABONNE.mdp },
+  });
+  await pau.goto(`${BASE}/index.php?p=comptes&q=${encodeURIComponent(ABONNE.email)}`,
+                 { waitUntil: 'domcontentloaded' });
+  await pau.locator('.bloc-comptes').nth(1).locator('a[href*="organisateur"]').first().click();
+  await pau.waitForLoadState('domcontentloaded');
+  ok('une offre payante ouvre une carte d’abonnement',
+     (await pau.locator('main').innerText()).includes('Abonnement'));
+  await pau.locator('button:has-text("Enregistrer le paiement")').click();
+  await pau.waitForLoadState('domcontentloaded');
+  const apresPaiement = (await pau.locator('main').innerText()).replace(/\s+/g, ' ');
+  ok('un paiement repousse l’échéance', /Payée jusqu’au \d{2}\/\d{2}\/\d{4}/.test(apresPaiement),
+     (/Payée jusqu’au \d{2}\/\d{2}\/\d{4}/.exec(apresPaiement) ?? [''])[0]);
+  const numero = (/WB-\d{4}-\d{4}/.exec(apresPaiement) ?? [''])[0];
+  ok('et émet une facture numérotée', numero !== '', numero);
+  await pau.locator('a[href*="p=facture"]').first().click();
+  await pau.waitForLoadState('domcontentloaded');
+  const facture = (await pau.locator('.facture').innerText()).replace(/\s+/g, ' ');
+  ok('la facture porte le client, la période et le total',
+     facture.includes('Abonné payant') && facture.includes('Total réglé')
+     && facture.includes(numero), facture.slice(0, 60));
+
+  /* --- ce que le client voit de son côté --- */
+  const ctxCli = await browser.newContext({ acceptDownloads: true });
+  const pcli = await ctxCli.newPage();
+  surveiller(pcli);
+  await connexion(pcli, ABONNE.email, ABONNE.mdp);
+  await pcli.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  const profilCli = (await pcli.locator('main').innerText()).replace(/\s+/g, ' ');
+  ok('le client voit son échéance sans écrire à personne',
+     profilCli.includes('Mon abonnement') && profilCli.includes(numero));
+
+  const expo = await pcli.request.get(`${BASE}/index.php?p=profil-export`);
+  const donnees = await expo.json();
+  ok('il emporte ses données en un fichier',
+     expo.ok() && donnees.compte.email === ABONNE.email && Array.isArray(donnees.campagnes),
+     Object.keys(donnees).join(', ').slice(0, 60));
+  ok('l’export ne contient ni mot de passe ni clé d’API',
+     !JSON.stringify(donnees).includes('mot_de_passe')
+     && !JSON.stringify(donnees).includes('cle_api'));
+
+  /* --- l'API est fermée à qui n'a pas l'offre --- */
+  await pcli.goto(`${BASE}/index.php?p=api-doc`, { waitUntil: 'domcontentloaded' });
+  ok('sans l’offre, la documentation le dit au lieu de refuser sèchement',
+     (await pcli.locator('main').innerText()).includes('n’ouvre pas l’API'));
+
+  /* --- un compte interne n'a pas d'offre commerciale --- */
+  const INT = { email: `editeur-${marque}@wakabileguide.com`, mdp: 'interne-2026-solide' };
+  await pau.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  await pau.request.post(`${BASE}/index.php?p=creer-compte`, {
+    form: { csrf: await pau.locator('.formulaire-compte input[name=csrf]').inputValue(),
+            nom: 'Éditeur audit', email: INT.email, role: 'editeur',
+            formule: 'decouverte', mot_de_passe: INT.mdp },
+  });
+  const ctxInt = await browser.newContext();
+  const pint = await ctxInt.newPage();
+  surveiller(pint);
+  await connexion(pint, INT.email, INT.mdp);
+  await pint.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  const bordInt = (await pint.locator('main').innerText()).replace(/\s+/g, ' ');
+  ok('un compte de l’équipe ne se voit pas attribuer d’offre commerciale',
+     !/offre Découverte/.test(bordInt) && bordInt.includes('aucun quota'),
+     bordInt.slice(0, 80));
+
+  /* --- la double authentification --- */
+  await pint.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('la double authentification est proposée à l’équipe',
+     (await pint.locator('#otp').count()) === 1);
+  await pint.locator('#otp button:has-text("Mettre en place")').click();
+  await pint.waitForLoadState('domcontentloaded');
+  const secret = (await pint.locator('#otp .bloc-code').innerText()).replace(/\s/g, '');
+  ok('un secret et un QR sont proposés',
+     /^[A-Z2-7]{32}$/.test(secret) && (await pint.locator('#otp img').count()) === 1,
+     `${secret.length} caractères`);
+  await pint.fill('#otp-code', totp(secret));
+  await pint.locator('#otp button:has-text("Activer")').click();
+  await pint.waitForLoadState('domcontentloaded');
+  ok('un code calculé comme le ferait un téléphone est accepté',
+     (await pint.locator('.msg.ok').first().innerText().catch(() => '')).includes('en service'));
+
+  const ctx2f = await browser.newContext();
+  const p2f = await ctx2f.newPage();
+  surveiller(p2f);
+  await p2f.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  await p2f.fill('input[name=email]', INT.email);
+  await p2f.fill('input[name=mot_de_passe]', INT.mdp);
+  await p2f.click('main button[type=submit]');
+  await p2f.waitForLoadState('domcontentloaded');
+  ok('le mot de passe seul ne connecte plus',
+     p2f.url().includes('p=connexion') && (await p2f.locator('#code').count()) === 1);
+  await p2f.fill('#code', '000000');
+  await p2f.click('main button[type=submit]');
+  await p2f.waitForLoadState('domcontentloaded');
+  ok('un mauvais code est refusé',
+     (await p2f.locator('.msg.err').first().innerText().catch(() => '')).includes('pas le bon'));
+  await p2f.fill('#code', totp(secret));
+  await p2f.click('main button[type=submit]');
+  await p2f.waitForLoadState('domcontentloaded');
+  ok('le bon code ouvre la session', !p2f.url().includes('p=connexion'),
+     p2f.url().split('index.php')[1] ?? '');
+  await ctx2f.close();
+
+  /* --- confier une campagne, et rien d'autre --- */
+  const ctxGra = await browser.newContext();
+  const pgra = await ctxGra.newPage();
+  surveiller(pgra);
+  const GRA = { email: `graphiste-${marque}@exemple.tg`, mdp: 'graphiste-2026-solide' };
+  await inscription(pgra, GRA.email, GRA.mdp, 'partenaire', 'Graphiste invité');
+
+  // N'importe lequel des décors du catalogue fait l'affaire : ce qu'on
+  // éprouve est le partage, pas ce décor-là. Le prendre au vol évite de
+  // dépendre d'un titre qu'une autre section a pu archiver entre-temps.
+  // Un BROUILLON, forcément : un décor publié ne se modifie plus, par
+  // personne — et confier une campagne qu'on ne peut pas ouvrir
+  // n'éprouverait rien.
+  await pau.goto(`${BASE}/index.php?p=catalogue&statut=brouillon`, { waitUntil: 'domcontentloaded' });
+  const hrefDecor = await pau.locator('a[href*="p=modifier"]').first().getAttribute('href') ?? '';
+  const idDecor = decodeURIComponent(/[?&]id=([^&]+)/.exec(hrefDecor)?.[1] ?? '');
+  await pau.goto(`${BASE}/index.php?p=modifier&id=${encodeURIComponent(idDecor)}`,
+                 { waitUntil: 'domcontentloaded' });
+  await pau.fill('#eq-email', GRA.email);
+  await pau.locator('button:has-text("Lui confier")').click();
+  await pau.waitForLoadState('domcontentloaded');
+  // Le message est lu dans l'ADRESSE : l'écran du décor porte déjà des
+  // encarts « .msg.ok » qui lui sont propres, et le premier n'est pas
+  // celui qu'on vient de provoquer.
+  ok('une campagne se confie à quelqu’un',
+     decodeURIComponent(pau.url()).replace(/\+/g, ' ').includes('peut maintenant travailler'),
+     decodeURIComponent(pau.url()).split('ok=')[1]?.slice(0, 50) ?? pau.url().slice(-50));
+
+  await pgra.goto(`${BASE}/index.php?p=partenaire&t=${Date.now()}`, { waitUntil: 'domcontentloaded' });
+  // On cherche le LIEN vers la campagne confiée, pas une phrase : c'est ce
+  // qui prouve qu'elle est atteignable depuis chez lui.
+  ok('elle apparaît chez l’invité, à part de ses propres campagnes',
+     (await pgra.locator(`a[href*="p=modifier"][href*="${idDecor}"]`).count()) === 1,
+     `${await pgra.locator('a[href*="p=modifier"]').count()} lien(s) vers une campagne`);
+  await pgra.goto(`${BASE}/index.php?p=modifier&id=${encodeURIComponent(idDecor)}`,
+                  { waitUntil: 'domcontentloaded' });
+  ok('l’invité peut l’ouvrir', pgra.url().includes('p=modifier'),
+     pgra.url().split('index.php')[1]?.slice(0, 40) ?? '');
+  ok('mais il ne peut pas inviter à son tour',
+     (await pgra.locator('#eq-email').count()) === 0);
+  for (const interdit of ['comptes', 'catalogue', 'journal', 'reglages']) {
+    await pgra.goto(`${BASE}/index.php?p=${interdit}`, { waitUntil: 'domcontentloaded' });
+    ok(`et ${interdit} lui reste fermé`, !pgra.url().includes('p=' + interdit),
+       pgra.url().split('index.php')[1]?.split('&')[0] ?? '');
+  }
+  await ctxGra.close();
+  await ctxInt.close();
+  await ctxCli.close();
+
+  /* --- la recherche dans le blog public --- */
+  const ctxBlog = await browser.newContext();
+  const pblog = await ctxBlog.newPage();
+  surveiller(pblog);
+  await pblog.goto(`${BASE}/index.php?p=blog&q=badge`, { waitUntil: 'domcontentloaded' });
+  ok('le blog public se cherche',
+     (await pblog.locator('main').innerText()).includes('pour « badge »'));
+  await pblog.goto(`${BASE}/index.php?p=blog&q=zzz-introuvable-${marque}`,
+                   { waitUntil: 'domcontentloaded' });
+  ok('et dit quand il ne trouve rien',
+     (await pblog.locator('main').innerText()).includes('Aucun article ne parle'));
+  await ctxBlog.close();
+
+  /* --- le cache d'images se vide --- */
+  await pau.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pau.locator('button[value=images]').click();
+  await pau.waitForLoadState('domcontentloaded');
+  ok('la maintenance rend toujours un bilan',
+     /image\(s\) traitée\(s\)|déjà optimisées/.test(
+       await pau.locator('.msg').first().innerText().catch(() => '')));
+
+  /* --- une sauvegarde s'inspecte avant d'être restaurée --- */
+  await pau.goto(`${BASE}/index.php?p=sauvegardes`, { waitUntil: 'domcontentloaded' });
+  await pau.locator('button:has-text("Créer une sauvegarde")').click();
+  await pau.waitForLoadState('domcontentloaded');
+  await pau.locator('button:has-text("Restaurer…")').first().click();
+  await pau.waitForLoadState('domcontentloaded');
+  const inspection = (await pau.locator('main').innerText()).replace(/\s+/g, ' ');
+  ok('l’écran montre ce que l’archive contient avant d’y toucher',
+     /Comptes dans l’archive/.test(inspection) && /Recopiez le nom du fichier/.test(inspection),
+     (/Comptes dans l’archive \d+/.exec(inspection) ?? [''])[0]);
+  /**
+   * On ne restaure PAS pour de vrai ici : cela remplacerait la base sous
+   * les pieds de la recette. Le cycle complet — abîmer, restaurer,
+   * retrouver — est éprouvé par `verifier-restauration.ts`, sur une
+   * installation isolée.
+   */
+  const refusResto = await pau.request.post(`${BASE}/index.php?p=restaurer`, {
+    form: {
+      csrf: await pau.locator('input[name=csrf]').first().inputValue(),
+      f: await pau.locator('input[name=f]').first().inputValue(),
+      quoi: 'restaurer', confirmation: 'pas-le-bon-nom',
+    },
+  });
+  ok('un nom mal recopié annule la restauration',
+     /Restauration annulée/.test(await refusResto.text()));
+
+  await pau.close();
+
   console.log('\n━━ 22. Le transport e-mail ━━');
 
   /**
@@ -2624,6 +2962,70 @@ const run = async () => {
      `${recus.length - avantDecision} message(s)`);
   ok('la décision est adressée au partenaire',
      (recus[recus.length - 1] ?? '').includes('<' + NEUF.email + '>'));
+
+  /**
+   * Le mot de passe oublié — ici, parce qu'il lui faut un vrai transport.
+   *
+   * C'était le manque le plus coûteux du produit : sans cet écran, celui
+   * qui perd son mot de passe écrit à l'équipe, un samedi soir.
+   */
+  const ctxOubli = await browser.newContext();
+  const poubli = await ctxOubli.newPage();
+  surveiller(po);
+  const avantOubli = recus.length;
+  await poubli.goto(`${BASE}/index.php?p=oubli`, { waitUntil: 'domcontentloaded' });
+  await poubli.fill('input[name=email]', NEUF.email);
+  await poubli.click('main button[type=submit]');
+  await poubli.waitForLoadState('domcontentloaded');
+  ok('la demande répond la même chose quoi qu’il arrive',
+     (await poubli.locator('main').innerText()).includes('Si un compte existe à cette adresse'));
+  ok('et le message part', recus.length === avantOubli + 1,
+     `${recus.length - avantOubli} message(s)`);
+
+  const messageOubli = recus[recus.length - 1] ?? '';
+  const lienOubli = /(https?:\/\/\S*p=reinitialiser&j=[0-9a-f]+)/.exec(
+    messageOubli.replace(/=\r?\n/g, ''))?.[1] ?? '';
+  ok('il porte un lien de réinitialisation', lienOubli !== '', lienOubli.slice(0, 62));
+
+  /* Une adresse inconnue reçoit la même réponse, et aucun message. */
+  const avantInconnue = recus.length;
+  await poubli.goto(`${BASE}/index.php?p=oubli`, { waitUntil: 'domcontentloaded' });
+  await poubli.fill('input[name=email]', `personne-${marque}@exemple.tg`);
+  await poubli.click('main button[type=submit]');
+  await poubli.waitForLoadState('domcontentloaded');
+  ok('une adresse inconnue reçoit la même réponse',
+     (await poubli.locator('main').innerText()).includes('Si un compte existe à cette adresse'));
+  ok('mais aucun message ne part', recus.length === avantInconnue,
+     `${recus.length - avantInconnue} message(s)`);
+
+  /* Le lien, et le nouveau mot de passe. */
+  const MDP_NEUF = 'un-mot-de-passe-tout-neuf-2026';
+  await poubli.goto(lienOubli, { waitUntil: 'domcontentloaded' });
+  ok('le lien ouvre le formulaire du nouveau mot de passe',
+     (await poubli.locator('input[name=mot_de_passe]').count()) === 1);
+  await poubli.fill('input[name=mot_de_passe]', MDP_NEUF);
+  await poubli.fill('input[name=confirmation]', 'pas-le-meme-2026');
+  await poubli.click('main button[type=submit]');
+  await poubli.waitForLoadState('domcontentloaded');
+  ok('deux mots de passe différents sont refusés',
+     (await poubli.locator('.msg.err').first().innerText().catch(() => '')).includes('identiques'));
+
+  await poubli.fill('input[name=mot_de_passe]', MDP_NEUF);
+  await poubli.fill('input[name=confirmation]', MDP_NEUF);
+  await poubli.click('main button[type=submit]');
+  await poubli.waitForLoadState('domcontentloaded');
+  ok('le mot de passe est enregistré',
+     poubli.url().includes('p=connexion')
+     && decodeURIComponent(poubli.url()).replace(/\+/g, ' ').includes('Mot de passe enregistré'));
+
+  await poubli.goto(lienOubli, { waitUntil: 'domcontentloaded' });
+  ok('le lien ne sert qu’une fois',
+     (await poubli.locator('main').innerText()).includes('Ce lien ne fonctionne plus'));
+
+  await connexion(poubli, NEUF.email, MDP_NEUF);
+  ok('on se connecte avec le nouveau', !poubli.url().includes('p=connexion'),
+     poubli.url().split('index.php')[1] ?? '');
+  await ctxOubli.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

@@ -14,9 +14,10 @@ if ($page === 'modifier') {
     if (!$modifie) {
         rediriger(droit($u, 'decors_tous') ? '?p=catalogue&err=' . urlencode('Décor introuvable.') : '?p=partenaire');
     }
-    // Un partenaire ne modifie que ses propres décors, et pas après publication.
-    if ($u['role'] === 'partenaire') {
-        if ($modifie['auteur_id'] !== $u['id']) {
+    // Un partenaire ne modifie que ses propres décors — ou ceux qu'on lui a
+    // confiés — et pas après publication.
+    if (!droit($u, 'decors_tous')) {
+        if (!decor_accessible($u, $modifie)) {
             rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
         }
         if (in_array($modifie['statut'], ['publie', 'en_relecture'], true)) {
@@ -27,6 +28,51 @@ if ($page === 'modifier') {
     }
 }
 
+/* ---------------- confier cette campagne ---------------- */
+
+if ($page === 'equipier') {
+    verifier_csrf();
+    $d = decor_par_id((string) ($_POST['id'] ?? ''));
+    if (!$d) {
+        rediriger('?p=partenaire&err=' . urlencode('Décor introuvable.'));
+    }
+    /**
+     * Seul l'AUTEUR invite, jamais un équipier.
+     *
+     * Sans cette règle, une invitation en entraîne d'autres et l'auteur
+     * perd de vue qui travaille sur sa campagne — ce qui est exactement
+     * ce qu'on cherchait à lui rendre.
+     */
+    if ($d['auteur_id'] !== $u['id'] && !droit($u, 'decors_tous')) {
+        rediriger('?p=partenaire&err=' . urlencode(
+            'Seul l’auteur d’une campagne décide de qui y travaille.'));
+    }
+    $retour = '?p=modifier&id=' . rawurlencode((string) $d['id']);
+
+    if (($_POST['quoi'] ?? '') === 'retirer') {
+        equipier_retirer((string) $d['id'], (string) ($_POST['qui'] ?? ''));
+        rediriger($retour . '&ok=' . urlencode('Accès retiré.'));
+    }
+
+    $email = trim((string) ($_POST['email'] ?? ''));
+    $invite = utilisateur_par_email($email);
+    if (!$invite) {
+        rediriger($retour . '&err=' . urlencode(
+            'Aucun compte à cette adresse. La personne doit d’abord créer un compte '
+            . 'sur ' . base_url() . ' — c’est gratuit.'));
+    }
+    if ($invite['id'] === $d['auteur_id']) {
+        rediriger($retour . '&err=' . urlencode('C’est déjà la campagne de cette personne.'));
+    }
+    equipier_inviter((string) $d['id'], (string) $invite['id'], (string) $u['id']);
+    notifier((string) $invite['id'], 'compte', 'On vous confie une campagne',
+        $u['nom'] . ' vous a donné accès à « ' . $d['titre'] . ' ». Vous pouvez la modifier '
+        . 'et la soumettre à la relecture — et rien d’autre sur son compte.',
+        '?p=modifier&id=' . $d['id']);
+    rediriger($retour . '&ok=' . urlencode(
+        $invite['nom'] . ' peut maintenant travailler sur cette campagne, et sur elle seule.'));
+}
+
 /* ---------------- soumission ---------------- */
 
 if ($page === 'soumettre') {
@@ -35,7 +81,7 @@ if ($page === 'soumettre') {
     if (!$d) {
         rediriger('?p=partenaire&err=' . urlencode('Décor introuvable.'));
     }
-    if ($u['role'] === 'partenaire' && $d['auteur_id'] !== $u['id']) {
+    if (!droit($u, 'decors_tous') && !decor_accessible($u, $d)) {
         rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
     }
 

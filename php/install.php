@@ -104,6 +104,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$deja && !$bloquant) {
             require_once RACINE . '/app/auth.php';
             require_once RACINE . '/app/depot.php';
             require_once RACINE . '/app/prevol.php';
+            /**
+             * Le dépôt journalise les décisions, et l'installation en prend
+             * une : elle publie les décors de démonstration.
+             *
+             * Sans cette ligne, `decor_transition()` cherche une constante
+             * que l'installateur n'a pas chargée, et l'installation échoue
+             * sur « Undefined constant » — chez le client qui découvre le
+             * produit, jamais en développement. Un module ajouté à
+             * `index.php` doit être ajouté ICI aussi s'il sert au dépôt.
+             */
+            require_once RACINE . '/app/journal.php';
+            require_once RACINE . '/app/abonnement.php';
 
             $admin = creer_utilisateur([
                 'email' => $valeurs['email'],

@@ -107,6 +107,10 @@ if ($page === 'regie-action') {
                     campagne_email_transition((string) $c['id'], 'envoi', $u);
                 }
                 $r = regie_envoyer_lot((string) $c['id']);
+                if ($r['envoyes'] ?? 0) {
+                    journal_ecrire($u, 'campagne.envoyee', 'campagne', (string) $c['id'],
+                        (string) $c['sujet'], $r['envoyes'] . ' message(s) remis');
+                }
                 rediriger('?p=regie-campagne&id=' . rawurlencode((string) $c['id'])
                     . ($r['envoyes'] || $r['fini'] ? '&ok=' : '&err=') . rawurlencode($r['message']));
 

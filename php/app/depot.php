@@ -171,6 +171,14 @@ function decor_transition(string $id, string $vers, array $acteur, ?string $moti
     $vals[] = $id;
 
     db()->prepare('UPDATE decors SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
+
+    // Les DÉCISIONS entrent au journal ; les soumissions non. Un auteur qui
+    // propose son propre décor ne fait qu'avancer dans son travail ; celui
+    // qui publie, refuse ou archive engage l'équipe.
+    if (isset(JOURNAL_ACTIONS['decor.' . $vers])) {
+        journal_ecrire($acteur, 'decor.' . $vers, 'decor', $id, (string) $d['titre'],
+            trim((string) $motif) ?: null);
+    }
 }
 
 function evenement(string $decor_id, string $genre): void
@@ -994,6 +1002,76 @@ const COMPTE_COLONNES = "u.*,
         (SELECT COUNT(*) FROM decors d WHERE d.auteur_id = u.id
             AND d.statut IN ('publie','en_relecture','corrections')) AS actives";
 
+/* ---------------- confier UNE campagne ---------------- */
+
+/**
+ * Les équipiers d'un décor : les personnes invitées à travailler dessus.
+ *
+ * Un organisateur qui fait appel à un graphiste pour une soirée ne veut
+ * pas lui donner ses statistiques, ses liens, sa régie et son historique
+ * de facturation. Jusqu'ici le choix était binaire : tout, ou le mot de
+ * passe du compte — et c'est le mot de passe qui circulait.
+ */
+function equipiers_de(string $decor_id): array
+{
+    $s = db()->prepare('SELECT e.*, u.nom, u.email FROM equipiers e
+                        JOIN utilisateurs u ON u.id = e.utilisateur_id
+                        WHERE e.decor_id = ? ORDER BY e.cree_le');
+    $s->execute([$decor_id]);
+    return $s->fetchAll();
+}
+
+/** Les décors qu'on m'a confiés sans me donner le compte entier. */
+function decors_confies(string $utilisateur_id): array
+{
+    $s = db()->prepare("SELECT d.*, u.nom AS auteur_nom, " . STATS_SQL . "
+        FROM equipiers e JOIN decors d ON d.id = e.decor_id
+        LEFT JOIN utilisateurs u ON u.id = d.auteur_id
+        WHERE e.utilisateur_id = ? ORDER BY d.maj_le DESC");
+    $s->execute([$utilisateur_id]);
+    return $s->fetchAll();
+}
+
+function est_equipier(string $decor_id, string $utilisateur_id): bool
+{
+    $s = db()->prepare('SELECT 1 FROM equipiers WHERE decor_id = ? AND utilisateur_id = ?');
+    $s->execute([$decor_id, $utilisateur_id]);
+    return (bool) $s->fetchColumn();
+}
+
+/**
+ * Cette personne peut-elle travailler sur ce décor ?
+ *
+ * Trois façons, et une seule fonction — pour qu'aucun écran ne réponde
+ * autrement qu'un autre : l'équipe qui voit tout, l'auteur, et l'équipier
+ * invité sur CE décor-là.
+ */
+function decor_accessible(?array $u, ?array $d): bool
+{
+    if (!$u || !$d) {
+        return false;
+    }
+    return droit($u, 'decors_tous')
+        || $d['auteur_id'] === $u['id']
+        || est_equipier((string) $d['id'], (string) $u['id']);
+}
+
+function equipier_inviter(string $decor_id, string $utilisateur_id, string $par): void
+{
+    if (est_equipier($decor_id, $utilisateur_id)) {
+        return;
+    }
+    db()->prepare('INSERT INTO equipiers (id, decor_id, utilisateur_id, invite_par, cree_le)
+                   VALUES (?,?,?,?,?)')
+        ->execute([nouvel_id(), $decor_id, $utilisateur_id, $par, maintenant()]);
+}
+
+function equipier_retirer(string $decor_id, string $utilisateur_id): void
+{
+    db()->prepare('DELETE FROM equipiers WHERE decor_id = ? AND utilisateur_id = ?')
+        ->execute([$decor_id, $utilisateur_id]);
+}
+
 /**
  * Les comptes de la MAISON, du plus ancien au plus récent.
  *
@@ -1058,7 +1136,11 @@ function comptes_clients_combien(string $cherche = ''): int
  * Distinct de `decors_en_tete()`, qui alimente le tableau de bord : ici on
  * filtre et on cherche, parce que la liste est faite pour agir dessus.
  */
-function decors_catalogue(?string $statut = null, string $cherche = ''): array
+/** Combien de décors le filtre courant est-il en train de décrire. */
+const CATALOGUE_PAR_PAGE = 40;
+
+/** Le `WHERE` du catalogue, écrit une fois pour la liste et pour le compte. */
+function catalogue_filtre(?string $statut, string $cherche): array
 {
     $ou = [];
     $args = [];
@@ -1071,13 +1153,36 @@ function decors_catalogue(?string $statut = null, string $cherche = ''): array
         $args[] = '%' . trim($cherche) . '%';
         $args[] = '%' . trim($cherche) . '%';
     }
-    $where = $ou ? 'WHERE ' . implode(' AND ', $ou) : '';
+    return [$ou ? 'WHERE ' . implode(' AND ', $ou) : '', $args];
+}
+
+/**
+ * Une PAGE du catalogue, et non les deux cents premiers.
+ *
+ * La liste plafonnée annonçait « 260 au total » puis en montrait 200, sans
+ * un mot : l'écran se contredisait lui-même, et les soixante plus anciens
+ * n'étaient atteignables que par la recherche — à condition de deviner
+ * qu'il en manquait.
+ */
+function decors_catalogue(?string $statut = null, string $cherche = '', int $page = 1): array
+{
+    [$where, $args] = catalogue_filtre($statut, $cherche);
+    $decalage = max(0, ($page - 1) * CATALOGUE_PAR_PAGE);
 
     $s = db()->prepare("SELECT d.*, u.nom AS auteur_nom, " . STATS_SQL . "
         FROM decors d LEFT JOIN utilisateurs u ON u.id = d.auteur_id
-        $where ORDER BY d.maj_le DESC LIMIT 200");
+        $where ORDER BY d.maj_le DESC LIMIT " . CATALOGUE_PAR_PAGE . " OFFSET $decalage");
     $s->execute($args);
     return $s->fetchAll();
+}
+
+/** Le nombre de décors que le filtre décrit — pour savoir combien de pages. */
+function decors_catalogue_combien(?string $statut = null, string $cherche = ''): int
+{
+    [$where, $args] = catalogue_filtre($statut, $cherche);
+    $s = db()->prepare("SELECT COUNT(*) FROM decors d $where");
+    $s->execute($args);
+    return (int) $s->fetchColumn();
 }
 
 /** Combien de décors par statut — pour les onglets de filtre. */
@@ -1191,14 +1296,42 @@ function decor_supprimer(string $id): array
  * dont toutes les pages sont des formulaires ne se référence pas — et il
  * rend concret l'« article sponsorisé » vendu avec l'offre Mouvement.
  */
-function articles_publies(int $limite = 30, int $depuis = 0): array
+/**
+ * Le `WHERE` du blog public — écrit une fois pour la liste et pour le compte.
+ *
+ * La recherche porte sur le titre, le chapô ET le corps : quelqu'un se
+ * souvient rarement d'un titre, mais très bien d'un mot lu dedans.
+ */
+function blog_filtre(string $cherche): array
+{
+    $ou = ["statut = 'publie'", 'publie_le <= ?'];
+    $args = [maintenant()];
+    if (trim($cherche) !== '') {
+        $ou[] = '(titre LIKE ? OR chapo LIKE ? OR corps LIKE ?)';
+        $m = '%' . trim($cherche) . '%';
+        array_push($args, $m, $m, $m);
+    }
+    return ['WHERE ' . implode(' AND ', $ou), $args];
+}
+
+function articles_publies(int $limite = 30, int $depuis = 0, string $cherche = ''): array
 {
     $limite = max(1, min(100, $limite));
     $depuis = max(0, $depuis);
-    $s = db()->prepare("SELECT * FROM articles WHERE statut = 'publie' AND publie_le <= ?
+    [$where, $args] = blog_filtre($cherche);
+    $s = db()->prepare("SELECT * FROM articles $where
                         ORDER BY publie_le DESC LIMIT $limite OFFSET $depuis");
-    $s->execute([maintenant()]);
+    $s->execute($args);
     return $s->fetchAll();
+}
+
+/** Combien d'articles publiés répondent à la recherche. */
+function compter_articles_publies_cherches(string $cherche = ''): int
+{
+    [$where, $args] = blog_filtre($cherche);
+    $s = db()->prepare("SELECT COUNT(*) FROM articles $where");
+    $s->execute($args);
+    return (int) $s->fetchColumn();
 }
 
 function compter_articles_publies(): int
@@ -1351,6 +1484,11 @@ function article_transition(string $id, string $vers, array $acteur, ?string $mo
     }
     $vals[] = $id;
     db()->prepare('UPDATE articles SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($vals);
+
+    if (isset(JOURNAL_ACTIONS['article.' . $vers])) {
+        journal_ecrire($acteur, 'article.' . $vers, 'article', $id, (string) $a['titre'],
+            trim((string) $motif) ?: null);
+    }
 }
 
 function article_supprimer(string $id): void

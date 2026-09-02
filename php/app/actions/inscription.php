@@ -1,5 +1,16 @@
 <?php
 /** Inscription : participant ou organisateur. */
+
+/**
+ * Déjà connecté ? On ne propose pas de créer un second compte.
+ *
+ * C'est ainsi qu'on se retrouve avec deux comptes pour la même personne,
+ * dont un seul porte l'offre payée.
+ */
+if (utilisateur_courant()) {
+    rediriger(accueil_de(utilisateur_courant()));
+}
+
 $erreur = null;
 $valeurs = ['nom' => '', 'email' => '', 'role' => 'participant', 'organisation' => '', 'ville' => 'lome'];
 

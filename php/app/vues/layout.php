@@ -100,6 +100,7 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
             ['groupe', 'Système', [
                 ['?p=reglages',    'Réglages',    'reglages'],
                 ['?p=sauvegardes', 'Sauvegardes', 'reglages'],
+                ['?p=journal',     'Journal',     'comptes'],
                 ['?p=profil',      'Mon profil',  null],
             ]],
         ],

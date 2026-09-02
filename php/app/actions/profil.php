@@ -97,6 +97,153 @@ if ($page === 'profil-motdepasse') {
 
 /* ---------------- la suppression ---------------- */
 
+/* ---------------- la double authentification ---------------- */
+
+/**
+ * Trois gestes : proposer, confirmer, retirer.
+ *
+ * La confirmation est OBLIGATOIRE avant d'activer : sans elle, on
+ * enregistre un secret que l'application du téléphone n'a peut-être
+ * jamais reçu — et l'on découvre le problème à la connexion suivante,
+ * enfermé dehors.
+ */
+if ($page === 'profil-otp') {
+    verifier_csrf();
+    if (!otp_proposable($u)) {
+        rediriger('?p=profil&err=' . urlencode(
+            'La double authentification est réservée aux comptes de l’équipe.'));
+    }
+    $quoi = (string) ($_POST['quoi'] ?? '');
+
+    if ($quoi === 'preparer') {
+        // Un secret NEUF à chaque préparation : reprendre l'ancien
+        // laisserait valable un QR photographié puis abandonné.
+        $secret = otp_secret_neuf();
+        db()->prepare('UPDATE utilisateurs SET otp_secret = ?, otp_actif = 0 WHERE id = ?')
+            ->execute([$secret, $u['id']]);
+        rediriger('?p=profil&otp=1#otp');
+    }
+
+    if ($quoi === 'confirmer') {
+        $secret = (string) ($u['otp_secret'] ?? '');
+        if ($secret === '') {
+            rediriger('?p=profil&err=' . urlencode('Commencez par préparer un secret.'));
+        }
+        if (!otp_verifier($secret, (string) ($_POST['code'] ?? ''))) {
+            rediriger('?p=profil&otp=1&err=' . urlencode(
+                'Ce code n’est pas le bon. Vérifiez que l’heure de votre téléphone est à jour, '
+                . 'puis réessayez avec le code suivant.') . '#otp');
+        }
+        db()->prepare('UPDATE utilisateurs SET otp_actif = 1 WHERE id = ?')->execute([$u['id']]);
+        journal_ecrire($u, 'compte.role', 'compte', (string) $u['id'], (string) $u['nom'],
+            'Double authentification activée');
+        rediriger('?p=profil&ok=' . urlencode(
+            'Double authentification en service. Le code vous sera demandé à chaque connexion.'));
+    }
+
+    if ($quoi === 'retirer') {
+        // On exige un code valable pour la RETIRER aussi : sinon une
+        // session laissée ouverte sur un poste partagé suffit à la lever.
+        if (!otp_verifier((string) ($u['otp_secret'] ?? ''), (string) ($_POST['code'] ?? ''))) {
+            rediriger('?p=profil&err=' . urlencode(
+                'Code incorrect : la double authentification reste en service.'));
+        }
+        db()->prepare('UPDATE utilisateurs SET otp_secret = NULL, otp_actif = 0 WHERE id = ?')
+            ->execute([$u['id']]);
+        journal_ecrire($u, 'compte.role', 'compte', (string) $u['id'], (string) $u['nom'],
+            'Double authentification retirée');
+        rediriger('?p=profil&ok=' . urlencode('Double authentification retirée.'));
+    }
+
+    rediriger('?p=profil');
+}
+
+/* ---------------- emporter ses données ---------------- */
+
+/**
+ * Tout ce que l'installation sait de vous, dans un fichier.
+ *
+ * La suppression existait ; l'export non — on pouvait donc partir, mais
+ * pas partir AVEC. C'est le pendant naturel du droit de suppression, et
+ * c'est aussi ce qui permet à un organisateur de reprendre ses chiffres
+ * le jour où il s'en va.
+ *
+ * Ce qui n'y figure pas, délibérément : le mot de passe (haché, il
+ * n'apprendrait rien et sa présence dans un fichier qui circule est un
+ * risque pur), la clé d'API (elle se refabrique) et les jetons en cours.
+ */
+if ($page === 'profil-export') {
+    $decors = decors_de((string) $u['id']);
+
+    $sortie = [
+        'exporte_le' => maintenant(),
+        'installation' => base_url(),
+        'compte' => [
+            'nom' => $u['nom'],
+            'email' => $u['email'],
+            'telephone' => $u['telephone'] ?: null,
+            'organisation' => $u['organisation'] ?: null,
+            'ville' => $u['ville'] ?: null,
+            'role' => $u['role'],
+            'offre' => $u['formule'],
+            'echeance_le' => echeance_de($u),
+            'adresse_confirmee_le' => $u['email_verifie_le'] ?: null,
+            'cree_le' => $u['cree_le'],
+        ],
+        'campagnes' => array_map(function (array $d): array {
+            $p = presence((string) $d['id']);
+            return [
+                'titre' => $d['titre'],
+                'slug' => $d['slug'],
+                'statut' => $d['statut'],
+                'ville' => $d['ville'] ?: null,
+                'cree_le' => $d['cree_le'],
+                'publie_le' => $d['publie_le'] ?: null,
+                'vues' => (int) $d['vues'],
+                'telechargements' => (int) $d['telechargements'],
+                'badges_emis' => $p['emis'],
+                'presences' => $p['scannes'],
+            ];
+        }, $decors),
+        'badges_crees' => array_map(fn(array $c) => [
+            'campagne' => $c['titre'] ?? null,
+            'cree_le' => $c['cree_le'],
+        ], creations_de((string) $u['id'], 1000)),
+        'liens_courts' => array_map(fn(array $l) => [
+            'code' => $l['code'],
+            'cible' => $l['cible'],
+            'titre' => $l['titre'] ?: null,
+            'clics' => (int) $l['clics'],
+            'cree_le' => $l['cree_le'],
+        ], liens_de((string) $u['id'])),
+        'koris' => koris_historique((string) $u['id'], 1000),
+        'articles' => array_map(fn(array $a) => [
+            'titre' => $a['titre'],
+            'slug' => $a['slug'],
+            'statut' => $a['statut'],
+            'cree_le' => $a['cree_le'],
+            'publie_le' => $a['publie_le'] ?: null,
+        ], articles_de((string) $u['id'])),
+        'factures' => array_map(fn(array $f) => [
+            'numero' => $f['numero'],
+            'offre' => $f['formule'],
+            'montant' => (int) $f['montant'],
+            'debut_le' => $f['debut_le'],
+            'fin_le' => $f['fin_le'],
+        ], factures_de((string) $u['id'])),
+    ];
+
+    $nom = 'wakabi-' . preg_replace('/[^a-z0-9]+/i', '-', (string) $u['nom']) . '-'
+        . gmdate('Y-m-d') . '.json';
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $nom . '"');
+    // Un export ne se met JAMAIS en cache : il contient des données
+    // personnelles, et un proxy partagé n'a rien à faire avec.
+    header('Cache-Control: no-store, private');
+    echo json_encode($sortie, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($page === 'profil-supprimer') {
     verifier_csrf();
     $confirmation = trim((string) ($_POST['confirmation'] ?? ''));
@@ -113,6 +260,8 @@ if ($page === 'profil-supprimer') {
     } elseif ($confirmation !== $u['email']) {
         $erreur = 'Pour confirmer, recopiez votre adresse e-mail exactement.';
     } else {
+        journal_ecrire($u, 'compte.supprime', 'compte', (string) $u['id'], (string) $u['nom'],
+            'Suppression demandée par la personne elle-même');
         supprimer_compte((string) $u['id']);
         deconnecter();
         // Vers l'écran de connexion, et non la vitrine : c'est le seul

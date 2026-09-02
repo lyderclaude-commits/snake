@@ -135,9 +135,22 @@ function dossier_medias(): string
 
 /* ---------------- base de données ---------------- */
 
-function db(): PDO
+/**
+ * La connexion partagée — et le seul endroit qui la garde.
+ *
+ * Séparée de `db()` pour une raison précise : la restauration d'une
+ * sauvegarde remplace le fichier SQLite SOUS la connexion, et doit donc
+ * pouvoir la fermer sans en rouvrir une aussitôt sur l'ancien fichier.
+ * Un `db()` qui ferme puis rouvre dans le même souffle ne ferme rien —
+ * l'écran suivant montrerait encore les données d'avant.
+ */
+function pdo_partage(bool $fermer = false): ?PDO
 {
     static $pdo = null;
+    if ($fermer) {
+        $pdo = null;
+        return null;
+    }
     if ($pdo !== null) {
         return $pdo;
     }
@@ -165,12 +178,31 @@ function db(): PDO
     return $pdo;
 }
 
+function db(): PDO
+{
+    /** @var PDO */
+    return pdo_partage();
+}
+
+/** Ferme la connexion partagée. Ne sert qu'à la restauration. */
+function db_fermer(): void
+{
+    pdo_partage(true);
+}
+
 function est_mysql(): bool
 {
     return (config()['sgbd'] ?? 'sqlite') === 'mysql';
 }
 
 /* ---------------- utilitaires ---------------- */
+
+/** Une date lisible ici : `12/03/2026`. Vide si l'on ne sait pas la lire. */
+function date_fr(?string $iso): string
+{
+    $t = strtotime((string) $iso);
+    return $t ? gmdate('d/m/Y', $t) : '';
+}
 
 /**
  * L'horodatage du projet : UTC, ISO 8601, triable comme du texte.

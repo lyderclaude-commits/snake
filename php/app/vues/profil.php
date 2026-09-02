@@ -76,6 +76,130 @@ $verifie = email_verifie($me);
   </div>
 
   <!-- ---------- mot de passe ---------- -->
+  <?php
+  /**
+   * L'abonnement, vu du côté du client.
+   *
+   * Il voit sa date de fin et ses factures sans avoir à écrire à
+   * personne : la question « jusqu'à quand ai-je payé ? » n'a aucune
+   * raison de coûter un aller-retour.
+   */
+  $mes_factures = factures_de((string) $me['id']);
+  ?>
+  <?php if (abonnement_suivi($me) || $mes_factures): ?>
+    <div class="carte" style="margin-top:16px">
+      <h3 style="margin:0 0 4px">Mon abonnement</h3>
+      <?php $reste = jours_restants($me); ?>
+      <p class="aide" style="margin:0 0 12px">
+        Offre <strong><?= e(formule_libelle($me['formule'] ?? null)) ?></strong>.
+        <?php if ($reste === null): ?>
+          Sans date de fin pour l’instant.
+        <?php elseif ($reste < 0): ?>
+          Échue le <?= e(date_fr((string) $me['echeance_le'])) ?> —
+          écrivez-nous pour la reprendre, rien n’est perdu.
+        <?php else: ?>
+          Elle court jusqu’au <strong><?= e(date_fr((string) $me['echeance_le'])) ?></strong>,
+          soit <?= (int) $reste ?> jour<?= $reste > 1 ? 's' : '' ?>.
+        <?php endif; ?>
+      </p>
+
+      <?php if ($mes_factures): ?>
+        <ul class="liste-comptes">
+          <?php foreach ($mes_factures as $f): ?>
+            <li>
+              <span><b><?= e((string) $f['numero']) ?></b>
+                <span class="aide"><?= e(date_fr((string) $f['debut_le'])) ?>
+                → <?= e(date_fr((string) $f['fin_le'])) ?> ·
+                <?= number_format((int) $f['montant'], 0, ',', ' ') ?> F</span></span>
+              <a class="bouton fant petit" href="<?= e(url('?p=facture&id=' . rawurlencode((string) $f['id']))) ?>">Voir</a>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+
+  <?php
+  /**
+   * La double authentification — pour les comptes de la maison.
+   *
+   * Le secret s'affiche en clair À CÔTÉ du QR : toutes les caméras ne
+   * lisent pas un code sur un écran, et se retrouver à recopier une
+   * chaîne qu'on ne peut pas voir est une impasse silencieuse.
+   */
+  ?>
+  <?php if (otp_proposable($me)): ?>
+    <div class="carte" style="margin-top:16px" id="otp">
+      <div class="rangee" style="justify-content:space-between;align-items:baseline">
+        <h3 style="margin:0">Double authentification</h3>
+        <span class="pastille <?= otp_actif($me) ? 'publie' : 'brouillon' ?>">
+          <?= otp_actif($me) ? 'En service' : 'Inactive' ?></span>
+      </div>
+
+      <?php if (otp_actif($me)): ?>
+        <p class="aide" style="margin:8px 0 12px">Un code à six chiffres vous est demandé à
+        chaque connexion, en plus du mot de passe. Un mot de passe qui fuit ailleurs ne suffit
+        plus à entrer ici.</p>
+        <form method="post" action="<?= e(url('?p=profil-otp')) ?>" class="rangee" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+          <input type="hidden" name="quoi" value="retirer">
+          <div class="champ" style="margin:0">
+            <label for="otp-retrait">Code actuel, pour la retirer</label>
+            <input id="otp-retrait" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                   maxlength="6" required style="width:130px;font-family:ui-monospace,monospace">
+          </div>
+          <button class="bouton danger" type="submit">Retirer</button>
+        </form>
+
+      <?php elseif (($me['otp_secret'] ?? '') !== '' && !empty($_GET['otp'])): ?>
+        <p class="aide" style="margin:8px 0 12px">Scannez ce code avec votre application
+        d’authentification — Google Authenticator, Aegis, FreeOTP, celle de votre gestionnaire
+        de mots de passe. Puis recopiez le code affiché pour confirmer.</p>
+        <div class="rangee" style="gap:18px;flex-wrap:wrap;align-items:flex-start">
+          <img src="<?= e(Qr::dataUri(otp_uri($me, (string) $me['otp_secret']), 220)) ?>"
+               alt="Code à scanner" width="220" height="220"
+               style="border-radius:var(--r10);background:#fff;padding:8px">
+          <div style="flex:1;min-width:220px">
+            <p class="aide" style="margin:0 0 6px">Si la caméra ne veut pas, saisissez cette
+            clé à la main :</p>
+            <pre class="bloc-code" style="user-select:all;white-space:pre-wrap"><?= e(implode(' ', str_split((string) $me['otp_secret'], 4))) ?></pre>
+            <form method="post" action="<?= e(url('?p=profil-otp')) ?>" style="margin-top:14px">
+              <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+              <input type="hidden" name="quoi" value="confirmer">
+              <div class="champ">
+                <label for="otp-code">Le code affiché maintenant</label>
+                <input id="otp-code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                       maxlength="6" required autocomplete="one-time-code"
+                       style="width:140px;font-family:ui-monospace,monospace;font-size:1.2rem;letter-spacing:.2em">
+              </div>
+              <button class="bouton" type="submit">Activer</button>
+            </form>
+          </div>
+        </div>
+
+      <?php else: ?>
+        <p class="aide" style="margin:8px 0 12px">Votre compte ouvre le catalogue entier, les
+        comptes clients et les réglages. Un second facteur rend inutile un mot de passe qui
+        fuirait ailleurs — il coûte six chiffres à la connexion.</p>
+        <form method="post" action="<?= e(url('?p=profil-otp')) ?>">
+          <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+          <input type="hidden" name="quoi" value="preparer">
+          <button class="bouton" type="submit">Mettre en place</button>
+        </form>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
+
+  <!-- ---------- emporter ses données ---------- -->
+  <div class="carte" style="margin-top:16px">
+    <h3 style="margin:0 0 4px">Emporter mes données</h3>
+    <p class="aide" style="margin:0 0 12px">Un fichier JSON avec votre compte, vos campagnes,
+    vos badges, vos liens, vos Koris, vos articles et vos factures. Il se lit dans n’importe
+    quel tableur ou éditeur de texte. La suppression existait déjà ; il manquait de pouvoir
+    <strong>partir avec</strong> plutôt que seulement partir.</p>
+    <a class="bouton fant" href="<?= e(url('?p=profil-export')) ?>">Télécharger mes données</a>
+  </div>
+
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 4px">Mon mot de passe</h3>
     <p class="aide" style="margin:0 0 16px">L’actuel est demandé : un poste laissé ouvert

@@ -26,6 +26,10 @@ require __DIR__ . '/app/push.php';
 require __DIR__ . '/app/qr.php';
 require __DIR__ . '/app/icones.php';
 require __DIR__ . '/app/avatars.php';
+require __DIR__ . '/app/journal.php';
+require __DIR__ . '/app/otp.php';
+require __DIR__ . '/app/abonnement.php';
+require __DIR__ . '/app/api.php';
 
 assurer_schema();
 demarrer_session();
@@ -113,6 +117,16 @@ switch ($page) {
      * l'ORIGINAL plutôt qu'une erreur : une page de catalogue sans images
      * serait un dégât bien pire qu'une page un peu lourde.
      */
+    /**
+     * L'API REST — elle s'authentifie par clé, jamais par session.
+     *
+     * Placée ici, avant tout écran : une réponse JSON ne doit jamais
+     * traverser une redirection vers l'écran de connexion, sans quoi un
+     * script reçoit une page HTML là où il attend un objet.
+     */
+    case 'api':
+        api_servir();
+
     case 'vignette':
         $source = image_de_la_cle((string) ($_GET['f'] ?? ''));
         if (!$source) {
@@ -266,6 +280,13 @@ switch ($page) {
     case 'inscription':
         require RACINE . '/app/actions/inscription.php';
 
+    /**
+     * Le mot de passe oublié — accessible SANS être connecté, forcément.
+     */
+    case 'oubli':
+    case 'reinitialiser':
+        require RACINE . '/app/actions/oubli.php';
+
     case 'deconnexion':
         verifier_csrf();
         deconnecter();
@@ -274,6 +295,8 @@ switch ($page) {
     case 'profil':
     case 'profil-identite':
     case 'profil-motdepasse':
+    case 'profil-otp':
+    case 'profil-export':
     case 'profil-supprimer':
         require RACINE . '/app/actions/profil.php';
 
@@ -285,6 +308,30 @@ switch ($page) {
             'solde' => koris_solde($u['id']),
             'historique' => koris_historique($u['id']),
         ]);
+
+    case 'api-doc':
+        $u = exiger_role(...ROLES);
+        vue('api-doc', ['titre' => 'L’API — Wakabi Boost']);
+
+    case 'api-cle':
+        $u = exiger_role(...ROLES);
+        verifier_csrf();
+        if (!capacite($u, 'api')) {
+            vue('offre-requise', [
+                'titre' => 'L’API',
+                'quoi' => OFFRE_LIGNES['api'][0],
+                'aide' => OFFRE_LIGNES['api'][2],
+                'debloque' => offre_qui_debloque('api'),
+            ]);
+        }
+        if (($_POST['quoi'] ?? '') === 'revoquer') {
+            api_cle_revoquer((string) $u['id']);
+            rediriger('?p=api-doc&ok=' . urlencode('Clé révoquée. Les appels qui l’utilisaient sont refusés dès maintenant.'));
+        }
+        // La clé n'est lisible qu'ICI, une fois. Elle vaut mot de passe :
+        // la réafficher à chaque visite du profil en ferait une donnée qui
+        // traîne sur un écran resté ouvert.
+        vue('api-doc', ['titre' => 'L’API — Wakabi Boost', 'cle_neuve' => api_cle_creer((string) $u['id'])]);
 
     case 'notifications':
         $u = exiger_role(...ROLES);
@@ -419,10 +466,18 @@ switch ($page) {
 
     case 'partenaire':
         $u = exiger_droit('decors_siens');
-        vue('partenaire', ['titre' => 'Mes campagnes', 'liste' => decors_de($u['id'])]);
+        vue('partenaire', [
+            'titre' => 'Mes campagnes',
+            'liste' => decors_de($u['id']),
+            // Les campagnes qu'on lui a confiées, listées à part : les
+            // mêler aux siennes ferait croire qu'elles comptent dans son
+            // quota, ce qui n'est pas le cas.
+            'confiees' => decors_confies((string) $u['id']),
+        ]);
 
     case 'nouveau':
     case 'modifier':
+    case 'equipier':
     case 'soumettre':
         require RACINE . '/app/actions/decor.php';
 
@@ -490,9 +545,57 @@ switch ($page) {
     case 'role':
     case 'suspendre':
     case 'bonus':
+    case 'paiement':
+    case 'otp-lever':
     case 'note-compte':
     case 'organisateur':
         require RACINE . '/app/actions/comptes.php';
+
+    /**
+     * Le journal — réservé à qui gère les comptes.
+     *
+     * C'est le droit qui correspond : savoir qui a suspendu qui est de la
+     * même nature que pouvoir le faire. Un coordinateur arbitre les
+     * contenus, il n'a pas à surveiller ses collègues.
+     */
+    /**
+     * Une facture — visible par son destinataire ET par l'équipe.
+     *
+     * Le client doit pouvoir la retrouver seul : lui faire écrire à
+     * l'équipe pour obtenir un document qui le concerne est exactement le
+     * genre d'aller-retour qu'on cherche à supprimer.
+     */
+    case 'facture':
+        $u = exiger_role(...ROLES);
+        $f = facture_par_id((string) ($_GET['id'] ?? ''));
+        if (!$f || ($f['utilisateur_id'] !== $u['id'] && !droit($u, 'comptes'))) {
+            http_response_code(404);
+            vue('introuvable', ['titre' => 'Facture introuvable']);
+        }
+        vue('facture', [
+            'titre' => 'Facture ' . $f['numero'],
+            'f' => $f,
+            'retour' => droit($u, 'comptes') && $f['utilisateur_id'] !== $u['id']
+                ? '?p=organisateur&id=' . rawurlencode((string) $f['utilisateur_id'])
+                : '?p=profil',
+        ]);
+
+    case 'journal':
+        $u = exiger_droit('comptes');
+        $qui = (string) ($_GET['qui'] ?? '');
+        $quoi = (string) ($_GET['quoi'] ?? '');
+        $n = max(1, (int) ($_GET['n'] ?? 1));
+        $total = journal_combien($qui, $quoi);
+        vue('journal', [
+            'titre' => 'Journal',
+            'lignes' => journal_lire($n, $qui, $quoi),
+            'acteurs' => journal_acteurs(),
+            'acteur' => $qui,
+            'action' => $quoi,
+            'page_n' => $n,
+            'combien' => $total,
+            'pages' => max(1, (int) ceil($total / 50)),
+        ]);
 
     case 'reglages':
         require RACINE . '/app/actions/reglages.php';
@@ -500,6 +603,7 @@ switch ($page) {
     case 'sauvegardes':
     case 'sauvegarder':
     case 'telecharger-sauvegarde':
+    case 'restaurer':
     case 'supprimer-sauvegarde':
         require RACINE . '/app/actions/sauvegardes.php';
 
@@ -521,8 +625,18 @@ switch ($page) {
         try {
             $f = ecrire_sauvegarde(dossier_sauvegardes() . '/' . nom_sauvegarde());
             $effacees = tourner_sauvegardes();
+            // L'entretien quotidien voyage avec la sauvegarde : le cache
+            // d'images qu'on ne demande plus, et les abonnements qui
+            // arrivent à terme. Deux choses qu'on n'irait jamais faire à la
+            // main, et qui coûtent cher quand personne ne les fait.
+            $cache = nettoyer_vignettes();
+            $echeances = rappeler_echeances();
             printf("OK %s (%d Ko), %d ancienne(s) effacée(s).\n",
                    basename($f), (int) round(filesize($f) / 1024), $effacees);
+            printf("Cache : %d vignette(s) effacée(s), %s libéré(s), %s restants.\n",
+                   $cache['effaces'], poids($cache['octets']), poids($cache['poids']));
+            printf("Échéances : %d rappel(s), %d rétrogradation(s).\n",
+                   $echeances['rappeles'], $echeances['retrogrades']);
         } catch (Throwable $e) {
             http_response_code(500);
             echo 'ÉCHEC ', $e->getMessage(), "\n";

@@ -257,6 +257,7 @@ function image_cadree(string $source, array $cadrage): ?string
                        . '|' . VIGNETTE_QUALITE), 0, 20);
     $cible = dossier_vignettes() . '/c' . $cle . '.' . $ext;
     if (is_file($cible)) {
+        @touch($cible);
         return $cible;
     }
 
@@ -304,6 +305,10 @@ function vignette(string $source, int $largeur): ?string
     $cle = substr(sha1($source . '|' . filemtime($source) . '|' . $largeur . '|' . VIGNETTE_QUALITE), 0, 20);
     $cible = dossier_vignettes() . '/' . $cle . '.webp';
     if (is_file($cible)) {
+        // Servie depuis le cache : on la DATE. C'est ce qui permet au
+        // balayage de distinguer « plus personne ne la demande » de
+        // « fabriquée il y a longtemps et regardée tous les jours ».
+        @touch($cible);
         return $cible;
     }
 
@@ -459,6 +464,74 @@ function poids(int $octets): string
         : max(1, (int) round($octets / 1024)) . ' Ko';
 }
 
+/** Combien de jours une vignette non demandée reste sur le disque. */
+const VIGNETTE_JOURS = 60;
+
+/** Le poids au-delà duquel le cache est rogné, même récent. */
+const VIGNETTE_MAX_MO = 200;
+
+/**
+ * Le cache d'images se vide. Sinon il ne fait que monter.
+ *
+ * `donnees/vignettes/` reçoit un fichier par image, par taille ET par
+ * cadrage. Rien ne les enlevait : ni la suppression d'un décor, ni celle
+ * d'un article, ni l'abandon d'un cadrage. La courbe ne redescendait
+ * jamais — et sur un mutualisé, c'est le quota qui finit par se remplir,
+ * ce qui empêche d'écrire la sauvegarde, c'est-à-dire au pire moment.
+ *
+ * Deux règles, dans cet ordre :
+ *
+ *  1. **Ce que personne ne demande plus s'en va.** Chaque service depuis
+ *     le cache date le fichier ; au-delà de deux mois sans être demandé,
+ *     il part. Rien n'est perdu : la prochaine visite le refabrique.
+ *  2. **Et si le dossier reste trop gros, on rogne du plus ancien.** Un
+ *     catalogue très fourni peut dépasser le plafond sans qu'aucun fichier
+ *     ne soit vieux ; le quota de l'hébergeur, lui, ne négocie pas.
+ */
+function nettoyer_vignettes(int $jours = VIGNETTE_JOURS, int $max_mo = VIGNETTE_MAX_MO): array
+{
+    $bilan = ['effaces' => 0, 'octets' => 0, 'restants' => 0, 'poids' => 0];
+    $limite = time() - max(1, $jours) * 86400;
+
+    $fichiers = [];
+    foreach (glob(dossier_vignettes() . '/*') ?: [] as $f) {
+        if (!is_file($f)) {
+            continue;
+        }
+        $age = @filemtime($f) ?: 0;
+        $poids = (int) @filesize($f);
+        if ($age < $limite) {
+            if (@unlink($f)) {
+                $bilan['effaces']++;
+                $bilan['octets'] += $poids;
+            }
+            continue;
+        }
+        $fichiers[] = [$age, $poids, $f];
+    }
+
+    // Le plafond : on rogne du plus ancien jusqu'à repasser dessous.
+    $total = array_sum(array_column($fichiers, 1));
+    if ($total > $max_mo * 1024 * 1024) {
+        usort($fichiers, fn(array $a, array $b) => $a[0] <=> $b[0]);
+        foreach ($fichiers as $i => [, $poids, $f]) {
+            if ($total <= $max_mo * 1024 * 1024) {
+                break;
+            }
+            if (@unlink($f)) {
+                $bilan['effaces']++;
+                $bilan['octets'] += $poids;
+                $total -= $poids;
+                unset($fichiers[$i]);
+            }
+        }
+    }
+
+    $bilan['restants'] = count($fichiers);
+    $bilan['poids'] = $total;
+    return $bilan;
+}
+
 /**
  * Les médias cités par un texte : couverture, images d'article.
  *
@@ -536,6 +609,9 @@ function alleger_images(int $lot = 12): array
     foreach (['traites', 'allegees', 'avant', 'apres', 'restants'] as $c) {
         $b[$c] += $m[$c];
     }
+    // Le balayage du cache voyage avec : c'est le même geste d'entretien,
+    // et il ne coûte qu'un parcours de dossier.
+    $b['cache'] = nettoyer_vignettes();
     return $b;
 }
 

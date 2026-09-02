@@ -68,6 +68,9 @@ if ($page === 'creer-compte') {
         'ville' => $v['ville'] ?: null,
     ]);
 
+    journal_ecrire($u, 'compte.cree', 'compte', null, $v['nom'],
+        role_libelle($v['role']) . ', offre ' . formule_libelle($v['formule']));
+
     rediriger('?p=comptes&ok=' . urlencode(
         'Compte créé pour ' . $v['nom'] . ' (' . role_libelle($v['role'])
         . ', offre ' . formule_libelle($v['formule']) . '). '
@@ -133,6 +136,26 @@ if ($page === 'role' || $page === 'suspendre') {
         }
         db()->prepare('UPDATE utilisateurs SET role = ?, formule = ? WHERE id = ?')
             ->execute([$role, $formule, $id]);
+        journal_ecrire($u, 'compte.role', 'compte', $id, (string) $vise['nom'],
+            role_libelle($vise['role']) . ' → ' . role_libelle($role)
+            . ', ' . formule_libelle($vise['formule']) . ' → ' . formule_libelle($formule));
+
+        /**
+         * L'échéance suit l'offre, automatiquement.
+         *
+         * Passer quelqu'un à une offre payante sans date de fin, c'est
+         * fabriquer un abonnement à vie que personne ne relancera. Et
+         * repasser à Découverte doit effacer l'échéance, sans quoi le cron
+         * enverrait des rappels pour un abonnement qui n'existe plus.
+         */
+        $apres = utilisateur_par_id($id);
+        if ($apres && abonnement_suivi($apres)) {
+            if (($apres['echeance_le'] ?? '') === '') {
+                echeance_prolonger($apres);
+            }
+        } else {
+            echeance_retirer($id);
+        }
 
         /**
          * La personne concernée l'apprend, et sait ce qui change.
@@ -157,8 +180,79 @@ if ($page === 'role' || $page === 'suspendre') {
                 'C’est le dernier super-administrateur : le suspendre fermerait la porte à tout le monde.'));
         }
         db()->prepare('UPDATE utilisateurs SET suspendu = 1 - suspendu WHERE id = ?')->execute([$id]);
+        journal_ecrire($u, 'compte.suspendu', 'compte', $id, (string) $vise['nom'],
+            ((int) $vise['suspendu']) ? 'Réactivé' : 'Suspendu');
     }
     rediriger($retour . '&ok=' . urlencode('Compte mis à jour.'));
+}
+
+/* ---------------- lever la double authentification ---------------- */
+
+/**
+ * Le téléphone perdu, et la seule issue.
+ *
+ * Sans ce levier, un membre de l'équipe qui change de téléphone sans
+ * transférer son application est enfermé dehors définitivement, et la
+ * seule réparation passe par la base de données. Réservé à qui gère les
+ * comptes de l'équipe — c'est-à-dire au super-administrateur.
+ */
+if ($page === 'otp-lever') {
+    verifier_csrf();
+    exiger_droit('comptes_internes');
+    $id = (string) ($_POST['id'] ?? '');
+    $vise = utilisateur_par_id($id);
+    if (!$vise) {
+        rediriger('?p=comptes&err=' . urlencode('Compte introuvable.'));
+    }
+    db()->prepare('UPDATE utilisateurs SET otp_secret = NULL, otp_actif = 0 WHERE id = ?')
+        ->execute([$id]);
+    journal_ecrire($u, 'compte.role', 'compte', $id, (string) $vise['nom'],
+        'Double authentification levée par un super-administrateur');
+    notifier($id, 'compte', 'Votre double authentification a été retirée',
+        'Un super-administrateur l’a levée — sans doute à votre demande. Remettez-la en place '
+        . 'depuis votre profil dès que possible.', '?p=profil');
+    rediriger('?p=organisateur&id=' . rawurlencode($id) . '&ok='
+        . urlencode('Double authentification levée. Prévenez la personne de la remettre.'));
+}
+
+/* ---------------- enregistrer un paiement ---------------- */
+
+/**
+ * Un paiement encaissé ailleurs, consigné ici.
+ *
+ * Le logiciel n'encaisse pas : l'équipe reçoit un Mobile Money, un
+ * virement ou des espèces, puis vient le noter. Ce geste-là fait trois
+ * choses d'un coup — il repousse l'échéance, il émet une facture que
+ * l'organisateur peut présenter à sa comptabilité, et il laisse une trace
+ * au journal. Les trois se faisaient de mémoire, c'est-à-dire pas.
+ */
+if ($page === 'paiement') {
+    verifier_csrf();
+    $id = (string) ($_POST['id'] ?? '');
+    $vise = utilisateur_par_id($id);
+    $retour = '?p=organisateur&id=' . rawurlencode($id);
+    if (!$vise) {
+        rediriger('?p=comptes&err=' . urlencode('Compte introuvable.'));
+    }
+    if (!abonnement_suivi($vise)) {
+        rediriger($retour . '&err=' . urlencode(
+            'Ce compte est sur une offre gratuite : il n’y a pas d’échéance à repousser.'));
+    }
+
+    $jours = max(1, min(730, (int) ($_POST['jours'] ?? ABONNEMENT_JOURS)));
+    $montant = max(0, min(10000000, (int) ($_POST['montant'] ?? FORMULES[$vise['formule']]['prix'])));
+    $debut = maintenant();
+    $fin = echeance_prolonger($vise, $jours);
+    facture_emettre($vise, $debut, $fin, $u, $montant);
+
+    journal_ecrire($u, 'abonnement.paye', 'compte', $id, (string) $vise['nom'],
+        number_format($montant, 0, ',', ' ') . ' F, ' . $jours . ' jours, jusqu’au ' . date_fr($fin));
+    notifier($id, 'compte', 'Votre abonnement est prolongé',
+        'L’offre ' . formule_libelle($vise['formule']) . ' court désormais jusqu’au '
+        . date_fr($fin) . '. La facture est disponible depuis votre profil.', '?p=profil');
+
+    rediriger($retour . '&ok=' . urlencode(
+        'Paiement enregistré. Échéance repoussée au ' . date_fr($fin) . ', facture émise.'));
 }
 
 /* ---------------- la soupape de téléchargements ---------------- */

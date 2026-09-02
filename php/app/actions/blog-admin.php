@@ -85,6 +85,7 @@ if ($page === 'blog-action') {
                         'Un article en ligne ne se retire que par la rédaction : son adresse a pu être partagée.'
                     );
                 }
+                journal_ecrire($u, 'article.supprime', 'article', (string) $a['id'], (string) $a['titre']);
                 article_supprimer((string) $a['id']);
                 rediriger('?p=blog-admin&ok=' . rawurlencode('« ' . $a['titre'] . ' » supprimé.'));
 

@@ -1035,6 +1035,43 @@ input[type=file].fichier-natif{
 .editeur-image-taille output{font-variant-numeric:tabular-nums;min-width:44px;font-weight:700}
 @media(max-width:640px){ .editeur-image-taille input[type=range]{width:90px} }
 
+/* ============ la facture ============
+
+   Un document, pas un écran de produit : elle s'imprime, et ce qui n'a
+   rien à faire sur un papier disparaît alors. */
+.facture{
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
+  padding:28px;box-shadow:var(--ombre);
+}
+.facture-tete{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  padding-bottom:18px;border-bottom:2px solid var(--text);margin-bottom:20px}
+.facture-marque{font-family:var(--display);font-weight:800;font-size:1.25rem;margin:0}
+.facture-numero{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:1.05rem;font-weight:700;margin:0}
+.facture-parties{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;margin-bottom:22px}
+.facture-etiquette{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--text3);margin:0 0 4px;font-weight:700}
+.facture tfoot th{font-size:1rem;border-top:2px solid var(--text)}
+.lien-bouton{background:none;border:0;padding:0;font:inherit;color:var(--primary);
+  cursor:pointer;text-decoration:underline}
+
+@media print{
+  .barre, footer, .sans-impression{display:none !important}
+  body{background:#fff}
+  .facture{border:0;box-shadow:none;padding:0}
+  .contenu{padding:0;max-width:none}
+}
+
+/* Un bloc de code qu'on recopie dans un terminal : il doit se sélectionner
+   d'un geste et ne jamais déborder la page. */
+.bloc-code{
+  margin:0;padding:12px 14px;border-radius:var(--r10);overflow-x:auto;
+  background:var(--bg2);border:1px solid var(--border);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
+  line-height:1.65;white-space:pre;color:var(--text);
+}
+
 /* ---- ce que l'éditeur a à dire ---- */
 .editeur-note{
   margin:0;padding:8px 12px;font-size:.84rem;line-height:1.45;

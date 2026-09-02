@@ -542,6 +542,76 @@ function consommer_jeton_verification(string $jeton): array
     return ['ok' => true, 'message' => 'Votre adresse est vérifiée. Merci !', 'utilisateur' => $u];
 }
 
+/* ================= le mot de passe oublié ================= */
+
+/** Combien d'heures un lien de réinitialisation reste valable. */
+const OUBLI_HEURES = 2;
+
+/**
+ * Un jeton de réinitialisation, sur son propre couple de colonnes.
+ *
+ * Distinct de celui de la vérification d'adresse, et il faut qu'il le
+ * soit : demander un nouveau mot de passe ne doit pas annuler la
+ * confirmation d'adresse en cours, et confirmer son adresse ne doit pas
+ * invalider le lien de réinitialisation qu'on vient de recevoir. Deux
+ * usages, deux jetons — sinon l'un des deux casse l'autre un jour, et
+ * personne ne comprend pourquoi.
+ */
+function creer_jeton_oubli(string $utilisateur_id): string
+{
+    $jeton = bin2hex(random_bytes(24));
+    db()->prepare('UPDATE utilisateurs SET mdp_jeton = ?, mdp_expire_le = ? WHERE id = ?')
+        ->execute([$jeton, maintenant(time() + OUBLI_HEURES * 3600), $utilisateur_id]);
+    return $jeton;
+}
+
+function lien_oubli(string $jeton): string
+{
+    return base_url() . '/index.php?p=reinitialiser&j=' . rawurlencode($jeton);
+}
+
+/**
+ * Le compte derrière un jeton, sans le consommer.
+ *
+ * On sépare la LECTURE de la consommation : le formulaire de nouveau mot
+ * de passe doit pouvoir s'afficher, puis être renvoyé s'il est mal rempli,
+ * sans que le lien ait été brûlé entre-temps. Consommer à l'affichage
+ * ferait qu'une faute de frappe oblige à redemander un e-mail.
+ */
+function compte_du_jeton_oubli(string $jeton): ?array
+{
+    if ($jeton === '') {
+        return null;
+    }
+    $s = db()->prepare('SELECT * FROM utilisateurs WHERE mdp_jeton = ?');
+    $s->execute([$jeton]);
+    $u = $s->fetch() ?: null;
+    if (!$u || ($u['mdp_expire_le'] ?? '') === '' || $u['mdp_expire_le'] < maintenant()) {
+        return null;
+    }
+    return $u;
+}
+
+/**
+ * Pose le nouveau mot de passe et brûle le jeton.
+ *
+ * L'adresse est CONFIRMÉE au passage : la personne vient de prouver
+ * qu'elle relève cette boîte, ce qui est exactement ce que la
+ * confirmation demande. Le lui redemander ensuite serait lui faire faire
+ * deux fois le même geste.
+ */
+function consommer_jeton_oubli(string $jeton, string $mot_de_passe): bool
+{
+    $u = compte_du_jeton_oubli($jeton);
+    if (!$u) {
+        return false;
+    }
+    db()->prepare('UPDATE utilisateurs SET mot_de_passe = ?, mdp_jeton = NULL,
+                   mdp_expire_le = NULL, email_verifie_le = COALESCE(email_verifie_le, ?) WHERE id = ?')
+        ->execute([password_hash($mot_de_passe, PASSWORD_DEFAULT), maintenant(), $u['id']]);
+    return true;
+}
+
 /**
  * L'adresse de ce compte est-elle confirmée ?
  *

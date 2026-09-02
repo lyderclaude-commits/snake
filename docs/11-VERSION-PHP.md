@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **375 scénarios, 375 réussis**
+Les deux ont été vérifiés de bout en bout : **427 scénarios, 427 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,8 +110,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 375 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit, SMTP, sauvegarde restaurée, chiffrement push, éditeur
+npm run php:e2e          # 427 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP
 ```
 
 Contre une base MySQL :
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 375 scénarios
+### Les 427 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -174,6 +174,13 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Une image dans un article** | Téléversée depuis l'éditeur, elle devient une **marque** et non une balise ; l'article publié porte la figure et sa légende ; l'image passe par le redimensionneur, se télécharge en WebP, et la légende sert de texte de remplacement ; une image hébergée ailleurs n'est **pas** rendue |
 | **Recadrer et redimensionner** | Cliquer une image ouvre ses réglages ; la largeur choisie s'écrit dans la marque et se retrouve sur la page publiée ; le cadrage se tire aux coins, s'écrit en millièmes, et le serveur rend bien l'image découpée — avec **les dimensions de l'image recadrée**, pas celles de l'original |
 | **Ce qui ne doit rien perdre** | Corriger le titre d'un article n'efface ni sa couverture, ni l'image du corps, ni son cadrage, ni sa largeur ; une figure collée dans un conteneur reste une image ; après la passe de maintenance, l'image de l'article se télécharge toujours |
+| **L'API REST** | Une clé se fabrique depuis l'écran, refuse une requête sans clé, distingue une clé inconnue d'une offre insuffisante, rend les campagnes avec leurs chiffres, crée un lien court et **refuse une cible hors des domaines Wakabi** ; une ressource inconnue rend du JSON, pas du HTML |
+| **Le mot de passe oublié** | La demande répond la même chose qu'une adresse existe ou non, mais **un message ne part que si le compte existe** ; le lien reçu ouvre le formulaire, refuse deux mots de passe différents, ne sert qu'une fois — et l'on se connecte ensuite avec le nouveau |
+| **L'échéance et la facture** | Une offre payante ouvre une carte d'abonnement ; un paiement repousse l'échéance et émet une facture numérotée qui porte le client, la période et le total ; le client la retrouve seul depuis son profil |
+| **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
+| **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |
+| **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
+| **Le journal, la recherche, l'entretien** | Le journal est servi à qui gère les comptes ; le blog public se cherche et dit quand il ne trouve rien ; la maintenance des images rend un bilan ; une sauvegarde s'inspecte avant d'être restaurée, et un nom mal recopié annule la restauration |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -1351,6 +1358,143 @@ qu'un cadre perdu.
 
 ---
 
+## Ce que l'audit a ajouté
+
+### Le mot de passe oublié — `?p=oubli`
+
+C'était le manque le plus coûteux : celui qui perdait son mot de passe ne
+pouvait rien faire seul, et chaque cas coûtait un aller-retour humain, un
+samedi soir. Deux règles tiennent l'écran :
+
+- **La réponse est la même quoi qu'il arrive** — « Si un compte existe à
+  cette adresse, le lien vient de partir. » Dire « adresse inconnue »
+  transformerait le formulaire en annuaire : on y testerait des adresses
+  jusqu'à trouver celles qui ont un compte.
+- **Le lien vaut mot de passe** : deux heures, un seul usage, et une
+  nouvelle demande annule la précédente. Il confirme l'adresse au passage —
+  la personne vient de prouver qu'elle relève cette boîte.
+
+Le jeton a ses propres colonnes, distinctes de celles de la vérification
+d'adresse : sans quoi confirmer son adresse invaliderait le lien de
+réinitialisation qu'on vient de recevoir.
+
+### L'API REST — `?p=api-doc`
+
+Elle figurait au comparatif des offres depuis le début, vendue avec
+Mouvement, et n'existait pas : il ne restait qu'une colonne `cle_api` qui
+dormait dans la table des comptes.
+
+Elle **lit** ce que l'organisateur voit déjà sur son tableau de bord —
+`moi`, `campagnes`, `campagnes/<slug>`, `badges`, `presences`, `liens` — et
+crée des liens courts, seule écriture ouverte. Elle ne publie rien : une API
+qui contournerait la relecture retirerait à tous la garantie qu'on leur
+donne.
+
+Deux détails qui viennent de l'hébergement mutualisé. `X-Api-Cle` double
+l'en-tête `Authorization`, que certains serveurs CGI retirent avant que PHP
+ne le voie — sans ce repli, l'appelant n'a aucun moyen de comprendre son
+refus. Et une clé inconnue reçoit un message **différent** d'une offre
+insuffisante : sans quoi un client qui a payé passe une journée à croire sa
+clé fausse alors que son offre vient d'être rétrogradée.
+
+### Les échéances, les rappels et les factures
+
+L'offre payante posait un abonnement sans date de fin : au premier oubli, il
+devenait un abonnement à vie, et personne ne s'en apercevait puisque rien ne
+changeait à l'écran. C'est du revenu qui s'évapore sans bruit.
+
+Enregistrer un paiement depuis la fiche fait trois choses d'un coup :
+repousser l'échéance, émettre une facture numérotée (`WB-2026-0007`) que
+l'organisateur peut présenter à sa comptabilité, et laisser une trace au
+journal. Le passage quotidien prévient sept jours avant, puis la veille ;
+sept jours après l'échéance, le compte redescend en Découverte — sans rien
+perdre, et en le disant. Renouveler en avance ajoute au terme en cours et
+non à aujourd'hui : payer en avance ne doit pas coûter des jours.
+
+### Le journal — `?p=journal`
+
+Qui a publié, refusé, suspendu, supprimé, et quand. On y garde les
+**décisions**, jamais les lectures : un journal qui note chaque page vue
+devient illisible en une semaine, et l'on n'y retrouve plus la ligne qui
+compte. Le nom de l'acteur et le titre de l'objet sont recopiés dans la
+ligne — un compte supprimé ne doit pas effacer ce qu'il a fait, et « Décor
+4f2a-… supprimé » n'apprend rien.
+
+### Restaurer depuis l'interface — Administration → Sauvegardes
+
+L'archive se fabriquait et se téléchargeait ; la remettre en place se
+faisait à la main, en ligne de commande. Chaque sauvegarde porte désormais
+un bouton **Restaurer**, et le geste est entouré comme il se doit :
+
+1. **On inspecte d'abord** — combien de comptes, de décors et d'articles
+   l'archive contient, et de quand elle date. C'est la seule occasion de
+   s'apercevoir qu'on a cliqué sur la mauvaise.
+2. **On recopie le nom du fichier** pour confirmer.
+3. **Une sauvegarde de l'état actuel est prise avant**, et son nom est
+   affiché : se tromper d'archive reste rattrapable.
+
+Les cadres et les médias sont **ajoutés**, jamais supprimés : une image
+orpheline ne coûte que de la place, une image manquante casse un badge déjà
+entre les mains d'un invité. La connexion est fermée avant de remplacer le
+fichier SQLite — sinon elle reste accrochée à l'ancien, et l'écran suivant
+montre encore les données d'avant. Le cycle entier — garnir, abîmer,
+restaurer, retrouver — est éprouvé par `verifier-restauration.ts`, sur une
+installation isolée.
+
+### La double authentification, pour l'équipe
+
+Un compte d'équipe ouvre le catalogue entier, les comptes clients et les
+réglages : un mot de passe réutilisé ailleurs suffirait à changer
+l'installation de mains. TOTP (RFC 6238) est écrit à la main, une trentaine
+de lignes utiles, et `verifier-otp.ts` le mesure **contre les vecteurs
+d'essai du RFC** — pas contre lui-même, qui serait toujours d'accord.
+
+Elle n'est proposée qu'aux comptes internes : l'imposer à un organisateur
+qui gère une soirée par trimestre fabriquerait des comptes bloqués un samedi
+soir, et la seule issue serait l'équipe — qu'on cherchait justement à ne pas
+déranger. Un super-administrateur peut la lever depuis la fiche, pour le
+téléphone perdu.
+
+### Confier une campagne, et rien d'autre
+
+Le choix était binaire : garder son compte pour soi, ou donner son mot de
+passe. C'est le mot de passe qui circulait — avec les statistiques, la
+régie, les liens et la facturation au bout.
+
+On invite maintenant quelqu'un sur **une campagne**, par son adresse. La
+personne l'ouvre, la modifie, la soumet à la relecture ; elle ne voit ni les
+autres campagnes, ni les liens, ni la régie, ni les factures. Les campagnes
+confiées s'affichent chez elle **à part des siennes** — elles ne comptent
+pas dans son quota. Seul l'auteur invite : un équipier qui pourrait en
+inviter d'autres ferait perdre à l'auteur la vue de qui travaille chez lui.
+
+### Emporter ses données — `?p=profil`
+
+La suppression existait ; l'export non. On pouvait donc partir, mais pas
+partir **avec**. Un fichier JSON reprend le compte, les campagnes et leurs
+chiffres, les badges créés, les liens, les Koris, les articles et les
+factures. Ni le mot de passe — haché, il n'apprendrait rien, et sa présence
+dans un fichier qui circule est un risque pur — ni la clé d'API, qui se
+refabrique.
+
+### Trois défauts que l'audit a trouvés en parcourant l'application
+
+- **Le catalogue s'arrêtait à 200 décors sans le dire.** L'en-tête
+  annonçait « 260 au total » et la liste en montrait 200 : l'écran se
+  contredisait lui-même. Il est paginé par quarante, et chaque page dit où
+  elle en est.
+- **Un compte de l'équipe se voyait attribuer une offre commerciale.** Les
+  compteurs disaient « sans limite », l'étiquette disait « offre
+  Découverte ». L'étiquette mentait ; elle a été remplacée par le rôle.
+- **Le cache d'images ne se vidait jamais.** `donnees/vignettes/` recevait
+  un fichier par image, par taille et par cadrage, et rien ne les enlevait.
+  Chaque service depuis le cache date maintenant le fichier ; au-delà de
+  deux mois sans être demandé, il part — et si le dossier reste trop gros,
+  on rogne du plus ancien. Rien n'est perdu : la prochaine visite le
+  refabrique.
+
+---
+
 ## Quatre choses qu'on ne voit pas en développant
 
 ### La feuille de style est mise en cache par le navigateur
@@ -1461,8 +1605,13 @@ phpMyAdmin.
 |---|---|
 | **Les vrais cadres** | Les décors installés sont des placeholders — les vôtres se téléversent depuis le formulaire. |
 | **Un domaine `wkb.link`** | Il s'achète et se fait pointer ici : le logiciel ne peut pas l'inventer. La marche à suivre est dans Administration → Réglages. |
+| **Le paiement en ligne** | L'équipe encaisse comme elle l'entend, puis enregistre le paiement — ce qui pose l'échéance et émet la facture. Brancher un Mobile Money demande un compte marchand et des identifiants que le logiciel ne peut pas fabriquer. |
+| **Dépenser ses Koris** | Ils se gagnent à l'entrée, s'affichent et s'historisent. Ce qu'on peut en faire reste à décider : c'est une question commerciale avant d'être technique. |
+| **Une deuxième langue** | Tout est en français, e-mails automatiques compris. Traduire demande d'abord de choisir la langue et de décider qui traduit ; l'ossature n'existe pas encore. |
 
-Trois lignes ont quitté ce tableau : le **SMTP** se règle depuis
-Administration → Réglages, les **sauvegardes** depuis Administration →
-Sauvegardes, et le QR se **lit à la caméra** sur l'écran de contrôle
-d'entrée. Les trois ont leur section plus bas.
+Un audit complet a vidé le reste de ce tableau. Y figuraient encore le
+**mot de passe oublié**, le **journal des actions**, la **restauration
+depuis l'interface**, l'**export de ses données**, la **double
+authentification**, la **recherche du blog**, les **droits par campagne**,
+les **échéances d'abonnement** et l'**API REST** — vendue au comparatif et
+absente du code. Toutes ont leur section ci-dessous.
