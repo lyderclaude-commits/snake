@@ -6,7 +6,7 @@
  * Croissance, sans limite sur Mouvement. C'est une ligne vendue sur la
  * vitrine : elle se compte, et elle se refuse quand elle est pleine.
  */
-$u = exiger_role('partenaire', 'equipe');
+$u = exiger_droit('liens');
 
 $max = quota($u, 'liens_courts');
 $utilises = compter_liens((string) $u['id']);
@@ -44,7 +44,7 @@ if ($page === 'creer-lien') {
 
     $d = $decor !== '' ? decor_par_id($decor) : null;
     // Un lien ne se rattache qu'à une campagne qui vous appartient.
-    if ($d && $u['role'] === 'partenaire' && $d['auteur_id'] !== $u['id']) {
+    if ($d && !droit($u, 'decors_tous') && $d['auteur_id'] !== $u['id']) {
         $d = null;
     }
     $code = creer_lien((string) $u['id'], $cible, $titre, $d['id'] ?? null);
@@ -68,5 +68,5 @@ vue('liens', [
     'liste' => liens_de((string) $u['id']),
     'max' => $max,
     'utilises' => $utilises,
-    'campagnes' => $u['role'] === 'partenaire' ? decors_de((string) $u['id']) : decors_catalogue(),
+    'campagnes' => droit($u, 'decors_tous') ? decors_catalogue() : decors_de((string) $u['id']),
 ]);

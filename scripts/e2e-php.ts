@@ -9,6 +9,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { createServer } from 'node:net';
 import { createServer as createServeurHttp } from 'node:http';
 import { createECDH, randomBytes } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import { writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -60,6 +61,42 @@ function ouvrirPush(port: number): { clePublique: string; auth: string; fermer: 
     auth: randomBytes(16).toString('base64url'),
     fermer: () => serveur.close(),
   };
+}
+
+/**
+ * Un PNG uni, écrit à la main.
+ *
+ * Plutôt qu'un fichier d'appoint dans le dépôt : une recette qui dépend
+ * d'un binaire versionné finit par échouer le jour où quelqu'un le
+ * déplace, et l'erreur ne parle alors plus du tout du sujet testé.
+ */
+function imagePng(w: number, h: number): Buffer {
+  const brut = Buffer.concat(
+    Array.from({ length: h }, () =>
+      Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 3).fill(Buffer.from([80, 120, 200]))])),
+  );
+  const bloc = (type: string, data: Buffer): Buffer => {
+    const corps = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(corps));
+    return Buffer.concat([len, corps, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    bloc('IHDR', ihdr), bloc('IDAT', deflateSync(brut)), bloc('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff;
+  for (const octet of buf) {
+    c ^= octet;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return (c ^ 0xffffffff) >>> 0;
 }
 
 const SMTP_PORT = 3931;
@@ -1983,8 +2020,8 @@ const run = async () => {
   ok('l’éditeur remplace le champ de texte',
      (await ped.locator('.editeur-zone').isVisible())
      && (await ped.locator('#a-corps').isHidden()));
-  ok('la barre propose les sept mises en forme',
-     (await ped.locator('.editeur-outil').count()) === 7,
+  ok('la barre propose les huit mises en forme',
+     (await ped.locator('.editeur-outil').count()) === 8,
      `${await ped.locator('.editeur-outil').count()} outils`);
   ok('un éditeur vide affiche une invite', (await ped.locator('.editeur-zone[data-vide]').count()) === 1);
 
@@ -2074,6 +2111,248 @@ const run = async () => {
     await ctxLu.close();
   }
   await ped.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 32. Les rôles internes ━━');
+
+  /**
+   * Ce que chaque rôle OUVRE, et ce qu'il refuse.
+   *
+   * Le test le plus utile n'est pas « le menu montre la bonne chose » — un
+   * menu se contourne en tapant l'adresse. C'est le serveur qui doit
+   * refuser, et c'est ce qu'on éprouve ici : route par route, rôle par
+   * rôle.
+   */
+  const pr = await browser.newPage();
+  surveiller(pr);
+  await connexion(pr, ADMIN.email, ADMIN.mdp);
+
+  const INTERNES = [
+    ['scanner', 'Kossi à la porte', ['scan', 'profil']],
+    ['editeur', 'Ama à la rédaction', ['partenaire', 'nouveau', 'blog-admin', 'liens', 'profil']],
+    ['coordinateur', 'Yao coordinateur',
+     ['admin', 'scan', 'catalogue', 'relecture', 'partenaire', 'nouveau',
+      'blog-admin', 'blog-relecture', 'regie', 'diffusion', 'liens', 'profil']],
+  ] as const;
+  const ROUTES = ['admin', 'scan', 'catalogue', 'relecture', 'partenaire', 'nouveau',
+                  'blog-admin', 'blog-relecture', 'regie', 'diffusion', 'liens',
+                  'comptes', 'reglages', 'sauvegardes', 'profil'];
+  const MDP_INTERNE = 'interne-2026-solide';
+
+  await pr.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const csrfComptes = await pr.locator('.formulaire-compte input[name=csrf]').inputValue();
+
+  for (const [role, nom, attendues] of INTERNES) {
+    const email = `${role}-${marque}@wakabileguide.com`;
+    const cree = await pr.request.post(`${BASE}/index.php?p=creer-compte`, {
+      form: { csrf: csrfComptes, nom, email, role, formule: 'decouverte', mot_de_passe: MDP_INTERNE },
+    });
+    ok(`l’équipe crée un compte « ${role} »`, /Compte créé/.test(await cree.text()));
+
+    const ctxR = await browser.newContext();
+    const px = await ctxR.newPage();
+    surveiller(px);
+    await connexion(px, email, MDP_INTERNE);
+
+    const ouvertes: string[] = [];
+    for (const r of ROUTES) {
+      await px.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+      if (px.url().includes(`p=${r}`)) ouvertes.push(r);
+    }
+    ok(`« ${role} » n’ouvre QUE ce que son rôle donne`,
+       ouvertes.join(',') === [...attendues].join(','), ouvertes.join(', '));
+    await ctxR.close();
+  }
+
+  /* Aucun rôle interne ne s'obtient tout seul. */
+  const ctxPub = await browser.newContext();
+  const ppub = await ctxPub.newPage();
+  surveiller(ppub);
+  await ppub.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+  const proposes = await ppub.locator('select[name=role] option')
+    .evaluateAll((n) => n.map((e) => (e as HTMLOptionElement).value));
+  ok('l’inscription publique ne propose que les rôles clients',
+     proposes.join(',') === 'participant,partenaire', proposes.join(', '));
+
+  const emailForce = `force-${marque}@exemple.tg`;
+  await ppub.request.post(`${BASE}/index.php?p=inscription`, {
+    form: {
+      csrf: await ppub.locator('input[name=csrf]').inputValue(),
+      role: 'coordinateur', nom: 'Rôle forcé', email: emailForce,
+      mot_de_passe: 'un-mot-de-passe-solide', ville: 'lome',
+    },
+  });
+  await connexion(ppub, emailForce, 'un-mot-de-passe-solide');
+  ok('un formulaire trafiqué ne fabrique pas un coordinateur',
+     ppub.url().includes('p=connexion'), ppub.url().split('index.php')[1] ?? '');
+  await ctxPub.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 33. Le super-administrateur ━━');
+
+  /**
+   * Ce qui sépare l'équipe du super-administrateur tient en une ligne de
+   * la table — et c'est tout ce qui sépare une équipe d'une porte ouverte.
+   * Sans elle, n'importe quel membre se promeut, promeut un ami, ou
+   * suspend le dernier administrateur.
+   */
+  ok('le compte fondateur est super-administrateur',
+     /Super administrateur/.test(
+       await pr.locator(`tr:has-text("${ADMIN.email}")`).first().innerText().catch(() => '')));
+
+  /**
+   * L'équipe a sa propre liste, et elle n'est jamais tronquée.
+   *
+   * Une liste unique plafonnée et rangée du plus récent au plus ancien
+   * finit par pousser le fondateur derrière deux cents organisateurs :
+   * il devient injoignable au moment précis où l'on en a besoin.
+   */
+  ok('l’équipe et les clients font deux listes',
+     (await pr.locator('.bloc-comptes').count()) === 2,
+     `${await pr.locator('.bloc-comptes').count()} bloc(s)`);
+  ok('le fondateur est dans la liste de l’équipe',
+     (await pr.locator('.bloc-comptes').first()
+        .locator(`tr:has-text("${ADMIN.email}")`).count()) === 1);
+  const rolesEquipe = await pr.locator('.bloc-comptes').first()
+    .locator('tbody tr select[name=role]').evaluateAll((n) => n.map((e) => (e as HTMLSelectElement).value));
+  ok('aucun client ne s’est glissé dans la liste de l’équipe',
+     rolesEquipe.every((r) => ['scanner', 'editeur', 'coordinateur', 'equipe', 'super_admin'].includes(r)),
+     rolesEquipe.join(', ') || 'aucun rôle modifiable');
+
+  /* La longue liste, elle, se cherche — sinon rien n'y est retrouvable. */
+  await pr.goto(`${BASE}/index.php?p=comptes&q=${encodeURIComponent(PART.email)}`,
+                { waitUntil: 'domcontentloaded' });
+  const trouves = pr.locator('.bloc-comptes').nth(1).locator('tbody tr');
+  ok('la recherche retrouve un client par son adresse',
+     (await trouves.count()) === 1
+     && (await trouves.first().innerText()).includes(PART.email),
+     `${await trouves.count()} résultat(s)`);
+  await pr.goto(`${BASE}/index.php?p=comptes&q=zzz-personne-${marque}`,
+                { waitUntil: 'domcontentloaded' });
+  ok('une recherche sans résultat le dit',
+     (await pr.locator('.bloc-comptes').nth(1).innerText()).includes('Aucun compte client'));
+  await pr.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+
+  const EQ = { email: `equipe-${marque}@wakabileguide.com`, mdp: MDP_INTERNE };
+  const creeEq = await pr.request.post(`${BASE}/index.php?p=creer-compte`, {
+    form: { csrf: csrfComptes, nom: 'Membre équipe', email: EQ.email,
+            role: 'equipe', formule: 'decouverte', mot_de_passe: EQ.mdp },
+  });
+  ok('un super-administrateur crée un compte d’équipe', /Compte créé/.test(await creeEq.text()));
+
+  const ctxEq = await browser.newContext();
+  const peq = await ctxEq.newPage();
+  surveiller(peq);
+  await connexion(peq, EQ.email, EQ.mdp);
+  await peq.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+
+  const familles = await peq.locator('.formulaire-compte optgroup')
+    .evaluateAll((n) => n.map((e) => e.getAttribute('label')));
+  ok('l’équipe ne se voit proposer que les rôles clients',
+     familles.join('|') === 'Comptes clients', familles.join(' | '));
+
+  const csrfEq = await peq.locator('.formulaire-compte input[name=csrf]').inputValue();
+  for (const role of ['coordinateur', 'equipe', 'super_admin']) {
+    const r = await peq.request.post(`${BASE}/index.php?p=creer-compte`, {
+      form: { csrf: csrfEq, nom: 'Complice ' + role, email: `complice-${role}-${marque}@exemple.tg`,
+              role, formule: 'decouverte', mot_de_passe: 'un-mot-de-passe-solide' },
+    });
+    ok(`l’équipe ne peut pas se fabriquer un « ${role} »`,
+       /super-administrateur crée un compte/.test(await r.text()));
+  }
+
+  /* Ni toucher au super-administrateur en place. */
+  const idSA = await peq.locator(`tr:has-text("${ADMIN.email}") input[name=id]`)
+    .first().inputValue().catch(() => '');
+  const suspendre = await peq.request.post(`${BASE}/index.php?p=suspendre`,
+    { form: { csrf: csrfEq, id: idSA } });
+  ok('l’équipe ne suspend pas un super-administrateur',
+     /ne se modifie que par un super-administrateur/.test(await suspendre.text())
+     || suspendre.url().includes('err='));
+  await ctxEq.close();
+
+  /* Et le dernier super-administrateur ne se défait pas lui-même. */
+  const csrfSA = await pr.locator('.formulaire-compte input[name=csrf]').inputValue();
+  const auto = await pr.request.post(`${BASE}/index.php?p=role`,
+    { form: { csrf: csrfSA, id: idSA, role: 'equipe', formule: 'decouverte' } });
+  ok('le dernier super-administrateur ne se rétrograde pas',
+     /propre compte|dernier super-administrateur/.test(await auto.text())
+     || auto.url().includes('err='));
+  await pr.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 34. Les images dans un article ━━');
+
+  const pim = await browser.newPage();
+  surveiller(pim);
+  pim.on('dialog', (d) => { void d.accept('La salle au complet'); });
+  await connexion(pim, ADMIN.email, ADMIN.mdp);
+  await pim.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await pim.waitForSelector('.editeur-zone');
+
+  const TITRE_IM = `Article illustré ${marque}`;
+  await pim.fill('#a-titre', TITRE_IM);
+  await pim.locator('.editeur-zone').click();
+  await pim.keyboard.type('Voici ce qu’on a vu.');
+
+  const [choix] = await Promise.all([
+    pim.waitForEvent('filechooser'),
+    pim.locator('.editeur-outil[aria-label="Image"]').click(),
+  ]);
+  await choix.setFiles({ name: 'salle.png', mimeType: 'image/png', buffer: imagePng(600, 400) });
+  await pim.waitForSelector('.editeur-zone figure img', { timeout: 20_000 });
+
+  const marquesIm = await pim.locator('#a-corps').inputValue();
+  ok('l’image devient une marque, pas une balise',
+     /^!\[La salle au complet\]\(\S+\)$/m.test(marquesIm) && !/[<>]/.test(marquesIm),
+     marquesIm.split('\n').filter(Boolean).pop()?.slice(0, 64) ?? '');
+
+  await pim.click('button[value=publier]');
+  await pim.waitForLoadState('domcontentloaded');
+  const slugIm = /p=blog&a=([a-z0-9-]+)/.exec(
+    await pim.locator('.msg.ok').first().innerText().catch(() => ''))?.[1] ?? '';
+  ok('l’article illustré se publie', slugIm !== '', slugIm);
+
+  const ctxIm = await browser.newContext();
+  const pv2 = await ctxIm.newPage();
+  surveiller(pv2);
+  await pv2.goto(`${BASE}/index.php?p=blog&a=${slugIm}`, { waitUntil: 'domcontentloaded' });
+  const figure = pv2.locator('.corps-article .image-article');
+  ok('la page publiée porte la figure et sa légende',
+     (await figure.count()) === 1
+     && (await figure.locator('figcaption').innerText()) === 'La salle au complet');
+  const src = await figure.locator('img').getAttribute('src');
+  ok('l’image passe par le redimensionneur', /p=vignette/.test(src ?? ''), src?.slice(-40) ?? '');
+  const rep = await pv2.request.get(src!);
+  ok('et elle se télécharge', rep.ok() && (rep.headers()['content-type'] ?? '') === 'image/webp',
+     `HTTP ${rep.status()} ${rep.headers()['content-type']}`);
+  ok('la légende sert aussi de texte de remplacement',
+     (await figure.locator('img').getAttribute('alt')) === 'La salle au complet');
+
+  /**
+   * Le garde-fou : une image d'AILLEURS ne s'affiche pas.
+   *
+   * Une adresse extérieure serait un mouchard posé sur la page de
+   * quelqu'un d'autre, une image qui disparaît le jour où le site
+   * d'origine ferme, et du contenu mixte sur une page en HTTPS.
+   */
+  await pim.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await pim.waitForSelector('.editeur-zone');
+  await pim.fill('#a-titre', `Image d’ailleurs ${marque}`);
+  await pim.locator('#a-bascule').click();
+  await pim.fill('#a-corps',
+    'Avant l’image.\n\n![Pirate](https://ailleurs.example/pixel.gif)\n\nAprès l’image.');
+  await pim.click('button[value=publier]');
+  await pim.waitForLoadState('domcontentloaded');
+  const slugAil = /p=blog&a=([a-z0-9-]+)/.exec(
+    await pim.locator('.msg.ok').first().innerText().catch(() => ''))?.[1] ?? '';
+  await pv2.goto(`${BASE}/index.php?p=blog&a=${slugAil}`, { waitUntil: 'domcontentloaded' });
+  const corpsAil = await pv2.locator('.corps-article').innerHTML();
+  ok('une image hébergée ailleurs n’est pas rendue',
+     !/ailleurs\.example|<img/.test(corpsAil) && /Après l’image/.test(corpsAil));
+
+  await ctxIm.close();
+  await pim.close();
 
   console.log('\n━━ 22. Le transport e-mail ━━');
 

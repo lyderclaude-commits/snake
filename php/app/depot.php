@@ -112,7 +112,10 @@ function decor_transition(string $id, string $vers, array $acteur, ?string $moti
     if (!$d) {
         throw new TransitionRefusee('Décor introuvable.');
     }
-    if (!transition_permise($d['statut'], $vers, $acteur['role'] === 'equipe' ? 'equipe' : 'partenaire')) {
+    // Ce qui décide n'est pas le rôle mais le DROIT d'arbitrer : un
+    // coordinateur publie, un éditeur propose. Comparer à « equipe » a
+    // cessé d'être juste le jour où sept rôles ont existé.
+    if (!transition_permise($d['statut'], $vers, droit($acteur, 'valider') ? 'equipe' : 'partenaire')) {
         throw new TransitionRefusee(sprintf('Transition « %s → %s » non autorisée pour ce rôle.', $d['statut'], $vers));
     }
     if (in_array($vers, ['refuse', 'corrections'], true) && !trim((string) $motif)) {
@@ -981,15 +984,72 @@ function telechargements_par_jour(int $jours = 14): array
     return $out;
 }
 
-function comptes_tous(): array
-{
-    // Le nombre de décors accompagne chaque compte : sans lui, la liste ne
-    // dit pas lesquels travaillent et lesquels dorment.
-    return db()->query("SELECT u.*,
+/**
+ * Le décompte des décors, écrit une fois pour les deux listes de comptes.
+ *
+ * Sans lui, la liste ne dit pas lesquels travaillent et lesquels dorment.
+ */
+const COMPTE_COLONNES = "u.*,
         (SELECT COUNT(*) FROM decors d WHERE d.auteur_id = u.id) AS decors,
         (SELECT COUNT(*) FROM decors d WHERE d.auteur_id = u.id
-            AND d.statut IN ('publie','en_relecture','corrections')) AS actives
-        FROM utilisateurs u ORDER BY u.cree_le DESC LIMIT 200")->fetchAll();
+            AND d.statut IN ('publie','en_relecture','corrections')) AS actives";
+
+/**
+ * Les comptes de la MAISON, du plus ancien au plus récent.
+ *
+ * Ils tiennent sur un écran et ne se cherchent pas : on les connaît par
+ * leur prénom. Les séparer de la longue liste des clients règle surtout un
+ * défaut qu'on ne voit qu'au bout d'un an : une liste plafonnée et rangée
+ * du plus récent au plus ancien finit par pousser le fondateur derrière
+ * deux cents organisateurs, c'est-à-dire hors de portée — et c'est
+ * justement le compte dont on a besoin le jour où quelque chose cloche.
+ */
+function comptes_equipe(): array
+{
+    $roles = implode(',', array_fill(0, count(ROLES_INTERNES), '?'));
+    $s = db()->prepare('SELECT ' . COMPTE_COLONNES . "
+        FROM utilisateurs u WHERE u.role IN ($roles) ORDER BY u.cree_le ASC");
+    $s->execute(ROLES_INTERNES);
+    return $s->fetchAll();
+}
+
+/**
+ * Les comptes CLIENTS, cherchables et plafonnés.
+ *
+ * On cherche par nom, par adresse ou par structure : ce sont les trois
+ * choses qu'on a sous les yeux quand quelqu'un écrit pour demander de
+ * l'aide.
+ */
+function comptes_clients(string $cherche = '', int $limite = 100): array
+{
+    $roles = implode(',', array_fill(0, count(ROLES_PUBLICS), '?'));
+    $ou = "u.role IN ($roles)";
+    $args = ROLES_PUBLICS;
+    if (trim($cherche) !== '') {
+        $ou .= ' AND (u.nom LIKE ? OR u.email LIKE ? OR u.organisation LIKE ?)';
+        $m = '%' . trim($cherche) . '%';
+        array_push($args, $m, $m, $m);
+    }
+    $s = db()->prepare('SELECT ' . COMPTE_COLONNES . "
+        FROM utilisateurs u WHERE $ou ORDER BY u.cree_le DESC LIMIT " . max(1, $limite));
+    $s->execute($args);
+    return $s->fetchAll();
+}
+
+/** Combien de clients répondent à la recherche — pour dire la vérité sur ce qui est caché. */
+function comptes_clients_combien(string $cherche = ''): int
+{
+    $roles = implode(',', array_fill(0, count(ROLES_PUBLICS), '?'));
+    $ou = "role IN ($roles)";
+    $args = ROLES_PUBLICS;
+    if (trim($cherche) !== '') {
+        $ou .= ' AND (nom LIKE ? OR email LIKE ? OR organisation LIKE ?)';
+        $m = '%' . trim($cherche) . '%';
+        array_push($args, $m, $m, $m);
+    }
+    $s = db()->prepare("SELECT COUNT(*) FROM utilisateurs WHERE $ou");
+    $s->execute($args);
+    return (int) $s->fetchColumn();
 }
 
 /**
@@ -1257,7 +1317,7 @@ function article_transition(string $id, string $vers, array $acteur, ?string $mo
     if (!$a) {
         throw new TransitionRefusee('Article introuvable.');
     }
-    $role = ($acteur['role'] ?? '') === 'equipe' ? 'equipe' : 'partenaire';
+    $role = droit($acteur, 'valider') ? 'equipe' : 'partenaire';
     if (!transition_permise((string) $a['statut'], $vers, $role)) {
         throw new TransitionRefusee(sprintf(
             'Passage « %s → %s » non autorisé pour ce rôle.', $a['statut'], $vers
@@ -1297,13 +1357,31 @@ function article_supprimer(string $id): void
 {
     $a = article_par_id($id);
     db()->prepare('DELETE FROM articles WHERE id = ?')->execute([$id]);
+    if (!$a) {
+        return;
+    }
 
-    // La couverture s'en va avec, si aucun autre article ne s'en sert.
-    if ($a && preg_match('/[?&]f=([0-9a-f-]{36}\.(?:png|webp|jpg))(?:$|&)/', (string) $a['couverture'], $m)) {
-        $autre = db()->prepare('SELECT 1 FROM articles WHERE couverture LIKE ?');
-        $autre->execute(['%' . $m[1] . '%']);
+    /**
+     * Les images s'en vont avec l'article — couverture ET illustrations.
+     *
+     * Ne nettoyer que la couverture laissait grossir `donnees/medias/`
+     * indéfiniment : un article illustré supprimé, et ses cinq images
+     * restaient sur le disque pour toujours, sans que rien ne les
+     * référence. Sur un hébergement mutualisé, c'est le quota qui finit
+     * par se remplir — et un disque plein empêche d'écrire la sauvegarde.
+     */
+    preg_match_all(
+        '/[?&]f=([0-9a-f-]{36}\.(?:png|webp|jpg))(?:$|&|\)|"|\s)/',
+        (string) $a['couverture'] . ' ' . (string) $a['corps'],
+        $trouves
+    );
+    foreach (array_unique($trouves[1]) as $fichier) {
+        // Une image partagée par deux articles reste : c'est le cas d'un
+        // texte dupliqué pour en faire une variante.
+        $autre = db()->prepare('SELECT 1 FROM articles WHERE couverture LIKE ? OR corps LIKE ?');
+        $autre->execute(['%' . $fichier . '%', '%' . $fichier . '%']);
         if (!$autre->fetch()) {
-            @unlink(dossier_medias() . '/' . $m[1]);
+            @unlink(dossier_medias() . '/' . $fichier);
         }
     }
 }

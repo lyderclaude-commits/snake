@@ -63,100 +63,115 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
      * le lien public est donc redondant, et il disparaît.
      */
     /**
-     * Le menu suit le RÔLE, et se range par intention.
+     * Le menu se déduit des DROITS, pas d'une liste par rôle.
      *
-     * L'administration tenait dans un seul déroulant. À dix entrées, il
-     * était devenu une liste où l'on cherche : « Relecture » et
-     * « Sauvegardes » y voisinaient sans rapport, et il fallait relire les
-     * dix pour en trouver une. Trois groupes courts se parcourent d'un
-     * coup d'œil parce que chacun répond à une question — qu'est-ce que je
-     * publie, à qui je parle, comment tourne la machine.
+     * Chaque entrée déclare le droit qu'elle demande, et le menu ne garde
+     * que celles qui passent. Ajouter un rôle ne demande alors aucune
+     * retouche ici : c'est la table `ROLES_DROITS` qui décide, et elle
+     * décide aussi de ce que l'écran laisse faire — les deux ne peuvent
+     * plus diverger. Un menu écrit à la main finit toujours par proposer
+     * une page qui refuse, ou par cacher une page qui marche.
      *
-     * Deux destinations restent HORS des groupes, et c'est délibéré :
+     * Deux formes seulement. Celle de la maison — pour qui voit TOUS les
+     * décors — se range en trois groupes ; celle de qui ne voit que les
+     * siens reste plate, parce qu'elle tient en quatre entrées.
      *
-     *  - le tableau de bord, parce qu'il est le point de départ et qu'un
-     *    point de départ ne se cherche pas dans un tiroir ;
-     *  - le contrôle d'entrée, parce qu'il s'utilise debout à une porte,
-     *    sur un téléphone, avec une file qui attend. Deux gestes de plus
-     *    pour l'ouvrir, ce sont deux gestes répétés à chaque soirée.
+     * Et deux destinations restent hors des groupes, délibérément : le
+     * tableau de bord, parce qu'un point de départ ne se cherche pas dans
+     * un tiroir ; le contrôle d'entrée, parce qu'il s'utilise debout à une
+     * porte, sur un téléphone, avec une file qui attend.
      */
-    $liens = match ($me['role'] ?? '') {
-        'equipe' => [
-            ['?p=admin', 'Tableau de bord'],
+    $forme = match (true) {
+        droit($me, 'decors_tous') => [
+            ['?p=admin', 'Tableau de bord', 'decors_tous'],
             ['groupe', 'Contenus', [
-                ['?p=catalogue',      'Décors'],
-                ['?p=relecture',      'Relecture des décors'],
-                ['?p=blog-admin',     'Le blog'],
-                ['?p=blog-relecture', 'Relecture du blog'],
+                ['?p=catalogue',      'Décors',               'decors_tous'],
+                ['?p=relecture',      'Relecture des décors', 'valider'],
+                ['?p=blog-admin',     'Le blog',              'articles'],
+                ['?p=blog-relecture', 'Relecture du blog',    'valider'],
             ]],
             ['groupe', 'Audience', [
-                ['?p=comptes',   'Comptes'],
-                ['?p=regie',     'Régie e-mail'],
-                ['?p=diffusion', 'Notifications push'],
-                ['?p=liens',     'Liens courts'],
+                ['?p=comptes',   'Comptes',            'comptes'],
+                ['?p=regie',     'Régie e-mail',       'regie'],
+                ['?p=diffusion', 'Notifications push', 'push'],
+                ['?p=liens',     'Liens courts',       'liens'],
             ]],
-            ['?p=scan', 'Entrée'],
+            ['?p=scan', 'Entrée', 'scan'],
             ['groupe', 'Système', [
-                ['?p=reglages',    'Réglages'],
-                ['?p=sauvegardes', 'Sauvegardes'],
-                ['?p=profil',      'Mon profil'],
+                ['?p=reglages',    'Réglages',    'reglages'],
+                ['?p=sauvegardes', 'Sauvegardes', 'reglages'],
+                ['?p=profil',      'Mon profil',  null],
             ]],
         ],
-        'partenaire' => [
-            ['?p=partenaire', 'Tableau de bord'],
+        droit($me, 'decors_siens') => [
+            ['?p=partenaire', 'Tableau de bord', 'decors_siens'],
             ['groupe', 'Promotion', [
-                ['?p=liens',      'Liens courts'],
-                ['?p=diffusion',  'Notifications push'],
-                ['?p=regie',      'Régie e-mail'],
-                ['?p=blog-admin', 'Mes articles'],
+                ['?p=liens',      'Liens courts',       'liens'],
+                ['?p=diffusion',  'Notifications push', 'push'],
+                ['?p=regie',      'Régie e-mail',       'regie'],
+                ['?p=blog-admin', 'Mes articles',       'articles'],
             ]],
-            ['?p=decors', 'Le catalogue'],
-            ['?p=profil', 'Mon profil'],
+            ['?p=scan',   'Entrée',        'scan'],
+            ['?p=decors', 'Le catalogue',  null],
+            ['?p=profil', 'Mon profil',    null],
         ],
-        'participant' => [
-            ['?p=decors', 'Les décors'],
-            ['?p=blog',   'Le blog'],
-            ['?p=compte', 'Mon compte'],
-            ['?p=profil', 'Mon profil'],
+        $me !== null => [
+            ['?p=scan',   'Entrée',      'scan'],
+            ['?p=decors', 'Les décors',  null],
+            ['?p=blog',   'Le blog',     null],
+            ['?p=compte', 'Mon compte',  null],
+            ['?p=profil', 'Mon profil',  null],
         ],
         default => [
-            ['?p=decors', 'Les décors'],
-            ['?p=blog',   'Le blog'],
+            ['?p=decors', 'Les décors', null],
+            ['?p=blog',   'Le blog',    null],
         ],
     };
 
     /**
-     * Le groupe « Promotion » ne montre que ce que l'offre donne.
+     * Le filtre : le droit du rôle ET, pour un client, ce que son offre
+     * comprend.
      *
-     * Montrer un lien qui mène à « cette page vient avec une autre offre »
-     * est une façon de vendre ; le montrer À CHAQUE PAGE en est une de
-     * lasser. L'organisateur qui y a droit le voit, les autres le
-     * découvrent sur la page des offres — et un groupe qui se viderait
-     * entièrement disparaît, plutôt que de rester ouvert sur rien.
+     * Les deux conditions sont distinctes et il faut les deux. Un éditeur
+     * n'a pas le droit d'écrire à la base, quelle que soit son offre — il
+     * n'en a pas. Un organisateur en Découverte a le droit, mais n'a pas
+     * acheté la fonction. Montrer un lien qui mène à un refus est une
+     * façon de vendre ; le montrer à chaque page en est une de lasser.
      */
-    if (($me['role'] ?? '') === 'partenaire') {
-        foreach ($liens as $i => $entree) {
-            if (($entree[0] ?? '') !== 'groupe' || ($entree[1] ?? '') !== 'Promotion') {
-                continue;
+    $permis = function (?string $besoin) use ($me): bool {
+        if ($besoin === null) {
+            return true;
+        }
+        if (!droit($me, $besoin)) {
+            return false;
+        }
+        return match ($besoin) {
+            'regie' => capacite($me, 'regie'),
+            'push' => capacite($me, 'telegram_push'),
+            'liens' => quota($me, 'liens_courts') !== 0,
+            default => true,
+        };
+    };
+
+    $liens = [];
+    foreach ($forme as $entree) {
+        if ($entree[0] !== 'groupe') {
+            if ($permis($entree[2])) {
+                $liens[] = [$entree[0], $entree[1]];
             }
-            $garde = [];
-            foreach ($entree[2] as $sous) {
-                $besoin = match ($sous[0]) {
-                    '?p=diffusion' => 'telegram_push',
-                    '?p=regie' => 'regie',
-                    default => null,
-                };
-                if ($besoin === null || capacite($me, $besoin)) {
-                    $garde[] = $sous;
-                }
-            }
-            if ($garde) {
-                $liens[$i][2] = $garde;
-            } else {
-                unset($liens[$i]);
+            continue;
+        }
+        // Un groupe entièrement filtré disparaît, plutôt que de rester
+        // ouvert sur rien.
+        $garde = [];
+        foreach ($entree[2] as [$cible, $nom, $besoin]) {
+            if ($permis($besoin)) {
+                $garde[] = [$cible, $nom];
             }
         }
-        $liens = array_values($liens);
+        if ($garde) {
+            $liens[] = ['groupe', $entree[1], $garde];
+        }
     }
 
     $ici = (string) ($_GET['p'] ?? 'accueil');

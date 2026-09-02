@@ -7,7 +7,7 @@
  * les attend, et on découvrirait la panne le jour où un partenaire dirait
  * n'avoir jamais reçu la décision sur son décor.
  */
-$u = exiger_role('equipe');
+$u = exiger_droit('reglages');
 
 $valeurs = reglages_courriel();
 $message = null;

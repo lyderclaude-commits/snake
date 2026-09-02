@@ -169,8 +169,11 @@ $raccourcis = [
               <b><?= e($c['nom']) ?></b>
               <span class="aide"><?= e($c['email']) ?></span>
             </span>
-            <span class="pastille <?= $c['role'] === 'equipe' ? 'publie' : 'brouillon' ?>"><?= e(role_libelle($c['role'])) ?></span>
-            <?php if ($c['role'] !== 'equipe'): ?>
+            <?php /* Un compte interne se distingue au premier coup d'œil :
+                     dans une liste de nouveaux inscrits, c'est le seul qui
+                     ne devrait pas y être par accident. */ ?>
+            <span class="pastille <?= interne($c) ? 'publie' : 'brouillon' ?>"><?= e(role_libelle($c['role'])) ?></span>
+            <?php if (!interne($c)): ?>
               <span class="pastille formule"><?= e(formule_libelle($c['formule'] ?? null)) ?></span>
             <?php endif; ?>
           </li>

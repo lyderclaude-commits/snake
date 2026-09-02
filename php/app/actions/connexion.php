@@ -18,11 +18,7 @@ if ($post) {
         if ($u && !((int) $u['suspendu']) && password_verify($mdp, $u['mot_de_passe'])) {
             debit_effacer($cle);
             connecter($u['id']);
-            rediriger(match ($u['role']) {
-                'equipe' => '?p=admin',
-                'partenaire' => '?p=partenaire',
-                default => '?p=compte',
-            });
+            rediriger(accueil_de($u));
         }
         debit_noter($cle);
         $erreur = 'Adresse ou mot de passe incorrect.';

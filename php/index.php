@@ -170,6 +170,48 @@ switch ($page) {
     case 'blog-action':
         require RACINE . '/app/actions/blog-admin.php';
 
+    /**
+     * Téléverser une image DEPUIS l'éditeur, sans quitter la page.
+     *
+     * Obliger à enregistrer, aller ailleurs choisir un fichier, revenir et
+     * coller une adresse est le genre de parcours qui fait qu'on n'illustre
+     * jamais rien. L'image part, revient avec son adresse, et se pose dans
+     * le texte — c'est tout.
+     *
+     * Le droit exigé est `articles` : celui-là même qui autorise à écrire.
+     * Rien ne servirait de laisser écrire sans laisser illustrer.
+     */
+    case 'api-media':
+        $u = exiger_droit('articles');
+        verifier_csrf();
+        if (empty($_FILES['image']['tmp_name']) || !is_uploaded_file($_FILES['image']['tmp_name'])) {
+            json_repondre(['ok' => false, 'message' => 'Aucun fichier reçu.'], 400);
+        }
+        $info = @getimagesize($_FILES['image']['tmp_name']);
+        $ext = match ($info[2] ?? 0) {
+            IMAGETYPE_PNG => 'png',
+            IMAGETYPE_WEBP => 'webp',
+            IMAGETYPE_JPEG => 'jpg',
+            default => null,
+        };
+        if (!$ext) {
+            json_repondre(['ok' => false,
+                'message' => 'Cette image doit être un JPEG, un PNG ou un WebP.'], 400);
+        }
+        if (($_FILES['image']['size'] ?? 0) > 6 * 1024 * 1024) {
+            json_repondre(['ok' => false, 'message' => 'Cette image dépasse 6 Mo.'], 400);
+        }
+        $nom = nouvel_id() . '.' . $ext;
+        move_uploaded_file($_FILES['image']['tmp_name'], dossier_medias() . '/' . $nom);
+        // Redimensionnée et recompressée à l'arrivée, comme une couverture :
+        // une photo d'appareil fait 4 000 px et 5 Mo, et s'affiche en 900.
+        $c = compresser_cadre(dossier_medias(), $nom);
+        json_repondre([
+            'ok' => true,
+            'url' => url('?p=media&f=' . $c['nom']),
+            'poids' => poids($c['apres']),
+        ]);
+
     case 'decor':
         $d = decor_par_slug((string) ($_GET['slug'] ?? ''));
         if (!$d || $d['statut'] !== 'publie') {
@@ -220,7 +262,7 @@ switch ($page) {
         require RACINE . '/app/actions/profil.php';
 
     case 'compte':
-        $u = exiger_role('participant', 'partenaire', 'equipe');
+        $u = exiger_role(...ROLES);
         vue('compte', [
             'titre' => 'Mon compte — Wakabi Boost',
             'creations' => creations_de($u['id']),
@@ -229,7 +271,7 @@ switch ($page) {
         ]);
 
     case 'notifications':
-        $u = exiger_role('participant', 'partenaire', 'equipe');
+        $u = exiger_role(...ROLES);
         $liste = notifications_de($u['id']);
         notifications_marquer_lues($u['id']);
         vue('notifications', ['titre' => 'Notifications', 'liste' => $liste]);
@@ -360,7 +402,7 @@ switch ($page) {
     /* ---- partenaire ---- */
 
     case 'partenaire':
-        $u = exiger_role('partenaire', 'equipe');
+        $u = exiger_droit('decors_siens');
         vue('partenaire', ['titre' => 'Mes campagnes', 'liste' => decors_de($u['id'])]);
 
     case 'nouveau':
@@ -396,7 +438,7 @@ switch ($page) {
     /* ---- équipe ---- */
 
     case 'admin':
-        exiger_role('equipe');
+        exiger_droit('decors_tous');
         vue('admin', [
             'titre' => 'Tableau de bord',
             'stats' => tableau_de_bord(),
@@ -536,7 +578,7 @@ switch ($page) {
      * JavaScript — c'est la même fonction qui rend le verdict.
      */
     case 'api-scan':
-        $u = exiger_role('equipe');
+        $u = exiger_droit('scan');
         verifier_csrf();
         $jeton = strtoupper(trim((string) ($_POST['jeton'] ?? '')));
         if ($jeton === '') {
@@ -565,7 +607,7 @@ switch ($page) {
      * Studio. Un aperçu qui mentirait ne servirait à rien.
      */
     case 'api-apercu':
-        $u = exiger_role('partenaire', 'equipe');
+        $u = exiger_droit('decors_siens');
         verifier_csrf();
 
         $disposition = (string) ($_POST['disposition'] ?? 'bandeau');

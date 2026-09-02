@@ -10,8 +10,9 @@ $ouvert = $ouvert ?? false;
 <div class="contenu">
   <section class="entete">
     <h1>Comptes</h1>
-    <p><?= count($liste) ?> inscrits. C’est ici que se donnent les accès : un rôle décide de ce
-    qu’une personne peut faire, une offre décide de combien elle peut en faire.</p>
+    <p><?= (int) $clients_total ?> client<?= $clients_total > 1 ? 's' : '' ?> et <?= count($equipe) ?> membre<?=
+      count($equipe) > 1 ? 's' : '' ?> de l’équipe. C’est ici que se donnent les accès : un rôle
+    décide de ce qu’une personne peut faire, une offre décide de combien elle peut en faire.</p>
   </section>
 
   <?php if (!empty($_GET['ok'])): ?><div class="msg ok" role="status"><?= e($_GET['ok']) ?></div><?php endif; ?>
@@ -39,12 +40,33 @@ $ouvert = $ouvert ?? false;
 
       <div class="champ">
         <label for="c-role">Rôle</label>
-        <select id="c-role" name="role">
-          <?php foreach (ROLES as $r): ?>
-            <option value="<?= e($r) ?>" <?= $valeurs['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
-          <?php endforeach; ?>
+        <?php
+        /* L'aide de CHAQUE rôle est écrite d'avance et montrée à la volée :
+           « Éditeur » et « Coordinateur » ne se devinent pas, et choisir de
+           travers donne à quelqu'un les clés du catalogue pour un samedi. */
+        /* Les deux familles sont SÉPARÉES dans la liste. Un compte client et
+           un compte de la maison n'ont rien à voir : les mêler dans une liste
+           à plat finit par faire créer un coordinateur là où l'on voulait un
+           organisateur. */
+        ?>
+        <select id="c-role" name="role"
+                onchange="document.getElementById('c-role-aide').textContent = this.selectedOptions[0].dataset.aide">
+          <optgroup label="Comptes clients">
+            <?php foreach (ROLES_PUBLICS as $r): ?>
+              <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
+                      <?= $valeurs['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+          <?php if (droit($me, 'comptes_internes')): ?>
+            <optgroup label="Comptes de l’équipe">
+              <?php foreach (ROLES_INTERNES as $r): ?>
+                <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
+                        <?= $valeurs['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+              <?php endforeach; ?>
+            </optgroup>
+          <?php endif; ?>
         </select>
-        <p class="aide">L’équipe voit tout et modère. L’organisateur crée des campagnes soumises à relecture.</p>
+        <p class="aide" id="c-role-aide"><?= e(role_aide($valeurs['role'])) ?></p>
       </div>
 
       <div class="champ">
@@ -92,12 +114,15 @@ $ouvert = $ouvert ?? false;
   </details>
 
   <!-- ---------- la liste ---------- -->
-  <div class="tableau">
-    <table>
-      <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
-      <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
-      <tbody>
-      <?php foreach ($liste as $c): ?>
+  <?php
+  /**
+   * Une seule écriture de la ligne pour les deux tables.
+   *
+   * Elles montrent les mêmes colonnes et les mêmes gestes ; les écrire
+   * deux fois, c'est se garantir qu'un jour l'une des deux oubliera la
+   * confirmation d'adresse ou le bouton « Suspendre ».
+   */
+  $ligne = function (array $c) use ($me) { ?>
         <tr>
           <td>
             <a href="<?= e(url('?p=organisateur&id=' . rawurlencode((string) $c['id']))) ?>"><b><?= e($c['nom']) ?></b></a>
@@ -143,9 +168,23 @@ $ouvert = $ouvert ?? false;
                 <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
                 <input type="hidden" name="id" value="<?= e($c['id']) ?>">
                 <select name="role" style="width:auto" aria-label="Rôle de <?= e($c['nom']) ?>">
-                  <?php foreach (ROLES as $r): ?>
-                    <option value="<?= e($r) ?>" <?= $c['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
-                  <?php endforeach; ?>
+                  <optgroup label="Clients">
+                    <?php foreach (ROLES_PUBLICS as $r): ?>
+                      <option value="<?= e($r) ?>" <?= $c['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                  <?php if (droit($me, 'comptes_internes')): ?>
+                    <optgroup label="Équipe">
+                      <?php foreach (ROLES_INTERNES as $r): ?>
+                        <option value="<?= e($r) ?>" <?= $c['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+                      <?php endforeach; ?>
+                    </optgroup>
+                  <?php elseif (in_array($c['role'], ROLES_INTERNES, true)): ?>
+                    <?php /* Le rôle actuel reste lisible, même s'il n'est pas
+                             donnable : une liste qui n'affiche pas ce qu'elle
+                             décrit se lit comme une rétrogradation en attente. */ ?>
+                    <option value="<?= e($c['role']) ?>" selected><?= e(role_libelle($c['role'])) ?></option>
+                  <?php endif; ?>
                 </select>
                 <select name="formule" style="width:auto" aria-label="Offre de <?= e($c['nom']) ?>">
                   <?php foreach (FORMULES as $cle => $f): ?>
@@ -168,10 +207,59 @@ $ouvert = $ouvert ?? false;
             <?php else: ?><span class="pastille publie">Actif</span><?php endif; ?>
           </td>
         </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
+  <?php };
+  ?>
+
+  <!-- l'équipe : peu de monde, jamais tronqué, du plus ancien au plus récent -->
+  <section class="bloc-comptes">
+    <h2 class="titre-liste">L’équipe</h2>
+    <p class="aide">Les comptes de la maison. Ils ne consomment pas de quota et ne se cherchent
+    pas : ils tiennent sur cet écran.</p>
+    <div class="tableau">
+      <table>
+        <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
+        <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
+        <tbody>
+        <?php foreach ($equipe as $c) { $ligne($c); } ?>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- les clients : longue liste, donc cherchable -->
+  <section class="bloc-comptes">
+    <h2 class="titre-liste">Les clients</h2>
+    <form method="get" action="<?= e(url('?p=comptes')) ?>" class="rangee chercher chercher-comptes">
+      <input type="hidden" name="p" value="comptes">
+      <input type="text" name="q" value="<?= e($cherche) ?>" placeholder="Nom, adresse ou structure"
+             aria-label="Chercher un compte client">
+      <button class="bouton fant petit" type="submit">Chercher</button>
+      <?php if ($cherche !== ''): ?>
+        <a class="bouton fant petit" href="<?= e(url('?p=comptes')) ?>">Effacer</a>
+      <?php endif; ?>
+    </form>
+
+    <?php if (!$clients): ?>
+      <p class="aide">Aucun compte client ne correspond à « <?= e($cherche) ?> ».</p>
+    <?php else: ?>
+      <div class="tableau">
+        <table>
+          <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
+          <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
+          <tbody>
+          <?php foreach ($clients as $c) { $ligne($c); } ?>
+          </tbody>
+        </table>
+      </div>
+      <?php if ($clients_total > count($clients)): ?>
+        <?php /* Dire ce qui n'est pas montré : une liste qui tronque en
+                 silence laisse croire qu'un compte a disparu. */ ?>
+        <p class="aide" style="margin-top:8px"><?= count($clients) ?> comptes affichés sur
+        <?= (int) $clients_total ?>. Cherchez par nom, adresse ou structure pour trouver les autres.</p>
+      <?php endif; ?>
+    <?php endif; ?>
+  </section>
+
   <p class="aide" style="margin-top:12px">Suspendre coupe immédiatement les sessions ouvertes.
   Un administrateur ne peut ni se rétrograder ni se suspendre lui-même, sans quoi
   l’installation pourrait se retrouver sans administrateur.</p>

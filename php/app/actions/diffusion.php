@@ -14,9 +14,9 @@
  * le bouton propose de continuer. C'est moins élégant qu'une file, et c'est
  * la seule chose qui marche sans démon sur ce type d'hébergement.
  */
-$u = exiger_role('partenaire', 'equipe');
+$u = exiger_droit('push');
 
-$equipe = $u['role'] === 'equipe';
+$equipe = droit($u, 'valider');
 if (!$equipe && !capacite($u, 'telegram_push')) {
     vue('offre-requise', [
         'titre' => 'Notifications push',

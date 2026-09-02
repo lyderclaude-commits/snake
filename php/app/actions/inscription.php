@@ -34,7 +34,7 @@ if ($post) {
         $erreur = 'Le mot de passe doit faire au moins 8 caractères.';
     } elseif (utilisateur_par_email($valeurs['email'])) {
         $erreur = 'Un compte existe déjà avec cette adresse.';
-    } elseif (!in_array($valeurs['role'], ['participant', 'partenaire'], true)) {
+    } elseif (!in_array($valeurs['role'], ROLES_PUBLICS, true)) {
         // Le rôle « equipe » ne s'obtient jamais par le formulaire public.
         $erreur = 'Choisissez un type de compte.';
     } else {
@@ -72,7 +72,7 @@ if ($post) {
         }
 
         connecter($id);
-        $vers = $valeurs['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte';
+        $vers = accueil_de($valeurs);
         rediriger($bienvenue === '' ? $vers : $vers . '&ok=' . rawurlencode($bienvenue));
     }
 }

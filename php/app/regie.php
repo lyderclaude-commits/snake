@@ -54,7 +54,7 @@ const REGIE_CIBLES = [
 
 function regie_cibles_de(array $u): array
 {
-    $equipe = ($u['role'] ?? '') === 'equipe';
+    $equipe = droit($u, 'valider');
     $out = [];
     foreach (REGIE_CIBLES as $cle => [$libelle, $pour]) {
         if ($equipe || $pour === 'partenaire') {
@@ -171,7 +171,7 @@ function campagne_email_transition(string $id, string $vers, array $acteur, ?str
     if (!$c) {
         throw new RuntimeException('Campagne introuvable.');
     }
-    $role = ($acteur['role'] ?? '') === 'equipe' ? 'equipe' : 'partenaire';
+    $role = droit($acteur, 'valider') ? 'equipe' : 'partenaire';
     if (!in_array($vers, $regles[$role][$c['statut']] ?? [], true)) {
         throw new RuntimeException(sprintf(
             'Passage « %s → %s » non autorisé pour ce rôle.',

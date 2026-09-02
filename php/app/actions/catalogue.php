@@ -7,7 +7,7 @@
  * qui attend une décision.
  */
 
-$u = exiger_role('equipe');
+$u = exiger_droit('decors_tous');
 
 /* ---------------- changement de statut ---------------- */
 

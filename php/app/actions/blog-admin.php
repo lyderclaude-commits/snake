@@ -12,8 +12,10 @@
  * organisateur qui veut écrire lui-même n'a plus besoin d'attendre qu'on
  * ait le temps — il propose, et l'équipe relit.
  */
-$u = exiger_role('partenaire', 'equipe');
-$equipe = $u['role'] === 'equipe';
+$u = exiger_droit('articles');
+// Ce qui compte n'est pas d'être de l'équipe, c'est d'avoir le droit
+// d'arbitrer. Un coordinateur publie ; un éditeur propose.
+$equipe = droit($u, 'valider');
 
 $erreur = null;
 $message = $_GET['ok'] ?? null;
@@ -48,7 +50,7 @@ if ($page === 'blog-action') {
                     'Proposé à la rédaction. Réponse sous 24 h ouvrées.'));
 
             case 'publier':
-                exiger_role('equipe');
+                exiger_droit('valider');
                 article_transition((string) $a['id'], 'publie', $u);
                 if ($a['auteur_id'] && $a['auteur_id'] !== $u['id']) {
                     notifier((string) $a['auteur_id'], 'blog', 'Votre article est en ligne',
@@ -60,7 +62,7 @@ if ($page === 'blog-action') {
 
             case 'corrections':
             case 'refuser':
-                exiger_role('equipe');
+                exiger_droit('valider');
                 article_transition((string) $a['id'], $quoi === 'refuser' ? 'refuse' : 'corrections', $u, $motif);
                 if ($a['auteur_id']) {
                     notifier((string) $a['auteur_id'], 'blog',
@@ -97,7 +99,7 @@ if ($page === 'blog-action') {
 /* ---------------- la file de relecture ---------------- */
 
 if ($page === 'blog-relecture') {
-    exiger_role('equipe');
+    exiger_droit('valider');
     vue('blog-relecture', [
         'titre' => 'Relecture du blog',
         'liste' => articles_en_attente(),

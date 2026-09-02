@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 function assurer_schema(): void
 {
@@ -92,6 +92,40 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     }
 
     migrer_donnees($pdo);
+    promouvoir_fondateur($pdo);
+}
+
+/**
+ * v10 — le plus ancien compte d'équipe devient super-administrateur.
+ *
+ * Le rôle est né après ces installations : sans ce passage, elles se
+ * retrouveraient sans personne pour créer un compte d'équipe, et la seule
+ * issue serait un UPDATE à la main dans phpMyAdmin. On promeut le plus
+ * ANCIEN, parce que c'est celui qu'a créé l'installateur — le compte
+ * fondateur, celui dont on a le mot de passe.
+ *
+ * Idempotent : dès qu'un super-administrateur existe, la fonction ne fait
+ * plus rien.
+ */
+function promouvoir_fondateur(PDO $pdo): void
+{
+    try {
+        $deja = (int) $pdo->query(
+            "SELECT COUNT(*) FROM utilisateurs WHERE role = 'super_admin'"
+        )->fetchColumn();
+        if ($deja > 0) {
+            return;
+        }
+        $id = $pdo->query(
+            "SELECT id FROM utilisateurs WHERE role = 'equipe' ORDER BY cree_le ASC LIMIT 1"
+        )->fetchColumn();
+        if ($id) {
+            $pdo->prepare("UPDATE utilisateurs SET role = 'super_admin' WHERE id = ?")->execute([$id]);
+        }
+    } catch (PDOException) {
+        // Table absente : c'est une installation neuve, `install.php` s'en
+        // charge et crée directement un super-administrateur.
+    }
 }
 
 /**

@@ -74,6 +74,20 @@ export function marquesVersHtml(brut: string): string {
     if (l === '') { viderParagraphe(); viderListe(); continue; }
 
     let m: RegExpExecArray | null;
+    // Une image est un BLOC : elle occupe sa ligne, comme dans la page
+    // publiée. La traiter en ligne obligerait à décider quoi faire du
+    // texte autour, et à répondre autrement que le rendu PHP.
+    if ((m = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(l))) {
+      viderParagraphe(); viderListe();
+      const legende = m[1];
+      sortie.push(
+        `<figure class="image-article" contenteditable="false">`
+        + `<img src="${m[2]}" alt="${legende}">`
+        + (legende ? `<figcaption>${legende}</figcaption>` : '')
+        + '</figure>'
+      );
+      continue;
+    }
     if ((m = /^###\s+(.*)$/.exec(l))) {
       viderParagraphe(); viderListe();
       sortie.push(`<h4>${enLigne(m[1])}</h4>`);
@@ -123,6 +137,12 @@ function marquesEnLigne(noeud: Node): string {
   if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|IFRAME|OBJECT|SVG|HEAD|TITLE)$/.test(e.tagName)) {
     return '';
   }
+  // Une figure est un bloc : rencontrée en ligne, elle a été imbriquée par
+  // le navigateur, et sortir sa légende au milieu d'une phrase donnerait un
+  // texte que personne n'a écrit.
+  if (e.tagName === 'FIGURE') {
+    return '';
+  }
 
   const dedans = Array.from(e.childNodes).map(marquesEnLigne).join('');
 
@@ -157,6 +177,16 @@ export function htmlVersMarques(racine: HTMLElement): string {
       l !== '' || (i > 0 && i < t.length - 1));
 
     switch (e.tagName) {
+      case 'FIGURE': {
+        const img = e.querySelector('img');
+        const src = img?.getAttribute('src') ?? '';
+        const legende = nettoyer(e.querySelector('figcaption')?.textContent ?? '');
+        // Une figure sans image n'a rien à donner ; et l'adresse est
+        // laissée telle quelle : c'est le serveur qui décide de la servir
+        // ou non, et lui seul sait ce qui lui appartient.
+        if (src) blocs.push(`![${legende}](${src})`);
+        return;
+      }
       case 'H1': case 'H2': case 'H3':
         if (nettoyer(contenu)) blocs.push('## ' + nettoyer(contenu));
         return;
@@ -261,6 +291,83 @@ function changerBloc(zone: HTMLElement, balise: string): void {
  * gardent leur lettre : c'est la convention de tous les traitements de
  * texte français depuis trente ans, et elle, tout le monde la connaît.
  */
+/**
+ * Choisir une image, l'envoyer, et la poser dans le texte.
+ *
+ * L'attente est ANNONCÉE : sur une connexion de Lomé, une photo de cinq
+ * mégaoctets met du temps, et un bouton qui ne réagit pas se reclique —
+ * on se retrouve avec l'image en triple. Un bloc « envoi en cours »
+ * occupe la place, puis devient l'image.
+ */
+async function televerser(zone: HTMLElement): Promise<void> {
+  const contexte = document.getElementById('editeur-contexte');
+  const csrf = (() => {
+    try { return (JSON.parse(contexte?.textContent ?? '{}') as { csrf?: string }).csrf ?? ''; }
+    catch { return ''; }
+  })();
+  const base = (() => {
+    try { return (JSON.parse(contexte?.textContent ?? '{}') as { base?: string }).base ?? ''; }
+    catch { return ''; }
+  })();
+
+  const choix = document.createElement('input');
+  choix.type = 'file';
+  choix.accept = 'image/png,image/jpeg,image/webp';
+  choix.addEventListener('change', async () => {
+    const fichier = choix.files?.[0];
+    if (!fichier) return;
+
+    const legende = prompt(
+      'La légende de l’image — c’est aussi ce que lisent les gens qui ne la voient pas.',
+      ''
+    ) ?? '';
+
+    const attente = document.createElement('p');
+    attente.className = 'editeur-attente';
+    attente.textContent = 'Envoi de ' + fichier.name + '…';
+    const bloc = blocCourant(zone);
+    bloc ? bloc.after(attente) : zone.appendChild(attente);
+
+    try {
+      const f = new FormData();
+      f.set('csrf', csrf);
+      f.set('image', fichier);
+      const r = await fetch(base + 'index.php?p=api-media', { method: 'POST', body: f });
+      const rep = await r.json() as { ok?: boolean; url?: string; message?: string };
+      if (!rep.ok || !rep.url) throw new Error(rep.message ?? 'l’envoi a échoué');
+
+      const figure = document.createElement('figure');
+      figure.className = 'image-article';
+      figure.contentEditable = 'false';
+      const img = document.createElement('img');
+      img.src = rep.url;
+      img.alt = legende;
+      figure.appendChild(img);
+      if (legende) {
+        const cap = document.createElement('figcaption');
+        cap.textContent = legende;
+        figure.appendChild(cap);
+      }
+      attente.replaceWith(figure);
+
+      // Un paragraphe après l'image : sans lui, il n'y a plus où écrire
+      // quand elle est le dernier bloc.
+      if (!figure.nextElementSibling) {
+        const p = document.createElement('p');
+        p.innerHTML = '<br>';
+        figure.after(p);
+      }
+      zone.dispatchEvent(new Event('input'));
+    } catch (e) {
+      attente.className = 'editeur-attente erreur';
+      attente.textContent = 'L’image n’est pas partie : '
+        + (e instanceof Error ? e.message : 'erreur inconnue');
+      setTimeout(() => attente.remove(), 6000);
+    }
+  });
+  choix.click();
+}
+
 const OUTILS: Outil[] = [
   { cle: 'h3', titre: 'Intertitre', icone: 'Titre', agir: (z) => changerBloc(z, 'H3') },
   { cle: 'h4', titre: 'Sous-titre', icone: 'Sous-titre', agir: (z) => changerBloc(z, 'H4') },
@@ -270,6 +377,10 @@ const OUTILS: Outil[] = [
     agir: () => document.execCommand('italic') },
   { cle: 'liste', titre: 'Liste à puces', icone: 'Liste', agir: (z) => changerBloc(z, 'UL') },
   { cle: 'citation', titre: 'Citation', icone: 'Citation', agir: (z) => changerBloc(z, 'BLOCKQUOTE') },
+  {
+    cle: 'image', titre: 'Image', icone: 'Image',
+    agir: (z) => { void televerser(z); },
+  },
   {
     cle: 'lien', titre: 'Lien', icone: 'Lien',
     agir: () => {

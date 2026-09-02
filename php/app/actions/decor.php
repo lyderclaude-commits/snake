@@ -1,7 +1,7 @@
 <?php
 /** Création d'un décor par un partenaire, et soumission à la relecture. */
 
-$u = exiger_role('partenaire', 'equipe');
+$u = exiger_droit('decors_siens');
 
 /**
  * Le même formulaire sert à créer et à modifier.
@@ -12,7 +12,7 @@ $u = exiger_role('partenaire', 'equipe');
 $modifie = $page === 'modifier' ? decor_par_id((string) ($_GET['id'] ?? $_POST['id'] ?? '')) : null;
 if ($page === 'modifier') {
     if (!$modifie) {
-        rediriger($u['role'] === 'equipe' ? '?p=catalogue&err=' . urlencode('Décor introuvable.') : '?p=partenaire');
+        rediriger(droit($u, 'decors_tous') ? '?p=catalogue&err=' . urlencode('Décor introuvable.') : '?p=partenaire');
     }
     // Un partenaire ne modifie que ses propres décors, et pas après publication.
     if ($u['role'] === 'partenaire') {
@@ -279,7 +279,7 @@ if ($post) {
                 'legende' => $valeurs['legende'],
                 'expire_le' => $valeurs['expire_le'],
                 'apparence' => array_intersect_key($valeurs, array_flip(CLES_APPARENCE)),
-                'cree_par' => $modifie ? $modifie['cree_par'] : ($u['role'] === 'equipe' ? 'equipe' : 'partenaire'),
+                'cree_par' => $modifie ? $modifie['cree_par'] : (droit($u, 'valider') ? 'equipe' : 'partenaire'),
                 'partenaire_id' => $u['role'] === 'partenaire' ? $u['id'] : null,
             ]);
 
@@ -293,7 +293,7 @@ if ($post) {
                     'cadre_url' => $valeurs['cadre_url'],
                     'expire_le' => $valeurs['expire_le'],
                 ]);
-                rediriger(($u['role'] === 'equipe' ? '?p=catalogue' : '?p=partenaire')
+                rediriger((droit($u, 'decors_tous') ? '?p=catalogue' : '?p=partenaire')
                     . '&ok=' . urlencode('« ' . $valeurs['titre'] . ' » mis à jour.' . $allege));
             }
 
@@ -303,13 +303,16 @@ if ($post) {
                 'sous_titre' => $valeurs['sous_titre'],
                 'ville' => $valeurs['ville'],
                 'rubrique' => $valeurs['rubrique'],
-                'cree_par' => $u['role'] === 'equipe' ? 'equipe' : 'partenaire',
+                // `cree_par` décide du garde-fou de redirection ET de
+                // l'obligation de relecture : c'est le droit d'arbitrer
+                // qui le fixe, pas le libellé du rôle.
+                'cree_par' => droit($u, 'valider') ? 'equipe' : 'partenaire',
                 'auteur_id' => $u['id'],
                 'gabarit' => $gabarit,
                 'cadre_url' => $valeurs['cadre_url'],
                 'expire_le' => $valeurs['expire_le'],
             ]);
-            rediriger($u['role'] === 'equipe'
+            rediriger(droit($u, 'decors_tous')
                 ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.' . $allege)
                 : '?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.' . $allege));
         } catch (GabaritInvalide $e) {

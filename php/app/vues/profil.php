@@ -102,7 +102,7 @@ $verifie = email_verifie($me);
   <?php require RACINE . '/app/vues/partiels/push-abonnement.php'; ?>
 
   <!-- ---------- partir ---------- -->
-  <?php if ($me['role'] !== 'equipe'): ?>
+  <?php if (!$interne): ?>
     <details class="carte" style="margin-top:16px">
       <summary style="cursor:pointer;font-weight:700">Supprimer mon compte</summary>
       <div style="margin-top:14px">

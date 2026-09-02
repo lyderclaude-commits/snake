@@ -20,7 +20,7 @@ if ($slug !== '') {
      * c'est là qu'il vérifie ce que la rédaction va lire.
      */
     $visible = $a && ($a['statut'] === 'publie'
-        || ($me['role'] ?? '') === 'equipe'
+        || droit($me, 'valider')
         || ($me && $a['auteur_id'] === $me['id']));
     if (!$visible) {
         http_response_code(404);

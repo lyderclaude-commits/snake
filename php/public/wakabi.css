@@ -399,6 +399,13 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
   .chercher input[type=text]{width:auto;flex:1}
 }
 
+.bloc-comptes{margin-top:22px}
+.bloc-comptes:first-of-type{margin-top:14px}
+.titre-liste{font-size:1.02rem;margin:0 0 2px}
+.titre-liste + .aide{margin:0 0 10px}
+/* La recherche des clients est un titre de section, pas un filtre en bout de
+   rangée : elle se place à gauche, sous le titre. */
+.chercher-comptes{margin:0 0 10px;margin-left:0}
 .liste-comptes{list-style:none;padding:0;margin:0}
 .liste-comptes li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:9px 0;border-top:1px solid var(--border)}
@@ -985,3 +992,32 @@ input[type=file].fichier-natif{
 /* Les intitulés écrits sont plus larges qu'un pictogramme : la barre les
    laisse respirer, et passe à la ligne plutôt que de déborder. */
 .editeur-outil{padding:0 11px;font-size:.82rem}
+
+/* ============ les images d'article ============
+
+   Elles occupent la largeur de la colonne de lecture et respirent : une
+   image collée au texte se lit comme une pièce jointe, pas comme une
+   illustration. La légende est plus petite et grise — c'est un commentaire
+   de l'image, pas la suite de l'article. */
+
+.image-article{margin:1.9em 0;padding:0}
+.image-article img{
+  width:100%;height:auto;display:block;border-radius:var(--r10);background:var(--bg2);
+}
+.image-article figcaption{
+  margin-top:8px;font-size:.84rem;color:var(--text3);line-height:1.5;
+}
+
+/* Dans l'éditeur, la figure n'est pas modifiable — on ne tape pas DANS une
+   image — mais elle doit se laisser sélectionner et supprimer comme un
+   bloc. Le liseré au survol dit qu'elle est un objet, pas du texte. */
+.editeur-zone .image-article{cursor:default;outline:1px solid transparent;border-radius:var(--r10)}
+.editeur-zone .image-article:hover{outline-color:var(--border)}
+
+/* L'attente pendant l'envoi. Une photo de cinq mégaoctets met du temps sur
+   une connexion de Lomé : sans repère, le bouton se reclique. */
+.editeur-attente{
+  margin:1.5em 0;padding:14px 16px;border-radius:var(--r10);
+  background:var(--bg2);color:var(--text2);font-size:.9rem;
+}
+.editeur-attente.erreur{background:#FEF2F2;color:#B91C1C}

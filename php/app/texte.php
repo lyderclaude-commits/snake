@@ -121,6 +121,22 @@ function texte_riche(string $brut): string
             $html[] = '<blockquote>' . texte_en_ligne($m[1]) . '</blockquote>';
             continue;
         }
+        /**
+         * Une image est un BLOC, jamais une marque en ligne.
+         *
+         * Une image de 900 px au milieu d'une phrase n'a aucun sens ; et
+         * la traiter comme du gras obligerait à décider quoi faire du
+         * texte qui l'entoure. Elle occupe sa ligne, seule.
+         */
+        if (preg_match('/^!\[([^\]]*)\]\(([^)\s]+)\)$/', $l, $m)) {
+            $vider();
+            $fermer_liste();
+            $img = image_article($m[2], $m[1]);
+            if ($img !== '') {
+                $html[] = $img;
+            }
+            continue;
+        }
         if (preg_match('/^[-*]\s+(.*)$/', $l, $m)) {
             $vider();
             if (!$liste) {
@@ -137,6 +153,44 @@ function texte_riche(string $brut): string
     $fermer_liste();
 
     return implode("\n", $html);
+}
+
+/**
+ * Une image d'article, et la règle qui décide de la servir ou non.
+ *
+ * **Seules les images téléversées ici sont rendues.** Une adresse
+ * extérieure serait trois problèmes en un : un mouchard posé sur la page
+ * de quelqu'un d'autre, une image qui disparaît le jour où le site
+ * d'origine ferme, et un contenu mixte qui fait crier le navigateur sur
+ * une page en HTTPS. Une adresse non reconnue n'est pas une erreur : la
+ * ligne disparaît, et l'auteur le voit dans son aperçu.
+ *
+ * La légende n'est pas un ornement : c'est le texte que lit quelqu'un qui
+ * ne voit pas l'image — parce qu'il est aveugle, ou parce que le réseau a
+ * lâché. Vide, l'image est déclarée décorative plutôt que d'être annoncée
+ * par son nom de fichier, qui n'apprend rien.
+ */
+function image_article(string $url, string $legende = ''): string
+{
+    $url = html_entity_decode($url, ENT_QUOTES, 'UTF-8');
+    if (!function_exists('image_reduite') || cle_image($url) === null) {
+        return '';
+    }
+    $im = image_reduite($url, 960);
+    $dim = $im['largeur']
+        ? ' width="' . (int) $im['largeur'] . '" height="' . (int) $im['hauteur'] . '"'
+        : '';
+    $srcset = $im['srcset']
+        ? ' srcset="' . e($im['srcset']) . '" sizes="(max-width:820px) 92vw, 760px"'
+        : '';
+
+    $balise = '<img src="' . e($im['src']) . '"' . $srcset . $dim
+            . ' alt="' . e($legende) . '" loading="lazy" decoding="async">';
+
+    return $legende === ''
+        ? '<figure class="image-article">' . $balise . '</figure>'
+        : '<figure class="image-article">' . $balise
+          . '<figcaption>' . texte_en_ligne(e($legende)) . '</figcaption></figure>';
 }
 
 /**
@@ -157,7 +211,7 @@ function texte_extrait(string $brut, int $max = 180): string
      * la différence entre deux mots collés et une ponctuation fautive.
      */
     $plat = strip_tags(preg_replace(
-        '~<(/?(?:p|h[1-6]|li|ul|ol|blockquote|br|div)\b)~i',
+        '~<(/?(?:p|h[1-6]|li|ul|ol|blockquote|br|div|figure|figcaption)\b)~i',
         ' <$1',
         texte_riche($brut)
     ) ?? '');

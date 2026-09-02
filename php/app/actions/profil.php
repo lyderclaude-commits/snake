@@ -12,7 +12,8 @@
  * se corrige sans. Les mêler obligerait à ressaisir son mot de passe pour
  * changer une ville.
  */
-$u = exiger_role('participant', 'partenaire', 'equipe');
+// Tout le monde a un profil, y compris un scanner.
+$u = utilisateur_courant() ?: exiger_role(...ROLES);
 
 $erreur = null;
 $message = $_GET['ok'] ?? null;
@@ -107,8 +108,8 @@ if ($page === 'profil-supprimer') {
      * installation sans administrateur ne se répare que par la base de
      * données.
      */
-    if ($u['role'] === 'equipe') {
-        $erreur = 'Un compte de l’équipe se supprime depuis l’écran Comptes, par quelqu’un d’autre.';
+    if (interne($u)) {
+        $erreur = 'Un compte interne se supprime depuis l’écran Comptes, par quelqu’un d’autre.';
     } elseif ($confirmation !== $u['email']) {
         $erreur = 'Pour confirmer, recopiez votre adresse e-mail exactement.';
     } else {
@@ -128,5 +129,6 @@ vue('profil', [
     'erreur' => $erreur,
     'message' => $message,
     'bilan' => $u['role'] === 'partenaire' ? bilan_offre($u) : null,
+    'interne' => interne($u),
     'campagnes' => $u['role'] === 'partenaire' ? count(decors_de((string) $u['id'])) : 0,
 ]);

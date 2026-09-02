@@ -5,7 +5,7 @@
  * Réservé à l'équipe. Une archive contient tous les comptes et tous les
  * badges : c'est le fichier le plus sensible du site.
  */
-$u = exiger_role('equipe');
+$u = exiger_droit('reglages');
 
 /* ---------------- fabriquer ---------------- */
 

@@ -1,6 +1,24 @@
 <?php
 /** Gestion des comptes : création par l'équipe, rôle, offre, suspension. */
-$u = exiger_role('equipe');
+$u = exiger_droit('comptes');
+
+/**
+ * L'écran des comptes, en deux listes.
+ *
+ * L'équipe d'un côté — quelques personnes, jamais tronquées — les clients
+ * de l'autre, cherchables. Écrit ici plutôt que deux fois, parce que le
+ * formulaire de création réaffiche le même écran quand il refuse.
+ */
+function ecran_comptes(): array
+{
+    $cherche = trim((string) ($_GET['q'] ?? ''));
+    return [
+        'equipe' => comptes_equipe(),
+        'clients' => comptes_clients($cherche),
+        'clients_total' => comptes_clients_combien($cherche),
+        'cherche' => $cherche,
+    ];
+}
 
 /* ---------------- créer un compte ---------------- */
 
@@ -22,6 +40,8 @@ if ($page === 'creer-compte') {
         !filter_var($v['email'], FILTER_VALIDATE_EMAIL) => 'Cette adresse e-mail n’est pas valide.',
         strlen($mdp) < 8 => 'Le mot de passe doit faire au moins 8 caractères.',
         !in_array($v['role'], ROLES, true) => 'Rôle inconnu.',
+        in_array($v['role'], ROLES_INTERNES, true) && !droit($u, 'comptes_internes') =>
+            'Seul un super-administrateur crée un compte de l’équipe.',
         !isset(FORMULES[$v['formule']]) => 'Offre inconnue.',
         utilisateur_par_email($v['email']) !== null => 'Un compte existe déjà avec cette adresse.',
         default => null,
@@ -32,11 +52,10 @@ if ($page === 'creer-compte') {
         // sa saisie à cause d'un doublon d'adresse est une punition inutile.
         vue('comptes', [
             'titre' => 'Comptes',
-            'liste' => comptes_tous(),
             'erreur' => $erreur,
             'valeurs' => $v,
             'ouvert' => true,
-        ]);
+        ] + ecran_comptes());
     }
 
     creer_utilisateur([
@@ -70,6 +89,23 @@ if ($page === 'role' || $page === 'suspendre') {
         // sans administrateur. Refusé, quoi qu'il arrive.
         rediriger($retour . '&err=' . urlencode('Vous ne pouvez pas modifier votre propre compte.'));
     }
+    /**
+     * Un compte de l'ÉQUIPE ne se touche que par un super-administrateur.
+     *
+     * Sans cette barrière, `comptes` suffit à se promouvoir soi-même — il
+     * suffit de promouvoir un complice, ou de suspendre le seul
+     * administrateur restant. C'est exactement la différence entre une
+     * équipe et une porte ouverte, et elle tient dans ces quatre lignes.
+     */
+    $vise = utilisateur_par_id($id);
+    if (!$vise) {
+        rediriger($retour . '&err=' . urlencode('Compte introuvable.'));
+    }
+    if (interne($vise) && !droit($u, 'comptes_internes')) {
+        rediriger($retour . '&err=' . urlencode(
+            'Un compte de l’équipe ne se modifie que par un super-administrateur.'));
+    }
+
     if ($page === 'role') {
         $role = (string) ($_POST['role'] ?? '');
         $formule = (string) ($_POST['formule'] ?? 'decouverte');
@@ -78,6 +114,22 @@ if ($page === 'role' || $page === 'suspendre') {
         }
         if (!isset(FORMULES[$formule])) {
             rediriger($retour . '&err=' . urlencode('Offre inconnue.'));
+        }
+        // Donner un rôle interne est le même geste que d'en modifier un.
+        if (in_array($role, ROLES_INTERNES, true) && !droit($u, 'comptes_internes')) {
+            rediriger($retour . '&err=' . urlencode(
+                'Seul un super-administrateur crée un compte de l’équipe.'));
+        }
+        /**
+         * Le DERNIER super-administrateur ne se rétrograde pas.
+         *
+         * Une installation sans lui ne se répare que par la base de
+         * données — et l'on ne s'en aperçoit qu'au moment d'en avoir
+         * besoin, c'est-à-dire trop tard.
+         */
+        if ($vise['role'] === 'super_admin' && $role !== 'super_admin' && compte_super_admins() <= 1) {
+            rediriger($retour . '&err=' . urlencode(
+                'C’est le dernier super-administrateur. Nommez-en un autre avant de le rétrograder.'));
         }
         db()->prepare('UPDATE utilisateurs SET role = ?, formule = ? WHERE id = ?')
             ->execute([$role, $formule, $id]);
@@ -98,8 +150,12 @@ if ($page === 'role' || $page === 'suspendre') {
             . 'téléchargement est ' . ($f['redirection'] ? 'active' : 'indisponible') . '. '
             . 'Le détail complet est sur votre tableau de bord.';
         notifier($id, 'compte', 'Votre offre est maintenant ' . formule_libelle($formule),
-            $corps, $role === 'partenaire' ? '?p=partenaire' : '?p=compte');
+            $corps, accueil_de(['role' => $role]));
     } else {
+        if ($vise['role'] === 'super_admin' && !$vise['suspendu'] && compte_super_admins() <= 1) {
+            rediriger($retour . '&err=' . urlencode(
+                'C’est le dernier super-administrateur : le suspendre fermerait la porte à tout le monde.'));
+        }
         db()->prepare('UPDATE utilisateurs SET suspendu = 1 - suspendu WHERE id = ?')->execute([$id]);
     }
     rediriger($retour . '&ok=' . urlencode('Compte mis à jour.'));
@@ -145,4 +201,4 @@ if ($page === 'organisateur') {
     vue('organisateur', ['titre' => $fiche['compte']['nom'], 'fiche' => $fiche]);
 }
 
-vue('comptes', ['titre' => 'Comptes', 'liste' => comptes_tous()]);
+vue('comptes', ['titre' => 'Comptes'] + ecran_comptes());

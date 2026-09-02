@@ -9,8 +9,135 @@
 
 declare(strict_types=1);
 
-const ROLES = ['participant', 'partenaire', 'equipe'];
+const ROLES = ['participant', 'partenaire', 'scanner', 'editeur', 'coordinateur',
+               'equipe', 'super_admin'];
 const KORIS_PAR_SCAN = 50;
+
+/**
+ * Ce que chaque rôle a le droit de faire.
+ *
+ * La même idée que `FORMULES` pour les offres, et pour la même raison : un
+ * droit qui vit dans une table se lit d'un coup d'œil et se corrige à un
+ * endroit. Éparpillé en `exiger_role('equipe')` dans dix-huit fichiers, il
+ * devient impossible de répondre à « qui peut publier un décor ? » sans
+ * relire l'application — et le jour où l'on ajoute un rôle, on en oublie
+ * trois.
+ *
+ * Deux familles de comptes, et la distinction porte tout le reste :
+ *
+ *  - les comptes CLIENTS — `participant`, `partenaire` — qui ont une
+ *    offre commerciale, des quotas, et ne voient que ce qui leur
+ *    appartient ;
+ *  - les comptes INTERNES — `scanner`, `editeur`, `coordinateur`,
+ *    `equipe` — qui travaillent pour la maison. Ils n'ont pas d'offre :
+ *    `capacite()` leur dit oui à tout, parce qu'on ne se vend pas des
+ *    fonctions à soi-même.
+ *
+ * Les trois rôles du milieu existent pour ne PAS avoir à donner les clés
+ * complètes à quelqu'un qui tient la porte un samedi soir. Un compte de
+ * l'équipe peut effacer le catalogue et lire les réglages SMTP ; un
+ * scanner ne peut que scanner.
+ */
+const DROITS = [
+    'scan'          => 'Contrôle d’entrée',
+    'decors_siens'  => 'Créer et modifier ses décors',
+    'decors_tous'   => 'Voir et modifier tous les décors',
+    'articles'      => 'Écrire des articles',
+    'valider'       => 'Publier et arbitrer ce que les autres proposent',
+    'liens'         => 'Liens courts',
+    'regie'         => 'Campagnes e-mail',
+    'push'          => 'Notifications du navigateur',
+    'comptes'       => 'Créer et gérer les comptes clients',
+    'comptes_internes' => 'Créer et gérer les comptes de l’équipe',
+    'reglages'      => 'Réglages, sauvegardes, maintenance',
+];
+
+const ROLES_DROITS = [
+    'participant'  => [],
+    'partenaire'   => ['decors_siens', 'articles', 'liens', 'regie', 'push'],
+    // Il tient la porte, et rien d'autre. C'est tout l'intérêt du rôle :
+    // le téléphone qui scanne à l'entrée passe de main en main, et il ne
+    // doit pas donner accès au catalogue ni aux comptes.
+    'scanner'      => ['scan'],
+    // Il fabrique, il ne décide pas. Ses décors et ses articles partent en
+    // relecture comme ceux d'un organisateur.
+    'editeur'      => ['decors_siens', 'articles', 'liens'],
+    // Tout ce que font les trois autres, plus l'arbitrage. Il ne touche ni
+    // aux comptes ni aux réglages : ce sont les deux gestes dont on ne se
+    // relève pas, et ils restent à l'équipe.
+    'coordinateur' => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
+                       'liens', 'regie', 'push'],
+    'equipe'       => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
+                       'liens', 'regie', 'push', 'comptes', 'reglages'],
+    /**
+     * Le compte fondateur, et le seul à pouvoir en fabriquer d'autres.
+     *
+     * La différence avec `equipe` tient en une ligne — `comptes_internes` —
+     * et elle est tout ce qui sépare une équipe d'une porte ouverte : sans
+     * elle, n'importe quel membre de l'équipe peut se promouvoir, promouvoir
+     * un ami, ou suspendre le seul administrateur restant. Ce sont les
+     * gestes dont on ne se relève pas sans toucher à la base de données.
+     */
+    'super_admin'  => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
+                       'liens', 'regie', 'push', 'comptes', 'comptes_internes', 'reglages'],
+];
+
+/**
+ * Les rôles qui travaillent pour la maison, par opposition aux clients.
+ *
+ * Ils ne s'obtiennent QUE par la main de quelqu'un qui a le droit
+ * `comptes` — c'est-à-dire l'équipe. L'inscription publique ne propose que
+ * les deux rôles clients, et le contrôle est refait côté serveur : un
+ * formulaire trafiqué qui poste `role=coordinateur` est refusé. Une liste
+ * déroulante n'est pas une autorisation.
+ */
+const ROLES_INTERNES = ['scanner', 'editeur', 'coordinateur', 'equipe', 'super_admin'];
+
+/** Ce qu'on peut choisir soi-même en s'inscrivant. Et rien d'autre. */
+const ROLES_PUBLICS = ['participant', 'partenaire'];
+
+/**
+ * Combien de super-administrateurs restent debout.
+ *
+ * Sert à interdire le dernier geste irréversible : rétrograder ou suspendre
+ * le seul compte qui peut encore en refaire un. Une installation sans
+ * super-administrateur ne se répare que par la base de données — et
+ * personne ne s'en aperçoit avant d'en avoir besoin.
+ */
+function compte_super_admins(): int
+{
+    return (int) db()->query(
+        "SELECT COUNT(*) FROM utilisateurs WHERE role = 'super_admin' AND suspendu = 0"
+    )->fetchColumn();
+}
+
+function interne(?array $u): bool
+{
+    return in_array($u['role'] ?? '', ROLES_INTERNES, true);
+}
+
+/** Ce rôle a-t-il ce droit ? La seule question que pose le contrôle d'accès. */
+function droit(?array $u, string $quoi): bool
+{
+    return in_array($quoi, ROLES_DROITS[$u['role'] ?? ''] ?? [], true);
+}
+
+/**
+ * Où atterrit ce compte quand il se connecte, ou qu'on le renvoie.
+ *
+ * Un scanner sur `?p=admin` verrait une page vide et croirait à une panne ;
+ * l'envoyer là où il a quelque chose à faire vaut mieux qu'un refus.
+ */
+function accueil_de(?array $u): string
+{
+    return match ($u['role'] ?? '') {
+        'super_admin', 'equipe', 'coordinateur' => '?p=admin',
+        'scanner' => '?p=scan',
+        'editeur' => '?p=partenaire',
+        'partenaire' => '?p=partenaire',
+        default => '?p=compte',
+    };
+}
 
 /**
  * Les formules, telles qu'elles sont vendues sur la vitrine.
@@ -126,8 +253,26 @@ function role_libelle(?string $r): string
     return [
         'participant' => 'Participant',
         'partenaire' => 'Organisateur',
+        'scanner' => 'Scanner',
+        'editeur' => 'Éditeur',
+        'coordinateur' => 'Coordinateur',
         'equipe' => 'Équipe',
+        'super_admin' => 'Super administrateur',
     ][$r ?? ''] ?? (string) $r;
+}
+
+/** Ce que le rôle fait, en une ligne — pour l'écran de création de compte. */
+function role_aide(?string $r): string
+{
+    return [
+        'participant' => 'Fait des badges, garde ses Koris. C’est le compte d’un invité.',
+        'partenaire' => 'Crée ses campagnes, les soumet à la relecture, suit ses chiffres. Une offre commerciale s’y attache.',
+        'scanner' => 'Le contrôle d’entrée, et rien d’autre. Pour le téléphone qui tient la porte.',
+        'editeur' => 'Écrit décors et articles, les soumet à la relecture. Ne publie pas lui-même.',
+        'coordinateur' => 'Tout ce que font les trois précédents, et il arbitre : il publie, renvoie, refuse.',
+        'equipe' => 'Tout le produit, les comptes clients et les réglages. Ne peut pas créer de compte d’équipe.',
+        'super_admin' => 'Tout, y compris créer et défaire les comptes de l’équipe. Un ou deux, pas plus.',
+    ][$r ?? ''] ?? '';
 }
 
 function formule_libelle(?string $cle): string
@@ -158,7 +303,7 @@ function offre(?array $u): array
  */
 function quota(array $u, string $quoi): int
 {
-    if (($u['role'] ?? '') === 'equipe') {
+    if (interne($u)) {
         return -1;
     }
     $base = offre($u)[$quoi] ?? FORMULES['decouverte'][$quoi] ?? -1;
@@ -176,7 +321,10 @@ function quota(array $u, string $quoi): int
  */
 function capacite(?array $u, string $quoi): bool
 {
-    if ($u !== null && ($u['role'] ?? '') === 'equipe') {
+    // Un compte interne n'a pas d'offre : on ne se vend pas des fonctions
+    // à soi-même, et rien ne justifierait de poser un filigrane sur les
+    // badges de la maison.
+    if (interne($u)) {
         return true;
     }
     $v = offre($u)[$quoi] ?? false;
@@ -276,7 +424,7 @@ function deconnecter(): void
     session_destroy();
 }
 
-/** Exige un rôle ; redirige sinon. Le seul verrou d'accès de l'application. */
+/** Exige un rôle ; redirige sinon. */
 function exiger_role(string ...$roles): array
 {
     $u = utilisateur_courant();
@@ -284,7 +432,27 @@ function exiger_role(string ...$roles): array
         rediriger('?p=connexion');
     }
     if (!in_array($u['role'], $roles, true)) {
-        rediriger($u['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte');
+        rediriger(accueil_de($u));
+    }
+    return $u;
+}
+
+/**
+ * Exige un DROIT. Le verrou d'accès de l'application.
+ *
+ * Préféré à `exiger_role()` partout où c'est possible : la question posée
+ * par un écran n'est pas « qui êtes-vous » mais « avez-vous le droit de
+ * faire ceci ». Écrite ainsi, elle survit à l'ajout d'un rôle — la table
+ * change, les écrans non.
+ */
+function exiger_droit(string $quoi): array
+{
+    $u = utilisateur_courant();
+    if (!$u) {
+        rediriger('?p=connexion');
+    }
+    if (!droit($u, $quoi)) {
+        rediriger(accueil_de($u));
     }
     return $u;
 }

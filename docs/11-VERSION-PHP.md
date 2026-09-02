@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **330 scénarios, 330 réussis**
+Les deux ont été vérifiés de bout en bout : **358 scénarios, 358 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +110,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 330 scénarios, dans un vrai navigateur
+npm run php:e2e          # 358 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde restaurée, chiffrement push, éditeur
 ```
 
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 330 scénarios
+### Les 358 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -168,7 +168,10 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
-| **L'éditeur d'article** | Il remplace le champ, propose sept mises en forme, et le champ envoyé contient les **marques, pas du HTML** ; un collage riche n'apporte que son texte et rien ne s'exécute ; rouvrir un article ne le modifie pas ; la bascule vers le texte brut et le retour ne perdent rien ; la page publiée porte la même mise en forme que l'éditeur |
+| **L'éditeur d'article** | Il remplace le champ, propose huit mises en forme, et le champ envoyé contient les **marques, pas du HTML** ; un collage riche n'apporte que son texte et rien ne s'exécute ; rouvrir un article ne le modifie pas ; la bascule vers le texte brut et le retour ne perdent rien ; la page publiée porte la même mise en forme que l'éditeur |
+| **Les rôles internes** | Scanner, Éditeur et Coordinateur n'ouvrent **que** les écrans que leur table de droits donne — vérifié route par route ; l'inscription publique ne propose que les deux rôles clients et un formulaire trafiqué est refusé côté serveur |
+| **Le super administrateur** | Le compte fondateur en est un ; l'équipe et les clients font **deux listes** et le fondateur ne se perd pas derrière deux cents organisateurs ; la longue liste se cherche par nom, adresse ou structure ; un membre de l'équipe ne se fabrique ni complice ni promotion, et le dernier super administrateur ne se rétrograde ni ne se suspend |
+| **Une image dans un article** | Téléversée depuis l'éditeur, elle devient une **marque** et non une balise ; l'article publié porte la figure et sa légende ; l'image passe par le redimensionneur, se télécharge en WebP, et la légende sert de texte de remplacement ; une image hébergée ailleurs n'est **pas** rendue |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -944,6 +947,36 @@ Deux gardes s'ajoutent, parce qu'un seul se contourne :
   contenu**. Les ignorer ne suffirait pas : leur texte remonterait, et coller
   une page web déverserait le code de ses scripts au milieu de l'article.
 
+### Illustrer un article
+
+Le bouton **Image** de la barre téléverse et pose l'illustration dans le
+texte, sans quitter la page. Obliger à enregistrer, aller ailleurs choisir un
+fichier, revenir et coller une adresse est le genre de parcours qui fait qu'on
+n'illustre jamais rien.
+
+La marque est `![la légende](l'adresse)`, et **seules les images téléversées
+ici sont rendues**. Une adresse extérieure serait trois problèmes en un : un
+mouchard posé sur la page de quelqu'un d'autre, une image qui disparaît le
+jour où le site d'origine ferme, et du contenu mixte qui fait crier le
+navigateur sur une page en HTTPS. Une adresse non reconnue n'est pas une
+erreur : la ligne disparaît, et l'auteur le voit dans son aperçu.
+
+- La **légende sert aussi de texte de remplacement** — c'est ce que lit
+  quelqu'un qui ne voit pas l'image, parce qu'il est aveugle ou parce que le
+  réseau a lâché. Vide, l'image est déclarée décorative plutôt que d'être
+  annoncée par son nom de fichier, qui n'apprend rien.
+- L'image est **redimensionnée et recompressée à l'envoi**, comme une
+  couverture, puis servie par le redimensionneur avec son `srcset`. Une photo
+  d'appareil fait 4 000 px et 5 Mo ; elle s'affiche en 900.
+- L'attente est annoncée pendant l'envoi : sur une connexion de Lomé, une
+  photo met du temps, et un bouton qui ne réagit pas se reclique — on se
+  retrouve avec l'image en triple.
+- **Supprimer un article efface ses images**, couverture et illustrations,
+  sauf celles qu'un autre article utilise encore. Ne nettoyer que la
+  couverture laissait grossir `donnees/medias/` indéfiniment, et sur un
+  mutualisé c'est le quota qui finit par se remplir — un disque plein empêche
+  d'écrire la sauvegarde.
+
 ### Les marques, pour qui préfère les taper
 
 Le bouton **« Écrire en texte brut »** rend le champ de saisie — c'est plus
@@ -984,6 +1017,90 @@ lien exécutable. Les liens sortants portent `rel="noopener nofollow"`.
   corrigé six mois plus tard remonterait en tête de liste comme s'il était
   neuf.
 - Les **lectures** sont comptées une fois par visiteur et par article.
+
+---
+
+## Les rôles, et ce que chacun a le droit de faire
+
+Sept rôles, et **une seule table qui décide** — `ROLES_DROITS`, dans
+`php/app/auth.php`. La même idée que `FORMULES` pour les offres, et pour la
+même raison : éparpillé en `exiger_role('equipe')` dans dix-huit fichiers, un
+droit devient impossible à vérifier sans relire l'application, et le jour où
+l'on ajoute un rôle on en oublie trois.
+
+| | Entrée | Ses décors | Tous | Articles | Valider | Liens | Régie | Push | Comptes | Équipe | Réglages |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **Participant** | | | | | | | | | | | |
+| **Organisateur** | | ✓ | | ✓ | | ✓ | ✓ | ✓ | | | |
+| **Scanner** | ✓ | | | | | | | | | | |
+| **Éditeur** | | ✓ | | ✓ | | ✓ | | | | | |
+| **Coordinateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
+| **Équipe** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | ✓ |
+| **Super administrateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+**Deux familles**, et la distinction porte tout le reste. Les comptes
+**clients** — participant, organisateur — ont une offre commerciale, des
+quotas, et ne voient que ce qui leur appartient. Les comptes **internes** —
+scanner, éditeur, coordinateur, équipe, super administrateur — travaillent
+pour la maison : ils n'ont pas d'offre, et `capacite()` leur dit oui à tout,
+parce qu'on ne se vend pas des fonctions à soi-même.
+
+### Pourquoi ces rôles-là
+
+- **Scanner** — le contrôle d'entrée, et rien d'autre. Le téléphone qui tient
+  la porte un samedi soir passe de main en main : il ne doit pas donner accès
+  au catalogue ni aux comptes.
+- **Éditeur** — il fabrique, il ne décide pas. Ses décors et ses articles
+  partent en relecture comme ceux d'un organisateur.
+- **Coordinateur** — tout ce que font les trois autres, plus l'arbitrage : il
+  publie, renvoie, refuse. Il ne touche ni aux comptes ni aux réglages, parce
+  que ce sont les deux gestes dont on ne se relève pas.
+- **Super administrateur** — le compte fondateur, **et le seul à pouvoir en
+  fabriquer d'autres pour l'équipe**. La différence avec Équipe tient en une
+  colonne, et elle est tout ce qui sépare une équipe d'une porte ouverte :
+  sans elle, n'importe quel membre peut se promouvoir, promouvoir un ami, ou
+  suspendre le dernier administrateur.
+
+### Ce qui est verrouillé, et pourquoi
+
+- Un compte **interne ne se modifie que par un super administrateur** — le
+  créer, changer son rôle, le suspendre. Un membre de l'équipe gère les
+  comptes clients, et eux seuls.
+- Le **dernier super administrateur** ne se rétrograde ni ne se suspend. Une
+  installation sans lui ne se répare que par la base de données, et l'on ne
+  s'en aperçoit qu'au moment d'en avoir besoin.
+- **L'inscription publique ne propose que les deux rôles clients**, et le
+  contrôle est refait côté serveur : un formulaire trafiqué qui poste
+  `role=coordinateur` est refusé. Une liste déroulante n'est pas une
+  autorisation.
+
+`install.php` crée directement un super administrateur. Sur une installation
+déjà en service, la migration v10 promeut le **plus ancien** compte d'équipe —
+celui qu'avait créé l'installateur, celui dont on a le mot de passe.
+
+### L'écran des comptes tient en deux listes
+
+L'équipe d'un côté, les clients de l'autre. Ce n'est pas un rangement
+esthétique : la liste unique était rangée du plus récent au plus ancien et
+plafonnée à deux cents lignes. Au bout d'un an, le compte fondateur — le plus
+ancien de tous — passait derrière deux cents organisateurs, c'est-à-dire hors
+de l'écran. Le seul compte dont on a besoin le jour où quelque chose cloche
+était devenu le seul qu'on ne pouvait plus atteindre.
+
+- **L'équipe** est courte et ne se cherche pas : elle s'affiche en entier, du
+  plus ancien au plus récent, sans plafond.
+- **Les clients** se cherchent par nom, adresse ou structure — les trois
+  choses qu'on a sous les yeux quand quelqu'un écrit pour demander de l'aide.
+- Quand la liste tronque, **elle le dit** : « 100 comptes affichés sur 213 ».
+  Une liste qui tronque en silence laisse croire qu'un compte a disparu.
+
+### Le menu se déduit des droits
+
+Chaque entrée déclare le droit qu'elle demande, et le menu ne garde que celles
+qui passent. Ajouter un rôle ne demande aucune retouche : c'est la table qui
+décide, et elle décide aussi de ce que l'écran laisse faire — les deux ne
+peuvent plus diverger. Un menu écrit à la main finit toujours par proposer une
+page qui refuse, ou par cacher une page qui marche.
 
 ---
 

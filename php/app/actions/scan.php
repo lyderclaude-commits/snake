@@ -1,6 +1,6 @@
 <?php
 /** Contrôle d'entrée — réservé à l'équipe. */
-$u = exiger_role('equipe');
+$u = exiger_droit('scan');
 $resultat = null;
 
 if ($post) {

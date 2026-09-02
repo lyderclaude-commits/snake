@@ -1,6 +1,6 @@
 <?php
 /** File de relecture et décisions. */
-$u = exiger_role('equipe');
+$u = exiger_droit('valider');
 
 if ($page === 'decider') {
     verifier_csrf();

@@ -240,7 +240,7 @@ TXT,
             // blog a de quoi montrer à quoi elle sert dès l'installation.
             article_transition($id, 'en_relecture', [
                 'id' => $auteur['id'] ?? $admin_id,
-                'role' => ($auteur['role'] ?? 'equipe') === 'equipe' ? 'equipe' : 'partenaire',
+                'role' => $auteur['role'] ?? 'equipe',
             ]);
         }
     }

@@ -6,8 +6,8 @@
  * deux côtés. Ce qui change tient dans deux lignes : ce qu'on a le droit de
  * viser, et ce qu'on a le droit de décider.
  */
-$u = exiger_role('partenaire', 'equipe');
-$equipe = $u['role'] === 'equipe';
+$u = exiger_droit('regie');
+$equipe = droit($u, 'valider');
 
 if (!$equipe && !capacite($u, 'regie')) {
     vue('offre-requise', [
@@ -79,7 +79,7 @@ if ($page === 'regie-action') {
                     'Soumise à la régie : ' . $n . ' destinataire(s). Réponse sous 24 h ouvrées.'));
 
             case 'approuver':
-                exiger_role('equipe');
+                exiger_droit('valider');
                 $q = quota_emails($auteur, regie_compter($c, $auteur));
                 if (!$q['ok']) {
                     throw new RuntimeException('Refusé par le quota de l’auteur : ' . $q['message']);
@@ -94,7 +94,7 @@ if ($page === 'regie-action') {
 
             case 'corrections':
             case 'refuser':
-                exiger_role('equipe');
+                exiger_droit('valider');
                 campagne_email_transition((string) $c['id'], $quoi === 'refuser' ? 'refuse' : 'corrections', $u, $motif);
                 notifier((string) $c['auteur_id'], 'regie',
                     $quoi === 'refuser' ? 'Votre campagne e-mail est refusée' : 'Votre campagne e-mail demande une correction',
@@ -102,7 +102,7 @@ if ($page === 'regie-action') {
                 rediriger('?p=regie&ok=' . rawurlencode('Décision enregistrée, l’auteur est prévenu.'));
 
             case 'envoyer':
-                exiger_role('equipe');
+                exiger_droit('valider');
                 if ($c['statut'] === 'prete') {
                     campagne_email_transition((string) $c['id'], 'envoi', $u);
                 }

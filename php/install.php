@@ -109,7 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$deja && !$bloquant) {
                 'email' => $valeurs['email'],
                 'mot_de_passe' => $valeurs['admin_mdp'],
                 'nom' => $valeurs['nom'],
-                'role' => 'equipe',
+                // Le compte fondateur : le seul qui puisse en créer
+                // d'autres pour l'équipe. Sans lui, il faudrait toucher à la
+                // base de données pour nommer un deuxième administrateur.
+                'role' => 'super_admin',
                 'ville' => 'lome',
             ]);
             db()->prepare('UPDATE utilisateurs SET email_verifie_le = ? WHERE id = ?')

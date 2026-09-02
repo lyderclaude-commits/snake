@@ -1,6 +1,6 @@
 <?php
 $etat = !$b ? 'inconnu' : ($b['scanne_le'] ? 'utilise' : 'valide');
-$staff = $me && $me['role'] === 'equipe';
+$staff = droit($me, 'scan');
 ?>
 <div class="etroit" style="text-align:center">
   <div class="carte">

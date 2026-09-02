@@ -14,7 +14,7 @@ $moi = utilisateur_courant();
       <p style="margin:0 0 14px">Vous pouvez maintenant soumettre vos décors à la relecture.
       L’équipe s’engage à répondre sous 24 heures ouvrées, et sa décision vous parviendra
       à cette adresse.</p>
-      <a class="bouton" href="<?= e(url($moi && $moi['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte')) ?>">
+      <a class="bouton" href="<?= e(url(accueil_de($moi))) ?>">
         Aller à mon espace
       </a>
     <?php else: ?>

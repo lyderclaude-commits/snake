@@ -111,7 +111,8 @@ Un paragraphe. Une ligne vide en sépare deux.
 - un point de liste
 &gt; une citation
 **gras**, *italique*, `code`
-[le texte du lien](https://wakabileguide.com)</pre>
+[le texte du lien](https://wakabileguide.com)
+![la légende de l’image](l’adresse rendue par le bouton Image)</pre>
       </details>
 
       <div class="champ">
@@ -142,4 +143,8 @@ Un paragraphe. Une ligne vide en sépare deux.
   </form>
 </div>
 
+<script type="application/json" id="editeur-contexte"><?= json_encode([
+    'base' => rtrim(base_url(), '/') . '/',
+    'csrf' => jeton_csrf(),
+], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <script src="<?= e(actif('public/editeur.js')) ?>" defer></script>
