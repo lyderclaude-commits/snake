@@ -14,8 +14,8 @@ $etats = [
     <h1><?= $existant ? 'Modifier l’article' : 'Écrire un article' ?></h1>
     <p><?php if ($existant): ?>
       <span class="pastille <?= e($existant['statut']) ?>"><?= e($etats[$existant['statut']] ?? $existant['statut']) ?></span> ·
-    <?php endif; ?>Le corps s’écrit en texte simple. Les marques ci-dessous sont les seules reconnues —
-    et aucune balise HTML n’est acceptée, ce qui est exactement le but.</p>
+    <?php endif; ?>Écrivez comme dans un traitement de texte : ce que vous voyez est ce que
+    la page publiera. Rien à apprendre avant de commencer.</p>
   </section>
 
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
@@ -81,8 +81,29 @@ $etats = [
     </div>
 
     <div class="carte" style="margin-top:16px">
-      <h3 style="margin:0 0 4px">Le texte</h3>
-      <details style="margin:0 0 12px">
+      <div class="rangee" style="justify-content:space-between;align-items:baseline;margin:0 0 12px">
+        <h3 style="margin:0">Le texte</h3>
+        <?php
+        /* Le bouton n'apparaît que si l'éditeur a démarré : sans
+           JavaScript, « revenir à l'éditeur » ne mènerait nulle part. */
+        ?>
+        <button class="aide" type="button" id="a-bascule" hidden
+                style="background:none;border:0;padding:0;cursor:pointer;text-decoration:underline">
+          Écrire en texte brut
+        </button>
+      </div>
+
+      <?php
+      /**
+       * Les marques restent documentées, pour deux publics.
+       *
+       * Celui qui n'a pas de JavaScript — l'éditeur ne démarre pas, et le
+       * champ de texte reste le seul moyen d'écrire ; et celui qui préfère
+       * taper ses marques, ce qui est plus rapide quand on les connaît.
+       * Le bloc se cache tout seul quand l'éditeur prend la main.
+       */
+      ?>
+      <details id="a-marques" style="margin:0 0 12px">
         <summary class="aide" style="cursor:pointer">Les marques d’écriture</summary>
         <pre class="aide" style="margin:10px 0 0;white-space:pre-wrap;line-height:1.7">## Un intertitre
 ### Un sous-titre
@@ -120,3 +141,5 @@ Un paragraphe. Une ligne vide en sépare deux.
     </div>
   </form>
 </div>
+
+<script src="<?= e(actif('public/editeur.js')) ?>" defer></script>

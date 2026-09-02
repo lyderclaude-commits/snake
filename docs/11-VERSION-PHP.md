@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **318 scénarios, 318 réussis**
+Les deux ont été vérifiés de bout en bout : **330 scénarios, 330 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,8 +110,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 318 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit, SMTP, une sauvegarde restaurée, le chiffrement push
+npm run php:e2e          # 330 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, sauvegarde restaurée, chiffrement push, éditeur
 ```
 
 Contre une base MySQL :
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 318 scénarios
+### Les 330 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -168,6 +168,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
+| **L'éditeur d'article** | Il remplace le champ, propose sept mises en forme, et le champ envoyé contient les **marques, pas du HTML** ; un collage riche n'apporte que son texte et rien ne s'exécute ; rouvrir un article ne le modifie pas ; la bascule vers le texte brut et le retour ne perdent rien ; la page publiée porte la même mise en forme que l'éditeur |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -907,18 +908,47 @@ par la rédaction. Un champ de saisie libre sur une page publique confié à des
 comptes clients, c'est le début d'une modération qu'on n'a pas les moyens de
 tenir.
 
-### Le corps est du TEXTE, et c'est une décision de sécurité
+### On écrit dans un éditeur, mais ce n'est pas du HTML qui part
 
-Un champ où l'on collerait du HTML serait une faille béante : quiconque
-publie pourrait poser un `<script>` sur une page lue par tout le monde. Un
-éditeur riche règle cela avec une liste blanche de balises — c'est-à-dire
-avec un analyseur HTML complet, qu'il faudrait écrire ici, sans
-bibliothèque, et maintenir.
+L'éditeur montre le résultat pendant qu'on écrit : une barre — Titre,
+Sous-titre, **G**, *I*, Liste, Citation, Lien — et le texte s'affiche avec la
+typographie exacte de la page publiée. Rien à apprendre avant de commencer.
 
-On prend l'autre chemin : le corps est **échappé d'abord, entièrement**, et
-seulement ensuite quelques marques d'écriture sont reconnues pour poser les
-balises. **Aucune balise ne peut venir de la saisie** — elles sont toutes
-écrites par `php/app/texte.php`.
+**Et pourtant il n'envoie pas de HTML.** C'est la décision qui tient tout le
+reste. Un champ où l'on collerait du HTML serait une faille béante : quiconque
+publie pourrait poser un `<script>` sur une page lue par tout le monde. Le
+régler proprement demanderait une liste blanche de balises — c'est-à-dire un
+analyseur HTML complet, à écrire ici sans bibliothèque, et à maintenir.
+
+L'éditeur est donc un **traducteur à double sens** :
+
+```
+texte à marques  →  DOM éditable      (à l'ouverture)
+DOM éditable     →  texte à marques   (à l'enregistrement)
+```
+
+Ce que le navigateur invente entre les deux — `<span>` de style, HTML collé
+depuis Word, `<font>` d'un autre âge — **ne survit pas au retour** : la
+sérialisation ne connaît que sept formes et rend tout le reste en texte nu.
+Le serveur, lui, continue de recevoir du texte, de l'échapper entièrement, et
+d'écrire lui-même chaque balise de la page. **Aucune balise ne peut venir de
+la saisie**, éditeur ou pas.
+
+Deux gardes s'ajoutent, parce qu'un seul se contourne :
+
+- Le **collage passe toujours par le texte brut**. Les tableaux de mise en
+  page et les polices en points seraient jetés de toute façon à
+  l'enregistrement — mais entre-temps l'éditeur afficherait quelque chose qui
+  ne sera pas publié, et un aperçu qui ment est pire qu'un aperçu absent.
+- `<script>`, `<style>`, `<iframe>` et leurs semblables sont jetés **avec leur
+  contenu**. Les ignorer ne suffirait pas : leur texte remonterait, et coller
+  une page web déverserait le code de ses scripts au milieu de l'article.
+
+### Les marques, pour qui préfère les taper
+
+Le bouton **« Écrire en texte brut »** rend le champ de saisie — c'est plus
+rapide quand on les connaît. Et **sans JavaScript, c'est le seul éditeur** :
+la page fonctionne exactement comme avant, marques documentées à l'appui.
 
 ```
 ## Un intertitre
@@ -933,6 +963,14 @@ Un paragraphe. Une ligne vide en sépare deux.
 C'est la syntaxe que les gens connaissent de WhatsApp. Un lien n'accepte que
 `http` et `https` — sans quoi un `[cliquez](javascript:…)` deviendrait un
 lien exécutable. Les liens sortants portent `rel="noopener nofollow"`.
+
+> **`npx tsx scripts/verifier-editeur.ts`** fait l'aller-retour sur douze
+> formes dans un vrai navigateur — le DOM d'un `contenteditable` n'est pas
+> celui qu'on croit, et le simuler prouverait seulement que la simulation est
+> d'accord avec elle-même. Il vérifie trois choses : que **rouvrir un article
+> et l'enregistrer ne le modifie pas** (la pire perte, parce que silencieuse),
+> que l'éditeur affiche **balise pour balise** ce que `texte_riche()`
+> publiera, et que six collages hostiles ressortent en texte.
 
 ### Le reste
 

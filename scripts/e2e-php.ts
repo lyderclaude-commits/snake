@@ -1428,6 +1428,9 @@ const run = async () => {
   await pq.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
   await pq.fill('#a-titre', TITRE_ART);
   await pq.fill('#a-chapo', 'Une soirée de 400 personnes, et pas une affiche imprimée.');
+  // Le champ brut est masqué par l'éditeur : on passe par la bascule,
+  // qui est le chemin réel de qui préfère taper ses marques.
+  await pq.locator('#a-bascule').click();
   await pq.fill('#a-corps',
     '## Ce qui a marché\n\n'
     + 'À Lomé, **400 personnes** sont venues sans une seule affiche.\n\n'
@@ -1604,6 +1607,7 @@ const run = async () => {
 
   await pw.fill('#a-titre', ART);
   await pw.fill('#a-chapo', 'Quatre semaines pour faire d’un mardi mort un rendez-vous.');
+  await pw.locator('#a-bascule').click();
   await pw.fill('#a-corps',
     '## Ce qu’on a essayé\n\nUn nom à part, un visuel à part, et le décor publié le vendredi.\n\n'
     + '- Semaine 1 : 40 badges\n- Semaine 4 : 180 badges\n\nLe reste a suivi tout seul.');
@@ -1959,6 +1963,117 @@ const run = async () => {
 
   faux.fermer();
   await pfix.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 31. L’éditeur d’article ━━');
+
+  /**
+   * L'éditeur est éprouvé au clavier, dans un vrai navigateur.
+   *
+   * `verifier-editeur.ts` prouve que la traduction aller-retour est
+   * fidèle ; ici on vérifie qu'on peut réellement ÉCRIRE avec — c'est
+   * une autre question, et c'est celle que se pose la personne qui rédige.
+   */
+  const ped = await browser.newPage();
+  surveiller(ped);
+  await connexion(ped, ADMIN.email, ADMIN.mdp);
+  await ped.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await ped.waitForSelector('.editeur-zone');
+
+  ok('l’éditeur remplace le champ de texte',
+     (await ped.locator('.editeur-zone').isVisible())
+     && (await ped.locator('#a-corps').isHidden()));
+  ok('la barre propose les sept mises en forme',
+     (await ped.locator('.editeur-outil').count()) === 7,
+     `${await ped.locator('.editeur-outil').count()} outils`);
+  ok('un éditeur vide affiche une invite', (await ped.locator('.editeur-zone[data-vide]').count()) === 1);
+
+  const TITRE_ED = `Écrit à l’éditeur ${marque}`;
+  await ped.fill('#a-titre', TITRE_ED);
+  await ped.locator('.editeur-zone').click();
+  await ped.keyboard.type('Ce qui a marché');
+  await ped.locator('.editeur-outil[aria-label="Intertitre"]').click();
+  await ped.keyboard.press('End');
+  await ped.keyboard.press('Enter');
+  await ped.keyboard.type('À Lomé, ');
+  await ped.locator('.editeur-outil[aria-label="Gras"]').click();
+  await ped.keyboard.type('400 personnes');
+  await ped.locator('.editeur-outil[aria-label="Gras"]').click();
+  await ped.keyboard.type(' sont venues.');
+  await ped.keyboard.press('Enter');
+  await ped.keyboard.type('1 200 badges en 9 jours');
+  await ped.locator('.editeur-outil[aria-label="Liste à puces"]').click();
+
+  const marques = await ped.locator('#a-corps').inputValue();
+  ok('le champ envoyé contient les marques, pas du HTML',
+     marques.includes('## Ce qui a marché')
+     && marques.includes('**400 personnes**')
+     && marques.includes('- 1 200 badges')
+     && !/[<>]/.test(marques),
+     marques.replace(/\n/g, ' ⏎ ').slice(0, 76));
+
+  /**
+   * Le scénario qui compte : coller depuis ailleurs.
+   *
+   * C'est par là qu'arrive tout ce qu'on ne veut pas — mise en page de
+   * traitement de texte, styles en dur, et le reste. Le collage passe par
+   * le texte brut, donc rien de tout cela n'entre.
+   */
+  await ped.evaluate(() => {
+    const z = document.querySelector('.editeur-zone') as HTMLElement;
+    const dt = new DataTransfer();
+    dt.setData('text/html', '<p style="color:red">Rouge<script>window.__colle = 1;</script></p>');
+    dt.setData('text/plain', 'Du texte collé.');
+    z.focus();
+    z.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  await ped.waitForTimeout(150);
+  const apresCollage = await ped.locator('#a-corps').inputValue();
+  ok('un collage riche n’apporte que son texte',
+     apresCollage.includes('Du texte collé.') && !/style|script|Rouge/.test(apresCollage));
+  ok('et rien ne s’exécute au passage',
+     (await ped.evaluate(() => (window as unknown as { __colle?: number }).__colle)) === undefined);
+
+  /* L'article s'enregistre, se relit à l'identique, et se publie juste. */
+  await ped.click('button[value=enregistrer]');
+  await ped.waitForLoadState('domcontentloaded');
+  const lienEd = await ped.locator(`tr:has-text("${TITRE_ED}") a[href*="p=blog-editer"]`)
+    .first().getAttribute('href');
+  await ped.goto(lienEd!, { waitUntil: 'domcontentloaded' });
+  await ped.waitForSelector('.editeur-zone');
+  const relu = await ped.locator('#a-corps').inputValue();
+  ok('rouvrir un article ne le modifie pas', relu === apresCollage,
+     relu === apresCollage ? '' : relu.slice(0, 60));
+  ok('l’éditeur montre le titre en titre, et le gras en gras',
+     (await ped.locator('.editeur-zone h3').count()) === 1
+     && (await ped.locator('.editeur-zone strong').count()) === 1
+     && (await ped.locator('.editeur-zone li').count()) >= 1);
+
+  /* La bascule vers le texte brut, pour qui préfère taper ses marques. */
+  await ped.locator('#a-bascule').click();
+  ok('on peut repasser en texte brut', await ped.locator('#a-corps').isVisible());
+  await ped.locator('#a-bascule').click();
+  ok('et revenir à l’éditeur sans rien perdre',
+     (await ped.locator('.editeur-zone').isVisible())
+     && (await ped.locator('#a-corps').inputValue()) === relu);
+
+  await ped.click('button[value=publier]');
+  await ped.waitForLoadState('domcontentloaded');
+  const slugEd = /p=blog&a=([a-z0-9-]+)/.exec(
+    await ped.locator('.msg.ok').first().innerText().catch(() => ''))?.[1] ?? '';
+  ok('l’article écrit à l’éditeur se publie', slugEd !== '', slugEd);
+  if (slugEd) {
+    const ctxLu = await browser.newContext();
+    const plu = await ctxLu.newPage();
+    surveiller(plu);
+    await plu.goto(`${BASE}/index.php?p=blog&a=${slugEd}`, { waitUntil: 'domcontentloaded' });
+    ok('la page publiée porte la même mise en forme que l’éditeur',
+       (await plu.locator('.corps-article h3').count()) === 1
+       && (await plu.locator('.corps-article strong').count()) === 1
+       && (await plu.locator('.corps-article li').count()) >= 1);
+    await ctxLu.close();
+  }
+  await ped.close();
 
   console.log('\n━━ 22. Le transport e-mail ━━');
 

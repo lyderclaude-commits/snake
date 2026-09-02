@@ -18,6 +18,7 @@ for (const [source, sortie] of [
   ['php/studio/apercu.ts', 'php/public/apercu.js'],
   ['php/studio/scanner.ts', 'php/public/scanner.js'],
   ['php/studio/push.ts', 'php/public/push.js'],
+  ['php/studio/editeur.ts', 'php/public/editeur.js'],
 ]) {
   execFileSync('npx', [
     'esbuild', source,

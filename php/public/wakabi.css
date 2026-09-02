@@ -941,3 +941,47 @@ input[type=file].fichier-natif{
 .detail-offre > summary:hover{color:var(--primary-d)}
 .detail-offre > summary svg{width:15px;height:15px;stroke-width:2;transition:transform .15s}
 .detail-offre[open] > summary svg{transform:rotate(180deg)}
+
+/* ============ l'éditeur d'article ============
+
+   La zone d'écriture porte `.corps-article` : elle hérite donc EXACTEMENT
+   de la typographie de la page publiée — même taille, même interligne,
+   mêmes titres. C'est tout l'intérêt de la chose : ce qu'on voit en
+   écrivant est ce que le lecteur verra, à la largeur près. */
+
+.editeur{
+  border:1px solid var(--border);border-radius:var(--r10);background:var(--paper);
+  overflow:hidden;
+}
+.editeur:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-wash)}
+
+.editeur-barre{
+  display:flex;gap:2px;flex-wrap:wrap;padding:6px;
+  border-bottom:1px solid var(--border);background:var(--bg2);
+}
+.editeur-outil{
+  min-width:34px;height:32px;padding:0 9px;border:0;border-radius:7px;cursor:pointer;
+  background:transparent;color:var(--text2);font-family:var(--display);
+  font-size:.86rem;font-weight:700;line-height:1;
+}
+.editeur-outil:hover{background:var(--paper);color:var(--primary-d)}
+.editeur-outil:active{background:var(--primary-wash)}
+
+.editeur-zone{
+  min-height:340px;max-height:70vh;overflow-y:auto;padding:18px 20px;outline:none;
+}
+/* Les marges du premier et du dernier bloc feraient flotter le texte dans
+   un cadre : dans un article elles séparent, dans un champ elles décalent. */
+.editeur-zone > :first-child{margin-top:0}
+.editeur-zone > :last-child{margin-bottom:0}
+/* Le texte d'invite. Il suit `[data-vide]`, que le script pose quand le
+   CONTENU est vide — `:empty` serait faux dès le premier `<br>`, et un
+   `contenteditable` en garde toujours un. */
+.editeur-zone[data-vide] > :first-child::before{
+  content:"Racontez votre campagne : ce que vous avez fait, les chiffres, et ce qui n’a pas marché.";
+  color:var(--text3);pointer-events:none;
+}
+
+/* Les intitulés écrits sont plus larges qu'un pictogramme : la barre les
+   laisse respirer, et passe à la ligne plutôt que de déborder. */
+.editeur-outil{padding:0 11px;font-size:.82rem}
