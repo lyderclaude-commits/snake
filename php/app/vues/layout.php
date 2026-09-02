@@ -45,7 +45,7 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
 <meta name="twitter:image" content="<?= e($_ogi) ?>">
 <?php $ico = logo_fichier(); ?>
 <?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
-<link rel="stylesheet" href="<?= e(url('public/wakabi.css')) ?>">
+<link rel="stylesheet" href="<?= e(actif('public/wakabi.css')) ?>">
 </head>
 <body>
 
@@ -243,6 +243,65 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
     <span><?= e(WAKABI_SIGNATURE) ?> · Lomé · Cotonou · Abidjan</span>
   </div>
 </footer>
+
+<?php
+/**
+ * Refermer les menus quand on clique ailleurs.
+ *
+ * Un `<details>` natif ne se referme QUE par son propre résumé : ouvrez
+ * « Audience », allez ailleurs, et le volet reste ouvert par-dessus la
+ * page — parfois deux à la fois. C'est le seul endroit du site où le
+ * comportement du navigateur ne suffit pas.
+ *
+ * Ce script AJOUTE une commodité, il ne porte rien d'essentiel : sans
+ * JavaScript le menu s'ouvre, se parcourt et se ferme exactement comme
+ * avant, au clavier compris. C'est pourquoi il est écrit ici en clair
+ * plutôt que dans un paquet à charger — une dizaine de lignes qui ne
+ * valent pas un aller-retour réseau.
+ */
+?>
+<script>
+(function () {
+  var volets = function () { return document.querySelectorAll('details.menu[open], details.deroulant[open]'); };
+
+  document.addEventListener('click', function (e) {
+    Array.prototype.forEach.call(volets(), function (d) {
+      // Le clic DANS un menu ouvert ne le referme pas : on y navigue.
+      if (!d.contains(e.target)) { d.open = false; }
+    });
+  });
+
+  /* Un lien suivi ferme le menu : sur une ancre de la même page, rien ne
+     recharge, et le volet resterait ouvert sur la section qu'on vient
+     d'atteindre. */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('.menu a, .deroulant a') : null;
+    if (a) { Array.prototype.forEach.call(volets(), function (d) { d.open = false; }); }
+  });
+
+  /* Échap referme, et rend le focus au bouton — sinon on se retrouve à
+     tabuler dans un menu invisible. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') { return; }
+    Array.prototype.forEach.call(volets(), function (d) {
+      d.open = false;
+      var s = d.querySelector(':scope > summary');
+      if (s) { s.focus(); }
+    });
+  });
+
+  /* Un seul déroulant ouvert à la fois : deux volets superposés se
+     recouvrent, et on ne sait plus lequel on lit. */
+  Array.prototype.forEach.call(document.querySelectorAll('details.deroulant'), function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open) { return; }
+      Array.prototype.forEach.call(document.querySelectorAll('details.deroulant[open]'), function (autre) {
+        if (autre !== d) { autre.open = false; }
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

@@ -18,10 +18,75 @@ $total = array_sum($compte);
   <?php if (!$disponible): ?>
     <div class="msg err">
       <strong>Cet hébergement ne peut pas envoyer de notifications.</strong>
-      <p style="margin:.35em 0 0">Il manque OpenSSL ou <code>hash_hkdf</code>. Ce sont des
-      extensions PHP standard : votre hébergeur les active sur demande.</p>
+      <p style="margin:.35em 0 6px">Ce sont des extensions PHP standard : votre hébergeur les
+      active sur demande. Voici ce qui manque, nommément — transmettez-lui cette liste.</p>
+      <ul style="margin:0;padding-left:1.1em">
+        <?php foreach ($prerequis as $quoi => $present): ?>
+          <li><?= $present ? '✓' : '✕' ?> <?= e($quoi) ?><?= $present ? '' : ' — absent' ?></li>
+        <?php endforeach; ?>
+      </ul>
     </div>
   <?php endif; ?>
+
+  <!-- ---------- l'essai sur soi-même ---------- -->
+  <div class="carte" style="margin-bottom:16px">
+    <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0 0 4px">Vérifier que ça marche</h3>
+        <p class="aide" style="margin:0">
+          <?php if ($mes_abonnements): ?>
+            Ce compte a <strong><?= (int) $mes_abonnements ?></strong> navigateur(s) abonné(s).
+            L’essai leur envoie une vraie notification, et dit exactement ce que le service de
+            push a répondu.
+          <?php else: ?>
+            <strong>Ce compte n’a aucun navigateur abonné.</strong> Ouvrez
+            <a href="<?= e(url('?p=profil')) ?>">Mon profil</a> et cliquez « Recevoir les
+            notifications » sur cet appareil — sinon il n’y a rien à qui écrire.
+          <?php endif; ?>
+        </p>
+      </div>
+      <form method="post" action="<?= e(url('?p=diffusion')) ?>" style="margin:0">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <button class="bouton fant" type="submit" name="action" value="essai"
+                <?= $disponible && $mes_abonnements ? '' : 'disabled' ?>>M’envoyer un essai</button>
+      </form>
+    </div>
+
+    <?php if ($essai): ?>
+      <div class="tableau" style="margin-top:16px">
+        <table>
+          <thead><tr><th>Navigateur</th><th>Service</th><th>Réponse</th></tr></thead>
+          <tbody>
+            <?php foreach ($essai as $l): ?>
+              <tr>
+                <td class="aide"><?= e(mb_substr($l['agent'], 0, 60)) ?></td>
+                <td class="aide"><?= e($l['hote']) ?></td>
+                <td>
+                  <span class="pastille <?= $l['ok'] ? 'publie' : 'refuse' ?>">
+                    <?= $l['ok'] ? 'Remise' : ($l['code'] ? 'HTTP ' . (int) $l['code'] : 'Échec') ?>
+                  </span>
+                  <?php if (!$l['ok'] && $l['message']): ?>
+                    <span class="aide" style="display:block"><?= e(mb_substr((string) $l['message'], 0, 200)) ?></span>
+                  <?php endif; ?>
+                  <?php if ($l['mort']): ?>
+                    <span class="aide" style="display:block">Abonnement périmé : il vient d’être
+                    effacé. Réabonnez ce navigateur depuis Mon profil.</span>
+                  <?php endif; ?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <p class="aide" style="margin:12px 0 0">
+        <strong>« Remise » veut dire que le service de push a accepté le message</strong>, pas
+        qu’il s’est affiché. Si rien n’apparaît malgré une remise, le problème est côté
+        navigateur : notifications coupées au niveau du système, mode « Ne pas déranger »,
+        ou un ancien service worker resté en place — dans ce dernier cas, rechargez la page
+        en forçant le cache (Ctrl+Maj+R).
+      </p>
+    <?php endif; ?>
+  </div>
 
   <div class="carte">
     <h3 style="margin:0 0 4px">Le message</h3>

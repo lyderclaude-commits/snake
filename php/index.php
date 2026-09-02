@@ -268,6 +268,38 @@ switch ($page) {
         push_desabonner(trim((string) ($_POST['endpoint'] ?? '')));
         json_repondre(['ok' => true]);
 
+    /**
+     * Le renouvellement d'un abonnement, appelé par le service worker.
+     *
+     * SANS jeton CSRF, et c'est assumé : un service worker n'a pas de
+     * page, donc pas de jeton. Ce que la route peut faire est
+     * volontairement minuscule — remplacer une adresse par une autre.
+     * Elle ne lit rien, ne supprime rien d'autre, et n'attache le nouvel
+     * abonnement à un compte que si l'ANCIENNE adresse y était déjà
+     * attachée. Quelqu'un qui la devinerait ne pourrait qu'enregistrer un
+     * abonnement anonyme de plus.
+     */
+    case 'api-push-renouveler':
+        $neuf = trim((string) ($_POST['endpoint'] ?? ''));
+        $ancien = trim((string) ($_POST['remplace'] ?? ''));
+        $p256dh = trim((string) ($_POST['p256dh'] ?? ''));
+        $auth_cle = trim((string) ($_POST['auth'] ?? ''));
+        if (!preg_match('~^https://~i', $neuf) || $p256dh === '' || $auth_cle === '') {
+            json_repondre(['ok' => false], 400);
+        }
+        $precedent = $ancien !== '' ? push_abonnement_de($ancien) : null;
+        push_abonner(
+            $precedent['utilisateur_id'] ?? null,
+            $neuf,
+            $p256dh,
+            $auth_cle,
+            (string) ($precedent['agent'] ?? substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180))
+        );
+        if ($ancien !== '' && $ancien !== $neuf) {
+            push_desabonner($ancien);
+        }
+        json_repondre(['ok' => true]);
+
     case 'diffusion':
         require RACINE . '/app/actions/diffusion.php';
 

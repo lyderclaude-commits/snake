@@ -134,4 +134,4 @@ window.WAKABI = {
   connecte: <?= $me ? 'true' : 'false' ?>
 };
 </script>
-<script src="<?= e(url('public/studio.js')) ?>" defer></script>
+<script src="<?= e(actif('public/studio.js')) ?>" defer></script>

@@ -38,5 +38,5 @@ $_push_titre = $_push_titre ?? 'Les notifications';
       // invités de mes campagnes » ne verrait jamais ces gens-là.
       'connecte' => (bool) utilisateur_courant(),
   ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
-  <script src="<?= e(url('public/push.js')) ?>" defer></script>
+  <script src="<?= e(actif('public/push.js')) ?>" defer></script>
 </div>

@@ -280,4 +280,4 @@ window.WAKABI_APERCU = {
   csrf: <?= json_encode(jeton_csrf()) ?>
 };
 </script>
-<script src="<?= e(url('public/apercu.js')) ?>" defer></script>
+<script src="<?= e(actif('public/apercu.js')) ?>" defer></script>

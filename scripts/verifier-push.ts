@@ -24,7 +24,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  createECDH, createHmac, createCipheriv, createPublicKey, createVerify,
+  createECDH, createHmac, createCipheriv, createDecipheriv, createPublicKey, createVerify,
 } from 'node:crypto';
 
 const lancerPhp = promisify(execFile);
@@ -178,6 +178,41 @@ const main = async () => {
   ok('la charge chiffrée fait bien la taille attendue',
      cotePhp.length === 86 + Buffer.byteLength(MESSAGE) + 1 + 16,
      `${cotePhp.length} au lieu de ${86 + Buffer.byteLength(MESSAGE) + 1 + 16}`);
+
+  /**
+   * L'aller-RETOUR : le navigateur destinataire sait-il relire ?
+   *
+   * Comparer deux implémentations du chiffrement prouve qu'elles font la
+   * même chose — pas qu'elles font la BONNE chose. Ici on déchiffre avec
+   * la clé privée du destinataire, comme le ferait Chrome, et on regarde
+   * si le texte revient. C'est le seul test qui échouerait si le RFC
+   * avait été mal lu de la même façon des deux côtés.
+   */
+  const dechiffre = (() => {
+    const corps = coteNode;
+    const selRecu = corps.subarray(0, 16);
+    const lg = corps[20];
+    const ephRecu = corps.subarray(21, 21 + lg);
+    const chiffre = corps.subarray(21 + lg);
+
+    const ecdh = createECDH('prime256v1');
+    ecdh.setPrivateKey(client.getPrivateKey());
+    const partage = ecdh.computeSecret(ephRecu);
+
+    const prk = hkdf(authSecret, partage,
+      Buffer.concat([Buffer.from('WebPush: info\0'), clientPub, ephRecu]), 32);
+    const cek = hkdf(selRecu, prk, Buffer.from('Content-Encoding: aes128gcm\0'), 16);
+    const nonce = hkdf(selRecu, prk, Buffer.from('Content-Encoding: nonce\0'), 12);
+
+    const d = createDecipheriv('aes-128-gcm', cek, nonce);
+    d.setAuthTag(chiffre.subarray(chiffre.length - 16));
+    const clair = Buffer.concat([d.update(chiffre.subarray(0, chiffre.length - 16)), d.final()]);
+    // Le 0x02 final est le délimiteur de fin de contenu.
+    return clair.subarray(0, clair.length - 1).toString('utf8');
+  })();
+
+  ok('le destinataire relit le message, accents compris',
+     dechiffre === MESSAGE, dechiffre.slice(0, 58) + '…');
 
   /* ---- le sel et la clé éphémère changent à chaque envoi ---- */
 

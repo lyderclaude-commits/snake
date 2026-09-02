@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **305 scénarios, 305 réussis**
+Les deux ont été vérifiés de bout en bout : **318 scénarios, 318 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +110,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 305 scénarios, dans un vrai navigateur
+npm run php:e2e          # 318 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, une sauvegarde restaurée, le chiffrement push
 ```
 
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 305 scénarios
+### Les 318 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -166,6 +166,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Le blog proposé** | Un organisateur propose, l'article n'est **pas** public, il ne se modifie plus, la rédaction le renvoie avec un motif obligatoire, l'auteur le voit et re-soumet, il paraît signé de son nom — et il ne peut plus le retirer seul une fois en ligne |
 | **La régie e-mail** | Sans l'offre, un écran d'explication et aucun lien dans le menu ; un lien hors domaine Wakabi est refusé à un organisateur, qui ne peut pas envoyer lui-même ; l'équipe prépare et envoie, un **vrai serveur SMTP** reçoit ; **chaque message porte son lien de désabonnement**, il s'ouvre sans être connecté, un clic suffit, et le désabonné ne reçoit plus rien à la campagne suivante |
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
+| **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
+| **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -1154,6 +1156,68 @@ très plat — deux aplats et un trait — le PNG gagne parfois, et garder le pl
 lourd « parce que c'est le format moderne » serait absurde. En cas de pépin,
 l'original est laissé intact : une image un peu lourde vaut infiniment mieux
 qu'un cadre perdu.
+
+---
+
+## Trois choses qu'on ne voit pas en développant
+
+### La feuille de style est mise en cache par le navigateur
+
+Sans empreinte de version dans son adresse, une mise à jour **n'atteint pas**
+qui a déjà visité le site : le navigateur garde sa copie de `wakabi.css`, le
+nouveau HTML arrive sur l'ancien style, et des cartes redeviennent des liens
+bleus soulignés. Le défaut est invisible depuis un navigateur neuf — donc
+pendant qu'on développe, et jusqu'au jour où quelqu'un le signale.
+
+`actif('public/wakabi.css')` ajoute la date de modification du fichier à son
+adresse. Elle change quand le fichier change, et jamais autrement. Les bundles
+JavaScript passent par le même chemin.
+
+> **Si un écran vous paraît mal rendu après une mise à jour** : rechargez en
+> forçant le cache (Ctrl+Maj+R, ou Cmd+Maj+R). Depuis cette version, ce ne
+> devrait plus jamais être nécessaire.
+
+### Une notification push qui n'arrive pas ne laisse aucune trace
+
+Le navigateur ne dit rien, le service de push répond `201` à une enveloppe
+qu'il ne sait pas lire, et l'on cherche du côté de l'écran d'envoi alors que le
+problème est ailleurs.
+
+**Notifications push → « M'envoyer un essai »** vise vos propres abonnements et
+rend, pour chaque navigateur, le code HTTP et la réponse du service, tels
+quels :
+
+| Ce qui s'affiche | Ce que ça veut dire |
+|---|---|
+| **Remise** | Le service a accepté le message. S'il ne s'affiche pas, le problème est côté navigateur. |
+| **HTTP 404 / 410** | L'abonnement est périmé — il vient d'être effacé, réabonnez ce navigateur. |
+| **HTTP 401 / 403** | La clé VAPID est refusée. |
+| **Échec** sans code | La requête n'est pas sortie du serveur : `curl` absent, ou sorties réseau bloquées. |
+
+Un envoi de masse affiche de la même façon le **motif** de chaque échec, groupé
+et compté — « 12 échecs » sans motif ne permet ni de corriger ni même de savoir
+s'il faut s'inquiéter : douze abonnements périmés et douze refus
+d'authentification demandent deux gestes opposés.
+
+Si l'hébergement n'a pas de quoi chiffrer, l'écran liste **nommément** ce qui
+manque (OpenSSL, `hash_hkdf`, `openssl_pkey_derive`, cURL, HTTPS) — la liste
+se transmet telle quelle à un hébergeur.
+
+> **Le navigateur renouvelle les abonnements sans prévenir.** Chrome et Firefox
+> font tourner leurs clés ; l'abonnement enregistré devient alors muet, et rien
+> ne le signale. Le service worker écoute `pushsubscriptionchange` et
+> ré-enregistre la nouvelle adresse à la place de l'ancienne. C'est la cause la
+> plus fréquente d'un push qui « marchait avant ».
+
+### Un `<details>` ne se referme pas tout seul
+
+Ouvrez « Audience », cliquez ailleurs : le volet reste par-dessus la page,
+parfois deux à la fois. C'est le seul endroit du site où le comportement natif
+du navigateur ne suffit pas. Une dizaine de lignes en clair dans le gabarit
+referment au clic extérieur, au suivi d'un lien et à Échap, et n'en gardent
+qu'un ouvert à la fois. **Sans JavaScript, le menu s'ouvre et se parcourt
+exactement comme avant**, au clavier compris : le script ajoute une commodité,
+il ne porte rien d'essentiel.
 
 ---
 

@@ -7,6 +7,8 @@
  */
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { createServer } from 'node:net';
+import { createServer as createServeurHttp } from 'node:http';
+import { createECDH, randomBytes } from 'node:crypto';
 import { writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,6 +42,26 @@ const ok = (label: string, cond: boolean, detail = '') => {
  * adressé à la bonne personne — c'est la seule chose que le partenaire
  * constatera, lui.
  */
+/**
+ * Un faux service de push, pour éprouver ce qui arrive quand ça rate.
+ *
+ * Le cas intéressant n'est pas l'envoi qui marche — c'est celui qui ne
+ * marche pas, parce que c'est le seul dont l'utilisateur ne verra jamais
+ * rien si l'application ne le dit pas. Ce serveur répond 410 comme le fait
+ * un vrai service pour un abonnement périmé.
+ */
+function ouvrirPush(port: number): { clePublique: string; auth: string; fermer: () => void } {
+  const ecdh = createECDH('prime256v1');
+  ecdh.generateKeys();
+  const serveur = createServeurHttp((_req, res) => { res.writeHead(410); res.end('expired'); });
+  serveur.listen(port, '127.0.0.1');
+  return {
+    clePublique: ecdh.getPublicKey().toString('base64url'),
+    auth: randomBytes(16).toString('base64url'),
+    fermer: () => serveur.close(),
+  };
+}
+
 const SMTP_PORT = 3931;
 const recus: string[] = [];
 
@@ -1844,6 +1866,99 @@ const run = async () => {
           .evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none');
   await ctxTel.close();
   await pm.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 30. Ce qui avait été signalé ━━');
+
+  const pfix = await browser.newPage();
+  surveiller(pfix);
+  await connexion(pfix, ADMIN.email, ADMIN.mdp);
+  await pfix.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+
+  /**
+   * 1. La feuille de style porte une empreinte de sa version.
+   *
+   * Sans elle, une mise à jour n'atteint pas qui a déjà visité le site :
+   * le navigateur garde sa copie, le nouveau HTML arrive sur l'ancien
+   * style, et les cartes redeviennent des liens bleus soulignés. Le défaut
+   * est invisible depuis un navigateur neuf — donc pendant qu'on développe.
+   */
+  const feuille = await pfix.locator('link[rel=stylesheet]').first().getAttribute('href');
+  ok('la feuille de style porte une empreinte de version',
+     /wakabi\.css\?v=[0-9a-f]+$/.test(feuille ?? ''), feuille?.split('/').pop() ?? '');
+  ok('et elle se télécharge toujours',
+     (await pfix.request.get(feuille!)).ok());
+
+  const bundles = await pfix.request.get(`${BASE}/index.php?p=profil`);
+  ok('les bundles JavaScript aussi',
+     /push\.js\?v=[0-9a-f]+/.test(await bundles.text()));
+
+  // Et le style s'applique VRAIMENT : c'est ce que le rendu doit prouver,
+  // pas la présence d'un attribut.
+  const style = await pfix.locator('.raccourci').first().evaluate((e) => {
+    const c = getComputedStyle(e);
+    return { display: c.display, decoration: c.textDecorationLine };
+  });
+  ok('les raccourcis sont des blocs, pas du texte au fil de l’eau',
+     style.display === 'block' && style.decoration === 'none',
+     `${style.display} / ${style.decoration}`);
+
+  /* 2. Le déroulant se referme quand on clique ailleurs. */
+  const ouverts = () => pfix.locator('details.deroulant[open]').count();
+  await pfix.click('.deroulant:has(summary:has-text("Contenus")) > summary');
+  ok('un déroulant s’ouvre au clic', (await ouverts()) === 1);
+  await pfix.mouse.click(200, 700);
+  ok('il se referme quand on clique ailleurs', (await ouverts()) === 0);
+
+  await pfix.click('.deroulant:has(summary:has-text("Contenus")) > summary');
+  await pfix.click('.deroulant:has(summary:has-text("Audience")) > summary');
+  ok('un seul déroulant reste ouvert à la fois', (await ouverts()) === 1);
+  await pfix.keyboard.press('Escape');
+  ok('Échap referme aussi', (await ouverts()) === 0);
+
+  /* 3. L'envoi push dit ce qui s'est passé, au lieu de rester muet. */
+  await pfix.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran propose de s’envoyer un essai',
+     (await pfix.locator('button[value=essai]').count()) === 1);
+  ok('il dit combien de navigateurs sont abonnés à ce compte',
+     /navigateur\(s\) abonné\(s\)|aucun navigateur abonné/.test(
+       await pfix.locator('.carte:has-text("Vérifier que ça marche")').innerText()));
+
+  /**
+   * Le scénario qui compte : un abonnement PÉRIMÉ.
+   *
+   * C'est le cas le plus fréquent en production — le navigateur fait
+   * tourner ses clés, l'abonnement enregistré devient muet, et rien ne le
+   * dit. On en pose un vers un service qui répond 410, et l'écran doit le
+   * nommer puis le nettoyer.
+   */
+  const faux = await ouvrirPush(3952);
+  const pose = await pfix.request.post(`${BASE}/index.php?p=api-push-abonner`, {
+    form: {
+      csrf: JSON.parse(await pfix.locator('#push-contexte').innerText().catch(() => '{}') || '{}').csrf
+        ?? (await (async () => {
+          await pfix.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+          return JSON.parse(await pfix.locator('#push-contexte').innerText()).csrf as string;
+        })()),
+      endpoint: `https://127.0.0.1:3952/fcm/send/mort-${marque}`,
+      p256dh: faux.clePublique,
+      auth: faux.auth,
+    },
+  });
+  ok('un abonnement d’essai est enregistré', pose.ok(), `HTTP ${pose.status()}`);
+
+  await pfix.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  await pfix.locator('button[value=essai]').click();
+  await pfix.waitForLoadState('domcontentloaded');
+  const verdict = await pfix.locator('.carte:has-text("Vérifier que ça marche")').innerText();
+  ok('l’essai rend un verdict par navigateur, pas un silence',
+     /Remise|HTTP \d{3}|Échec/.test(verdict),
+     verdict.replace(/\s+/g, ' ').slice(0, 90));
+  ok('un abonnement injoignable est nommé et non deviné',
+     /HTTP \d{3}|Échec/.test(verdict));
+
+  faux.fermer();
+  await pfix.close();
 
   console.log('\n━━ 22. Le transport e-mail ━━');
 

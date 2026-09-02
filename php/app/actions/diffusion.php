@@ -34,6 +34,7 @@ $segments = $equipe
 $message = null;
 $erreur = null;
 $rapport = null;
+$essai = null;
 
 $saisie = [
     'segment' => (string) ($_POST['segment'] ?? array_key_first($segments)),
@@ -42,7 +43,60 @@ $saisie = [
     'lien' => trim((string) ($_POST['lien'] ?? '')),
 ];
 
-if ($post) {
+/* ---------------- l'essai sur soi-même ---------------- */
+
+/**
+ * S'envoyer une notification à SOI, et dire exactement ce qui s'est passé.
+ *
+ * C'est le même geste que le bouton d'essai du transport e-mail, et pour
+ * la même raison : sans lui, une notification qui n'arrive pas ne laisse
+ * aucune trace. Le navigateur ne dit rien, le service de push répond 201
+ * à une enveloppe qu'il ne sait pas lire, et l'on cherche pendant une
+ * heure du côté de l'écran d'envoi alors que le problème est ailleurs.
+ *
+ * Ici, on vise ses propres abonnements et on rend le code HTTP et le
+ * corps de la réponse tels quels — c'est ce qu'on transmet à un
+ * hébergeur, ou ce qui dit tout de suite « aucun abonnement ».
+ */
+if ($post && ($_POST['action'] ?? '') === 'essai') {
+    verifier_csrf();
+    $miens = push_abonnements_de((string) $u['id']);
+    if (!$miens) {
+        $erreur = 'Ce compte n’a aucun abonnement. Ouvrez Mon profil et cliquez '
+                . '« Recevoir les notifications » sur CE navigateur, puis revenez ici.';
+    } else {
+        $lignes = [];
+        foreach ($miens as $a) {
+            $r = push_envoyer($a, [
+                'titre' => 'Essai Wakabi Boost',
+                'corps' => 'Si vous lisez ceci, les notifications fonctionnent. '
+                         . gmdate('d/m/Y à H:i') . ' UTC.',
+                'lien' => base_url() . '/index.php?p=diffusion',
+                'tag' => 'essai-' . substr(sha1((string) $a['id']), 0, 8),
+            ]);
+            $lignes[] = [
+                'agent' => (string) ($a['agent'] ?: 'navigateur inconnu'),
+                'hote' => (string) (parse_url((string) $a['endpoint'], PHP_URL_HOST) ?: '—'),
+                'ok' => $r['ok'],
+                'code' => $r['code'],
+                'message' => $r['message'],
+                'mort' => $r['mort'],
+            ];
+            if ($r['mort']) {
+                push_desabonner((string) $a['endpoint']);
+            }
+        }
+        $essai = $lignes;
+        $reussis = count(array_filter($lignes, fn(array $l) => $l['ok']));
+        $message = $reussis > 0
+            ? $reussis . ' notification(s) remise(s) au service de push. Regardez votre écran — '
+              . 'si rien n’apparaît, le problème est côté navigateur, pas côté serveur.'
+            : null;
+        $erreur ??= $reussis === 0 ? 'Aucune notification n’a pu partir. Le détail est ci-dessous.' : null;
+    }
+}
+
+if ($post && ($_POST['action'] ?? '') !== 'essai') {
     verifier_csrf();
 
     if (!isset($segments[$saisie['segment']])) {
@@ -88,6 +142,15 @@ if ($post) {
                 '%d notification(s) partie(s), %d échec(s), %d abonnement(s) périmé(s) nettoyé(s).',
                 $rapport['envoyes'], $rapport['echecs'], $rapport['nettoyes']
             );
+            if ($rapport['echecs'] > 0 && $rapport['motifs']) {
+                // Le motif, pas seulement le compte : « 12 échecs » ne dit
+                // pas s'il faut corriger un réglage ou ne rien faire.
+                $erreur = 'Échecs : ' . implode(' · ', array_map(
+                    fn(string $motif, int $n) => $n . ' × ' . $motif,
+                    array_keys($rapport['motifs']),
+                    array_values($rapport['motifs'])
+                ));
+            }
             if ($rapport['envoyes'] === 0 && $rapport['echecs'] === 0) {
                 $message = 'Personne n’est encore abonné dans ce segment. Rien n’est parti.';
             }
@@ -110,4 +173,7 @@ vue('diffusion', [
     'erreur' => $erreur,
     'equipe' => $equipe,
     'disponible' => push_disponible(),
+    'prerequis' => push_pre_requis(),
+    'mes_abonnements' => count(push_abonnements_de((string) $u['id'])),
+    'essai' => $essai,
 ]);

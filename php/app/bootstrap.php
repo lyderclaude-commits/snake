@@ -75,6 +75,27 @@ function url(string $chemin = ''): string
     return base_url() . '/' . ltrim($chemin, '/');
 }
 
+/**
+ * L'adresse d'un fichier servi tel quel, avec une empreinte de sa version.
+ *
+ * Sans elle, une mise à jour ne change RIEN pour qui a déjà visité le
+ * site : le navigateur garde sa copie de `wakabi.css`, et l'écran arrive
+ * avec le nouveau HTML sur l'ancien style — des liens bleus soulignés là
+ * où l'on attendait des cartes. Le pire est que ça ne se voit pas depuis
+ * un navigateur neuf, donc jamais pendant qu'on développe.
+ *
+ * L'empreinte est la date de modification du fichier : elle change quand
+ * le fichier change, et jamais autrement. Un fichier absent rend l'adresse
+ * nue plutôt qu'une erreur — un style manquant vaut mieux qu'une page
+ * blanche.
+ */
+function actif(string $chemin): string
+{
+    $disque = RACINE . '/' . ltrim($chemin, '/');
+    $t = @filemtime($disque);
+    return url($chemin) . ($t ? '?v=' . substr(dechex($t), -6) : '');
+}
+
 /* ---------------- dossiers de données ---------------- */
 
 function dossier_donnees(): string

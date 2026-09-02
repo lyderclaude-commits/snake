@@ -97,11 +97,36 @@ function vapid(): array
     ];
 }
 
-/** Le push est-il utilisable ? Il lui faut HTTPS, et des clés. */
+/**
+ * Le push est-il utilisable sur cet hébergement ?
+ *
+ * `curl` en fait partie : sans lui, `curl_init()` n'est pas une erreur
+ * qu'on rattrape, c'est une erreur fatale qui rend une page blanche au
+ * milieu d'un envoi. Mieux vaut le dire avant.
+ */
 function push_disponible(): bool
 {
     return extension_loaded('openssl') && function_exists('hash_hkdf')
-        && function_exists('openssl_pkey_derive');
+        && function_exists('openssl_pkey_derive') && function_exists('curl_init');
+}
+
+/**
+ * Ce qui manque, nommément — pour un écran de diagnostic.
+ *
+ * « Ça ne marche pas » est le pire message d'erreur qui soit. Celui qui
+ * lit celui-ci doit pouvoir le transmettre à son hébergeur tel quel.
+ *
+ * @return array<string, bool>
+ */
+function push_pre_requis(): array
+{
+    return [
+        'OpenSSL' => extension_loaded('openssl'),
+        'hash_hkdf()' => function_exists('hash_hkdf'),
+        'openssl_pkey_derive()' => function_exists('openssl_pkey_derive'),
+        'cURL' => function_exists('curl_init'),
+        'HTTPS' => str_starts_with(base_url(), 'https://'),
+    ];
 }
 
 /* ------------------------------------------------------------------ */
@@ -429,11 +454,17 @@ const PUSH_SEGMENTS = [
 /**
  * Envoie à un segment entier, et nettoie au passage.
  *
- * @return array{envoyes: int, echecs: int, nettoyes: int}
+ * Les MOTIFS d'échec sont gardés, dédoublonnés. Un compteur qui dit
+ * « 12 échecs » et rien d'autre ne permet ni de corriger ni même de
+ * savoir s'il faut s'inquiéter : douze abonnements périmés et douze
+ * refus d'authentification demandent deux gestes opposés.
+ *
+ * @return array{envoyes: int, echecs: int, nettoyes: int, motifs: array<string, int>}
  */
 function push_diffuser(array $abonnements, array $message): array
 {
     $envoyes = $echecs = $nettoyes = 0;
+    $motifs = [];
     foreach ($abonnements as $a) {
         $r = push_envoyer($a, $message);
         if ($r['ok']) {
@@ -441,10 +472,21 @@ function push_diffuser(array $abonnements, array $message): array
             continue;
         }
         $echecs++;
+        $cle = ($r['code'] ? 'HTTP ' . $r['code'] . ' — ' : '')
+             . trim(mb_substr((string) $r['message'], 0, 160));
+        $motifs[$cle] = ($motifs[$cle] ?? 0) + 1;
         if ($r['mort']) {
             push_desabonner((string) $a['endpoint']);
             $nettoyes++;
         }
     }
-    return ['envoyes' => $envoyes, 'echecs' => $echecs, 'nettoyes' => $nettoyes];
+    return ['envoyes' => $envoyes, 'echecs' => $echecs, 'nettoyes' => $nettoyes, 'motifs' => $motifs];
+}
+
+/** Les abonnements d'un compte — pour s'envoyer un essai à soi-même. */
+function push_abonnements_de(string $utilisateur_id): array
+{
+    $s = db()->prepare('SELECT * FROM push WHERE utilisateur_id = ? ORDER BY vu_le DESC');
+    $s->execute([$utilisateur_id]);
+    return $s->fetchAll();
 }

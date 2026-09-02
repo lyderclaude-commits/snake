@@ -83,4 +83,4 @@
   base: <?= json_encode(url(''), JSON_UNESCAPED_SLASHES) ?>,
   csrf: <?= json_encode(jeton_csrf()) ?>
 };</script>
-<script src="<?= e(url('public/scanner.js')) ?>" defer></script>
+<script src="<?= e(actif('public/scanner.js')) ?>" defer></script>

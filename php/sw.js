@@ -44,6 +44,45 @@ self.addEventListener('push', (e) => {
   e.waitUntil(self.registration.showNotification(titre, options));
 });
 
+/**
+ * Le navigateur renouvelle un abonnement sans prévenir la page.
+ *
+ * Chrome et Firefox font tourner leurs clés : l'abonnement enregistré
+ * chez nous devient alors périmé, et les envois partent vers une adresse
+ * morte. Rien ne le signale — le service répond 404 ou 410 à un serveur
+ * que personne ne regarde, et l'on croit que les notifications « ne
+ * marchent pas ». C'est le seul événement qui permet de le rattraper.
+ */
+self.addEventListener('pushsubscriptionchange', (e) => {
+  e.waitUntil((async () => {
+    const ancienne = e.oldSubscription || null;
+    let neuve = e.newSubscription || null;
+
+    if (!neuve) {
+      // Firefox ne fournit pas la nouvelle : on la redemande avec la
+      // même clé serveur, qui est celle de l'ancien abonnement.
+      const cle = ancienne && ancienne.options && ancienne.options.applicationServerKey;
+      if (!cle) return;
+      neuve = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: cle,
+      });
+    }
+
+    const j = neuve.toJSON();
+    const base = self.registration.scope;
+    const f = new FormData();
+    f.set('endpoint', neuve.endpoint);
+    f.set('p256dh', (j.keys && j.keys.p256dh) || '');
+    f.set('auth', (j.keys && j.keys.auth) || '');
+    if (ancienne) f.set('remplace', ancienne.endpoint);
+    // Sans session ni jeton CSRF : un service worker n'a pas de page. La
+    // route accepte ce cas précis, et ne fait que remplacer une adresse
+    // par une autre — elle ne peut ni lire ni supprimer quoi que ce soit.
+    await fetch(base + 'index.php?p=api-push-renouveler', { method: 'POST', body: f });
+  })());
+});
+
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const lien = (e.notification.data && e.notification.data.lien) || './';
