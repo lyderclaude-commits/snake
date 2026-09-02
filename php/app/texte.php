@@ -170,26 +170,44 @@ function texte_riche(string $brut): string
  * lâché. Vide, l'image est déclarée décorative plutôt que d'être annoncée
  * par son nom de fichier, qui n'apprend rien.
  */
+/** La largeur utile de la colonne d'un article, en pixels. Voir `.corps-article`. */
+const COLONNE_ARTICLE = 760;
+
 function image_article(string $url, string $legende = ''): string
 {
     $url = html_entity_decode($url, ENT_QUOTES, 'UTF-8');
     if (!function_exists('image_reduite') || cle_image($url) === null) {
         return '';
     }
-    $im = image_reduite($url, 960);
+    /**
+     * La largeur voulue par l'auteur décide de DEUX choses.
+     *
+     * De la place que la figure prend dans la colonne, bien sûr ; mais
+     * aussi du fichier téléchargé. Une image posée à 40 % s'affiche en
+     * 300 px de large : lui envoyer la vignette de 960 serait payer trois
+     * fois le transfert pour rien, sur des connexions qui se comptent.
+     */
+    $pourcent = largeur_de_url($url);
+    $affichee = max(160, (int) round(COLONNE_ARTICLE * $pourcent / 100));
+
+    $im = image_reduite($url, $affichee);
     $dim = $im['largeur']
         ? ' width="' . (int) $im['largeur'] . '" height="' . (int) $im['hauteur'] . '"'
         : '';
     $srcset = $im['srcset']
-        ? ' srcset="' . e($im['srcset']) . '" sizes="(max-width:820px) 92vw, 760px"'
+        ? ' srcset="' . e($im['srcset']) . '" sizes="(max-width:820px) 92vw, ' . $affichee . 'px"'
         : '';
 
     $balise = '<img src="' . e($im['src']) . '"' . $srcset . $dim
             . ' alt="' . e($legende) . '" loading="lazy" decoding="async">';
 
+    // Sous 100 %, la figure est CENTRÉE : une image de 40 % collée au bord
+    // gauche ressemble à un défaut de mise en page, pas à une intention.
+    $style = $pourcent < 100 ? ' style="width:' . $pourcent . '%"' : '';
+
     return $legende === ''
-        ? '<figure class="image-article">' . $balise . '</figure>'
-        : '<figure class="image-article">' . $balise
+        ? '<figure class="image-article"' . $style . '>' . $balise . '</figure>'
+        : '<figure class="image-article"' . $style . '>' . $balise
           . '<figcaption>' . texte_en_ligne(e($legende)) . '</figcaption></figure>';
 }
 

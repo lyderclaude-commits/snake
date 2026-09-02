@@ -2354,6 +2354,173 @@ const run = async () => {
   await ctxIm.close();
   await pim.close();
 
+  /* ================================================================== */
+  console.log('\n━━ 35. Recadrer, redimensionner, et ne rien perdre ━━');
+
+  const pre = await browser.newPage();
+  surveiller(pre);
+  pre.on('dialog', (d) => { void d.accept('Le podium'); });
+  await connexion(pre, ADMIN.email, ADMIN.mdp);
+  await pre.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await pre.waitForSelector('.editeur-zone');
+
+  const TITRE_RE = `Recadré ${marque}`;
+  await pre.fill('#a-titre', TITRE_RE);
+  await pre.setInputFiles('#a-image',
+    { name: 'couv.png', mimeType: 'image/png', buffer: imagePng(900, 600) });
+  await pre.locator('.editeur-zone').click();
+  await pre.keyboard.type('Avant la photo.');
+  const [choixRe] = await Promise.all([
+    pre.waitForEvent('filechooser'),
+    pre.locator('.editeur-outil[aria-label="Image"]').click(),
+  ]);
+  await choixRe.setFiles({ name: 'podium.png', mimeType: 'image/png', buffer: imagePng(900, 600) });
+  await pre.waitForSelector('.editeur-zone figure img', { timeout: 20_000 });
+
+  ok('le poids obtenu est annoncé, hors du texte',
+     /après compression/.test(await pre.locator('.editeur-note').innerText())
+     && !/compression/.test(await pre.locator('#a-corps').inputValue()));
+
+  /* --- la largeur --- */
+  await pre.locator('.editeur-zone figure img').click();
+  ok('cliquer l’image ouvre ses réglages', await pre.locator('.editeur-image').isVisible());
+  await pre.locator('.editeur-image input[type=range]').fill('60');
+  await pre.waitForTimeout(150);
+  ok('la largeur choisie s’écrit dans la marque',
+     /&t=60\)$/m.test(await pre.locator('#a-corps').inputValue()),
+     (await pre.locator('#a-corps').inputValue()).split('\n').pop()?.slice(-30) ?? '');
+
+  /* --- le recadrage --- */
+  await pre.locator('.editeur-image [data-i=cadrer]').click();
+  await pre.waitForSelector('.recadrage-scene img');
+  await pre.waitForTimeout(300);
+  const scene = await pre.locator('.recadrage-scene').boundingBox();
+  const coin = await pre.locator('.recadrage-cadre [data-coin=ho]').boundingBox();
+  await pre.mouse.move(coin!.x + 9, coin!.y + 9);
+  await pre.mouse.down();
+  await pre.mouse.move(scene!.x + scene!.width * 0.3, scene!.y + scene!.height * 0.25, { steps: 10 });
+  await pre.mouse.up();
+  await pre.locator('.recadrage [data-r=ok]').click();
+  await pre.waitForTimeout(400);
+
+  const marquesRe = await pre.locator('#a-corps').inputValue();
+  const cadrage = /&c=(\d+)-(\d+)-(\d+)-(\d+)/.exec(marquesRe);
+  ok('le cadrage s’écrit en millièmes dans la marque',
+     cadrage !== null && Number(cadrage[1]) > 200 && Number(cadrage[1]) < 400,
+     cadrage?.[0] ?? marquesRe.split('\n').pop() ?? '');
+
+  const srcRe = await pre.locator('.editeur-zone figure img').getAttribute('src') ?? '';
+  const servie = await pre.request.get(srcRe);
+  ok('le serveur sert bien l’image recadrée',
+     servie.ok() && (servie.headers()['content-type'] ?? '').startsWith('image/'),
+     `HTTP ${servie.status()} ${servie.headers()['content-type']}`);
+
+  /* --- publier, et vérifier que TOUT a survécu --- */
+  await pre.click('button[value=publier]');
+  await pre.waitForLoadState('domcontentloaded');
+  const slugRe = /p=blog&a=([a-z0-9-]+)/.exec(
+    await pre.locator('.msg.ok').first().innerText().catch(() => ''))?.[1] ?? '';
+  ok('l’article recadré se publie', slugRe !== '', slugRe);
+
+  const ctxRe = await browser.newContext();
+  const pvRe = await ctxRe.newPage();
+  surveiller(pvRe);
+  await pvRe.goto(`${BASE}/index.php?p=blog&a=${slugRe}`, { waitUntil: 'domcontentloaded' });
+  const figRe = pvRe.locator('.corps-article .image-article');
+  ok('la largeur choisie se retrouve sur la page publiée',
+     /width:\s*60%/.test(await figRe.getAttribute('style') ?? ''),
+     await figRe.getAttribute('style') ?? '');
+  const imgRe = figRe.locator('img');
+  const hRe = Number(await imgRe.getAttribute('height'));
+  const lRe = Number(await imgRe.getAttribute('width'));
+  /* 900×600 rogné à ~70 % × ~75 % : la proportion CHANGE, et les
+     dimensions annoncées doivent suivre, sinon la page saute. */
+  ok('les dimensions annoncées sont celles de l’image recadrée',
+     lRe > 0 && hRe > 0 && Math.abs(hRe / lRe - 0.75) > 0.02,
+     `${lRe} × ${hRe}`);
+
+  /**
+   * Le défaut qui a motivé tout ceci : modifier un article effaçait sa
+   * couverture. Le champ n'était pas renvoyé, l'enregistrement écrivait
+   * NULL, et personne ne fait le lien entre « j'ai corrigé une faute » et
+   * « l'image a disparu ».
+   */
+  ok('la couverture a survécu à la publication',
+     (await pvRe.locator('.corps-article').locator('xpath=preceding::img').count()) > 0
+     || /p=vignette|p=media/.test(await pvRe.locator('main').innerHTML()));
+
+  await pre.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  await pre.locator(`tr:has-text("${TITRE_RE}") a[href*="blog-editer"]`).first().click();
+  await pre.waitForSelector('.editeur-zone figure img');
+  ok('la couverture est encore là à la réouverture',
+     (await pre.locator('input[name=effacer_image]').count()) === 1);
+  ok('le champ caché la renvoie au serveur',
+     (await pre.locator('input[name=couverture]').inputValue()).includes('p=media'));
+
+  const avantEnr = await pre.locator('input[name=couverture]').inputValue();
+  await pre.fill('#a-titre', TITRE_RE + ' (corrigé)');
+  await pre.click('main button[value=enregistrer]');
+  await pre.waitForLoadState('domcontentloaded');
+  await pre.locator(`tr:has-text("${TITRE_RE}") a[href*="blog-editer"]`).first().click();
+  await pre.waitForSelector('.editeur-zone');
+  ok('corriger le titre n’efface pas la couverture',
+     (await pre.locator('input[name=couverture]').inputValue()) === avantEnr,
+     (await pre.locator('input[name=couverture]').inputValue()).slice(-24));
+  ok('ni l’image du corps',
+     /!\[Le podium\]/.test(await pre.locator('#a-corps').inputValue()));
+  ok('ni son cadrage, ni sa largeur',
+     /&c=\d+-\d+-\d+-\d+/.test(await pre.locator('#a-corps').inputValue())
+     && /&t=60/.test(await pre.locator('#a-corps').inputValue()));
+
+  /**
+   * Une figure EMBALLÉE dans un conteneur reste une image.
+   *
+   * C'est ce que produit un collage depuis la page publiée. Sans la
+   * descente dans les conteneurs, la sérialisation jetait la figure avec
+   * son `<div>` et l'image disparaissait en silence.
+   */
+  const survit = await pre.evaluate(() => {
+    const zone = document.querySelector('.editeur-zone') as HTMLElement;
+    // On recopie l'adresse d'une image RÉELLE : c'est ce que fait un
+    // collage depuis la page publiée, et cela évite d'aller chercher un
+    // fichier qui n'existe pas.
+    const src = zone.querySelector('figure img')?.getAttribute('src') ?? '';
+    const enveloppe = document.createElement('div');
+    enveloppe.innerHTML = '<p>Collé.</p><figure class="image-article">'
+      + '<img src="' + src + '">'
+      + '<figcaption>Venue d’ailleurs</figcaption></figure>';
+    zone.appendChild(enveloppe);
+    zone.dispatchEvent(new Event('input'));
+    return (document.getElementById('a-corps') as HTMLTextAreaElement).value;
+  });
+  ok('une figure collée dans un conteneur n’est pas perdue',
+     /!\[Venue d’ailleurs\]/.test(survit), survit.split('\n').pop()?.slice(0, 48) ?? '');
+
+  /**
+   * La passe de maintenance couvre AUSSI les images d'articles.
+   *
+   * Une couverture téléversée avant que la compression n'existe pèse
+   * encore ses trois mégaoctets ; et quand l'allègement change
+   * l'extension du fichier, l'adresse doit être réécrite jusque dans les
+   * marques du corps, sans quoi l'article se retrouve avec une image
+   * morte au milieu du texte.
+   */
+  await pre.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pre.locator('button[value=images]').click();
+  await pre.waitForLoadState('domcontentloaded');
+  const bilan = await pre.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('la maintenance des images rend un bilan lisible',
+     /image\(s\) traitée\(s\)|déjà optimisées/.test(bilan), bilan.replace(/\s+/g, ' ').slice(0, 90));
+
+  await pvRe.goto(`${BASE}/index.php?p=blog&a=${slugRe}`, { waitUntil: 'domcontentloaded' });
+  const apres = await pvRe.request.get(
+    (await figRe.locator('img').getAttribute('src')) ?? '');
+  ok('après la maintenance, l’image de l’article se télécharge toujours',
+     apres.ok(), `HTTP ${apres.status()}`);
+
+  await ctxRe.close();
+  await pre.close();
+
   console.log('\n━━ 22. Le transport e-mail ━━');
 
   /**

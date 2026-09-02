@@ -24,7 +24,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **358 scénarios, 358 réussis**
+Les deux ont été vérifiés de bout en bout : **375 scénarios, 375 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +110,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 358 scénarios, dans un vrai navigateur
+npm run php:e2e          # 375 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde restaurée, chiffrement push, éditeur
 ```
 
@@ -120,7 +120,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 358 scénarios
+### Les 375 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -172,6 +172,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les rôles internes** | Scanner, Éditeur et Coordinateur n'ouvrent **que** les écrans que leur table de droits donne — vérifié route par route ; l'inscription publique ne propose que les deux rôles clients et un formulaire trafiqué est refusé côté serveur |
 | **Le super administrateur** | Le compte fondateur en est un ; l'équipe et les clients font **deux listes** et le fondateur ne se perd pas derrière deux cents organisateurs ; la longue liste se cherche par nom, adresse ou structure ; un membre de l'équipe ne se fabrique ni complice ni promotion, et le dernier super administrateur ne se rétrograde ni ne se suspend |
 | **Une image dans un article** | Téléversée depuis l'éditeur, elle devient une **marque** et non une balise ; l'article publié porte la figure et sa légende ; l'image passe par le redimensionneur, se télécharge en WebP, et la légende sert de texte de remplacement ; une image hébergée ailleurs n'est **pas** rendue |
+| **Recadrer et redimensionner** | Cliquer une image ouvre ses réglages ; la largeur choisie s'écrit dans la marque et se retrouve sur la page publiée ; le cadrage se tire aux coins, s'écrit en millièmes, et le serveur rend bien l'image découpée — avec **les dimensions de l'image recadrée**, pas celles de l'original |
+| **Ce qui ne doit rien perdre** | Corriger le titre d'un article n'efface ni sa couverture, ni l'image du corps, ni son cadrage, ni sa largeur ; une figure collée dans un conteneur reste une image ; après la passe de maintenance, l'image de l'article se télécharge toujours |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -977,6 +979,41 @@ erreur : la ligne disparaît, et l'auteur le voit dans son aperçu.
   mutualisé c'est le quota qui finit par se remplir — un disque plein empêche
   d'écrire la sauvegarde.
 
+### Recadrer et redimensionner, sans rien détruire
+
+Cliquer une image dans l'éditeur ouvre ses réglages, juste sous la barre : un
+curseur de **largeur** de 20 à 100 %, et un bouton **Recadrer** qui ouvre
+l'image en grand avec un cadre à tirer aux quatre coins — libre, ou en 16:9,
+4:3, carré et 3:4. Les réglages sont posés sous la barre plutôt qu'en bulle
+flottante sur l'image : une bulle sort de l'écran dès que l'image est en bas
+de page, et sur téléphone elle recouvre justement ce qu'elle règle.
+
+Deux décisions font tenir l'ensemble.
+
+**Le cadrage est une façon de REGARDER l'original, pas une découpe du
+fichier.** Il s'écrit dans l'adresse de l'image, en millièmes :
+
+    ?p=media&f=<fichier>&c=299-248-701-752&t=60
+
+Le fichier d'origine n'est jamais touché. On peut donc rouvrir l'article six
+mois plus tard et **réélargir** — ce que personne ne peut faire avec un outil
+qui recadre en écrasant. Les millièmes plutôt que les pixels : ils survivent
+à une recompression qui changerait la taille du fichier.
+
+**L'éditeur et la page publiée demandent la même adresse au même serveur.**
+C'est ce qui fait que l'aperçu ne peut pas mentir : le découpage est fait une
+fois par PHP, mis en cache sur disque comme une vignette, et les deux
+affichent le même fichier. Il n'y a pas de rendu « côté éditeur » à maintenir
+en parallèle.
+
+La largeur, elle, ne change pas les octets servis — mais elle change **le
+fichier qu'on télécharge** : une image posée à 40 % s'affiche en 300 px, et
+recevoir la vignette de 960 serait payer trois fois le transfert pour rien.
+Pendant l'édition, elle vit sur un `data-t` plutôt que dans l'adresse, sans
+quoi chaque cran du curseur redemanderait l'image au serveur. Sur téléphone,
+la largeur choisie est ignorée : la colonne fait déjà toute la page, et
+« 40 % » y donnerait un timbre-poste.
+
 ### Les marques, pour qui préfère les taper
 
 Le bouton **« Écrire en texte brut »** rend le champ de saisie — c'est plus
@@ -1314,7 +1351,7 @@ qu'un cadre perdu.
 
 ---
 
-## Trois choses qu'on ne voit pas en développant
+## Quatre choses qu'on ne voit pas en développant
 
 ### La feuille de style est mise en cache par le navigateur
 
@@ -1373,6 +1410,30 @@ referment au clic extérieur, au suivi d'un lien et à Échap, et n'en gardent
 qu'un ouvert à la fois. **Sans JavaScript, le menu s'ouvre et se parcourt
 exactement comme avant**, au clavier compris : le script ajoute une commodité,
 il ne porte rien d'essentiel.
+
+### Un champ qu'on n'affiche pas est un champ qu'on efface
+
+Le formulaire d'article montrait la couverture, proposait de la remplacer, de
+la retirer — mais ne la **renvoyait pas**. À l'enregistrement, le serveur
+lisait `$_POST['couverture']`, n'y trouvait rien, et écrivait `NULL`.
+
+Corriger une faute de frappe effaçait donc l'image de l'article. Le défaut est
+silencieux dans les deux sens : la page dit « enregistré », et personne ne
+fait le lien entre « j'ai corrigé le titre » et « l'image a disparu » — on le
+découvre des semaines plus tard, sur une page qu'on croyait finie.
+
+Deux gardes, désormais. Un champ caché renvoie la couverture en place ; et le
+serveur ne la remplace que si la valeur reçue désigne bien un média de la
+maison, sans quoi il **garde celle qui était enregistrée**. Un formulaire
+trafiqué ne pose donc pas l'image d'un autre site en couverture, et une
+requête incomplète ne détruit rien.
+
+La même famille de défaut guettait le corps du texte : une figure emballée
+dans un `<div>` — ce que produit un collage depuis la page publiée —
+disparaissait à la sérialisation, parce qu'on ne descendait pas dans les
+conteneurs. Les deux sont maintenant tenus par la recette, qui rouvre un
+article, corrige son titre, enregistre, et vérifie que la couverture, l'image,
+son cadrage et sa largeur sont toujours là.
 
 ---
 

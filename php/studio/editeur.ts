@@ -29,6 +29,69 @@
  */
 
 /* ------------------------------------------------------------------ */
+/* L'adresse d'une image porte le cadrage et la largeur                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Deux réglages voyagent DANS l'adresse de l'image, et nulle part ailleurs.
+ *
+ *   `c=x-y-l-h`  le cadrage, en millièmes de l'original ;
+ *   `t=NN`       la largeur d'affichage, en pourcents de la colonne.
+ *
+ * C'est ce qui fait que l'éditeur montre exactement la page publiée sans
+ * une ligne de code en plus : les deux demandent la même adresse au même
+ * serveur, qui découpe et met en cache une fois pour toutes. Et comme le
+ * cadrage est exprimé en millièmes de l'ORIGINAL, on peut toujours le
+ * rouvrir et réélargir : rien n'a été détruit.
+ *
+ * La largeur, elle, ne change pas les octets servis. On la garde donc hors
+ * de l'adresse pendant l'édition — sur un `data-t` — pour ne pas
+ * retélécharger l'image à chaque cran du curseur, et on ne la réinjecte
+ * qu'au moment d'écrire les marques.
+ */
+export function urlAvec(src: string, cles: Record<string, string | null>): string {
+  const absolue = /^[a-z][a-z0-9+.-]*:/i.test(src);
+  let u: URL;
+  try { u = new URL(src, 'http://wakabi.invalide/'); } catch { return src; }
+  for (const [k, v] of Object.entries(cles)) {
+    // `set` remplace SUR PLACE : `p` et `f` gardent leur rang, et le
+    // serveur continue de reconnaître l'adresse.
+    if (v === null) { u.searchParams.delete(k); } else { u.searchParams.set(k, v); }
+  }
+  // Une adresse RELATIVE le reste. La rendre absolue marcherait, mais
+  // réécrirait le texte de quelqu'un qui a tapé sa marque à la main — et
+  // un éditeur qui modifie ce qu'on n'a pas touché finit par inquiéter.
+  return absolue ? u.toString() : src.split('?')[0] + u.search;
+}
+
+/** La valeur d'un paramètre de l'adresse, ou `null`. */
+export function urlLire(src: string, cle: string): string | null {
+  try { return new URL(src, 'http://wakabi.invalide/').searchParams.get(cle); }
+  catch { return null; }
+}
+
+/** Le cadrage d'une adresse, en millièmes, ou le cadre plein. */
+export function cadrageDe(src: string): [number, number, number, number] {
+  const v = (urlLire(src, 'c') ?? '').split('-').map((n) => parseInt(n, 10));
+  return v.length === 4 && v.every((n) => Number.isFinite(n) && n >= 0 && n <= 1000)
+    ? [v[0], v[1], v[2], v[3]]
+    : [0, 0, 1000, 1000];
+}
+
+/** La largeur d'affichage d'une figure, en pourcents. */
+function largeurDe(fig: HTMLElement): number {
+  const n = parseInt(fig.dataset.t ?? '100', 10);
+  return Number.isFinite(n) ? Math.max(20, Math.min(100, n)) : 100;
+}
+
+/** Pose la largeur sur la figure : l'attribut mène, le style suit. */
+function poserLargeur(fig: HTMLElement, pourcent: number): void {
+  const p = Math.max(20, Math.min(100, Math.round(pourcent)));
+  fig.dataset.t = String(p);
+  fig.style.width = p < 100 ? p + '%' : '';
+}
+
+/* ------------------------------------------------------------------ */
 /* Les marques → le DOM                                                */
 /* ------------------------------------------------------------------ */
 
@@ -80,9 +143,14 @@ export function marquesVersHtml(brut: string): string {
     if ((m = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(l))) {
       viderParagraphe(); viderListe();
       const legende = m[1];
+      // L'adresse a été échappée avec le reste : `&` y est écrit `&amp;`.
+      // Il faut la vraie adresse pour en lire la largeur.
+      const adresse = m[2].replace(/&amp;/g, '&');
+      const t = Math.max(20, Math.min(100, parseInt(urlLire(adresse, 't') ?? '100', 10) || 100));
       sortie.push(
-        `<figure class="image-article" contenteditable="false">`
-        + `<img src="${m[2]}" alt="${legende}">`
+        `<figure class="image-article" contenteditable="false" data-t="${t}"`
+        + (t < 100 ? ` style="width:${t}%"` : '') + '>'
+        + `<img src="${echapper(urlAvec(adresse, { t: null }))}" alt="${legende}">`
         + (legende ? `<figcaption>${legende}</figcaption>` : '')
         + '</figure>'
       );
@@ -172,6 +240,27 @@ export function htmlVersMarques(racine: HTMLElement): string {
   const blocs: string[] = [];
 
   const bloc = (e: HTMLElement): void => {
+    /**
+     * Une figure EMBALLÉE dans un conteneur reste une image.
+     *
+     * C'est ce que produit un collage depuis la page publiée, ou certains
+     * navigateurs quand on presse Entrée juste avant une image. Sans cette
+     * descente, `marquesEnLigne` jette la figure avec son conteneur :
+     * l'image disparaît à l'enregistrement, sans un mot, et l'auteur ne le
+     * découvre qu'une fois l'article en ligne.
+     */
+    if (e.tagName !== 'FIGURE' && e.querySelector('figure img')) {
+      for (const enfant of Array.from(e.childNodes)) {
+        if (enfant.nodeType === Node.ELEMENT_NODE) {
+          bloc(enfant as HTMLElement);
+        } else {
+          const t = nettoyer(enfant.textContent ?? '');
+          if (t) blocs.push(t);
+        }
+      }
+      return;
+    }
+
     const contenu = Array.from(e.childNodes).map(marquesEnLigne).join('');
     const lignes = contenu.split('\n').map(nettoyer).filter((l, i, t) =>
       l !== '' || (i > 0 && i < t.length - 1));
@@ -183,8 +272,10 @@ export function htmlVersMarques(racine: HTMLElement): string {
         const legende = nettoyer(e.querySelector('figcaption')?.textContent ?? '');
         // Une figure sans image n'a rien à donner ; et l'adresse est
         // laissée telle quelle : c'est le serveur qui décide de la servir
-        // ou non, et lui seul sait ce qui lui appartient.
-        if (src) blocs.push(`![${legende}](${src})`);
+        // ou non, et lui seul sait ce qui lui appartient. La largeur, elle,
+        // rejoint l'adresse ici : c'est sa seule façon d'être enregistrée.
+        const t = largeurDe(e);
+        if (src) blocs.push(`![${legende}](${urlAvec(src, { t: t < 100 ? String(t) : null })})`);
         return;
       }
       case 'H1': case 'H2': case 'H3':
@@ -333,7 +424,7 @@ async function televerser(zone: HTMLElement): Promise<void> {
       f.set('csrf', csrf);
       f.set('image', fichier);
       const r = await fetch(base + 'index.php?p=api-media', { method: 'POST', body: f });
-      const rep = await r.json() as { ok?: boolean; url?: string; message?: string };
+      const rep = await r.json() as { ok?: boolean; url?: string; poids?: string; message?: string };
       if (!rep.ok || !rep.url) throw new Error(rep.message ?? 'l’envoi a échoué');
 
       const figure = document.createElement('figure');
@@ -357,6 +448,11 @@ async function televerser(zone: HTMLElement): Promise<void> {
         p.innerHTML = '<br>';
         figure.after(p);
       }
+      // Le poids obtenu est ANNONCÉ : c'est la preuve que la compression a
+      // eu lieu, et le seul moyen pour l'auteur de savoir ce que ses
+      // lecteurs vont télécharger.
+      noter(zone, 'Image ajoutée' + (rep.poids ? ' — ' + rep.poids + ' après compression.' : '.')
+        + ' Cliquez dessus pour la recadrer ou changer sa largeur.');
       zone.dispatchEvent(new Event('input'));
     } catch (e) {
       attente.className = 'editeur-attente erreur';
@@ -366,6 +462,290 @@ async function televerser(zone: HTMLElement): Promise<void> {
     }
   });
   choix.click();
+}
+
+/* ------------------------------------------------------------------ */
+/* Une ligne de nouvelles, hors du texte                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ce que l'éditeur a à dire s'affiche SOUS la barre, jamais dans le texte.
+ *
+ * Un message glissé dans la zone éditable serait enregistré avec
+ * l'article si l'auteur sauvegarde dans les secondes qui suivent — et
+ * « Image ajoutée — 48 Ko » se retrouverait publié au milieu du papier.
+ */
+const NOTES = new WeakMap<HTMLElement, HTMLElement>();
+
+function noter(zone: HTMLElement, texte: string, erreur = false): void {
+  const n = NOTES.get(zone);
+  if (!n) return;
+  n.textContent = texte;
+  n.className = 'editeur-note' + (erreur ? ' erreur' : '');
+  n.hidden = false;
+  window.clearTimeout(Number(n.dataset.minuteur ?? 0));
+  n.dataset.minuteur = String(window.setTimeout(() => { n.hidden = true; }, 6000));
+}
+
+/* ------------------------------------------------------------------ */
+/* Recadrer                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Les proportions proposées. « Libre » d'abord : c'est le cas courant. */
+const PROPORTIONS: Array<{ nom: string; r: number | null }> = [
+  { nom: 'Libre', r: null },
+  { nom: '16:9', r: 16 / 9 },
+  { nom: '4:3', r: 4 / 3 },
+  { nom: 'Carré', r: 1 },
+  { nom: '3:4', r: 3 / 4 },
+];
+
+/**
+ * Le recadrage, en grand, sur l'image d'ORIGINE.
+ *
+ * On montre toujours l'original complet, jamais le découpage précédent :
+ * sinon on recadre un recadrage et l'on ne peut plus jamais réélargir.
+ * Le rectangle part de là où l'auteur l'avait laissé.
+ */
+function recadrer(figure: HTMLElement, fini: () => void): void {
+  const img = figure.querySelector('img');
+  if (!img) return;
+
+  const entier = urlAvec(img.getAttribute('src') ?? '', { c: null });
+  let [cx, cy, cl, ch] = cadrageDe(img.getAttribute('src') ?? '');
+  let ratio: number | null = null;
+
+  const fond = document.createElement('div');
+  fond.className = 'recadrage';
+  fond.innerHTML = `
+    <div class="recadrage-boite" role="dialog" aria-modal="true" aria-label="Recadrer l’image">
+      <p class="recadrage-aide">Tirez les coins pour choisir ce qu’on doit voir.
+      L’original est conservé : vous pourrez toujours réélargir.</p>
+      <div class="recadrage-scene"><img alt=""><div class="recadrage-cadre">
+        <span data-coin="ho"></span><span data-coin="hd"></span>
+        <span data-coin="bo"></span><span data-coin="bd"></span>
+      </div></div>
+      <div class="recadrage-pieds">
+        <div class="recadrage-ratios"></div>
+        <div class="rangee" style="gap:8px;margin-left:auto">
+          <button type="button" class="bouton fant petit" data-r="tout">Tout afficher</button>
+          <button type="button" class="bouton fant petit" data-r="annuler">Annuler</button>
+          <button type="button" class="bouton petit" data-r="ok">Valider</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(fond);
+
+  const grand = fond.querySelector('img') as HTMLImageElement;
+  const scene = fond.querySelector('.recadrage-scene') as HTMLElement;
+  const cadre = fond.querySelector('.recadrage-cadre') as HTMLElement;
+  grand.src = entier;
+
+  const dessiner = () => {
+    cadre.style.left = cx / 10 + '%';
+    cadre.style.top = cy / 10 + '%';
+    cadre.style.width = cl / 10 + '%';
+    cadre.style.height = ch / 10 + '%';
+  };
+  dessiner();
+
+  /** La hauteur, en millièmes, qui donne la proportion demandée à l'écran. */
+  const hauteurPour = (largeur: number): number => {
+    if (ratio === null) return ch;
+    const l = grand.naturalWidth || 1;
+    const h = grand.naturalHeight || 1;
+    return Math.round((largeur * l) / (ratio * h));
+  };
+
+  const ratios = fond.querySelector('.recadrage-ratios') as HTMLElement;
+  for (const p of PROPORTIONS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bouton fant petit' + (p.r === null ? ' actif' : '');
+    b.textContent = p.nom;
+    b.addEventListener('click', () => {
+      ratio = p.r;
+      for (const autre of Array.from(ratios.children)) autre.classList.remove('actif');
+      b.classList.add('actif');
+      if (ratio !== null) {
+        // On garde la largeur et l'on recalcule la hauteur ; si elle
+        // déborde, c'est la largeur qui cède.
+        ch = hauteurPour(cl);
+        if (cy + ch > 1000) { ch = 1000 - cy; cl = Math.round(ch * cl / hauteurPour(cl) || cl); }
+        ch = Math.max(50, Math.min(1000 - cy, ch));
+        dessiner();
+      }
+    });
+    ratios.appendChild(b);
+  }
+
+  /* --- tirer : déplacer le cadre, ou l'un de ses quatre coins --- */
+  let geste: { coin: string | null; x0: number; y0: number; d: number[] } | null = null;
+  const enMille = (e: PointerEvent) => {
+    const r = scene.getBoundingClientRect();
+    return [
+      Math.max(0, Math.min(1000, ((e.clientX - r.left) / Math.max(1, r.width)) * 1000)),
+      Math.max(0, Math.min(1000, ((e.clientY - r.top) / Math.max(1, r.height)) * 1000)),
+    ];
+  };
+
+  scene.addEventListener('pointerdown', (e) => {
+    const cible = e.target as HTMLElement;
+    const [x, y] = enMille(e);
+    if (cible.dataset.coin) {
+      geste = { coin: cible.dataset.coin, x0: x, y0: y, d: [cx, cy, cl, ch] };
+    } else if (cible === cadre) {
+      geste = { coin: null, x0: x, y0: y, d: [cx, cy, cl, ch] };
+    } else {
+      // Un clic dans le vide commence un NOUVEAU cadre à cet endroit.
+      cx = Math.round(x); cy = Math.round(y); cl = 50; ch = hauteurPour(50) || 50;
+      geste = { coin: 'bd', x0: x, y0: y, d: [cx, cy, cl, ch] };
+    }
+    scene.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  scene.addEventListener('pointermove', (e) => {
+    if (!geste) return;
+    const [x, y] = enMille(e);
+    const dx = x - geste.x0;
+    const dy = y - geste.y0;
+    const [ox, oy, ol, oh] = geste.d;
+
+    if (geste.coin === null) {
+      cx = Math.round(Math.max(0, Math.min(1000 - ol, ox + dx)));
+      cy = Math.round(Math.max(0, Math.min(1000 - oh, oy + dy)));
+    } else {
+      const droite = geste.coin.includes('d');
+      const bas = geste.coin.includes('b');
+      let l = Math.round(droite ? ol + dx : ol - dx);
+      let x0 = Math.round(droite ? ox : ox + dx);
+      l = Math.max(50, Math.min(l, droite ? 1000 - ox : ox + ol));
+      x0 = Math.max(0, Math.min(x0, ox + ol - 50));
+      let h = ratio !== null ? hauteurPour(l) : Math.round(bas ? oh + dy : oh - dy);
+      let y0 = bas ? oy : (ratio !== null ? oy + oh - h : Math.round(oy + dy));
+      h = Math.max(50, Math.min(h, bas ? 1000 - oy : oy + oh));
+      y0 = Math.max(0, Math.min(y0, 1000 - h));
+      cx = x0; cy = y0; cl = l; ch = Math.min(h, 1000 - y0);
+    }
+    dessiner();
+  });
+
+  const relacher = () => { geste = null; };
+  scene.addEventListener('pointerup', relacher);
+  scene.addEventListener('pointercancel', relacher);
+
+  /* --- sortir --- */
+  const fermer = () => { fond.remove(); document.removeEventListener('keydown', auClavier); };
+  const auClavier = (e: KeyboardEvent) => { if (e.key === 'Escape') fermer(); };
+  document.addEventListener('keydown', auClavier);
+
+  fond.addEventListener('click', (e) => {
+    const quoi = (e.target as HTMLElement).dataset.r;
+    if (!quoi && e.target !== fond) return;
+    if (quoi === 'ok') {
+      const plein = cx === 0 && cy === 0 && cl === 1000 && ch === 1000;
+      img.src = urlAvec(entier, { c: plein ? null : `${cx}-${cy}-${cl}-${ch}` });
+      fini();
+    } else if (quoi === 'tout') {
+      cx = 0; cy = 0; cl = 1000; ch = 1000;
+      dessiner();
+      return;
+    }
+    fermer();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* La barre de l'image sélectionnée                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Une image se règle une fois sélectionnée, dans une barre à elle.
+ *
+ * Elle est posée SOUS la barre de mise en forme plutôt qu'en surimpression
+ * de l'image : une bulle flottante se retrouve hors de l'écran dès que
+ * l'image est en bas, et sur téléphone elle recouvre ce qu'elle règle.
+ * Ici, elle est toujours au même endroit, toujours entièrement visible.
+ */
+function barreImage(zone: HTMLElement, apres: () => void): HTMLElement {
+  const barre = document.createElement('div');
+  barre.className = 'editeur-image';
+  barre.hidden = true;
+  barre.innerHTML = `
+    <span class="editeur-image-titre">Image</span>
+    <label class="editeur-image-taille">Largeur
+      <input type="range" min="20" max="100" step="5" value="100" aria-label="Largeur de l’image">
+      <output>100 %</output>
+    </label>
+    <button type="button" class="bouton fant petit" data-i="cadrer">Recadrer</button>
+    <button type="button" class="bouton fant petit" data-i="legende">Légende</button>
+    <button type="button" class="bouton fant petit" data-i="retirer">Retirer</button>`;
+
+  const curseur = barre.querySelector('input') as HTMLInputElement;
+  const sortie = barre.querySelector('output') as HTMLOutputElement;
+  let choisie: HTMLElement | null = null;
+
+  const montrer = (fig: HTMLElement | null) => {
+    for (const f of Array.from(zone.querySelectorAll('.image-article'))) {
+      f.classList.toggle('choisie', f === fig);
+    }
+    choisie = fig;
+    barre.hidden = fig === null;
+    if (fig) {
+      curseur.value = String(largeurDe(fig));
+      sortie.textContent = largeurDe(fig) + ' %';
+    }
+  };
+
+  curseur.addEventListener('input', () => {
+    if (!choisie) return;
+    poserLargeur(choisie, Number(curseur.value));
+    sortie.textContent = curseur.value + ' %';
+    apres();
+  });
+
+  barre.addEventListener('click', (e) => {
+    const quoi = (e.target as HTMLElement).dataset.i;
+    if (!quoi || !choisie) return;
+    const fig = choisie;
+    if (quoi === 'cadrer') {
+      recadrer(fig, apres);
+    } else if (quoi === 'legende') {
+      const cap = fig.querySelector('figcaption');
+      const texte = prompt('La légende de l’image — c’est aussi ce que lisent '
+        + 'les gens qui ne la voient pas.', cap?.textContent ?? '');
+      if (texte === null) return;
+      const img = fig.querySelector('img');
+      if (img) img.alt = texte;
+      if (texte.trim() === '') {
+        cap?.remove();
+      } else if (cap) {
+        cap.textContent = texte;
+      } else {
+        const neuf = document.createElement('figcaption');
+        neuf.textContent = texte;
+        fig.appendChild(neuf);
+      }
+      apres();
+    } else if (quoi === 'retirer') {
+      fig.remove();
+      montrer(null);
+      apres();
+    }
+  });
+
+  // Cliquer une image la choisit ; cliquer ailleurs la relâche.
+  zone.addEventListener('click', (e) => {
+    const fig = (e.target as HTMLElement).closest('.image-article') as HTMLElement | null;
+    montrer(fig && zone.contains(fig) ? fig : null);
+  });
+  document.addEventListener('click', (e) => {
+    const n = e.target as HTMLElement;
+    if (!zone.contains(n) && !barre.contains(n) && !n.closest('.recadrage')) montrer(null);
+  });
+
+  return barre;
 }
 
 const OUTILS: Outil[] = [
@@ -494,7 +874,19 @@ function demarrer(): void {
   // partir avec une version d'avant la dernière frappe.
   form.addEventListener('submit', synchroniser);
 
+  // La barre de l'image vient APRÈS la barre de mise en forme et avant la
+  // zone : elle apparaît là où l'œil est déjà, sans déplacer le texte.
+  const barreDeLImage = barreImage(zone, () => { synchroniser(); });
+
+  const note = document.createElement('p');
+  note.className = 'editeur-note';
+  note.hidden = true;
+  note.setAttribute('role', 'status');
+  NOTES.set(zone, note);
+
   boite.appendChild(barre);
+  boite.appendChild(barreDeLImage);
+  boite.appendChild(note);
   boite.appendChild(zone);
   champ.parentElement?.insertBefore(boite, champ);
   synchroniser();

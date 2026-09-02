@@ -58,6 +58,46 @@ function webp_disponible(): bool
 }
 
 /**
+ * Le cadrage écrit dans une adresse : `&c=x-y-l-h`.
+ *
+ * Les quatre nombres sont des MILLIÈMES de l'image d'origine, jamais des
+ * pixels. C'est ce qui permet de recadrer une deuxième fois sans partir du
+ * premier découpage : l'original ne bouge pas, le cadrage n'est qu'une
+ * façon de le regarder. Recadrer serré puis vouloir revenir en arrière est
+ * exactement ce qu'on fait dans la vraie vie ; avec des pixels cuits dans
+ * le fichier, ce retour serait impossible.
+ *
+ * @return array{0:int,1:int,2:int,3:int}|null
+ */
+function cadrage_de_url(?string $url): ?array
+{
+    if (!preg_match('/[?&]c=(\d{1,4})-(\d{1,4})-(\d{1,4})-(\d{1,4})(?:$|&)/', (string) $url, $m)) {
+        return null;
+    }
+    return cadrage_valide([(int) $m[1], (int) $m[2], (int) $m[3], (int) $m[4]]);
+}
+
+/** Un cadrage qui sort de l'image, ou trop petit pour être vu, n'en est pas un. */
+function cadrage_valide(array $c): ?array
+{
+    [$x, $y, $l, $h] = array_map('intval', array_pad(array_slice($c, 0, 4), 4, 0));
+    if ($l < 50 || $h < 50 || $x < 0 || $y < 0 || $x + $l > 1000 || $y + $h > 1000) {
+        return null;
+    }
+    // Le cadrage plein n'en est pas un : il ne mérite ni fichier ni cache.
+    return [$x, $y, $l, $h] === [0, 0, 1000, 1000] ? null : [$x, $y, $l, $h];
+}
+
+/** La largeur d'affichage écrite dans une adresse : `&t=NN`, en pourcents. */
+function largeur_de_url(?string $url): int
+{
+    if (!preg_match('/[?&]t=(\d{1,3})(?:$|&)/', (string) $url, $m)) {
+        return 100;
+    }
+    return max(20, min(100, (int) $m[1]));
+}
+
+/**
  * Le nom que la route `?p=vignette` sait retraduire en chemin.
  *
  * Trois origines, trois préfixes : `c:` un cadre téléversé, `p:` un cadre
@@ -69,7 +109,10 @@ function cle_image(?string $url): ?string
 {
     $url = (string) $url;
     if (preg_match('/[?&]p=media&f=([0-9a-f-]{36}\.(?:png|webp|jpg))(?:$|&)/', $url, $m)) {
-        return 'm:' . $m[1];
+        // Le cadrage entre dans la CLÉ : deux façons de regarder le même
+        // fichier sont deux images, avec deux caches et deux dimensions.
+        $c = cadrage_de_url($url);
+        return 'm:' . $m[1] . ($c ? '!' . implode('-', $c) : '');
     }
     if (preg_match('/[?&]f=([0-9a-f-]{36}\.(?:png|webp))(?:$|&)/', $url, $m)) {
         return 'c:' . $m[1];
@@ -83,6 +126,11 @@ function cle_image(?string $url): ?string
 /** Et l'inverse, avec les mêmes motifs — c'est ce qui rend la route sûre. */
 function image_de_la_cle(string $cle): ?string
 {
+    $cadre = null;
+    if (preg_match('/^(.*)!(\d{1,4})-(\d{1,4})-(\d{1,4})-(\d{1,4})$/', $cle, $m)) {
+        $cle = $m[1];
+        $cadre = cadrage_valide([(int) $m[2], (int) $m[3], (int) $m[4], (int) $m[5]]);
+    }
     $dossier = match (substr($cle, 0, 2)) {
         'm:' => dossier_medias(),
         'c:' => dossier_cadres(),
@@ -93,7 +141,10 @@ function image_de_la_cle(string $cle): ?string
         return null;
     }
     $c = $dossier . '/' . $m[1];
-    return is_file($c) ? $c : null;
+    if (!is_file($c)) {
+        return null;
+    }
+    return $cadre ? (image_cadree($c, $cadre) ?? $c) : $c;
 }
 
 /**
@@ -107,7 +158,14 @@ function chemin_image(?string $url): ?string
     $url = (string) $url;
     if (preg_match('/[?&]p=media&f=([0-9a-f-]{36}\.(?:png|webp|jpg))(?:$|&)/', $url, $m)) {
         $c = dossier_medias() . '/' . $m[1];
-        return is_file($c) ? $c : null;
+        if (!is_file($c)) {
+            return null;
+        }
+        // Le fichier RÉELLEMENT affiché : recadré, il n'a plus les mêmes
+        // dimensions, et c'est de ces dimensions-là que la page a besoin
+        // pour réserver la place — sinon elle saute au chargement.
+        $cadre = cadrage_de_url($url);
+        return $cadre ? (image_cadree($c, $cadre) ?? $c) : $c;
     }
     return chemin_cadre($url);
 }
@@ -174,6 +232,60 @@ function image_reduite(?string $url, int $affichee = 320): array
         'largeur' => $proche,
         'hauteur' => (int) round($proche * $source_h / $source_l),
     ];
+}
+
+/**
+ * Découpe une image selon un cadrage, et rend le fichier obtenu.
+ *
+ * Le résultat est écrit UNE fois puis gardé, comme une vignette : la clé
+ * porte la date de la source et les quatre nombres du cadrage, si bien
+ * qu'un même découpage ne se recalcule jamais et qu'un fichier remplacé
+ * se redécoupe tout seul.
+ *
+ * L'original n'est pas touché. C'est ce qui permet de rouvrir l'article
+ * six mois plus tard et de RÉÉLARGIR le cadrage : recadrer n'a rien
+ * détruit.
+ */
+function image_cadree(string $source, array $cadrage): ?string
+{
+    $c = cadrage_valide($cadrage);
+    if ($c === null || !is_file($source)) {
+        return null;
+    }
+    $ext = webp_disponible() ? 'webp' : 'png';
+    $cle = substr(sha1($source . '|' . filemtime($source) . '|' . implode('-', $c)
+                       . '|' . VIGNETTE_QUALITE), 0, 20);
+    $cible = dossier_vignettes() . '/c' . $cle . '.' . $ext;
+    if (is_file($cible)) {
+        return $cible;
+    }
+
+    $image = image_ouvrir($source);
+    if (!$image) {
+        return null;
+    }
+    $l = imagesx($image);
+    $h = imagesy($image);
+    // Les millièmes deviennent des pixels ici, et nulle part ailleurs.
+    $x = max(0, min($l - 1, (int) round($c[0] * $l / 1000)));
+    $y = max(0, min($h - 1, (int) round($c[1] * $h / 1000)));
+    $largeur = max(1, min($l - $x, (int) round($c[2] * $l / 1000)));
+    $hauteur = max(1, min($h - $y, (int) round($c[3] * $h / 1000)));
+
+    $coupe = imagecrop($image, ['x' => $x, 'y' => $y, 'width' => $largeur, 'height' => $hauteur]);
+    imagedestroy($image);
+    if (!$coupe) {
+        return null;
+    }
+    // Comme partout ailleurs : la transparence d'un PNG survit au découpage.
+    imagealphablending($coupe, false);
+    imagesavealpha($coupe, true);
+    $ok = $ext === 'webp'
+        ? @imagewebp($coupe, $cible, VIGNETTE_QUALITE)
+        : @imagepng($coupe, $cible, 9);
+    imagedestroy($coupe);
+
+    return $ok && is_file($cible) ? $cible : null;
 }
 
 /**
@@ -345,6 +457,86 @@ function poids(int $octets): string
     return $octets >= 1024 * 1024
         ? number_format($octets / 1024 / 1024, 1, ',', ' ') . ' Mo'
         : max(1, (int) round($octets / 1024)) . ' Ko';
+}
+
+/**
+ * Les médias cités par un texte : couverture, images d'article.
+ *
+ * @return string[] les noms de fichiers, sans doublon
+ */
+function medias_cites(string $texte): array
+{
+    preg_match_all('/[?&]f=([0-9a-f-]{36}\.(?:png|webp|jpg))/', $texte, $m);
+    return array_values(array_unique($m[1] ?? []));
+}
+
+/**
+ * Recompresse par lots les images des ARTICLES déjà en ligne.
+ *
+ * Même geste que pour les cadres, et pour la même raison : une couverture
+ * téléversée avant que la compression n'existe pèse encore ses trois
+ * mégaoctets, et personne n'ira la repasser à la main.
+ *
+ * Une différence, et elle compte : le nom du fichier peut changer
+ * d'extension en cours de route. L'adresse est alors réécrite PARTOUT où
+ * elle figure — la couverture, mais aussi le corps de l'article, où elle
+ * est enfouie dans une marque. L'oublier laisserait des images mortes au
+ * milieu du texte, et c'est le genre de dégât qu'on ne voit qu'en
+ * relisant les vieux articles.
+ */
+function alleger_medias(int $lot = 12): array
+{
+    $bilan = ['traites' => 0, 'allegees' => 0, 'avant' => 0, 'apres' => 0, 'restants' => 0];
+
+    $aFaire = [];
+    foreach (db()->query('SELECT couverture, corps FROM articles')->fetchAll() as $a) {
+        foreach (medias_cites((string) $a['couverture'] . "\n" . (string) $a['corps']) as $nom) {
+            $chemin = dossier_medias() . '/' . $nom;
+            // Le même marqueur que pour les cadres : recompresser deux fois
+            // ne gagne rien et abîme un peu plus l'image à chaque tour.
+            if (is_file($chemin) && !is_file($chemin . '.opt')) {
+                $aFaire[$nom] = true;
+            }
+        }
+    }
+    $noms = array_keys($aFaire);
+    $bilan['restants'] = max(0, count($noms) - $lot);
+
+    foreach (array_slice($noms, 0, max(1, $lot)) as $nom) {
+        $r = compresser_cadre(dossier_medias(), $nom);
+        $bilan['traites']++;
+        $bilan['avant'] += $r['avant'];
+        $bilan['apres'] += $r['apres'];
+        if ($r['apres'] < $r['avant']) {
+            $bilan['allegees']++;
+        }
+        if ($r['nom'] !== $nom) {
+            $s = db()->prepare('UPDATE articles SET couverture = REPLACE(couverture, ?, ?),
+                                corps = REPLACE(corps, ?, ?)
+                                WHERE couverture LIKE ? OR corps LIKE ?');
+            $s->execute([$nom, $r['nom'], $nom, $r['nom'], '%' . $nom . '%', '%' . $nom . '%']);
+        }
+        @touch(dossier_medias() . '/' . $r['nom'] . '.opt');
+    }
+
+    return $bilan;
+}
+
+/**
+ * Les deux passes, sous un seul bouton.
+ *
+ * Les cadres d'abord — ce sont les plus lourds — puis les images des
+ * articles avec ce qui reste du lot. Un mutualisé coupe un script à trente
+ * secondes : le lot est la seule chose qui garantisse qu'on rende la main.
+ */
+function alleger_images(int $lot = 12): array
+{
+    $b = alleger_cadres($lot);
+    $m = alleger_medias(max(1, $lot - $b['traites']));
+    foreach (['traites', 'allegees', 'avant', 'apres', 'restants'] as $c) {
+        $b[$c] += $m[$c];
+    }
+    return $b;
 }
 
 /**

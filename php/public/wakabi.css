@@ -1000,9 +1000,17 @@ input[type=file].fichier-natif{
    illustration. La légende est plus petite et grise — c'est un commentaire
    de l'image, pas la suite de l'article. */
 
-.image-article{margin:1.9em 0;padding:0}
+/* Une figure plus étroite que la colonne se CENTRE : collée à gauche, elle
+   ressemble à un défaut de mise en page plutôt qu'à une intention. */
+.image-article{margin:1.9em auto;padding:0;max-width:100%}
 .image-article img{
   width:100%;height:auto;display:block;border-radius:var(--r10);background:var(--bg2);
+}
+@media(max-width:640px){
+  /* Sur un écran de téléphone, la colonne fait déjà 92 vw : y appliquer
+     « 40 % » donnerait un timbre-poste illisible. La largeur choisie est
+     une intention de mise en page de grand écran, pas une taille absolue. */
+  .image-article{width:auto !important}
 }
 .image-article figcaption{
   margin-top:8px;font-size:.84rem;color:var(--text3);line-height:1.5;
@@ -1011,8 +1019,64 @@ input[type=file].fichier-natif{
 /* Dans l'éditeur, la figure n'est pas modifiable — on ne tape pas DANS une
    image — mais elle doit se laisser sélectionner et supprimer comme un
    bloc. Le liseré au survol dit qu'elle est un objet, pas du texte. */
-.editeur-zone .image-article{cursor:default;outline:1px solid transparent;border-radius:var(--r10)}
+.editeur-zone .image-article{cursor:pointer;outline:1px solid transparent;border-radius:var(--r10)}
 .editeur-zone .image-article:hover{outline-color:var(--border)}
+.editeur-zone .image-article.choisie{outline:2px solid var(--primary);outline-offset:2px}
+
+/* ---- la barre de l'image choisie ---- */
+.editeur-image{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;
+  border-bottom:1px solid var(--border);background:var(--primary-wash);
+}
+.editeur-image-titre{font-family:var(--display);font-weight:800;font-size:.8rem;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--primary-d)}
+.editeur-image-taille{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--text2)}
+.editeur-image-taille input[type=range]{width:130px;accent-color:var(--primary)}
+.editeur-image-taille output{font-variant-numeric:tabular-nums;min-width:44px;font-weight:700}
+@media(max-width:640px){ .editeur-image-taille input[type=range]{width:90px} }
+
+/* ---- ce que l'éditeur a à dire ---- */
+.editeur-note{
+  margin:0;padding:8px 12px;font-size:.84rem;line-height:1.45;
+  background:var(--bg2);color:var(--text2);border-bottom:1px solid var(--border);
+}
+.editeur-note.erreur{background:#FEF2F2;color:#B91C1C}
+
+/* ---- le recadrage, en grand ---- */
+.recadrage{
+  position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(12,18,32,.72);
+}
+.recadrage-boite{
+  background:var(--paper);border-radius:var(--r16);padding:16px;
+  width:min(760px,100%);max-height:92vh;overflow:auto;box-shadow:0 24px 60px -20px rgba(15,23,42,.55);
+}
+.recadrage-aide{margin:0 0 12px;font-size:.86rem;color:var(--text2);line-height:1.5}
+.recadrage-scene{
+  position:relative;display:block;margin:0 auto;max-width:100%;
+  background:var(--bg2);border-radius:var(--r10);overflow:hidden;
+  touch-action:none;user-select:none;line-height:0;cursor:crosshair;
+}
+.recadrage-scene img{display:block;width:100%;height:auto;pointer-events:none}
+/* Ce qui reste dehors est assombri par une ombre géante plutôt que par
+   quatre volets : un seul élément à déplacer, aucun à désaligner. */
+.recadrage-cadre{
+  position:absolute;box-sizing:border-box;border:1px solid #fff;cursor:move;
+  box-shadow:0 0 0 9999px rgba(12,18,32,.55);
+}
+.recadrage-cadre span{
+  position:absolute;width:18px;height:18px;background:#fff;border-radius:4px;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.recadrage-cadre span[data-coin=ho]{left:-9px;top:-9px;cursor:nwse-resize}
+.recadrage-cadre span[data-coin=hd]{right:-9px;top:-9px;cursor:nesw-resize}
+.recadrage-cadre span[data-coin=bo]{left:-9px;bottom:-9px;cursor:nesw-resize}
+.recadrage-cadre span[data-coin=bd]{right:-9px;bottom:-9px;cursor:nwse-resize}
+.recadrage-pieds{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.recadrage-ratios{display:flex;gap:6px;flex-wrap:wrap}
+.recadrage-ratios .bouton.actif{
+  background:var(--primary);color:#fff;border-color:var(--primary);
+}
 
 /* L'attente pendant l'envoi. Une photo de cinq mégaoctets met du temps sur
    une connexion de Lomé : sans repère, le bouton se reclique. */

@@ -175,10 +175,11 @@ $branche = courriel_branche();
 
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 4px">Les images</h3>
-    <p class="aide" style="margin:0 0 12px">Les vignettes du catalogue sont fabriquées et
-    mises en cache toutes seules : rien à faire pour elles. Le bouton ci-dessous s’occupe des
-    <strong>fichiers de cadres eux-mêmes</strong> — ceux que le Studio charge en entier, et qui
-    ont été téléversés avant que la compression n’existe.</p>
+    <p class="aide" style="margin:0 0 12px">Les vignettes du catalogue et des articles sont
+    fabriquées et mises en cache toutes seules : rien à faire pour elles. Le bouton ci-dessous
+    s’occupe des <strong>fichiers d’origine</strong> — les cadres que le Studio charge en entier,
+    et les images des articles, couvertures comprises — quand ils ont été téléversés avant que la
+    compression n’existe.</p>
 
     <form method="post" action="<?= e(url('?p=reglages')) ?>">
       <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
@@ -186,7 +187,7 @@ $branche = courriel_branche();
           if ($cle === 'smtp_motdepasse') { continue; } ?>
         <input type="hidden" name="<?= e($cle) ?>" value="<?= e((string) $valeurs[$cle]) ?>">
       <?php endforeach; ?>
-      <button class="bouton fant" type="submit" name="action" value="images">Alléger les cadres déjà en ligne</button>
+      <button class="bouton fant" type="submit" name="action" value="images">Alléger les images déjà en ligne</button>
     </form>
 
     <p class="aide" style="margin:12px 0 0">Par lots d’une douzaine, parce qu’un hébergement

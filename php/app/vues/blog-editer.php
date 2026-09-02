@@ -65,6 +65,12 @@ $etats = [
       <p class="aide" style="margin:0 0 14px">JPEG, PNG ou WebP, 6 Mo au plus. Elle est
       redimensionnée et recompressée à l’envoi : inutile de le faire avant.</p>
 
+      <?php
+      /* La couverture déjà en place repart avec le formulaire. Sans ce
+         champ, l'enregistrement l'effacerait à chaque passage. */
+      ?>
+      <input type="hidden" name="couverture" value="<?= e($valeurs['couverture']) ?>">
+
       <?php if ($valeurs['couverture']):
           $_im = image_reduite($valeurs['couverture'], 320); ?>
         <img src="<?= e($_im['src']) ?>" alt="" style="max-width:280px;border-radius:var(--r10);display:block;margin-bottom:10px"

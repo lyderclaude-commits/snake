@@ -43,6 +43,16 @@ const ok = (label: string, cond: boolean, detail = '') => {
   console.log(`  ${cond ? '✓' : '✗'} ${label}${detail ? ' — ' + detail : ''}`);
 };
 
+/**
+ * Un nom de média BIEN FORMÉ mais qui ne désigne aucun fichier.
+ *
+ * Les deux côtés prennent alors le même chemin — celui où l'on ne peut
+ * fabriquer aucune vignette — et l'on compare ce qui doit l'être : la
+ * figure, sa largeur, sa légende. Pointer un vrai fichier ferait dépendre
+ * le vérifieur de l'état d'une installation de développement.
+ */
+const FAUX = '00000000-0000-4000-8000-000000000000.png';
+
 /** Le corpus : chaque forme reconnue, et quelques pièges. */
 const CORPUS: [string, string][] = [
   ['un paragraphe simple', 'Une soirée au Maquis Akwaba, un samedi de mars.'],
@@ -61,6 +71,12 @@ const CORPUS: [string, string][] = [
     + '> On a su qui venait.\n\n### Ce qu’on referait\n\n'
     + 'Publier plus tôt, et lire [le guide](https://wakabileguide.com/) avant.'],
   ['des accents et des apostrophes', 'Ça n’a pas marché : l’été, à Cotonou, personne ne sort.'],
+  ['une image', 'Avant.\n\n![La salle au complet](?p=media&f=' + FAUX + ')\n\nAprès.'],
+  ['une image sans légende', '![](?p=media&f=' + FAUX + ')'],
+  ['une image recadrée', '![Le podium](?p=media&f=' + FAUX + '&c=299-248-701-752)'],
+  ['une image redimensionnée', '![Le podium](?p=media&f=' + FAUX + '&t=60)'],
+  ['une image recadrée ET redimensionnée',
+    '![Le podium](?p=media&f=' + FAUX + '&c=100-100-800-600&t=45)'],
 ];
 
 const main = async () => {
@@ -102,6 +118,9 @@ const main = async () => {
   writeFileSync(fichier, `<?php
     require ${JSON.stringify(process.cwd() + '/php')} . '/app/bootstrap.php';
     require RACINE . '/app/texte.php';
+    // Sans lui, \`image_article()\` se tait : c'est \`image_reduite()\` qui
+    // décide de ce qu'un \`<img>\` contient, et la page publiée le charge.
+    require RACINE . '/app/images.php';
     foreach (json_decode(file_get_contents(${JSON.stringify(join(dossier, 'corpus.json'))}), true) as $t) {
       echo str_replace("\\n", '', texte_riche($t)), "\\n";
     }
@@ -121,7 +140,16 @@ const main = async () => {
    * dans l'ordre, avec leur texte.
    */
   const structure = (html: string): string =>
-    html.replace(/\s+(target|rel)="[^"]*"/g, '').replace(/>\s+</g, '><').trim();
+    html
+      .replace(/\s+(target|rel|loading|decoding|contenteditable|srcset|sizes|width|height|data-t)="[^"]*"/g, '')
+      /**
+       * L'adresse d'une image DIFFÈRE des deux côtés, et c'est voulu :
+       * l'éditeur demande le média, la page publiée demande la vignette
+       * fabriquée à partir du même fichier. Ce qui doit coïncider est le
+       * FICHIER, la figure qui l'entoure, sa largeur et sa légende.
+       */
+      .replace(/src="[^"]*?([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})[^"]*"/g, 'src="$1"')
+      .replace(/>\s+</g, '><').trim();
 
   let ecarts = 0;
   CORPUS.forEach(([nom], i) => {

@@ -133,9 +133,26 @@ if ($page === 'blog-editer') {
 
     if ($post) {
         verifier_csrf();
-        foreach (['titre', 'chapo', 'corps', 'couverture'] as $c) {
+        foreach (['titre', 'chapo', 'corps'] as $c) {
             $valeurs[$c] = trim((string) ($_POST[$c] ?? ''));
         }
+
+        /**
+         * La couverture revient par un champ CACHÉ, et elle est vérifiée.
+         *
+         * Sans ce champ, chaque enregistrement repartait avec une
+         * couverture vide : corriger une faute de frappe effaçait l'image
+         * de l'article, et personne ne fait le lien entre les deux — on
+         * découvre la page sans image des semaines plus tard.
+         *
+         * La valeur reçue est confrontée à `cle_image()` : elle ne peut
+         * désigner qu'un média de la maison. Un formulaire trafiqué ne
+         * pose donc pas l'image d'un autre site en couverture d'article.
+         */
+        $envoyee = trim((string) ($_POST['couverture'] ?? ''));
+        $valeurs['couverture'] = $envoyee !== '' && cle_image($envoyee) !== null
+            ? $envoyee
+            : (string) ($a['couverture'] ?? '');
 
         /**
          * L'adresse est FIGÉE une fois l'article publié.
@@ -170,6 +187,7 @@ if ($page === 'blog-editer') {
                 // s'affiche en 900. Elle est ramenée à sa taille utile UNE
                 // fois, ici, et plus jamais transférée entière.
                 $nom = compresser_cadre(dossier_medias(), $nom)['nom'];
+                @touch(dossier_medias() . '/' . $nom . '.opt');
                 $valeurs['couverture'] = url('?p=media&f=' . $nom);
             }
         }

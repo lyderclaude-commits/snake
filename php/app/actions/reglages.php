@@ -129,15 +129,16 @@ if ($post) {
             /**
              * Alléger ce qui est DÉJÀ en ligne.
              *
-             * Les décors publiés avant cette version portent encore le
-             * fichier tel qu'il a été téléversé. Par lots, parce qu'un
-             * mutualisé coupe un script à trente secondes.
+             * Les décors ET les articles publiés avant cette version
+             * portent encore le fichier tel qu'il a été téléversé. Par
+             * lots, parce qu'un mutualisé coupe un script à trente
+             * secondes.
              */
-            $b = alleger_cadres();
+            $b = alleger_images();
             $message = $b['traites'] === 0
-                ? 'Tous les cadres sont déjà optimisés. Rien à faire.'
+                ? 'Toutes les images sont déjà optimisées. Rien à faire.'
                 : sprintf(
-                    '%d cadre(s) traité(s), %d allégé(s) : %s au lieu de %s.%s',
+                    '%d image(s) traitée(s), %d allégée(s) : %s au lieu de %s.%s',
                     $b['traites'], $b['allegees'], poids($b['apres']), poids($b['avant']),
                     $b['restants'] > 0
                         ? ' Il en reste ' . $b['restants'] . ' — relancez pour continuer.'

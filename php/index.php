@@ -151,7 +151,19 @@ switch ($page) {
             http_response_code(404);
             exit('Introuvable');
         }
-        header('Content-Type: ' . match (pathinfo($nom, PATHINFO_EXTENSION)) {
+        /**
+         * Le cadrage est honoré ICI aussi, pas seulement par `?p=vignette`.
+         *
+         * Sans cela, une installation sans WebP — c'est le cas sur
+         * certains mutualisés — retomberait sur cette route et servirait
+         * l'image ENTIÈRE : l'auteur a recadré, la page publie autre
+         * chose, et il n'a aucun moyen de comprendre pourquoi.
+         */
+        $cadre = cadrage_de_url($_SERVER['REQUEST_URI'] ?? '');
+        if ($cadre) {
+            $chemin = image_cadree($chemin, $cadre) ?? $chemin;
+        }
+        header('Content-Type: ' . match (pathinfo($chemin, PATHINFO_EXTENSION)) {
             'png' => 'image/png',
             'webp' => 'image/webp',
             default => 'image/jpeg',
@@ -206,6 +218,10 @@ switch ($page) {
         // Redimensionnée et recompressée à l'arrivée, comme une couverture :
         // une photo d'appareil fait 4 000 px et 5 Mo, et s'affiche en 900.
         $c = compresser_cadre(dossier_medias(), $nom);
+        // Le marqueur d'« déjà optimisée » : la passe de maintenance des
+        // réglages saute ce fichier, au lieu de le recompresser une
+        // seconde fois et de l'abîmer un peu plus.
+        @touch(dossier_medias() . '/' . $c['nom'] . '.opt');
         json_repondre([
             'ok' => true,
             'url' => url('?p=media&f=' . $c['nom']),
