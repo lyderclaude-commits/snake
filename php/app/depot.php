@@ -928,16 +928,17 @@ function comptes_recents(int $limite = 6): array
 /**
  * Combien de comptes par formule : la photo du portefeuille.
  *
- * Les CINQ rôles internes en sortent, et non le seul `equipe` : un
- * coordinateur ou un scanner comptait dans le portefeuille comme un client
- * payant, ce qui gonflait silencieusement la ligne « Découverte ».
+ * Seuls les rôles qui ACHÈTENT y figurent. Un coordinateur, un scanner ou
+ * un invité comptaient dans le portefeuille comme des clients payants, ce
+ * qui gonflait silencieusement la ligne « Découverte » — et c'est le
+ * chiffre qu'on regarde pour savoir si l'affaire marche.
  */
 function comptes_par_formule(): array
 {
-    $trous = implode(',', array_fill(0, count(ROLES_INTERNES), '?'));
+    $trous = implode(',', array_fill(0, count(ROLES_AVEC_OFFRE), '?'));
     $s = db()->prepare("SELECT formule, COUNT(*) AS n FROM utilisateurs
-                        WHERE role NOT IN ($trous) GROUP BY formule");
-    $s->execute(ROLES_INTERNES);
+                        WHERE role IN ($trous) GROUP BY formule");
+    $s->execute(ROLES_AVEC_OFFRE);
     $out = [];
     foreach ($s->fetchAll() as $r) {
         $out[(string) $r['formule']] = (int) $r['n'];

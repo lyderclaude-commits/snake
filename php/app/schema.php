@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 function assurer_schema(): void
 {
@@ -106,7 +106,7 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     migrer_donnees($pdo);
     promouvoir_fondateur($pdo);
     sauver_listes_collees($pdo);
-    delester_offres_internes($pdo);
+    delester_offres_sans_objet($pdo);
 }
 
 /**
@@ -143,24 +143,32 @@ function promouvoir_fondateur(PDO $pdo): void
 }
 
 /**
- * v13 — un compte de la maison perd son offre fantôme.
+ * v13 puis v14 — qui n'achète rien perd son offre fantôme.
  *
- * La colonne portait « decouverte » pour tous les comptes internes, sans
- * que rien ne la lise : `capacite()` et `quota()` répondent « tout » et
- * « sans limite » à un compte interne bien avant d'y regarder. Mais
- * l'écran des comptes proposait de la changer, le portefeuille comptait
- * ces comptes comme des clients, et toucher au rôle d'un coordinateur lui
- * expédiait un courriel « Votre offre est maintenant Découverte ».
+ * La colonne portait « decouverte » pour tout le monde, sans que rien ne
+ * la lise. Les lignes d'une offre — campagnes, badges par mois, filigrane,
+ * Koris, redirection — sont toutes lues sur l'AUTEUR du décor. Un compte
+ * de la maison passe outre (`capacite()` lui dit oui à tout) ; un
+ * participant ne produit rien, il fait son badge sur la campagne d'un
+ * autre, et ce sont les limites de cet autre qui s'appliquent.
  *
- * On y écrit le vide, qui est la vérité. Idempotente, et sans effet sur un
- * seul compte client.
+ * Mais l'écran proposait de changer cette valeur, le portefeuille comptait
+ * ces comptes parmi les clients payants, et toucher au rôle expédiait un
+ * courriel « Votre offre est maintenant Découverte » à quelqu'un qui n'a
+ * jamais rien acheté.
+ *
+ * v13 déchargeait les comptes internes ; v14 étend la règle aux
+ * participants — d'où le numéro qui bouge, sans quoi les installations
+ * déjà passées en 13 ne rejoueraient jamais l'élargissement. Idempotente,
+ * et sans effet sur un seul organisateur.
  */
-function delester_offres_internes(PDO $pdo): void
+function delester_offres_sans_objet(PDO $pdo): void
 {
     try {
-        $trous = implode(',', array_fill(0, count(ROLES_INTERNES), '?'));
-        $pdo->prepare("UPDATE utilisateurs SET formule = '' WHERE role IN ($trous) AND formule <> ''")
-            ->execute(ROLES_INTERNES);
+        $trous = implode(',', array_fill(0, count(ROLES_AVEC_OFFRE), '?'));
+        $pdo->prepare("UPDATE utilisateurs SET formule = ''
+                       WHERE role NOT IN ($trous) AND formule <> ''")
+            ->execute(ROLES_AVEC_OFFRE);
     } catch (PDOException) {
         // Table absente sur une installation à moitié bâtie : sans effet.
     }

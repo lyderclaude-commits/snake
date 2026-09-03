@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **491 scénarios, 491 réussis**
+Les deux ont été vérifiés de bout en bout : **503 scénarios, 503 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 491 scénarios, dans un vrai navigateur
+npm run php:e2e          # 503 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP, carnet
 ```
 
@@ -126,7 +126,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 491 scénarios
+### Les 503 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -175,7 +175,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **L’historique des notifications** | Chaque envoi laisse une ligne datée avec son segment, ses abonnements visés, les **personnes** touchées et les **remises** — deux nombres distincts ; l’historique d’un organisateur ne contient pas celui du guide |
-| **Les deux familles de comptes** | Deux formulaires séparés, aucune offre pour l’équipe même en postant `formule=mouvement` à la main, un « OK » sans changement qui n’écrit ni n’envoie rien, le lien de confirmation qui part à la création et se renvoie depuis l’écran de l’équipe, et le courriel qui parle de **rôle** à un équipier et d’**offre** à un client — vérifié sur un vrai serveur SMTP, objets décodés |
+| **Le lien de confirmation** | Ouvert deux fois — d’abord par un filtre de messagerie, puis par la personne : le second appel annonce une **réussite**, pas une panne ; un lien inventé propose une sortie au lieu d’un mur ; le jeton d’un **mot de passe**, lui, ne sert toujours qu’une fois |
+| **Les deux familles de comptes** | Deux formulaires séparés, aucune offre pour l’équipe **ni pour un participant** même en postant `formule=mouvement` à la main, un « OK » sans changement qui n’écrit ni n’envoie rien, le lien de confirmation qui part à la création et se renvoie depuis l’écran de l’équipe, et le courriel qui parle de **rôle** à un équipier et d’**offre** à un client — vérifié sur un vrai serveur SMTP, objets décodés |
 | **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
 | **L'éditeur d'article** | Il remplace le champ, propose huit mises en forme, et le champ envoyé contient les **marques, pas du HTML** ; un collage riche n'apporte que son texte et rien ne s'exécute ; rouvrir un article ne le modifie pas ; la bascule vers le texte brut et le retour ne perdent rien ; la page publiée porte la même mise en forme que l'éditeur |
 | **Les rôles internes** | Scanner, Éditeur et Coordinateur n'ouvrent **que** les écrans que leur table de droits donne — vérifié route par route ; l'inscription publique ne propose que les deux rôles clients et un formulaire trafiqué est refusé côté serveur |
@@ -1192,18 +1193,35 @@ quelqu'un qu'on embauche.
 | | Compte client | Compte de l'équipe |
 |---|---|---|
 | Rôles proposés | Participant, Organisateur | Scanner, Éditeur, Coordinateur, Équipe, Super-administrateur |
-| Offre | Oui, et une échéance suivie | **Aucune** — la colonne est vide, pas « Découverte » |
+| Offre | **Seulement pour l'Organisateur**, avec une échéance suivie | **Aucune** |
 | Qui peut le créer | `comptes` | `comptes_internes`, c'est-à-dire le super-administrateur |
 | Où | *+ Nouveau compte client* | *+ Nouveau compte de l'équipe* |
 
+### Un seul rôle achète : `ROLES_AVEC_OFFRE`
+
+Une offre découpe ce qu'un **organisateur produit** : combien de campagnes
+actives, combien de badges par mois, le filigrane, les Koris crédités au scan,
+la redirection, les liens courts, la régie. Toutes ces lignes sont lues sur
+l'**auteur du décor** — jamais sur celui qui télécharge, ni sur celui qui
+scanne. D'où deux familles sans offre, pour deux raisons différentes :
+
+- **Les comptes de la maison** n'en ont pas parce qu'on ne se vend pas des
+  fonctions à soi-même : `capacite()` et `quota()` leur répondent « tout » et
+  « sans limite » avant même de regarder la colonne.
+- **Un participant** n'en a pas parce qu'il ne produit rien. Il fait son badge
+  sur la campagne d'un autre, et ce sont les limites de **cet autre** qui
+  s'appliquent. Son quota à lui n'a littéralement aucun endroit où mordre.
+
 La nuance entre « vide » et « Découverte » n'est pas cosmétique. Tant qu'une
 valeur traînait dans la colonne, l'écran proposait de la changer, le
-portefeuille comptait le compte dans les clients, et toucher au rôle d'un
-coordinateur lui expédiait **« Votre offre est maintenant Découverte »** — un
-courriel parlant d'un abonnement qu'il n'a jamais pris. `capacite()` et
-`quota()` répondaient déjà « tout » et « sans limite » à un compte interne
-bien avant d'y regarder : la colonne ne servait donc qu'à fabriquer des
-malentendus.
+portefeuille comptait le compte parmi les clients payants — le chiffre qu'on
+regarde pour savoir si l'affaire marche — et toucher au rôle expédiait
+**« Votre offre est maintenant Découverte »** à quelqu'un qui n'a jamais rien
+acheté.
+
+Le champ *Offre* du formulaire client **suit le rôle** : il disparaît dès qu'on
+choisit « Participant ». La liste des comptes fait de même, et le serveur
+refuse la combinaison quoi qu'on lui poste.
 
 - Le formulaire de l'équipe **n'existe pas** pour qui n'a pas
   `comptes_internes` — ce n'est pas un champ grisé, c'est une porte absente.
@@ -1215,7 +1233,38 @@ malentendus.
   l'annonce d'un changement qui n'a pas eu lieu.
 - Le courriel suit la famille : à un client, ce que son offre couvre ; à un
   équipier, **son rôle et ce qu'il ouvre**.
-- La migration v13 vide la colonne des comptes internes existants.
+- La migration vide la colonne de tous les comptes existants qui n'achètent
+  rien — comptes de la maison **et** participants.
+
+### Un lien de confirmation se rejoue — celui d'un mot de passe, jamais
+
+Un lien de courriel n'est presque **jamais ouvert une seule fois**. Les filtres
+anti-hameçonnage des messageries *suivent* les liens avant de livrer le
+message, pour vérifier où ils mènent ; Android les précharge ; un double-tap,
+un retour arrière ou un rafraîchissement font le même effet. Tant que le jeton
+mourait au premier appel, la personne trouvait « ce lien n'a pas fonctionné » à
+son **premier** clic — sur une adresse pourtant confirmée. L'écran annonçait
+une panne qui n'existait pas.
+
+La différence entre les deux jetons n'est pas un détail d'implémentation, c'est
+leur nature :
+
+| Le jeton | Ce qu'il fait | Combien de fois |
+|---|---|---|
+| **Confirmation d'adresse** | *Constate* un fait : cette adresse appartient à ce compte | Autant qu'on veut. Rejouer un constat ne donne rien à personne |
+| **Mot de passe oublié** | *Donne* un pouvoir : il ouvre la porte | **Une seule fois**, et il meurt |
+
+Le jeton de confirmation reste donc en place après usage et rappelle la même
+vérité à chaque appel. Il ne redonne aucun accès et n'ouvre aucune session. Ce
+qui reste refusé : un jeton inventé, un jeton **périmé jamais utilisé**, et un
+jeton **remplacé** par un plus récent — demander un lien neuf annule les
+précédents.
+
+Et la page d'échec n'est plus un mur : elle demande une adresse et renvoie un
+lien, **sans exiger de session**. Quelqu'un qui n'arrive pas à confirmer son
+adresse est justement quelqu'un qui n'a peut-être jamais pu ouvrir son compte.
+La réponse y est la même quoi qu'il arrive — dire « cette adresse est inconnue »
+transformerait le formulaire en annuaire.
 
 ### La confirmation d'adresse suit la création par l'équipe
 

@@ -667,6 +667,56 @@ switch ($page) {
         vue('verification', [
             'titre' => $r['ok'] ? 'Adresse confirmée' : 'Lien de confirmation',
             'resultat' => $r,
+            'demande' => null,
+        ]);
+
+    /**
+     * Redemander un lien SANS être connecté, depuis la page d'échec.
+     *
+     * Un lien périmé menait à un mur : le bouton « m'en envoyer un
+     * nouveau » exigeait une session, et quelqu'un qui n'arrive pas à
+     * confirmer son adresse est justement quelqu'un qui n'a peut-être
+     * jamais réussi à ouvrir son compte. Une page qui constate une panne
+     * sans offrir la sortie n'est pas une page d'erreur, c'est une porte
+     * fermée.
+     *
+     * La réponse est la MÊME quoi qu'il arrive — comme pour le mot de passe
+     * oublié. Dire « cette adresse est inconnue » transformerait le
+     * formulaire en annuaire : on y testerait des adresses jusqu'à trouver
+     * celles qui ont un compte.
+     */
+    case 'verif-demander':
+        verifier_csrf();
+        $adresse = trim((string) ($_POST['email'] ?? ''));
+        $dit = match (true) {
+            !courriel_branche() =>
+                'Le transport e-mail n’est pas réglé sur cette installation : aucun message '
+                . 'ne peut partir. Écrivez à l’équipe.',
+            !filter_var($adresse, FILTER_VALIDATE_EMAIL) =>
+                'Cette adresse e-mail n’est pas valide.',
+            debit_depasse('verif|' . cle_debit($adresse)) =>
+                'Un lien vient déjà de partir vers cette adresse. Réessayez dans '
+                . FENETRE_MINUTES . ' minutes — et regardez vos indésirables.',
+            default => null,
+        };
+
+        if ($dit === null) {
+            debit_noter('verif|' . cle_debit($adresse));
+            $cible = utilisateur_par_email($adresse);
+            // Un compte suspendu ne reçoit rien : lui rendre l'accès par ce
+            // chemin annulerait la suspension sans que personne l'ait décidé.
+            if ($cible && !((int) $cible['suspendu']) && !email_verifie($cible)) {
+                envoyer_verification($cible);
+            }
+            $dit = 'Si un compte existe à cette adresse et qu’elle n’est pas encore '
+                 . 'confirmée, un lien neuf vient de partir. Il vaut ' . VERIF_HEURES . ' heures.';
+        }
+
+        vue('verification', [
+            'titre' => 'Lien de confirmation',
+            'resultat' => ['ok' => false, 'deja' => false, 'utilisateur' => null,
+                           'message' => 'Demandez-en un neuf, il arrive tout de suite.'],
+            'demande' => $dit,
         ]);
 
     case 'renvoyer-verification':

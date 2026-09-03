@@ -231,6 +231,103 @@ const main = async () => {
        && /l’hébergeur laisse sortir ce port/.test(injoignable),
      injoignable.trim().slice(0, 76));
 
+  /* ------------------------------------------------------------------ */
+  /* Le lien de confirmation, ouvert plusieurs fois                      */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Un lien de courriel n'est presque jamais ouvert une seule fois.
+   *
+   * Les filtres anti-hameçonnage des messageries **suivent** les liens
+   * avant de livrer le message, pour vérifier où ils mènent ; Android les
+   * précharge ; un double-tap ou un rafraîchissement font le même effet.
+   * Tant que le jeton mourait au premier appel, la personne trouvait « ce
+   * lien a déjà servi » à son PREMIER clic — sur une adresse qui était,
+   * elle, bel et bien confirmée.
+   *
+   * Ce bloc rejoue exactement cette séquence, et vérifie au passage que la
+   * souplesse s'arrête là : un jeton inventé, un jeton périmé jamais
+   * utilisé, un jeton remplacé et le jeton d'un mot de passe restent tous
+   * refusés.
+   */
+  writeFileSync(fichier, PREAMBULE + `
+    $id = creer_utilisateur(['email' => 'neuf@essai.tg', 'mot_de_passe' => 'un-mot-de-passe-solide',
+        'nom' => 'Compte neuf', 'role' => 'partenaire', 'formule' => 'decouverte']);
+    $jeton = creer_jeton_verification($id);
+    $out = ['depart' => (bool) utilisateur_par_id($id)['email_verifie_le']];
+
+    // 1. l'antivirus de la messagerie suit le lien AVANT la personne
+    $out['scanner'] = consommer_jeton_verification($jeton);
+    // 2. la personne clique ensuite sur le MÊME lien
+    $out['personne'] = consommer_jeton_verification($jeton);
+    // 3. et rafraîchit la page
+    $out['encore'] = consommer_jeton_verification($jeton)['ok'];
+    $out['confirmee'] = (bool) utilisateur_par_id($id)['email_verifie_le'];
+
+    // 4. un jeton inventé
+    $out['invente'] = consommer_jeton_verification(str_repeat('a', 48))['ok'];
+
+    // 5. un jeton périmé, JAMAIS utilisé
+    $id2 = creer_utilisateur(['email' => 'perime@essai.tg', 'mot_de_passe' => 'un-mot-de-passe-solide',
+        'nom' => 'Périmé', 'role' => 'partenaire', 'formule' => 'decouverte']);
+    $j2 = creer_jeton_verification($id2);
+    db()->prepare('UPDATE utilisateurs SET verif_expire_le = ? WHERE id = ?')
+        ->execute([maintenant(time() - 3600), $id2]);
+    $r5 = consommer_jeton_verification($j2);
+    $out['perime'] = ['ok' => $r5['ok'], 'message' => $r5['message']];
+
+    // 6. un lien neuf annule le précédent
+    $j3 = creer_jeton_verification($id2);
+    $out['remplace'] = ['ancien' => consommer_jeton_verification($j2)['ok'],
+                        'neuf' => consommer_jeton_verification($j3)['ok']];
+
+    // 7. changer d'adresse redemande une confirmation
+    db()->prepare('UPDATE utilisateurs SET email = ?, email_verifie_le = NULL, verif_jeton = NULL,
+                   verif_expire_le = NULL WHERE id = ?')->execute(['autre@essai.tg', $id]);
+    $out['change'] = ['jeton_mort' => !consommer_jeton_verification($jeton)['ok'],
+                      'confirmee' => (bool) utilisateur_par_id($id)['email_verifie_le']];
+
+    // 8. le jeton d'un MOT DE PASSE, lui, reste à usage unique
+    $jo = creer_jeton_oubli($id);
+    $out['mdp'] = ['premier' => consommer_jeton_oubli($jo, 'un-nouveau-mot-de-passe'),
+                   'second' => consommer_jeton_oubli($jo, 'encore-un-autre-mot-de-passe')];
+
+    echo json_encode($out, JSON_UNESCAPED_UNICODE), "\\n";
+  `);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const v = JSON.parse(
+    (await lancerPhp('php', [fichier], { env })).stdout.trim().split('\n').pop() ?? '{}',
+  ) as Record<string, any>;
+
+  ok('au départ, l’adresse n’est pas confirmée', v.depart === false);
+  ok('le premier appel — fût-il celui d’un antivirus — confirme l’adresse',
+     v.scanner?.ok === true && v.scanner?.deja === false, String(v.scanner?.message));
+  ok('le clic de la personne, ensuite, est une RÉUSSITE et non une panne',
+     v.personne?.ok === true && v.personne?.deja === true, String(v.personne?.message));
+  ok('un rafraîchissement de plus ne casse rien', v.encore === true);
+  ok('et l’adresse est bien confirmée en base', v.confirmee === true);
+
+  ok('un jeton inventé reste refusé', v.invente === false);
+  ok('un jeton périmé jamais utilisé reste refusé',
+     v.perime?.ok === false && /expiré/.test(String(v.perime?.message)),
+     String(v.perime?.message).slice(0, 46));
+  ok('demander un lien neuf annule le précédent',
+     v.remplace?.ancien === false && v.remplace?.neuf === true);
+  ok('changer d’adresse tue l’ancien lien ET la confirmation',
+     v.change?.jeton_mort === true && v.change?.confirmee === false);
+
+  /**
+   * La distinction qui justifie tout le reste.
+   *
+   * Un lien de confirmation CONSTATE un fait — le rejouer ne donne rien à
+   * personne. Un lien de mot de passe DONNE un pouvoir : il ouvre la
+   * porte, et doit mourir au premier usage. Si cette assertion tombe un
+   * jour, c'est que la souplesse a débordé sur le mauvais jeton.
+   */
+  ok('le jeton d’un MOT DE PASSE, lui, ne sert qu’une fois',
+     v.mdp?.premier === true && v.mdp?.second === false,
+     `${v.mdp?.premier} puis ${v.mdp?.second}`);
+
   await faux.fermer();
   rmSync(dossier, { recursive: true, force: true });
 

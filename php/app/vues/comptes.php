@@ -75,17 +75,26 @@ $ouvert = $ouvert ?? '';
 
       <div class="champ">
         <label for="c-role">Rôle</label>
+        <?php
+        /* Le déroulant de l'offre suit le rôle : un invité n'achète rien.
+           Le laisser visible reviendrait à proposer une Croissance à
+           25 000 F à quelqu'un qui vient juste faire un badge — et le
+           serveur, lui, écrirait le vide sans le dire. */
+        ?>
         <select id="c-role" name="role"
-                onchange="document.getElementById('c-role-aide').textContent = this.selectedOptions[0].dataset.aide">
+                onchange="document.getElementById('c-role-aide').textContent = this.selectedOptions[0].dataset.aide;
+                          document.getElementById('c-bloc-offre').hidden = this.selectedOptions[0].dataset.offre !== '1'">
           <?php foreach (ROLES_PUBLICS as $r): ?>
             <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
+                    data-offre="<?= in_array($r, ROLES_AVEC_OFFRE, true) ? '1' : '0' ?>"
                     <?= $roles_clients === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
           <?php endforeach; ?>
         </select>
         <p class="aide" id="c-role-aide"><?= e(role_aide($roles_clients)) ?></p>
       </div>
 
-      <div class="champ">
+      <div class="champ" id="c-bloc-offre"
+           <?= in_array($roles_clients, ROLES_AVEC_OFFRE, true) ? '' : 'hidden' ?>>
         <label for="c-formule">Offre</label>
         <select id="c-formule" name="formule">
           <?php foreach (FORMULES as $cle => $f): ?>
@@ -249,13 +258,13 @@ $ouvert = $ouvert ?? '';
                 /**
                  * Le déroulant des offres n'apparaît QUE pour un client.
                  *
-                 * Sur la ligne d'un coordinateur, il proposait de lui vendre
-                 * une Croissance — et le valider lui expédiait « Votre offre
-                 * est maintenant… ». Le serveur refuse désormais cette
-                 * combinaison ; l'écran cesse d'abord de la suggérer.
+                 * Sur la ligne d'un coordinateur — ou d'un invité — il
+                 * proposait de lui vendre une Croissance, et le valider lui
+                 * expédiait « Votre offre est maintenant… ». Le serveur refuse
+                 * désormais cette combinaison ; l'écran cesse de la suggérer.
                  */
                 ?>
-                <?php if (!in_array($c['role'], ROLES_INTERNES, true)): ?>
+                <?php if (a_une_offre($c)): ?>
                   <select name="formule" style="width:auto" aria-label="Offre de <?= e($c['nom']) ?>">
                     <?php foreach (FORMULES as $cle => $f): ?>
                       <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>><?= e($f['nom']) ?></option>

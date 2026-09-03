@@ -117,23 +117,43 @@ function interne(?array $u): bool
 }
 
 /**
- * L'offre à ENREGISTRER pour un rôle donné.
+ * Les rôles qui ACHÈTENT une offre. Un seul, et c'est voulu.
  *
- * Un compte de la maison n'a pas d'offre — pas « l'offre Découverte », pas
- * d'offre du tout. La nuance n'est pas cosmétique : tant qu'une valeur
- * traînait dans la colonne, l'écran des comptes proposait de la changer,
- * le tableau de bord comptait le compte dans le portefeuille, et modifier
- * un rôle interne déclenchait un courriel « Votre offre est maintenant
- * Découverte » à quelqu'un qui n'a jamais rien acheté.
+ * Une offre découpe ce qu'un ORGANISATEUR a le droit de produire :
+ * combien de campagnes actives, combien de badges par mois, le filigrane,
+ * les Koris crédités au scan, la redirection, les liens courts, la régie.
+ * Toutes ces lignes sont lues sur l'AUTEUR du décor — jamais sur celui qui
+ * télécharge, ni sur celui qui scanne.
  *
- * `capacite()` et `quota()` répondaient déjà « tout » et « sans limite »
- * aux comptes internes : la colonne ne servait donc à RIEN sauf à
- * fabriquer des malentendus. On y écrit désormais le vide, qui est la
+ * D'où deux familles sans offre, pour deux raisons différentes :
+ *
+ *  - **Les comptes de la maison** n'en ont pas parce qu'on ne se vend pas
+ *    des fonctions à soi-même : `capacite()` et `quota()` leur répondent
+ *    « tout » et « sans limite » avant même de regarder la colonne.
+ *  - **Un participant** n'en a pas parce qu'il ne produit rien. Il fait
+ *    son badge sur la campagne d'un autre, et ce sont les limites de CET
+ *    autre qui s'appliquent. Son quota à lui n'a littéralement aucun
+ *    endroit où mordre.
+ *
+ * Dans les deux cas, la valeur stockée ne servait à rien — sauf à
+ * fabriquer des malentendus : l'écran proposait de la changer, le
+ * portefeuille comptait le compte parmi les clients payants, et toucher au
+ * rôle expédiait un courriel « Votre offre est maintenant Découverte » à
+ * quelqu'un qui n'a jamais rien acheté. On y écrit le vide, qui est la
  * vérité.
  */
+const ROLES_AVEC_OFFRE = ['partenaire'];
+
+/** Ce compte a-t-il une offre commerciale, ou n'a-t-il rien acheté ? */
+function a_une_offre(?array $u): bool
+{
+    return in_array($u['role'] ?? '', ROLES_AVEC_OFFRE, true);
+}
+
+/** L'offre à ENREGISTRER pour un rôle donné. Le vide n'est pas Découverte. */
 function formule_pour(string $role, ?string $demandee): string
 {
-    if (in_array($role, ROLES_INTERNES, true)) {
+    if (!in_array($role, ROLES_AVEC_OFFRE, true)) {
         return '';
     }
     return isset(FORMULES[$demandee ?? '']) ? (string) $demandee : 'decouverte';
@@ -142,14 +162,14 @@ function formule_pour(string $role, ?string $demandee): string
 /**
  * L'offre d'un compte telle qu'on l'ÉCRIT à l'écran, ou rien.
  *
- * Rend `null` pour un compte de la maison, et l'appelant n'affiche alors
- * aucune pastille. Distinct de `formule_libelle()`, qui retombe sur
- * Découverte pour une valeur inconnue — ce qui est le bon défaut pour un
- * client dont la colonne serait vide, et le mauvais pour un coordinateur.
+ * Rend `null` pour qui n'en a pas, et l'appelant n'affiche alors aucune
+ * pastille. Distinct de `formule_libelle()`, qui retombe sur Découverte
+ * pour une valeur inconnue — le bon défaut pour un organisateur dont la
+ * colonne serait vide, le mauvais pour un coordinateur ou un invité.
  */
 function formule_affichee(?array $u): ?string
 {
-    if ($u === null || interne($u) || ($u['formule'] ?? '') === '') {
+    if ($u === null || !a_une_offre($u) || ($u['formule'] ?? '') === '') {
         return null;
     }
     return formule_libelle((string) $u['formule']);
@@ -558,27 +578,65 @@ function lien_verification(string $jeton): string
 }
 
 /**
- * Consomme un jeton. À usage unique, et daté.
+ * Confirme une adresse. REJOUABLE, contrairement au jeton d'un mot de passe.
  *
- * @return array{ok: bool, message: string, utilisateur: ?array}
+ * La différence entre les deux jetons n'est pas un détail d'implémentation,
+ * c'est leur nature : celui du mot de passe DONNE un pouvoir — il ouvre la
+ * porte — et doit donc mourir au premier usage. Celui-ci CONSTATE un fait —
+ * « cette adresse appartient bien à ce compte ». Rejouer un constat ne
+ * donne rien à personne : la deuxième fois, il n'y a plus rien à changer.
+ *
+ * Le rendre rejouable répare un échec qu'on ne peut pas éviter autrement :
+ * un lien de courriel n'est presque jamais ouvert une seule fois.
+ *
+ *  - Les antivirus des messageries et les filtres anti-hameçonnage
+ *    **suivent** les liens avant de livrer le message, pour vérifier où ils
+ *    mènent. Le jeton était alors consommé par une machine, et la personne
+ *    trouvait « ce lien a déjà servi » à son premier clic.
+ *  - Android précharge les liens ; un double-tap, un retour arrière ou un
+ *    rafraîchissement font le même effet.
+ *
+ * Dans tous ces cas l'adresse ÉTAIT confirmée, et l'écran annonçait une
+ * panne. On garde donc le jeton après usage : tant qu'il n'est pas remplacé
+ * par un plus récent, il rappelle la même vérité aussi souvent qu'on lui
+ * demande. Il ne redonne aucun accès et n'ouvre aucune session.
+ *
+ * @return array{ok: bool, message: string, utilisateur: ?array, deja: bool}
  */
 function consommer_jeton_verification(string $jeton): array
 {
     if ($jeton === '') {
-        return ['ok' => false, 'message' => 'Lien de vérification incomplet.', 'utilisateur' => null];
+        return ['ok' => false, 'deja' => false, 'utilisateur' => null,
+                'message' => 'Lien de vérification incomplet.'];
     }
     $s = db()->prepare('SELECT * FROM utilisateurs WHERE verif_jeton = ?');
     $s->execute([$jeton]);
     $u = $s->fetch() ?: null;
+
     if (!$u) {
-        return ['ok' => false, 'message' => 'Ce lien a déjà servi, ou il a été remplacé par un plus récent.', 'utilisateur' => null];
+        return ['ok' => false, 'deja' => false, 'utilisateur' => null,
+                'message' => 'Ce lien a été remplacé par un plus récent, ou il appartient '
+                    . 'à une adresse qui a changé depuis.'];
     }
+
+    // Déjà confirmée : c'est une réussite, pas une panne. L'expiration ne
+    // s'oppose plus à rien — le fait est acquis, le lien ne fait que le dire.
+    if (!empty($u['email_verifie_le'])) {
+        return ['ok' => true, 'deja' => true, 'utilisateur' => $u,
+                'message' => 'Cette adresse est déjà confirmée. Il n’y a rien de plus à faire.'];
+    }
+
     if (($u['verif_expire_le'] ?? '') !== '' && $u['verif_expire_le'] < maintenant()) {
-        return ['ok' => false, 'message' => 'Ce lien a expiré. Demandez-en un nouveau depuis votre compte.', 'utilisateur' => $u];
+        return ['ok' => false, 'deja' => false, 'utilisateur' => $u,
+                'message' => 'Ce lien a expiré : il ne vaut que ' . VERIF_HEURES . ' heures.'];
     }
-    db()->prepare('UPDATE utilisateurs SET email_verifie_le = ?, verif_jeton = NULL, verif_expire_le = NULL WHERE id = ?')
+
+    // Le jeton RESTE en place. Il ne vaut plus que comme constat, et sera
+    // écrasé par le prochain envoi ou effacé au prochain changement d'adresse.
+    db()->prepare('UPDATE utilisateurs SET email_verifie_le = ? WHERE id = ?')
         ->execute([maintenant(), $u['id']]);
-    return ['ok' => true, 'message' => 'Votre adresse est vérifiée. Merci !', 'utilisateur' => $u];
+    return ['ok' => true, 'deja' => false, 'utilisateur' => $u,
+            'message' => 'Votre adresse est vérifiée. Merci !'];
 }
 
 /* ================= le mot de passe oublié ================= */

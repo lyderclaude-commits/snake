@@ -2965,14 +2965,24 @@ const run = async () => {
   ok('soumettre est refusé tant que l’adresse n’est pas confirmée',
      /Confirmez d’abord votre adresse/.test(await pv.locator('.msg.err').first().innerText().catch(() => '')));
 
-  // Le lien reçu, cliqué : il vaut une fois.
+  /**
+   * Le lien reçu, cliqué — puis recliqué.
+   *
+   * Il est volontairement REJOUABLE : un lien de courriel n'est presque
+   * jamais ouvert une seule fois (les filtres anti-hameçonnage le suivent
+   * avant la personne, Android le précharge, un pouce tape deux fois).
+   * Tant qu'il mourait au premier appel, la personne trouvait « ce lien
+   * n'a pas fonctionné » à son PREMIER clic, sur une adresse pourtant
+   * confirmée. Le second appel doit donc annoncer une réussite.
+   */
   const lienBrut = messageVerif.match(/https?:\/\/\S*p=verifier[^\s"<]*/)?.[0]?.replace(/&amp;/g, '&') ?? '';
   ok('le message porte bien un lien de confirmation', lienBrut !== '', lienBrut.slice(0, 60));
   await pv.goto(lienBrut, { waitUntil: 'domcontentloaded' });
   ok('le lien confirme l’adresse', /Adresse confirmée/.test(await pv.locator('h1').first().innerText()));
   await pv.goto(lienBrut, { waitUntil: 'domcontentloaded' });
-  ok('le lien ne sert qu’une fois',
-     /n’a pas fonctionné/.test(await pv.locator('h1').first().innerText()));
+  ok('rouvrir le même lien reste une réussite, pas une panne',
+     /déjà confirmée/.test(await pv.locator('h1').first().innerText()),
+     (await pv.locator('h1').first().innerText()).replace(/\s+/g, ' '));
 
   await pv.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
   ok('la bannière disparaît une fois l’adresse confirmée',
@@ -3437,16 +3447,54 @@ const run = async () => {
     .exec(recusCx.slice(avantRenvoi).join('\n'));
   ok('le message porte un lien de confirmation utilisable', lienVerif !== null);
   if (lienVerif) {
+    const url = lienVerif[1].replace(/&amp;/g, '&');
     const ctxV = await browser.newContext();
     const pv2 = await ctxV.newPage();
     surveiller(pv2);
-    await pv2.goto(lienVerif[1].replace(/&amp;/g, '&'), { waitUntil: 'domcontentloaded' });
-    ok('il confirme l’adresse SANS être connecté',
-       /confirmée|vérifiée|Merci/i.test(await pv2.locator('main').innerText()));
+
+    /**
+     * Le lien est ouvert DEUX fois, comme dans la vraie vie.
+     *
+     * Le premier appel imite le filtre anti-hameçonnage de la messagerie,
+     * qui suit les liens avant de livrer le message ; le second est celui
+     * de la personne. Tant que le jeton mourait au premier appel, elle
+     * trouvait « ce lien n’a pas fonctionné » à son PREMIER clic, sur une
+     * adresse pourtant confirmée.
+     */
+    const prefetch = await pv2.request.get(url);
+    ok('un filtre de messagerie peut suivre le lien sans le casser', prefetch.ok(),
+       `HTTP ${prefetch.status()}`);
+
+    await pv2.goto(url, { waitUntil: 'domcontentloaded' });
+    const vu = await pv2.locator('main').innerText();
+    ok('la personne qui clique ENSUITE voit une réussite, pas une panne',
+       /déjà confirmée|Adresse confirmée/i.test(await pv2.locator('h1').innerText()),
+       (await pv2.locator('h1').innerText()).replace(/\s+/g, ' '));
+    ok('et l’écran explique pourquoi, sans jargon',
+       /filtres|messageries/i.test(vu));
+
+    await pv2.reload({ waitUntil: 'domcontentloaded' });
+    ok('un rafraîchissement de plus ne casse rien',
+       /déjà confirmée|Adresse confirmée/i.test(await pv2.locator('h1').innerText()));
+
+    /* Un lien inventé, lui, reste refusé — et propose une sortie. */
+    await pv2.goto(`${BASE}/index.php?p=verifier&j=${'a'.repeat(48)}`,
+                   { waitUntil: 'domcontentloaded' });
+    ok('un lien inventé est refusé', /n’a pas fonctionné/.test(await pv2.locator('h1').innerText()));
+    ok('mais la page n’est plus un mur : elle demande l’adresse',
+       (await pv2.locator('form[action*="verif-demander"] input[name=email]').count()) === 1);
+
+    await pv2.fill('#v-email', 'personne-inconnue@exemple.tg');
+    await pv2.click('form[action*="verif-demander"] button[type=submit]');
+    await pv2.waitForLoadState('domcontentloaded');
+    ok('la réponse est la même pour une adresse inconnue — pas un annuaire',
+       /Si un compte existe à cette adresse/.test(await pv2.locator('.msg').first().innerText()),
+       (await pv2.locator('.msg').first().innerText()).replace(/\s+/g, ' ').slice(0, 62));
+
     await ctxV.close();
     await pcx.goto(`${BASE}/index.php?p=organisateur&id=${encodeURIComponent(idEq)}`,
                    { waitUntil: 'domcontentloaded' });
-    ok('et la fiche le dit désormais',
+    ok('et la fiche dit que l’adresse est confirmée',
        (await pcx.locator('main').innerText()).includes('Adresse confirmée'));
   }
 
@@ -3475,6 +3523,60 @@ const run = async () => {
   ok('changer l’offre d’un client lui écrit bien à propos de son offre',
      /Votre offre est maintenant/.test(objets(recusCx.slice(avantOffre).join('\n'))),
      objets(recusCx.slice(avantOffre).join('\n')).slice(0, 60));
+
+  /**
+   * Un invité n'achète rien non plus.
+   *
+   * Une offre découpe ce qu'un ORGANISATEUR produit : campagnes, badges
+   * par mois, filigrane, Koris, redirection. Toutes ces lignes sont lues
+   * sur l'auteur du décor — jamais sur celui qui télécharge. Le quota d'un
+   * participant n'avait donc aucun endroit où mordre, et la valeur stockée
+   * ne servait qu'à lui promettre un abonnement qui n'existe pas.
+   */
+  await pcx.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  await pcx.locator('details.creer').first().locator('summary').click();
+  await pcx.selectOption('#c-role', 'participant');
+  ok('choisir « Participant » retire le champ Offre',
+     await pcx.locator('#c-bloc-offre').isHidden());
+  await pcx.selectOption('#c-role', 'partenaire');
+  ok('et choisir « Organisateur » le remet',
+     await pcx.locator('#c-bloc-offre').isVisible());
+
+  const INVITE = { email: `invite-${marque}@exemple.tg`, mdp: 'invite-2026-solide' };
+  await pcx.selectOption('#c-role', 'participant');
+  await pcx.fill('#c-nom', `Invité ${marque}`);
+  await pcx.fill('#c-email', INVITE.email);
+  await pcx.fill('#c-mdp', INVITE.mdp);
+  await pcx.click('form[action*="creer-compte"] button[type=submit]');
+  await pcx.waitForLoadState('domcontentloaded');
+  const creeInv = await pcx.locator('.msg.ok').first().innerText().catch(() => '');
+  ok('un participant se crée sans offre',
+     /Compte créé/.test(creeInv) && /sans offre/.test(creeInv),
+     creeInv.replace(/\s+/g, ' ').slice(0, 80));
+
+  await pcx.goto(`${BASE}/index.php?p=comptes&q=${encodeURIComponent(INVITE.email)}`,
+                 { waitUntil: 'domcontentloaded' });
+  const ligneInv = pcx.locator(`tr:has-text("Invité ${marque}")`).first();
+  ok('sa ligne ne propose pas de lui vendre une offre',
+     (await ligneInv.locator('select[name=formule]').count()) === 0
+     && (await ligneInv.innerText()).includes('sans offre'));
+
+  /* Et un formulaire trafiqué ne lui en colle pas une. */
+  const csrfInv = await pcx.locator('.formulaire-compte input[name=csrf]').first().inputValue();
+  const idInv = await ligneInv.locator('input[name=id]').first().inputValue();
+  const avantInv = recusCx.length;
+  await pcx.request.post(`${BASE}/index.php?p=role`, {
+    form: { csrf: csrfInv, id: idInv, role: 'participant', formule: 'mouvement' },
+  });
+  await pcx.goto(`${BASE}/index.php?p=organisateur&id=${encodeURIComponent(idInv)}`,
+                 { waitUntil: 'domcontentloaded' });
+  const pastillesInv = await pcx.locator('.pastilles-compte .pastille')
+    .evaluateAll((n) => n.map((e) => (e.textContent ?? '').trim()));
+  ok('un formulaire trafiqué ne colle pas une offre payante à un invité',
+     !pastillesInv.some((t) => /Mouvement|Croissance|Impact|Découverte/.test(t)),
+     pastillesInv.join(' · '));
+  ok('et rien ne part par courriel à ce sujet',
+     !/Votre offre est maintenant/.test(objets(recusCx.slice(avantInv).join('\n'))));
 
   /* ---------------- l'historique des notifications ---------------- */
 

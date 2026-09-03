@@ -62,7 +62,8 @@ if ($page === 'creer-compte' || $page === 'creer-equipier') {
             'Ce formulaire crée des comptes clients. Pour l’équipe, utilisez l’autre.',
         $famille && !droit($u, 'comptes_internes') =>
             'Seul un super-administrateur crée un compte de l’équipe.',
-        !$interne_voulu && !isset(FORMULES[$v['formule']]) => 'Offre inconnue.',
+        in_array($v['role'], ROLES_AVEC_OFFRE, true) && !isset(FORMULES[$v['formule']]) =>
+            'Offre inconnue.',
         utilisateur_par_email($v['email']) !== null => 'Un compte existe déjà avec cette adresse.',
         default => null,
     };
@@ -88,9 +89,13 @@ if ($page === 'creer-compte' || $page === 'creer-equipier') {
         'ville' => $v['ville'] ?: null,
     ]);
 
-    $quoi = $famille
-        ? role_libelle($v['role']) . ', compte de l’équipe'
-        : role_libelle($v['role']) . ', offre ' . formule_libelle($v['formule']);
+    $quoi = role_libelle($v['role']) . match (true) {
+        $famille => ', compte de l’équipe',
+        // Un invité n'achète rien : lui annoncer une offre serait lui parler
+        // d'un abonnement qui n'existe pas.
+        !in_array($v['role'], ROLES_AVEC_OFFRE, true) => ', sans offre',
+        default => ', offre ' . formule_libelle($v['formule']),
+    };
     journal_ecrire($u, 'compte.cree', 'compte', $id, $v['nom'], $quoi);
 
     /**
@@ -164,7 +169,7 @@ if ($page === 'role' || $page === 'suspendre') {
          * qui traîne une offre payante — et une échéance avec.
          */
         $formule = formule_pour($role, (string) ($_POST['formule'] ?? $vise['formule'] ?? 'decouverte'));
-        if (!in_array($role, ROLES_INTERNES, true) && !isset(FORMULES[$formule])) {
+        if (in_array($role, ROLES_AVEC_OFFRE, true) && !isset(FORMULES[$formule])) {
             rediriger($retour . '&err=' . urlencode('Offre inconnue.'));
         }
         // Donner un rôle interne est le même geste que d'en modifier un.
@@ -231,7 +236,7 @@ if ($page === 'role' || $page === 'suspendre') {
          * lui annoncer une offre serait lui parler d'un abonnement qu'il n'a
          * pas, et c'était exactement ce que faisait l'écran avant.
          */
-        if (in_array($role, ROLES_INTERNES, true)) {
+        if (!in_array($role, ROLES_AVEC_OFFRE, true)) {
             $peut = [];
             foreach (ROLES_DROITS[$role] ?? [] as $d) {
                 $peut[] = mb_strtolower(DROITS[$d] ?? $d);
