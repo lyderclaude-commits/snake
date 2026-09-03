@@ -43,7 +43,7 @@ const REGIE_LOT = 25;
  */
 const REGIE_CIBLES = [
     'mes-invites'   => ['Les invités de mes campagnes', 'partenaire'],
-    'liste'         => ['Une liste que j’apporte', 'partenaire'],
+    'liste'         => ['Une liste de mon carnet', 'partenaire'],
     'tous'          => ['Tout le monde', 'equipe'],
     'organisateurs' => ['Les organisateurs', 'equipe'],
     'participants'  => ['Les participants', 'equipe'],
@@ -117,12 +117,12 @@ function campagne_email_creer(array $c): string
     $id = nouvel_id();
     $now = maintenant();
     db()->prepare('INSERT INTO campagnes_email
-        (id, auteur_id, sujet, titre, corps, lien, lien_libelle, cible, liste, statut, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+        (id, auteur_id, sujet, titre, corps, lien, lien_libelle, cible, liste, liste_id, statut, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
       ->execute([
           $id, $c['auteur_id'], $c['sujet'], $c['titre'], $c['corps'],
           $c['lien'] ?: null, $c['lien_libelle'] ?: null,
-          $c['cible'], $c['liste'] ?: null, 'brouillon', $now, $now,
+          $c['cible'], $c['liste'] ?: null, $c['liste_id'] ?: null, 'brouillon', $now, $now,
       ]);
     return $id;
 }
@@ -130,10 +130,11 @@ function campagne_email_creer(array $c): string
 function campagne_email_maj(string $id, array $c): void
 {
     db()->prepare('UPDATE campagnes_email SET sujet = ?, titre = ?, corps = ?, lien = ?,
-                   lien_libelle = ?, cible = ?, liste = ?, maj_le = ? WHERE id = ?')
+                   lien_libelle = ?, cible = ?, liste = ?, liste_id = ?, maj_le = ? WHERE id = ?')
         ->execute([
             $c['sujet'], $c['titre'], $c['corps'], $c['lien'] ?: null,
-            $c['lien_libelle'] ?: null, $c['cible'], $c['liste'] ?: null, maintenant(), $id,
+            $c['lien_libelle'] ?: null, $c['cible'], $c['liste'] ?: null,
+            $c['liste_id'] ?: null, maintenant(), $id,
         ]);
 }
 
@@ -241,24 +242,20 @@ function regie_destinataires(array $campagne, array $auteur): array
 
     if ($cible === 'liste') {
         /**
-         * Une liste apportée : une adresse par ligne, « Nom <adresse> »
-         * accepté. On ne refuse pas une ligne mal formée, on la saute —
-         * refuser tout le collage à cause d'une virgule oubliée ferait
-         * recommencer une saisie de deux cents lignes.
+         * Une liste du carnet — et, à défaut, le collage d'autrefois.
+         *
+         * Le collage n'est plus la source normale : il est repris dans une
+         * liste dès l'enregistrement de la campagne, et la migration v12 a
+         * fait le même travail sur celles qui existaient déjà. La branche
+         * reste pour une campagne dont la liste a été supprimée entre-temps
+         * — mieux vaut écrire aux adresses qu'on a que refuser sèchement.
          */
-        foreach (preg_split('/[\r\n,;]+/', (string) $campagne['liste']) ?: [] as $ligne) {
-            $ligne = trim($ligne);
-            if ($ligne === '') {
-                continue;
-            }
-            $nom = '';
-            if (preg_match('/^(.*?)<([^>]+)>$/', $ligne, $m)) {
-                $nom = trim($m[1], " \t\"'");
-                $ligne = trim($m[2]);
-            }
-            if (filter_var($ligne, FILTER_VALIDATE_EMAIL)) {
-                $lignes[mb_strtolower($ligne)] = $nom;
-            }
+        $liste_id = (string) ($campagne['liste_id'] ?? '');
+        $liste = $liste_id !== '' ? carnet_liste($liste_id) : null;
+        if ($liste && $liste['proprietaire_id'] === $auteur['id']) {
+            $lignes = carnet_destinataires($liste_id);
+        } else {
+            $lignes = adresses_du_texte((string) ($campagne['liste'] ?? ''));
         }
     } elseif ($cible === 'mes-invites') {
         $s = db()->prepare("SELECT DISTINCT u.email, u.nom

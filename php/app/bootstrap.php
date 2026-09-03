@@ -197,6 +197,16 @@ function est_mysql(): bool
 
 /* ---------------- utilitaires ---------------- */
 
+/**
+ * La version du produit.
+ *
+ * Elle nomme l'archive livrée et s'affiche en pied de page : quand
+ * quelqu'un écrit « ça ne marche pas », la première question est « quelle
+ * version ? », et personne ne sait y répondre si le produit ne le dit pas
+ * lui-même.
+ */
+const VERSION = '1';
+
 /** Une date lisible ici : `12/03/2026`. Vide si l'on ne sait pas la lire. */
 function date_fr(?string $iso): string
 {

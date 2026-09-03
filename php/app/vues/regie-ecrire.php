@@ -34,14 +34,54 @@ $erreur = $erreur ?? null;
         <?php endif; ?>
       </div>
 
-      <div class="champ" id="bloc-liste" <?= $valeurs['cible'] === 'liste' ? '' : 'hidden' ?>>
-        <label for="r-liste">Les adresses, une par ligne</label>
-        <textarea id="r-liste" name="liste" rows="6"
-                  style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace"
-                  placeholder="ama@exemple.tg&#10;Kossi Mensah &lt;kossi@exemple.tg&gt;"><?= e($valeurs['liste']) ?></textarea>
-        <p class="aide">Le format <code>Nom &lt;adresse&gt;</code> est accepté. Une ligne
-        illisible est ignorée, pas refusée — une virgule oubliée ne doit pas faire recommencer
-        deux cents lignes.</p>
+      <div id="bloc-liste" <?= $valeurs['cible'] === 'liste' ? '' : 'hidden' ?>>
+        <?php
+        /**
+         * Une liste du carnet, pas un collage jetable.
+         *
+         * Le collage reste possible — c'est le geste le plus rapide, et on
+         * ne prend pas le risque de le remplacer par un formulaire. Mais
+         * il ATTERRIT dans une liste : la campagne suivante repartira de la
+         * même, corrigée, au lieu d'un nouveau copier-coller depuis le
+         * même tableur avec les mêmes fautes.
+         */
+        $choisie = $valeurs['liste_id'];
+        ?>
+        <div class="champ">
+          <label for="r-liste-id">Quelle liste</label>
+          <select id="r-liste-id" name="liste_id"
+                  onchange="document.getElementById('bloc-liste-nom').hidden = this.value !== 'nouvelle'">
+            <?php foreach ($listes as $li): ?>
+              <option value="<?= e((string) $li['id']) ?>" <?= $choisie === $li['id'] ? 'selected' : '' ?>>
+                <?= e((string) $li['nom']) ?> (<?= (int) $li['actifs'] ?> adresse<?= $li['actifs'] > 1 ? 's' : '' ?>)
+              </option>
+            <?php endforeach; ?>
+            <option value="nouvelle" <?= $choisie === '' ? 'selected' : '' ?>>— Une nouvelle liste —</option>
+          </select>
+          <?php if ($listes): ?>
+            <p class="aide">Vos listes se gèrent dans le
+            <a href="<?= e(url('?p=regie-carnet')) ?>">carnet d’adresses</a> : y corriger un nom, en sortir
+            quelqu’un ou archiver une adresse morte vaut pour toutes vos campagnes.</p>
+          <?php endif; ?>
+        </div>
+
+        <div class="champ" id="bloc-liste-nom" <?= $choisie === '' ? '' : 'hidden' ?>>
+          <label for="r-liste-nom">Nom de la nouvelle liste</label>
+          <input id="r-liste-nom" name="nouveau_nom" type="text" maxlength="120"
+                 placeholder="Invités du Gala 2026">
+          <p class="aide">Laissé vide, elle prendra l’objet de la campagne.</p>
+        </div>
+
+        <div class="champ">
+          <label for="r-liste">Ajouter des adresses <span style="font-weight:400">(facultatif si la liste en contient déjà)</span></label>
+          <textarea id="r-liste" name="liste" rows="6"
+                    style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace"
+                    placeholder="ama@exemple.tg&#10;Kossi Mensah &lt;kossi@exemple.tg&gt;"><?= e($valeurs['liste']) ?></textarea>
+          <p class="aide"><strong>Elles sont enregistrées dans votre carnet</strong>, pas seulement
+          utilisées une fois. Le format <code>Nom &lt;adresse&gt;</code> est accepté ; une adresse
+          déjà connue n’est pas dupliquée. Une ligne illisible est ignorée, pas refusée — une
+          virgule oubliée ne doit pas faire recommencer deux cents lignes.</p>
+        </div>
       </div>
     </div>
 

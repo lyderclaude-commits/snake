@@ -135,7 +135,8 @@ const main = async () => {
     maxBuffer: 20 * 1024 * 1024,
   });
   const derniere = stdout.trim().split('\n').pop() ?? '{}';
-  const r = JSON.parse(derniere) as Record<string, never> & Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = JSON.parse(derniere) as Record<string, any>;
 
   /* ---- ce que l'archive contient ---- */
   ok('l’archive s’écrit', (r.archive?.octets ?? 0) > 1000,

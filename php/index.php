@@ -21,6 +21,7 @@ require __DIR__ . '/app/zip.php';
 require __DIR__ . '/app/sauvegarde.php';
 require __DIR__ . '/app/texte.php';
 require __DIR__ . '/app/regie.php';
+require __DIR__ . '/app/carnet.php';
 require __DIR__ . '/app/images.php';
 require __DIR__ . '/app/push.php';
 require __DIR__ . '/app/qr.php';
@@ -413,6 +414,12 @@ switch ($page) {
     case 'regie-campagne':
     case 'regie-action':
         require RACINE . '/app/actions/regie.php';
+
+    case 'regie-carnet':
+    case 'regie-carnet-fiche':
+    case 'regie-carnet-action':
+    case 'regie-carnet-export':
+        require RACINE . '/app/actions/carnet.php';
 
     /**
      * Le désabonnement. Publique, SANS session, et volontairement courte.

@@ -133,6 +133,17 @@ if ($page === 'regie-ecrire') {
     $c = ($_GET['id'] ?? '') !== '' ? $mienne(campagne_email((string) $_GET['id'])) : null;
     $cibles = regie_cibles_de($u);
 
+    /**
+     * Le carnet visé est celui de l'AUTEUR, pas du rédacteur.
+     *
+     * Un membre de l'équipe qui corrige la campagne d'un organisateur doit
+     * voir les listes de cet organisateur : c'est son quota qui sera
+     * débité et son nom qui signera. Prendre les listes de l'équipe
+     * enverrait la campagne d'un client à la base d'un autre.
+     */
+    $proprio = (string) ($c['auteur_id'] ?? $u['id']);
+    $mes_listes = carnet_listes($proprio);
+
     $valeurs = [
         'sujet' => $c['sujet'] ?? '',
         'titre' => $c['titre'] ?? '',
@@ -141,7 +152,15 @@ if ($page === 'regie-ecrire') {
         'lien_libelle' => $c['lien_libelle'] ?? '',
         'cible' => $c['cible'] ?? array_key_first($cibles),
         'liste' => $c['liste'] ?? '',
+        'liste_id' => $c['liste_id'] ?? '',
     ];
+
+    // Arrivé du carnet par « Écrire à cette liste » : la cible est déjà
+    // choisie. La redemander ferait recommencer un geste déjà fait.
+    if (!$c && ($_GET['l'] ?? '') !== '' && carnet_liste_de((string) $_GET['l'], $proprio)) {
+        $valeurs['cible'] = 'liste';
+        $valeurs['liste_id'] = (string) $_GET['l'];
+    }
 
     /**
      * Une campagne partie ne se modifie plus.
@@ -174,10 +193,56 @@ if ($page === 'regie-ecrire') {
                 'Le lien doit mener vers ' . implode(' ou ', WAKABI_DOMAINES) . '.',
             $valeurs['lien'] !== '' && !filter_var($valeurs['lien'], FILTER_VALIDATE_URL) =>
                 'Ce lien n’est pas une adresse valide.',
-            $valeurs['cible'] === 'liste' && $valeurs['liste'] === '' =>
-                'Collez les adresses, une par ligne.',
+            $valeurs['cible'] === 'liste' && $valeurs['liste'] === ''
+                && (string) ($_POST['liste_id'] ?? '') === 'nouvelle' =>
+                'Une liste neuve a besoin d’adresses : collez-les ci-dessous.',
+            $valeurs['cible'] === 'liste' && $valeurs['liste'] === ''
+                && (string) ($_POST['liste_id'] ?? '') === '' =>
+                'Choisissez une liste de votre carnet, ou collez les adresses.',
             default => null,
         };
+
+        /**
+         * Le collage devient une liste du carnet, ici et tout de suite.
+         *
+         * C'est le point où « les listes importées sont automatiquement
+         * sauvegardées » cesse d'être une promesse : la campagne ne porte
+         * plus les adresses, elle DÉSIGNE une liste. On peut ensuite en
+         * sortir quelqu'un, corriger un nom, archiver une adresse morte —
+         * et la campagne suivante repart de la même liste, corrigée, au
+         * lieu d'un nouveau copier-coller depuis le même tableur.
+         */
+        if ($erreur === null && $valeurs['cible'] === 'liste') {
+            try {
+                $choix = (string) ($_POST['liste_id'] ?? '');
+                if ($choix === '' || $choix === 'nouvelle') {
+                    $liste_id = carnet_liste_poser($proprio,
+                        trim((string) ($_POST['nouveau_nom'] ?? '')) ?: $valeurs['sujet']);
+                } else {
+                    $l = carnet_liste_de($choix, $proprio);
+                    if (!$l) {
+                        throw new RuntimeException('Cette liste n’existe pas, ou n’est pas la vôtre.');
+                    }
+                    $liste_id = (string) $l['id'];
+                }
+                if ($valeurs['liste'] !== '') {
+                    $bilan = carnet_importer($proprio, $liste_id, $valeurs['liste']);
+                    if ($bilan['total'] === 0) {
+                        throw new RuntimeException(
+                            'Aucune adresse lisible dans ce collage. Une par ligne, '
+                            . 'ou « Nom <adresse> ».'
+                        );
+                    }
+                }
+                $valeurs['liste_id'] = $liste_id;
+                // Le collage a fait son travail : il ne reste pas en double
+                // dans la campagne, où il vieillirait sans qu'on le corrige.
+                $valeurs['liste'] = '';
+                $mes_listes = carnet_listes($proprio);
+            } catch (Throwable $e) {
+                $erreur = $e->getMessage();
+            }
+        }
 
         if ($erreur === null) {
             if ($c) {
@@ -197,6 +262,7 @@ if ($page === 'regie-ecrire') {
         'existante' => $c,
         'cibles' => $cibles,
         'equipe' => $equipe,
+        'listes' => $mes_listes,
         'erreur' => $erreur,
     ]);
 }
@@ -210,6 +276,7 @@ if ($page === 'regie-campagne') {
     vue('regie-campagne', [
         'titre' => $c['sujet'],
         'c' => $c,
+        'liste' => ($c['liste_id'] ?? '') !== '' ? carnet_liste((string) $c['liste_id']) : null,
         'auteur' => $auteur,
         'equipe' => $equipe,
         // Le compte est RECALCULÉ tant que la liste n'est pas figée : la

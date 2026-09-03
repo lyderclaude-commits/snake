@@ -256,7 +256,8 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
 <footer>
   <div class="contenu pied">
     <a href="<?= e(url('')) ?>" aria-label="Wakabi Boost, accueil"><?= logo_wakabi('logo pied-logo') ?></a>
-    <span><?= e(WAKABI_SIGNATURE) ?> · Lomé · Cotonou · Abidjan</span>
+    <span><?= e(WAKABI_SIGNATURE) ?> · Lomé · Cotonou · Abidjan
+    <span class="aide" style="margin-left:8px">v<?= e(VERSION) ?></span></span>
   </div>
 </footer>
 

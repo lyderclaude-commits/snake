@@ -269,10 +269,29 @@ a{color:var(--primary-d);text-underline-offset:3px}
 
 /* formulaires */
 label{display:block;font-size:.82rem;font-weight:600;color:var(--text2);margin-bottom:5px}
-input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],select,textarea{
+/**
+ * On liste ce qui GARDE son apparence native, pas ce qui la perd.
+ *
+ * La règle énumérait `text`, `email`, `password`, `url`, `date` — et
+ * laissait dehors `number`, `tel` et `search`, qui s'affichaient donc en
+ * champ nu du système au milieu de champs dessinés : le port SMTP, le
+ * téléphone du profil, la recherche du blog. Le défaut revient à chaque
+ * nouveau type de champ ; en prenant le problème par l'autre bout, il ne
+ * revient plus.
+ */
+input:where(:not([type=hidden],[type=submit],[type=button],[type=reset],[type=checkbox],[type=radio],[type=range],[type=file],[type=color])),
+select,textarea{
   width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:var(--r10);
   background:var(--paper);color:var(--ink);font:inherit;font-size:.95rem;
 }
+/* `search` arrive avec sa propre boîte sur WebKit : elle ignore le
+   remplissage et coupe le texte. On la neutralise, en gardant la croix
+   d'effacement, qui elle sert. */
+/* Un champ dix fois plus large que ce qu'on y tape se lit comme une erreur
+   de mise en page. La largeur DIT ce qu'on attend. */
+input[type=tel]{max-width:24ch}
+input[type=search]{appearance:none;-webkit-appearance:none}
+input[type=search]::-webkit-search-decoration{-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:-1px;border-color:transparent}
 input[type=file]{font-size:.9rem}
 input[type=range]{width:100%;accent-color:var(--primary)}
@@ -392,11 +411,18 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 
 /* La recherche du catalogue : collée à droite quand il reste de la place,
    sur toute la largeur quand la ligne d'onglets a déjà pris la sienne. */
-.chercher{gap:6px;margin-left:auto;flex-wrap:nowrap}
-.chercher input[type=text]{width:190px}
+/* La largeur d'une recherche est celle de son INVITE : « Nom, adresse ou
+   structure » ne tient pas dans la boîte taillée pour « Chercher un
+   titre… », et une invite coupée n'apprend plus rien. */
+.chercher{gap:6px;margin-left:auto;flex-wrap:nowrap;--recherche:190px}
+/* Un déroulant de filtre prend la largeur de ses libellés, pas celle qui
+   reste : étiré sur toute la ligne, « Actives » flottait au milieu d'un
+   champ vide de six cents pixels et se lisait comme un champ à remplir. */
+.chercher select{width:auto;min-width:150px;flex:none}
+.chercher input[type=text],.chercher input[type=search]{width:var(--recherche)}
 @media(max-width:640px){
   .chercher{margin-left:0;width:100%}
-  .chercher input[type=text]{width:auto;flex:1}
+  .chercher input[type=text],.chercher input[type=search]{width:auto;flex:1}
 }
 
 .bloc-comptes{margin-top:22px}
@@ -405,7 +431,7 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .titre-liste + .aide{margin:0 0 10px}
 /* La recherche des clients est un titre de section, pas un filtre en bout de
    rangée : elle se place à gauche, sous le titre. */
-.chercher-comptes{margin:0 0 10px;margin-left:0}
+.chercher-comptes{margin:0 0 10px;margin-left:0;--recherche:270px}
 .liste-comptes{list-style:none;padding:0;margin:0}
 .liste-comptes li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:9px 0;border-top:1px solid var(--border)}
@@ -711,8 +737,11 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
   .tableau table{min-width:560px}
 
   /* 16 px : le seuil en dessous duquel iOS zoome à la mise au point */
-  input[type=text],input[type=email],input[type=password],input[type=url],
-  input[type=date],select,textarea{font-size:16px;padding:12px 13px}
+  /* 16 px, et pas un de moins : en dessous, iOS zoome la page dès qu'on
+     touche le champ — et ne dézoome jamais. La même famille que ci-dessus,
+     pour que « téléphone » et « nombre » n'y échappent pas. */
+  input:where(:not([type=hidden],[type=submit],[type=button],[type=reset],[type=checkbox],[type=radio],[type=range],[type=file],[type=color])),
+  select,textarea{font-size:16px;padding:12px 13px}
 }
 
 /* Le champ de fichier natif est minuscule et illisible au doigt : on lui
@@ -1122,3 +1151,62 @@ input[type=file].fichier-natif{
   background:var(--bg2);color:var(--text2);font-size:.9rem;
 }
 .editeur-attente.erreur{background:#FEF2F2;color:#B91C1C}
+
+/* ------------------------------------------------------------------ */
+/* Le carnet d'adresses                                                */
+/* ------------------------------------------------------------------ */
+
+/* Les listes en pastilles plutôt qu'en menu déroulant : on en a trois ou
+   quatre, on veut les compter d'un coup d'œil, et on clique dessus dix
+   fois par session. Un déroulant cacherait derrière un clic ce qui est la
+   navigation principale de l'écran. */
+.etiquettes{flex-wrap:wrap;gap:8px;align-items:center}
+.etiquettes .etiquette{text-decoration:none;transition:border-color .12s,color .12s}
+.etiquettes .etiquette:hover{border-color:var(--primary);color:var(--primary-d)}
+.etiquettes .etiquette.active{border-color:var(--primary);color:var(--primary-d);background:var(--primary-wash)}
+.etiquettes .etiquette.active b{background:var(--primary-d)}
+.etiquette.ajout{
+  border-style:dashed;box-shadow:none;background:transparent;cursor:pointer;
+  font:inherit;font-size:.76rem;font-weight:600;color:var(--text2);
+}
+.etiquette.ajout:hover{border-color:var(--primary);color:var(--primary-d)}
+
+/* Un bloc replié n'a pas de décor propre : il emprunte celui de la carte
+   où il s'ouvre, ou en est une. Le seul repère nécessaire est qu'il
+   commence quelque part — d'où le filet quand il n'est pas déjà une carte. */
+.bloc-repli:not(.carte){border-top:1px solid var(--border);padding-top:14px;margin-top:4px}
+.bloc-repli .bouton{margin-top:4px}
+
+/* Une grille de cases plutôt qu'une colonne : dix listes en colonne
+   pousseraient le bouton « Enregistrer » hors de l'écran, et on ne
+   l'enregistrerait pas. */
+.champ-titre{display:block;font-weight:600;font-size:.88rem;margin-bottom:7px}
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.case{
+  display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;
+  border:1px solid var(--border);border-radius:var(--r10);background:var(--paper);font-size:.9rem;
+}
+.case:hover{border-color:var(--primary)}
+.case input{width:auto;margin:0;flex:none}
+.case span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* La colonne des cases à cocher : aussi étroite que possible, parce que
+   chaque pixel qu'elle prend est pris à l'adresse, qui est ce qu'on lit. */
+th.mince,td.mince{width:1%;padding-right:0}
+th.mince input,td.mince input{width:auto;margin:0}
+
+/* Une ligne archivée reste lisible mais cesse de réclamer l'attention :
+   elle est là pour l'historique, pas pour la campagne de demain. */
+tr.pale td{opacity:.62}
+tr.pale td a{color:inherit}
+
+/* La barre d'actions groupées vit sous la table, où se trouve le pouce
+   après avoir coché en descendant. */
+.barre-lot{
+  border:1px solid var(--border);border-radius:var(--r10);
+  background:var(--bg2);padding:10px 13px;
+}
+/* Un bouton fantôme dangereux garde le fond blanc et prend la couleur du
+   risque : rouge plein, il attirerait le clic qu'il cherche à retenir. */
+.bouton.fant.danger{background:var(--paper);color:var(--rouge);border-color:#F3C2C2}
+.bouton.fant.danger:hover{border-color:var(--rouge);color:var(--rouge);background:#FEF2F2}

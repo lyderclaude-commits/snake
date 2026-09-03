@@ -1,4 +1,10 @@
-# La version PHP — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1 — décompresser, ouvrir une page, c'est en ligne
+
+**Première version officielle.** Le numéro vit dans `php/app/bootstrap.php`,
+nomme l'archive livrée (`wakabi-boost-v1.zip`) et s'affiche en pied de page :
+quand quelqu'un écrit « ça ne marche pas », la première question est
+« quelle version ? », et personne ne sait y répondre si le produit ne le dit
+pas lui-même.
 
 Cette version existe pour une raison simple : sur un mutualisé, un site PHP
 avec une base de données se déploie en glissant un dossier. Une application
@@ -8,7 +14,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-php.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -24,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **427 scénarios, 427 réussis**
+Les deux ont été vérifiés de bout en bout : **463 scénarios, 463 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -110,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 427 scénarios, dans un vrai navigateur
+npm run php:e2e          # 463 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP
 ```
 
@@ -120,7 +126,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 427 scénarios
+### Les 463 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -164,6 +170,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les notifications push** | La clé publique VAPID est servie à la page, `sw.js` répond à la racine, un abonnement est enregistré, une adresse qui n'est pas en `https` est refusée, le désabonnement efface la ligne — et un organisateur **sans l'offre** trouve un écran d'explication au lieu d'un refus sec, avec l'offre qui l'ouvre |
 | **Le blog** | Un brouillon renvoie **404** à un visiteur ; publié, il se lit sans compte ; intertitres, gras, listes, citation et liens sortants sont mis en forme ; **une balise saisie reste du texte et ne s'exécute pas** ; l'adresse d'un article publié n'est plus modifiable ; un organisateur n'écrit pas sur le blog |
 | **Le blog proposé** | Un organisateur propose, l'article n'est **pas** public, il ne se modifie plus, la rédaction le renvoie avec un motif obligatoire, l'auteur le voit et re-soumet, il paraît signé de son nom — et il ne peut plus le retirer seul une fois en ligne |
+| **Le carnet d'adresses** | Un collage réaliste (tableur, `Nom <adresse>`, `adresse (Nom)`, doublon en majuscules, ligne illisible) devient des fiches ; ré-importer n'ajoute rien ; corriger une adresse corrige la campagne ; **archiver**, **sortir de la liste** et **supprimer** ont trois effets distincts et vérifiés ; supprimer une liste rend ses fiches au carnet ; le carnet d'un organisateur est invisible à l'équipe ; l'export CSV porte son BOM |
 | **La régie e-mail** | Sans l'offre, un écran d'explication et aucun lien dans le menu ; un lien hors domaine Wakabi est refusé à un organisateur, qui ne peut pas envoyer lui-même ; l'équipe prépare et envoie, un **vrai serveur SMTP** reçoit ; **chaque message porte son lien de désabonnement**, il s'ouvre sans être connecté, un clic suffit, et le désabonné ne reçoit plus rien à la campagne suivante |
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
@@ -601,6 +608,10 @@ Un `public/logo.svg` est pris en compte s'il n'y a pas de PNG.
 ---
 
 ## Le transport e-mail
+
+> **Éprouvé en production.** L'envoi a été confirmé sur l'installation
+> réelle, avec le SMTP de l'hébergeur : ce n'est plus seulement le serveur
+> d'essai de la recette qui reçoit.
 
 Tout le circuit existait — décisions de modération, motifs de refus,
 notifications — mais **rien ne quittait le serveur** : un partenaire ne
@@ -1157,8 +1168,8 @@ générateur de badges et un outil de fidélisation.
 
 | Qui | Ce qu'il peut viser |
 |---|---|
-| **L'équipe** | Tout le monde, les organisateurs, les participants, ou une ville. Et une liste collée. |
-| **Un organisateur** (offre Croissance et au-delà) | Les invités de ses propres campagnes, ou une liste qu'il apporte. |
+| **L'équipe** | Tout le monde, les organisateurs, les participants, ou une ville. Et n'importe quelle liste de son carnet. |
+| **Un organisateur** (offre Croissance et au-delà) | Les invités de ses propres campagnes, ou une liste de son carnet. |
 
 Un organisateur ne voit **jamais** la base du guide : elle s'est constituée sur
 la promesse de nouvelles du guide, et la louer la brûlerait en trois campagnes.
@@ -1215,6 +1226,95 @@ dérangé personne.
 
 ---
 
+## Le carnet d'adresses — `?p=regie-carnet`
+
+C'est la face rangement de la régie : **là où l'on garde les gens à qui l'on
+écrit**, entre deux campagnes.
+
+Avant lui, une liste apportée vivait dans un champ texte de la campagne, et
+mourait avec elle. La campagne suivante recommençait le copier-coller depuis le
+même tableur, réintroduisait les mêmes fautes de frappe, et réécrivait à
+l'adresse qui avait rebondi la fois d'avant. Une liste de clients est pourtant
+le seul actif que fabrique une soirée réussie.
+
+### Trois idées, et tout en découle
+
+**1. Le carnet est plat, les listes sont des étiquettes.** Une adresse existe
+**une fois** par propriétaire, et porte zéro, une ou dix étiquettes — « Invités
+du Gala » *et* « Partenaires de la saison ». Une copie de la fiche par liste
+obligerait à corriger une faute de frappe autant de fois qu'elle apparaît, donc
+à ne la corriger nulle part.
+
+**2. Trois gestes, trois effets, et on ne les confond pas.**
+
+| Le geste | Ce qu'il fait | Ce qu'il ne fait pas |
+|---|---|---|
+| **Sortir de la liste** | Enlève l'étiquette | La fiche reste au carnet, avec ses notes et ses autres listes |
+| **Archiver** | La fiche reste, mais **aucune campagne ne l'atteint plus** | N'efface rien : c'est ce qu'on fait quand un message rebondit ou qu'un client s'en va |
+| **Supprimer** | Efface la fiche | Sans retour |
+
+Une seule commande pour les trois ferait perdre, un soir de ménage, un
+historique que rien ne reconstitue. Supprimer une **liste** ne supprime jamais
+les gens : l'écran le dit, et le compte des fiches rendues au carnet s'affiche.
+
+**3. Archiver n'est pas désabonner.** Archiver est *notre* décision. Le
+désabonnement est *la sienne*, il vaut pour toute l'installation, et il **ne se
+défait pas depuis cet écran** — la fiche l'affiche, sans aucun bouton pour le
+lever. Pouvoir l'annuler d'un clic en ferait une case à cocher, c'est-à-dire
+rien.
+
+### Ce qu'on peut y faire
+
+| | Où |
+|---|---|
+| **Créer une liste** | Bouton « + Nouvelle liste », au-dessus des étiquettes |
+| **Importer un collage** | Une adresse par ligne, ou séparées par virgules ou points-virgules. `Nom <adresse>`, `adresse (Nom)` et la colonne de tableur sont reconnus |
+| **Ajouter une adresse à la main** | Nom, adresse, structure, téléphone, et les listes où la ranger |
+| **Alimenter depuis une audience** | Recopie une audience *calculée* (« mes invités », « les participants »…) dans une liste — pour pouvoir ensuite en retirer quelqu'un, ce qu'une audience calculée ne permet pas |
+| **Corriger une fiche** | Adresse, nom, structure, téléphone, note, et ses listes par cases à cocher |
+| **Agir sur plusieurs d'un coup** | Cocher, puis archiver, réactiver, sortir de la liste, ajouter à une autre, ou supprimer |
+| **Ressortir le tout** | Export CSV, liste par liste ou carnet entier |
+
+### Les listes importées sont enregistrées, toujours
+
+Coller des adresses dans une campagne ne les consomme plus : elles **atterrissent
+dans une liste** du carnet, et la campagne se contente de la désigner. La
+campagne suivante repart de la même liste — corrigée, allégée des adresses
+mortes — au lieu d'un nouveau copier-coller.
+
+Une ligne illisible est **sautée, pas refusée**, et l'écran dit combien : rejeter
+tout un collage à cause d'une virgule oubliée ferait recommencer une saisie de
+deux cents lignes, et la deuxième tentative contiendrait d'autres fautes. Une
+adresse déjà connue n'est jamais dupliquée, et un nom déjà renseigné n'est jamais
+écrasé par un vide — un tableur exporté sans la colonne « nom » effacerait sinon
+tous les noms du carnet.
+
+### La cloison
+
+Le carnet appartient à un **compte**, pas à l'installation. Un organisateur y
+voit ses clients et rien d'autre ; l'équipe a le sien. La base du guide, elle,
+reste une audience *calculée* et n'est jamais recopiée dans un carnet — la
+recopier serait en faire un fichier qui circule.
+
+Quand un membre de l'équipe corrige la campagne d'un organisateur, il voit les
+listes **de cet organisateur** : c'est son quota qui sera débité et son nom qui
+signera.
+
+### Les installations déjà en service
+
+La migration v12 sort les vieux collages de leurs campagnes : une liste par
+campagne, nommée d'après son objet, avec ses adresses devenues des fiches. Le
+travail déjà fait n'est pas réservé aux campagnes suivantes. Elle est
+idempotente — la rejouer ne fabrique pas de doublon.
+
+> Éprouvé par `npx tsx scripts/verifier-carnet.ts` : 27 vérifications qui
+> jouent le trajet complet d'une adresse — collée, rangée, corrigée, archivée,
+> sortie — en vérifiant à chaque étape **qui recevrait le message** si la
+> campagne partait maintenant. C'est la seule question qui compte, et celle
+> qu'un test d'écran ne pose jamais vraiment.
+
+---
+
 ## Le blog : proposé par les organisateurs, publié par la rédaction
 
 Un organisateur écrit lui-même et **propose** ; l'équipe **décide**. C'est le
@@ -1262,7 +1362,7 @@ rapport, et il fallait relire les dix pour en trouver une.
 | Groupe | La question |
 |---|---|
 | **Contenus** | Qu'est-ce que je publie ? *(décors, relecture, blog, relecture du blog)* |
-| **Audience** | À qui je parle ? *(comptes, régie e-mail, notifications push, liens courts)* |
+| **Audience** | À qui je parle ? *(comptes, régie e-mail — et son carnet d'adresses —, notifications push, liens courts)* |
 | **Système** | Comment tourne la machine ? *(réglages, sauvegardes, mon profil)* |
 
 Deux destinations restent **hors** des groupes, et c'est délibéré : le tableau

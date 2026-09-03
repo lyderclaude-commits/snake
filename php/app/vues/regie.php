@@ -13,7 +13,10 @@ $attente = array_filter($liste, fn(array $c) => $c['statut'] === 'en_relecture')
           ? 'Ce qui part sous le nom du guide — le vôtre, et celui des organisateurs.'
           : 'Écrivez à vos invités. Chaque campagne est relue par l’équipe avant de partir.' ?></p>
       </div>
-      <a class="bouton" href="<?= e(url('?p=regie-ecrire')) ?>">Nouvelle campagne</a>
+      <div class="rangee" style="gap:8px">
+        <a class="bouton fant" href="<?= e(url('?p=regie-carnet')) ?>">Carnet d’adresses</a>
+        <a class="bouton" href="<?= e(url('?p=regie-ecrire')) ?>">Nouvelle campagne</a>
+      </div>
     </div>
   </section>
 

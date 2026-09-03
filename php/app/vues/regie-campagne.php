@@ -28,7 +28,11 @@ $bouton = function (string $quoi, string $libelle, string $classe = 'bouton', bo
         <h1 style="margin-bottom:6px"><?= e($c['sujet']) ?></h1>
         <p>
           <span class="pastille <?= e($c['statut']) ?>"><?= e(REGIE_STATUTS[$c['statut']] ?? $c['statut']) ?></span>
-          · <?= e(REGIE_CIBLES[$c['cible']][0] ?? $c['cible']) ?>
+          · <?php if ($liste): ?>
+            <a href="<?= e(url('?p=regie-carnet&l=' . urlencode((string) $liste['id']))) ?>">« <?= e((string) $liste['nom']) ?> »</a>
+          <?php else: ?>
+            <?= e(REGIE_CIBLES[$c['cible']][0] ?? $c['cible']) ?>
+          <?php endif; ?>
           · <strong><?= (int) $vise ?></strong> destinataire(s)
           <?php if ($equipe && $auteur): ?> · <?= e($auteur['nom']) ?><?php endif; ?>
         </p>

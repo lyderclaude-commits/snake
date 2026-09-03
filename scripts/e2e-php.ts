@@ -3027,6 +3027,240 @@ const run = async () => {
      poubli.url().split('index.php')[1] ?? '');
   await ctxOubli.close();
 
+  /* ================================================================== */
+  console.log('\n━━ 37. Le carnet d’adresses ━━');
+
+  /**
+   * Ce que vérifie cette section : qu'une liste collée SURVIT à la
+   * campagne, et qu'on peut ensuite la corriger.
+   *
+   * C'est toute la différence entre un champ texte et un carnet. Les
+   * assertions portent donc moins sur les écrans que sur le nombre de
+   * destinataires après chaque geste — archiver, sortir de la liste,
+   * corriger une adresse — parce que c'est la seule chose que l'utilisateur
+   * constatera vraiment, le jour où il enverra.
+   */
+  const pca = await browser.newPage();
+  surveiller(pca);
+  await connexion(pca, ADMIN.email, ADMIN.mdp);
+
+  const LISTE = `Invités du Gala ${marque}`;
+  const COLLE = [
+    `ada-${marque}@exemple.tg`,
+    `Kossi Mensah <kossi-${marque}@exemple.tg>`,
+    `"Afi Doe" <afi-${marque}@exemple.tg>`,
+    `yao-${marque}@exemple.tg (Yao Adjo)`,
+    `ADA-${marque}@EXEMPLE.TG`,
+    'ceci n’est pas une adresse',
+  ].join('\n');
+
+  /**
+   * On y entre PAR la régie, et non par le menu.
+   *
+   * Le menu tient en trois groupes de quatre, et cette règle vaut plus que
+   * le confort d'une entrée de plus : le carnet est une face de la régie —
+   * là où elle range à qui elle écrit — pas une treizième destination.
+   */
+  await pca.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  await pca.locator('a[href*="p=regie-carnet"]').first().click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('le carnet s’ouvre depuis la régie', pca.url().includes('p=regie-carnet')
+     && (await pca.locator('h1').innerText()).includes('Carnet'));
+  ok('la régie reste le repère du menu pendant qu’on range le carnet',
+     (await pca.locator('.barre nav a[aria-current="page"][href*="p=regie"]').count()) === 1);
+
+  // --- créer une liste ---
+  await pca.locator('button[data-ouvre="bloc-liste-neuve"]').click();
+  await pca.fill('#ln-nom', LISTE);
+  await pca.locator('#bloc-liste-neuve button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('une liste se crée et s’ouvre',
+     (await pca.locator('main').innerText()).includes(LISTE), LISTE);
+
+  // --- importer un collage réaliste ---
+  await pca.locator('button[data-ouvre="bloc-import"]').first().click();
+  await pca.fill('#im-adresses', COLLE);
+  await pca.locator('#bloc-import button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  const bilanImport = await pca.locator('.msg.ok').first().innerText().catch(() => '');
+  ok('l’import annonce ce qu’il a compris', /4 adresse\(s\) enregistrée\(s\)/.test(bilanImport),
+     bilanImport.replace(/\s+/g, ' ').slice(0, 80));
+  ok('il signale la ligne illisible plutôt que de la taire',
+     /illisible/.test(bilanImport));
+  ok('la même adresse en majuscules n’est pas comptée deux fois',
+     (await pca.locator('table tbody tr').count()) === 4,
+     `${await pca.locator('table tbody tr').count()} ligne(s)`);
+  ok('« Nom <adresse> » a rempli le nom',
+     (await pca.locator('table tbody').innerText()).includes('Kossi Mensah'));
+  ok('« adresse (Nom) » aussi',
+     (await pca.locator('table tbody').innerText()).includes('Yao Adjo'));
+
+  // --- ré-importer le même collage n'ajoute rien ---
+  await pca.locator('button[data-ouvre="bloc-import"]').first().click();
+  await pca.fill('#im-adresses', COLLE);
+  await pca.locator('#bloc-import button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('ré-importer la même liste ne fabrique pas de doublons',
+     (await pca.locator('table tbody tr').count()) === 4
+     && /0 nouvelle\(s\)/.test(await pca.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  const urlListe = pca.url();
+
+  // --- chercher ---
+  await pca.fill('input[name=q]', 'Kossi');
+  await pca.locator('form.chercher button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('la recherche filtre sur le nom', (await pca.locator('table tbody tr').count()) === 1,
+     `${await pca.locator('table tbody tr').count()} ligne(s)`);
+
+  // --- corriger une fiche ---
+  await pca.locator('table tbody a[href*="p=regie-carnet-fiche"]').first().click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('la fiche s’ouvre', pca.url().includes('p=regie-carnet-fiche'));
+  await pca.fill('#c-nom', 'Kossi Mensah-Adjo');
+  await pca.fill('#c-org', 'Maquis Akwaba');
+  await pca.locator('form:has(#c-nom) button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('la correction est enregistrée',
+     (await pca.locator('main').innerText()).includes('Kossi Mensah-Adjo'));
+  ok('la liste de la fiche est cochée',
+     (await pca.locator(`.case:has-text("${LISTE}") input:checked`).count()) === 1);
+
+  // --- archiver ---
+  await pca.locator('form:has(input[value="contact-archiver"]) button').click();
+  await pca.waitForLoadState('domcontentloaded');
+  await pca.goto(urlListe, { waitUntil: 'domcontentloaded' });
+  ok('une adresse archivée sort des actives',
+     (await pca.locator('table tbody tr').count()) === 3,
+     `${await pca.locator('table tbody tr').count()} active(s)`);
+  await pca.selectOption('select[name=etat]', 'archives');
+  await pca.locator('form.chercher button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('mais reste au carnet, dans les archivées',
+     (await pca.locator('table tbody').innerText()).includes('Kossi Mensah-Adjo'));
+
+  // --- sortir de la liste, sans perdre la fiche ---
+  await pca.goto(urlListe, { waitUntil: 'domcontentloaded' });
+  await pca.locator('#form-lot input[name="choix[]"]').first().check();
+  await pca.locator('#form-lot button[value=retirer]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('sortir de la liste le dit clairement',
+     /sortie\(s\) de la liste/.test(await pca.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('la liste en compte une de moins',
+     (await pca.locator('table tbody tr').count()) === 2,
+     `${await pca.locator('table tbody tr').count()} restante(s)`);
+  await pca.goto(`${BASE}/index.php?p=regie-carnet&q=${marque}&etat=toutes`, { waitUntil: 'domcontentloaded' });
+  ok('la fiche sortie est toujours au carnet',
+     (await pca.locator('table tbody tr').count()) === 4,
+     `${await pca.locator('table tbody tr').count()} au carnet`);
+
+  // --- une campagne qui vise la liste ---
+  const idListe = (/[?&]l=([^&]+)/.exec(urlListe) ?? [, ''])[1];
+  await pca.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pca.selectOption('#r-cible', 'liste');
+  await pca.selectOption('#r-liste-id', idListe);
+  await pca.fill('#r-sujet', `Retour au Gala ${marque}`);
+  await pca.fill('#r-titre', 'On remet ça');
+  await pca.fill('#r-corps', 'Vous étiez au Gala. On recommence samedi, même endroit, même heure.');
+  await pca.click('main button[type=submit]');
+  await pca.waitForLoadState('domcontentloaded');
+  ok('une campagne peut viser une liste du carnet', pca.url().includes('p=regie-campagne'));
+  const enTete = await pca.locator('.entete').innerText();
+  ok('elle affiche le nom de la liste, pas « une liste »', enTete.includes(LISTE), LISTE);
+  ok('elle vise les deux adresses actives restantes', /\b2\b\s*destinataire/.test(enTete),
+     enTete.replace(/\s+/g, ' ').slice(0, 90));
+  ok('le nom de la liste renvoie au carnet',
+     (await pca.locator(`.entete a[href*="p=regie-carnet&l="]`).count()) === 1);
+
+  /**
+   * Le scénario qui donne son sens à toute la section : coller des
+   * adresses dans une campagne les ENREGISTRE. Avant le carnet, elles
+   * disparaissaient avec la campagne.
+   */
+  await pca.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pca.selectOption('#r-cible', 'liste');
+  await pca.selectOption('#r-liste-id', 'nouvelle');
+  await pca.fill('#r-liste-nom', `Collée à la volée ${marque}`);
+  await pca.fill('#r-liste', `volee1-${marque}@exemple.tg\nVolée Deux <volee2-${marque}@exemple.tg>`);
+  await pca.fill('#r-sujet', `Collage direct ${marque}`);
+  await pca.fill('#r-titre', 'Un message');
+  await pca.fill('#r-corps', 'Ce collage doit finir dans le carnet, et pas seulement dans cette campagne.');
+  await pca.click('main button[type=submit]');
+  await pca.waitForLoadState('domcontentloaded');
+  ok('un collage dans une campagne crée la liste', pca.url().includes('p=regie-campagne')
+     && (await pca.locator('.entete').innerText()).includes(`Collée à la volée ${marque}`));
+
+  await pca.goto(`${BASE}/index.php?p=regie-carnet&q=volee`, { waitUntil: 'domcontentloaded' });
+  const collees = await pca.locator('table tbody').innerText();
+  ok('les adresses collées sont bien AU CARNET, pas seulement dans la campagne',
+     collees.includes(`volee1-${marque}@exemple.tg`) && collees.includes(`volee2-${marque}@exemple.tg`));
+  ok('le nom donné dans le collage a été gardé', collees.includes('Volée Deux'));
+
+  // --- reprendre la campagne ne re-demande pas le collage ---
+  await pca.goto(`${BASE}/index.php?p=regie-carnet`, { waitUntil: 'domcontentloaded' });
+  ok('la nouvelle liste apparaît parmi les étiquettes',
+     (await pca.locator('.etiquettes').innerText()).includes(`Collée à la volée ${marque}`));
+
+  // --- alimenter depuis une audience calculée ---
+  await pca.goto(urlListe, { waitUntil: 'domcontentloaded' });
+  await pca.locator('button[data-ouvre="bloc-alimenter"]').click();
+  await pca.selectOption('#al-cible', 'participants');
+  await pca.locator('#bloc-alimenter button[type=submit]').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('une audience calculée se fige dans une liste, où elle devient corrigeable',
+     /adresse\(s\) reprises/.test(await pca.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await pca.locator('.msg.ok').first().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 70));
+
+  // --- l'export ---
+  const csv = await pca.request.get(`${BASE}/index.php?p=regie-carnet-export&l=${idListe}`);
+  const texteCsv = await csv.text();
+  ok('le carnet s’exporte en CSV', csv.ok()
+     && (csv.headers()['content-type'] ?? '').includes('text/csv'),
+     csv.headers()['content-type'] ?? `HTTP ${csv.status()}`);
+  ok('l’export porte un BOM, sans quoi Excel abîme les accents',
+     texteCsv.charCodeAt(0) === 0xfeff);
+  ok('il contient les adresses de la liste', texteCsv.includes(marque),
+     `${texteCsv.split('\n').length - 1} ligne(s)`);
+
+  // --- une liste qui n'est pas la mienne ---
+  await pca.goto(`${BASE}/index.php?p=regie-carnet&l=00000000-0000-4000-8000-000000000000`,
+                 { waitUntil: 'domcontentloaded' });
+  ok('une liste inconnue ne fait pas tomber l’écran',
+     (await pca.locator('h1').innerText()).includes('Carnet'));
+
+  // --- supprimer la liste rend les fiches au carnet ---
+  await pca.goto(urlListe, { waitUntil: 'domcontentloaded' });
+  pca.once('dialog', (d) => void d.accept());
+  await pca.locator('form:has(input[value="liste-supprimer"]) button').click();
+  await pca.waitForLoadState('domcontentloaded');
+  ok('supprimer une liste ne supprime pas les gens',
+     /restent au carnet/.test(await pca.locator('.msg.ok').first().innerText().catch(() => '')),
+     (await pca.locator('.msg.ok').first().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 70));
+  await pca.goto(`${BASE}/index.php?p=regie-carnet&q=${marque}&etat=toutes`, { waitUntil: 'domcontentloaded' });
+  ok('les fiches de la liste supprimée sont toujours là',
+     (await pca.locator('table tbody tr').count()) >= 4,
+     `${await pca.locator('table tbody tr').count()} fiche(s)`);
+
+  /**
+   * Et le carnet d'un organisateur n'est pas celui de l'équipe.
+   *
+   * C'est la cloison qui rend le carnet utilisable : un organisateur y met
+   * des clients à lui, et le fait sans se demander qui d'autre les verra.
+   */
+  const ppa = await browser.newPage();
+  surveiller(ppa);
+  await connexion(ppa, PART.email, PART.mdp);
+  await ppa.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  ok('la régie d’un organisateur mène à son carnet',
+     (await ppa.locator('a[href*="p=regie-carnet"]').count()) >= 1);
+  await ppa.goto(`${BASE}/index.php?p=regie-carnet`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur atteint son propre carnet', ppa.url().includes('p=regie-carnet'));
+  ok('son carnet ne contient pas celui de l’équipe',
+     !(await ppa.locator('main').innerText()).includes(`afi-${marque}@exemple.tg`));
+
+  await ppa.close();
+  await pca.close();
+
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pe.fill('#smtp_hote', '');

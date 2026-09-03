@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 function assurer_schema(): void
 {
@@ -93,6 +93,9 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         "ALTER TABLE utilisateurs ADD COLUMN rappel_echeance $court NULL",
         "ALTER TABLE utilisateurs ADD COLUMN otp_secret $court NULL",
         'ALTER TABLE utilisateurs ADD COLUMN otp_actif INT NOT NULL DEFAULT 0',
+        // v12 — le carnet d'adresses : une campagne « liste » désigne
+        // désormais une liste enregistrée, au lieu de porter son collage.
+        "ALTER TABLE campagnes_email ADD COLUMN liste_id $id NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -102,6 +105,7 @@ function migrer_schema(PDO $pdo, bool $mysql): void
 
     migrer_donnees($pdo);
     promouvoir_fondateur($pdo);
+    sauver_listes_collees($pdo);
 }
 
 /**
@@ -136,6 +140,92 @@ function promouvoir_fondateur(PDO $pdo): void
         // charge et crée directement un super-administrateur.
     }
 }
+
+/**
+ * v12 — les collages d'adresses deviennent de vraies listes.
+ *
+ * Avant le carnet, une campagne « liste » portait son collage dans une
+ * colonne texte : deux cents adresses réunies à la main, enfermées dans un
+ * objet qu'on supprime quand la campagne est partie. Cette reprise les en
+ * sort — une liste par campagne, nommée d'après son objet — pour que le
+ * travail déjà fait chez les installations en service ne soit pas réservé
+ * aux campagnes suivantes.
+ *
+ * Écrite en SQL nu et non avec les fonctions du carnet : une migration
+ * s'exécute AVANT que l'application soit chargée, et ne peut compter que
+ * sur ce qu'elle apporte elle-même. Elle est idempotente — un collage déjà
+ * repris porte un `liste_id`, et on ne le regarde plus.
+ */
+function sauver_listes_collees(PDO $pdo): void
+{
+    // Le même garde que `migrer_donnees()` : une migration qui provoque une
+    // erreur fatale laisse une installation à moitié à jour, et c'est le
+    // pire état possible. Le lecteur de collages vit dans `carnet.php`, que
+    // rien ici n'oblige à être chargé.
+    if (!function_exists('adresses_du_texte')) {
+        return;
+    }
+    try {
+        $vieilles = $pdo->query(
+            "SELECT id, auteur_id, sujet, liste FROM campagnes_email
+             WHERE cible = 'liste' AND liste_id IS NULL AND liste IS NOT NULL AND liste <> ''"
+        )->fetchAll();
+    } catch (PDOException) {
+        return;
+    }
+    if (!$vieilles) {
+        return;
+    }
+
+    $now = maintenant();
+    $listeParNom = $pdo->prepare('SELECT id FROM listes_contacts WHERE proprietaire_id = ? AND nom = ?');
+    $neuveListe = $pdo->prepare('INSERT INTO listes_contacts (id, proprietaire_id, nom, note, cree_le, maj_le)
+                                 VALUES (?,?,?,?,?,?)');
+    $contactParEmail = $pdo->prepare('SELECT id FROM contacts WHERE proprietaire_id = ? AND email = ?');
+    $neufContact = $pdo->prepare('INSERT INTO contacts
+        (id, proprietaire_id, email, nom, organisation, telephone, note, source, archive, cree_le, maj_le)
+        VALUES (?,?,?,?,NULL,NULL,NULL,?,0,?,?)');
+    $attache = $pdo->prepare('INSERT INTO contacts_listes (liste_id, contact_id, ajoute_le) VALUES (?,?,?)');
+    $pointe = $pdo->prepare('UPDATE campagnes_email SET liste_id = ? WHERE id = ?');
+
+    foreach ($vieilles as $c) {
+        $proprio = (string) ($c['auteur_id'] ?? '');
+        if ($proprio === '') {
+            continue;
+        }
+        $adresses = adresses_du_texte((string) $c['liste']);
+        if (!$adresses) {
+            continue;
+        }
+        // Le nom que verra l'utilisateur. L'objet de la campagne est ce
+        // qu'il reconnaîtra : c'est le seul texte qu'il ait écrit lui-même.
+        $nom = mb_substr(trim((string) $c['sujet']) ?: 'Liste importée', 0, 120);
+        $listeParNom->execute([$proprio, $nom]);
+        $liste_id = (string) ($listeParNom->fetchColumn() ?: '');
+        if ($liste_id === '') {
+            $liste_id = nouvel_id();
+            $neuveListe->execute([$liste_id, $proprio, $nom,
+                'Reprise du collage de la campagne « ' . $nom . ' ».', $now, $now]);
+        }
+
+        foreach ($adresses as $email => $nomContact) {
+            $contactParEmail->execute([$proprio, $email]);
+            $contact_id = (string) ($contactParEmail->fetchColumn() ?: '');
+            if ($contact_id === '') {
+                $contact_id = nouvel_id();
+                $neufContact->execute([$contact_id, $proprio, $email,
+                    $nomContact ?: null, 'import', $now, $now]);
+            }
+            try {
+                $attache->execute([$liste_id, $contact_id, $now]);
+            } catch (PDOException) {
+                // Déjà attaché : c'est le résultat voulu.
+            }
+        }
+        $pointe->execute([$liste_id, $c['id']]);
+    }
+}
+
 
 /**
  * Les rattrapages qui portent sur le CONTENU, pas sur la forme des tables.
@@ -501,6 +591,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
             lien_libelle  $court NULL,
             cible         $court NOT NULL DEFAULT 'mes-invites',
             liste         $txt NULL,
+            liste_id      $id NULL,
             statut        $court NOT NULL DEFAULT 'brouillon',
             motif         $txt NULL,
             destinataires INT NOT NULL DEFAULT 0,
@@ -557,6 +648,55 @@ function creer_schema(PDO $pdo, bool $mysql): void
             cree_le $court NOT NULL
         )$moteur",
 
+        /**
+         * Le carnet d'adresses : une liste, c'est une étiquette.
+         *
+         * Trois tables plutôt qu'une seule à colonne « liste » parce qu'une
+         * personne appartient à plusieurs listes — les invités du Gala ET
+         * les partenaires de la saison. Tout mettre sur une ligne obligerait
+         * à dupliquer la fiche, donc à corriger une faute de frappe autant
+         * de fois qu'elle est recopiée : autant dire jamais.
+         */
+        "CREATE TABLE IF NOT EXISTS listes_contacts (
+            id              $id PRIMARY KEY,
+            proprietaire_id $id NOT NULL,
+            nom             $court NOT NULL,
+            note            $txt NULL,
+            cree_le         $court NOT NULL,
+            maj_le          $court NOT NULL
+        )$moteur",
+
+        /**
+         * Une fiche par personne et par propriétaire.
+         *
+         * `archive` est NOTRE décision — l'adresse rebondit, le client est
+         * parti — et ne se confond pas avec `desabonnements`, qui est la
+         * sienne et vaut pour toute l'installation. Deux notions, deux
+         * tables : les mélanger permettrait de « désarchiver » quelqu'un
+         * qui a demandé qu'on lui fiche la paix.
+         */
+        "CREATE TABLE IF NOT EXISTS contacts (
+            id              $id PRIMARY KEY,
+            proprietaire_id $id NOT NULL,
+            email           $court NOT NULL,
+            nom             $court NULL,
+            organisation    $court NULL,
+            telephone       $court NULL,
+            note            $txt NULL,
+            source          $court NOT NULL DEFAULT 'manuel',
+            archive         INT NOT NULL DEFAULT 0,
+            cree_le         $court NOT NULL,
+            maj_le          $court NOT NULL,
+            UNIQUE (proprietaire_id, email)
+        )$moteur",
+
+        "CREATE TABLE IF NOT EXISTS contacts_listes (
+            liste_id   $id NOT NULL,
+            contact_id $id NOT NULL,
+            ajoute_le  $court NOT NULL,
+            PRIMARY KEY (liste_id, contact_id)
+        )$moteur",
+
         "CREATE TABLE IF NOT EXISTS prevol (
             decor_id $id PRIMARY KEY,
             passe    INT NOT NULL,
@@ -584,6 +724,9 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_factures_utilisateur ON factures (utilisateur_id)',
         'CREATE INDEX idx_equipiers_decor ON equipiers (decor_id)',
         'CREATE INDEX idx_equipiers_utilisateur ON equipiers (utilisateur_id)',
+        'CREATE INDEX idx_contacts_proprietaire ON contacts (proprietaire_id)',
+        'CREATE INDEX idx_contacts_listes_contact ON contacts_listes (contact_id)',
+        'CREATE INDEX idx_listes_contacts_proprietaire ON listes_contacts (proprietaire_id)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

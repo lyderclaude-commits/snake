@@ -5,7 +5,7 @@
  * src/core : c'est la garantie que les deux versions dessinent la même chose.
  */
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -66,8 +66,20 @@ rmSync(join(RACINE, 'studio'), { recursive: true, force: true });
 
 cpSync('docs/11-VERSION-PHP.md', join(RACINE, 'LISEZ-MOI.md'));
 
-execFileSync('zip', ['-qr', 'wakabi-boost-php.zip', 'wakabi-boost'], { cwd: SORTIE });
-const taille = execFileSync('du', ['-sh', join(SORTIE, 'wakabi-boost-php.zip')]).toString().split('\t')[0];
+/**
+ * Le nom de l'archive porte la VERSION.
+ *
+ * « wakabi-boost-php.zip » ne dit pas laquelle : deux téléchargements à
+ * six mois d'écart portent le même nom dans le dossier des
+ * téléchargements, et l'on ne sait plus lequel est en ligne. Le numéro
+ * vit dans `php/app/bootstrap.php`, à côté du reste du produit.
+ */
+const VERSION = (readFileSync('php/app/bootstrap.php', 'utf8')
+  .match(/const VERSION = '([^']+)'/) ?? [, '1'])[1];
+const NOM_ZIP = `wakabi-boost-v${VERSION}.zip`;
 
-console.log(`\n  ✓ ${SORTIE}/wakabi-boost-php.zip — ${taille}`);
+execFileSync('zip', ['-qr', NOM_ZIP, 'wakabi-boost'], { cwd: SORTIE });
+const taille = execFileSync('du', ['-sh', join(SORTIE, NOM_ZIP)]).toString().split('\t')[0];
+
+console.log(`\n  ✓ ${SORTIE}/${NOM_ZIP} — ${taille}`);
 console.log('    à décompresser dans le dossier du sous-domaine, puis ouvrir install.php\n');
