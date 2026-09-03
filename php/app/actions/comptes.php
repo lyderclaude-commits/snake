@@ -22,27 +22,47 @@ function ecran_comptes(): array
 
 /* ---------------- créer un compte ---------------- */
 
-if ($page === 'creer-compte') {
+/**
+ * Deux formulaires, deux actions, et c'est délibéré.
+ *
+ * Un compte client et un compte de la maison n'ont ni les mêmes champs, ni
+ * les mêmes conséquences. Tant qu'ils partageaient un seul formulaire, la
+ * liste des rôles mêlait « Organisateur » et « Coordinateur » à deux
+ * lignes d'écart, et le champ « Offre » restait là, à proposer une
+ * Croissance à 25 000 F à quelqu'un qu'on embauche. On ne se vend pas des
+ * fonctions à soi-même : le formulaire de l'équipe n'a donc pas d'offre du
+ * tout, et celui des clients n'a pas de rôle interne.
+ *
+ * La vérification côté serveur ne dépend pas du formulaire d'où l'on
+ * vient : chacune des deux actions refuse la famille de l'autre.
+ */
+if ($page === 'creer-compte' || $page === 'creer-equipier') {
     verifier_csrf();
+    $interne_voulu = $page === 'creer-equipier';
 
     $v = [
         'nom' => trim((string) ($_POST['nom'] ?? '')),
         'email' => trim((string) ($_POST['email'] ?? '')),
-        'role' => (string) ($_POST['role'] ?? 'partenaire'),
-        'formule' => (string) ($_POST['formule'] ?? 'decouverte'),
+        'role' => (string) ($_POST['role'] ?? ($interne_voulu ? 'scanner' : 'partenaire')),
+        'formule' => $interne_voulu ? '' : (string) ($_POST['formule'] ?? 'decouverte'),
         'organisation' => trim((string) ($_POST['organisation'] ?? '')),
         'ville' => trim((string) ($_POST['ville'] ?? 'lome')),
     ];
     $mdp = (string) ($_POST['mot_de_passe'] ?? '');
+    $famille = in_array($v['role'], ROLES_INTERNES, true);
 
     $erreur = match (true) {
         $v['nom'] === '' => 'Indiquez le nom de la personne.',
         !filter_var($v['email'], FILTER_VALIDATE_EMAIL) => 'Cette adresse e-mail n’est pas valide.',
         strlen($mdp) < 8 => 'Le mot de passe doit faire au moins 8 caractères.',
         !in_array($v['role'], ROLES, true) => 'Rôle inconnu.',
-        in_array($v['role'], ROLES_INTERNES, true) && !droit($u, 'comptes_internes') =>
+        $interne_voulu && !$famille =>
+            'Ce formulaire crée des comptes de l’équipe. Pour un client, utilisez l’autre.',
+        !$interne_voulu && $famille =>
+            'Ce formulaire crée des comptes clients. Pour l’équipe, utilisez l’autre.',
+        $famille && !droit($u, 'comptes_internes') =>
             'Seul un super-administrateur crée un compte de l’équipe.',
-        !isset(FORMULES[$v['formule']]) => 'Offre inconnue.',
+        !$interne_voulu && !isset(FORMULES[$v['formule']]) => 'Offre inconnue.',
         utilisateur_par_email($v['email']) !== null => 'Un compte existe déjà avec cette adresse.',
         default => null,
     };
@@ -54,11 +74,11 @@ if ($page === 'creer-compte') {
             'titre' => 'Comptes',
             'erreur' => $erreur,
             'valeurs' => $v,
-            'ouvert' => true,
+            'ouvert' => $interne_voulu ? 'equipe' : 'client',
         ] + ecran_comptes());
     }
 
-    creer_utilisateur([
+    $id = creer_utilisateur([
         'email' => $v['email'],
         'mot_de_passe' => $mdp,
         'nom' => $v['nom'],
@@ -68,13 +88,33 @@ if ($page === 'creer-compte') {
         'ville' => $v['ville'] ?: null,
     ]);
 
-    journal_ecrire($u, 'compte.cree', 'compte', null, $v['nom'],
-        role_libelle($v['role']) . ', offre ' . formule_libelle($v['formule']));
+    $quoi = $famille
+        ? role_libelle($v['role']) . ', compte de l’équipe'
+        : role_libelle($v['role']) . ', offre ' . formule_libelle($v['formule']);
+    journal_ecrire($u, 'compte.cree', 'compte', $id, $v['nom'], $quoi);
+
+    /**
+     * Le lien de confirmation part MAINTENANT, comme à l'inscription.
+     *
+     * Sans cette ligne, un compte créé par l'équipe naissait avec une
+     * adresse non confirmée et aucun moyen de la confirmer : le bouton
+     * « renvoyer » n'existe que sur le tableau de bord du titulaire, et il
+     * ne peut pas s'y rendre tant qu'on ne lui a pas transmis son mot de
+     * passe. Le seul bouton à portée de l'équipe était celui du rôle — d'où
+     * un courriel parlant d'offre là où l'on attendait une confirmation.
+     */
+    $suite = '';
+    if (verification_exigee()) {
+        $envoi = envoyer_verification(['id' => $id, 'email' => $v['email'], 'nom' => $v['nom']]);
+        $suite = $envoi['ok']
+            ? ' Un lien de confirmation vient de partir vers ' . $v['email'] . '.'
+            : ' L’envoi du lien de confirmation a échoué : ' . $envoi['message'];
+    }
 
     rediriger('?p=comptes&ok=' . urlencode(
-        'Compte créé pour ' . $v['nom'] . ' (' . role_libelle($v['role'])
-        . ', offre ' . formule_libelle($v['formule']) . '). '
+        'Compte créé pour ' . $v['nom'] . ' (' . $quoi . '). '
         . 'Transmettez-lui son adresse et son mot de passe : ils ne sont affichés nulle part ailleurs.'
+        . $suite
     ));
 }
 
@@ -111,11 +151,20 @@ if ($page === 'role' || $page === 'suspendre') {
 
     if ($page === 'role') {
         $role = (string) ($_POST['role'] ?? '');
-        $formule = (string) ($_POST['formule'] ?? 'decouverte');
         if (!in_array($role, ROLES, true)) {
             rediriger($retour . '&err=' . urlencode('Rôle inconnu.'));
         }
-        if (!isset(FORMULES[$formule])) {
+        /**
+         * L'offre suit le RÔLE, et un rôle interne n'en a pas.
+         *
+         * Le formulaire de l'équipe ne poste même pas de champ « offre » ;
+         * mais la règle est appliquée ici, côté serveur, parce qu'un
+         * formulaire trafiqué qui poste `formule=mouvement` avec
+         * `role=coordinateur` ne doit pas fabriquer un compte de la maison
+         * qui traîne une offre payante — et une échéance avec.
+         */
+        $formule = formule_pour($role, (string) ($_POST['formule'] ?? $vise['formule'] ?? 'decouverte'));
+        if (!in_array($role, ROLES_INTERNES, true) && !isset(FORMULES[$formule])) {
             rediriger($retour . '&err=' . urlencode('Offre inconnue.'));
         }
         // Donner un rôle interne est le même geste que d'en modifier un.
@@ -134,11 +183,24 @@ if ($page === 'role' || $page === 'suspendre') {
             rediriger($retour . '&err=' . urlencode(
                 'C’est le dernier super-administrateur. Nommez-en un autre avant de le rétrograder.'));
         }
+        $change_role = $role !== $vise['role'];
+        $change_offre = $formule !== (string) ($vise['formule'] ?? '');
+        if (!$change_role && !$change_offre) {
+            // Rien n'a bougé : ni écriture, ni ligne de journal, ni courriel.
+            // Un « OK » cliqué par acquit de conscience ne doit pas expédier
+            // à quelqu'un l'annonce d'un changement qui n'a pas eu lieu.
+            rediriger($retour . '&ok=' . urlencode('Rien n’a changé sur ce compte.'));
+        }
+
         db()->prepare('UPDATE utilisateurs SET role = ?, formule = ? WHERE id = ?')
             ->execute([$role, $formule, $id]);
         journal_ecrire($u, 'compte.role', 'compte', $id, (string) $vise['nom'],
-            role_libelle($vise['role']) . ' → ' . role_libelle($role)
-            . ', ' . formule_libelle($vise['formule']) . ' → ' . formule_libelle($formule));
+            trim(($change_role ? role_libelle($vise['role']) . ' → ' . role_libelle($role) : '')
+               . ($change_role && $change_offre ? ', ' : '')
+               . ($change_offre
+                   ? (formule_affichee($vise) ?? 'sans offre') . ' → '
+                     . (formule_pour($role, $formule) === '' ? 'sans offre' : formule_libelle($formule))
+                   : '')));
 
         /**
          * L'échéance suit l'offre, automatiquement.
@@ -158,22 +220,40 @@ if ($page === 'role' || $page === 'suspendre') {
         }
 
         /**
-         * La personne concernée l'apprend, et sait ce qui change.
+         * La personne concernée l'apprend — et le message parle de CE qui
+         * la concerne.
          *
-         * Son quota vient de bouger, mais aussi le filigrane de ses badges,
-         * ses Koris et sa redirection : le message les nomme, sinon elle
-         * découvrirait le changement sur un badge déjà partagé.
+         * Deux messages, parce que ce sont deux nouvelles différentes. À un
+         * client, l'offre : son quota vient de bouger, mais aussi le
+         * filigrane de ses badges, ses Koris et sa redirection — le message
+         * les nomme, sinon elle découvrirait le changement sur un badge
+         * déjà partagé. À un membre de l'équipe, le rôle et ce qu'il ouvre :
+         * lui annoncer une offre serait lui parler d'un abonnement qu'il n'a
+         * pas, et c'était exactement ce que faisait l'écran avant.
          */
-        $f = FORMULES[$formule];
-        $corps = 'Rôle : ' . role_libelle($role) . '. Offre : ' . formule_libelle($formule) . ".\n\n"
-            . 'Elle couvre ' . ($f['campagnes'] < 0 ? 'un nombre illimité de campagnes' : $f['campagnes'] . ' campagne(s) active(s)')
-            . ' et ' . ($f['telechargements'] < 0 ? 'des téléchargements sans limite' : $f['telechargements'] . ' téléchargements par mois')
-            . '. Le filigrane Wakabi ' . ($f['sans_filigrane'] ? 'ne figure plus' : 'figure') . ' sur vos badges, '
-            . 'les Koris sont ' . ($f['koris'] ? 'crédités' : 'désactivés') . ' au scan, et la redirection après '
-            . 'téléchargement est ' . ($f['redirection'] ? 'active' : 'indisponible') . '. '
-            . 'Le détail complet est sur votre tableau de bord.';
-        notifier($id, 'compte', 'Votre offre est maintenant ' . formule_libelle($formule),
-            $corps, accueil_de(['role' => $role]));
+        if (in_array($role, ROLES_INTERNES, true)) {
+            $peut = [];
+            foreach (ROLES_DROITS[$role] ?? [] as $d) {
+                $peut[] = mb_strtolower(DROITS[$d] ?? $d);
+            }
+            notifier($id, 'compte', 'Votre rôle est maintenant ' . role_libelle($role),
+                role_aide($role) . ($peut ? "\n\nCe rôle ouvre : " . implode(', ', $peut) . '.' : ''),
+                accueil_de(['role' => $role]));
+        } else {
+            $f = FORMULES[$formule];
+            $corps = 'Rôle : ' . role_libelle($role) . '. Offre : ' . formule_libelle($formule) . ".\n\n"
+                . 'Elle couvre ' . ($f['campagnes'] < 0 ? 'un nombre illimité de campagnes' : $f['campagnes'] . ' campagne(s) active(s)')
+                . ' et ' . ($f['telechargements'] < 0 ? 'des téléchargements sans limite' : $f['telechargements'] . ' téléchargements par mois')
+                . '. Le filigrane Wakabi ' . ($f['sans_filigrane'] ? 'ne figure plus' : 'figure') . ' sur vos badges, '
+                . 'les Koris sont ' . ($f['koris'] ? 'crédités' : 'désactivés') . ' au scan, et la redirection après '
+                . 'téléchargement est ' . ($f['redirection'] ? 'active' : 'indisponible') . '. '
+                . 'Le détail complet est sur votre tableau de bord.';
+            notifier($id, 'compte',
+                $change_offre
+                    ? 'Votre offre est maintenant ' . formule_libelle($formule)
+                    : 'Votre rôle est maintenant ' . role_libelle($role),
+                $corps, accueil_de(['role' => $role]));
+        }
     } else {
         if ($vise['role'] === 'super_admin' && !$vise['suspendu'] && compte_super_admins() <= 1) {
             rediriger($retour . '&err=' . urlencode(
@@ -184,6 +264,52 @@ if ($page === 'role' || $page === 'suspendre') {
             ((int) $vise['suspendu']) ? 'Réactivé' : 'Suspendu');
     }
     rediriger($retour . '&ok=' . urlencode('Compte mis à jour.'));
+}
+
+/* ---------------- renvoyer le lien de confirmation ---------------- */
+
+/**
+ * Le lien de confirmation, renvoyé par l'équipe.
+ *
+ * Le bouton « renvoyer » du titulaire ne suffit pas : il vit sur son
+ * tableau de bord, et quelqu'un dont l'adresse n'est pas confirmée est
+ * précisément quelqu'un qui n'a peut-être jamais réussi à s'y rendre. Sans
+ * ce levier, l'équipe voyait « adresse non confirmée » sur une ligne sans
+ * pouvoir rien y faire — et le seul bouton à portée était celui du rôle.
+ *
+ * Le compteur est celui du compte VISÉ, pas du nôtre : cliquer six fois
+ * sur six comptes différents est un geste de ménage légitime ; cliquer six
+ * fois sur le même est du harcèlement d'une boîte de réception.
+ */
+if ($page === 'verif-renvoyer') {
+    verifier_csrf();
+    $id = (string) ($_POST['id'] ?? '');
+    $retour = ($_POST['retour'] ?? '') === 'fiche'
+        ? '?p=organisateur&id=' . rawurlencode($id)
+        : '?p=comptes';
+    $vise = utilisateur_par_id($id);
+
+    $refus = match (true) {
+        !$vise => 'Compte introuvable.',
+        interne($vise) && !droit($u, 'comptes_internes') =>
+            'Un compte de l’équipe ne se modifie que par un super-administrateur.',
+        email_verifie($vise) => 'L’adresse de ce compte est déjà confirmée.',
+        !verification_exigee() =>
+            'Le transport e-mail n’est pas réglé : aucun lien ne peut partir.',
+        debit_depasse('verif|' . $id) =>
+            'Un lien vient déjà de partir vers cette adresse. Réessayez dans '
+            . FENETRE_MINUTES . ' minutes — et faites-lui regarder ses indésirables.',
+        default => null,
+    };
+    if ($refus !== null) {
+        rediriger($retour . '&err=' . urlencode($refus));
+    }
+
+    debit_noter('verif|' . $id);
+    $envoi = envoyer_verification($vise);
+    rediriger($retour . ($envoi['ok'] ? '&ok=' : '&err=') . urlencode($envoi['ok']
+        ? 'Lien de confirmation renvoyé à ' . $vise['email'] . '.'
+        : $envoi['message']));
 }
 
 /* ---------------- lever la double authentification ---------------- */

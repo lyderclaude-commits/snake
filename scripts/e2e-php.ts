@@ -153,6 +153,22 @@ function ouvrirSmtp(): Promise<{ fermer: () => void }> {
 }
 
 /**
+ * Les objets des messages reçus, décodés.
+ *
+ * Un objet français part encodé — `Subject: =?UTF-8?B?Vm90cmUgcsO0bGU…?=` —
+ * et chercher « Confirmez votre adresse » dans le flux brut ne trouve donc
+ * jamais rien. Une assertion qui échoue est gênante ; une assertion qui
+ * PASSE parce qu'elle ne peut rien trouver l'est bien davantage : c'est ce
+ * que faisait un `!/Votre offre/` posé sur du base64.
+ */
+function objets(brut: string): string {
+  return (brut.match(/^Subject:.*$/gim) ?? [])
+    .map((l) => l.replace(/=\?UTF-8\?B\?([^?]*)\?=/gi,
+      (_, b64: string) => Buffer.from(b64, 'base64').toString('utf8')))
+    .join('\n');
+}
+
+/**
  * Une vidéo Y4M montrant un QR, pour la fausse caméra de Chromium.
  *
  * C'est la seule façon d'éprouver la lecture au vol sans une main et un
@@ -790,23 +806,23 @@ const run = async () => {
   // 1. L'équipe ouvre un compte à un organisateur qui a payé son offre.
   const CLIENT = { email: `impact-${marque}@exemple.tg`, mdp: 'client-impact-2026' };
   await p.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
-  await p.click('details.creer > summary');
+  await p.locator('details.creer').first().locator('summary').click();
   await p.fill('#c-nom', 'Cliente Impact');
   await p.fill('#c-email', CLIENT.email);
   await p.selectOption('#c-role', 'partenaire');
   await p.selectOption('#c-formule', 'impact');
   await p.fill('#c-mdp', CLIENT.mdp);
-  await p.click('.formulaire-compte button[type=submit]');
+  await p.click('form[action*="creer-compte"] button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   const cree = await p.locator('.msg.ok').first().innerText().catch(() => '');
   ok('l’équipe crée un compte avec son offre', /Compte créé/.test(cree) && /Impact/.test(cree), cree.slice(0, 60));
 
   // 2. Une adresse déjà prise ne doit pas effacer la saisie.
-  await p.click('details.creer > summary');
+  await p.locator('details.creer').first().locator('summary').click();
   await p.fill('#c-nom', 'Cliente Impact');
   await p.fill('#c-email', CLIENT.email);
   await p.fill('#c-mdp', CLIENT.mdp);
-  await p.click('.formulaire-compte button[type=submit]');
+  await p.click('form[action*="creer-compte"] button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   ok('adresse déjà prise refusée',
      /existe déjà/.test(await p.locator('.msg.err').first().innerText().catch(() => '')));
@@ -2184,12 +2200,12 @@ const run = async () => {
   const MDP_INTERNE = 'interne-2026-solide';
 
   await pr.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
-  const csrfComptes = await pr.locator('.formulaire-compte input[name=csrf]').inputValue();
+  const csrfComptes = await pr.locator('.formulaire-compte input[name=csrf]').first().inputValue();
 
   for (const [role, nom, attendues] of INTERNES) {
     const email = `${role}-${marque}@wakabileguide.com`;
-    const cree = await pr.request.post(`${BASE}/index.php?p=creer-compte`, {
-      form: { csrf: csrfComptes, nom, email, role, formule: 'decouverte', mot_de_passe: MDP_INTERNE },
+    const cree = await pr.request.post(`${BASE}/index.php?p=creer-equipier`, {
+      form: { csrf: csrfComptes, nom, email, role, mot_de_passe: MDP_INTERNE },
     });
     ok(`l’équipe crée un compte « ${role} »`, /Compte créé/.test(await cree.text()));
 
@@ -2278,9 +2294,9 @@ const run = async () => {
   await pr.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
 
   const EQ = { email: `equipe-${marque}@wakabileguide.com`, mdp: MDP_INTERNE };
-  const creeEq = await pr.request.post(`${BASE}/index.php?p=creer-compte`, {
+  const creeEq = await pr.request.post(`${BASE}/index.php?p=creer-equipier`, {
     form: { csrf: csrfComptes, nom: 'Membre équipe', email: EQ.email,
-            role: 'equipe', formule: 'decouverte', mot_de_passe: EQ.mdp },
+            role: 'equipe', mot_de_passe: EQ.mdp },
   });
   ok('un super-administrateur crée un compte d’équipe', /Compte créé/.test(await creeEq.text()));
 
@@ -2290,19 +2306,38 @@ const run = async () => {
   await connexion(peq, EQ.email, EQ.mdp);
   await peq.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
 
-  const familles = await peq.locator('.formulaire-compte optgroup')
-    .evaluateAll((n) => n.map((e) => e.getAttribute('label')));
-  ok('l’équipe ne se voit proposer que les rôles clients',
-     familles.join('|') === 'Comptes clients', familles.join(' | '));
+  /**
+   * Le formulaire de l'équipe n'existe PAS pour un compte « equipe ».
+   *
+   * Ce n'est pas une liste grisée ni un champ désactivé : la porte n'est
+   * pas là. Un champ désactivé se rouvre depuis la console du navigateur —
+   * ce que le serveur refuse ensuite, mais autant ne pas l'exposer.
+   */
+  ok('un compte d’équipe n’a qu’un seul formulaire, celui des clients',
+     (await peq.locator('details.creer').count()) === 1
+     && (await peq.locator('form[action*="creer-equipier"]').count()) === 0,
+     `${await peq.locator('details.creer').count()} formulaire(s)`);
+  const rolesOfferts = await peq.locator('#c-role option')
+    .evaluateAll((n) => n.map((e) => (e as HTMLOptionElement).value));
+  ok('et ce formulaire ne propose aucun rôle interne',
+     rolesOfferts.every((r) => ['participant', 'partenaire'].includes(r)),
+     rolesOfferts.join(' · '));
 
-  const csrfEq = await peq.locator('.formulaire-compte input[name=csrf]').inputValue();
+  const csrfEq = await peq.locator('.formulaire-compte input[name=csrf]').first().inputValue();
   for (const role of ['coordinateur', 'equipe', 'super_admin']) {
-    const r = await peq.request.post(`${BASE}/index.php?p=creer-compte`, {
+    // Les DEUX portes sont essayées : celle des clients doit renvoyer à
+    // l'autre formulaire, celle de l'équipe doit renvoyer au grade.
+    const parClient = await peq.request.post(`${BASE}/index.php?p=creer-compte`, {
       form: { csrf: csrfEq, nom: 'Complice ' + role, email: `complice-${role}-${marque}@exemple.tg`,
               role, formule: 'decouverte', mot_de_passe: 'un-mot-de-passe-solide' },
     });
-    ok(`l’équipe ne peut pas se fabriquer un « ${role} »`,
-       /super-administrateur crée un compte/.test(await r.text()));
+    const parEquipe = await peq.request.post(`${BASE}/index.php?p=creer-equipier`, {
+      form: { csrf: csrfEq, nom: 'Complice ' + role, email: `complice2-${role}-${marque}@exemple.tg`,
+              role, mot_de_passe: 'un-mot-de-passe-solide' },
+    });
+    ok(`l’équipe ne peut pas se fabriquer un « ${role} », par aucune des deux portes`,
+       /crée des comptes clients/.test(await parClient.text())
+       && /super-administrateur crée un compte/.test(await parEquipe.text()));
   }
 
   /* Ni toucher au super-administrateur en place. */
@@ -2316,7 +2351,7 @@ const run = async () => {
   await ctxEq.close();
 
   /* Et le dernier super-administrateur ne se défait pas lui-même. */
-  const csrfSA = await pr.locator('.formulaire-compte input[name=csrf]').inputValue();
+  const csrfSA = await pr.locator('.formulaire-compte input[name=csrf]').first().inputValue();
   const auto = await pr.request.post(`${BASE}/index.php?p=role`,
     { form: { csrf: csrfSA, id: idSA, role: 'equipe', formule: 'decouverte' } });
   ok('le dernier super-administrateur ne se rétrograde pas',
@@ -2656,7 +2691,7 @@ const run = async () => {
   /* --- l'échéance, la facture --- */
   const ABONNE = { email: `abonne-${marque}@exemple.tg`, mdp: 'abonne-2026-solide' };
   const csrfC = await pau.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' })
-    .then(() => pau.locator('.formulaire-compte input[name=csrf]').inputValue());
+    .then(() => pau.locator('.formulaire-compte input[name=csrf]').first().inputValue());
   await pau.request.post(`${BASE}/index.php?p=creer-compte`, {
     form: { csrf: csrfC, nom: 'Abonné payant', email: ABONNE.email, role: 'partenaire',
             formule: 'croissance', mot_de_passe: ABONNE.mdp },
@@ -2708,10 +2743,9 @@ const run = async () => {
   /* --- un compte interne n'a pas d'offre commerciale --- */
   const INT = { email: `editeur-${marque}@wakabileguide.com`, mdp: 'interne-2026-solide' };
   await pau.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
-  await pau.request.post(`${BASE}/index.php?p=creer-compte`, {
-    form: { csrf: await pau.locator('.formulaire-compte input[name=csrf]').inputValue(),
-            nom: 'Éditeur audit', email: INT.email, role: 'editeur',
-            formule: 'decouverte', mot_de_passe: INT.mdp },
+  await pau.request.post(`${BASE}/index.php?p=creer-equipier`, {
+    form: { csrf: await pau.locator('.formulaire-compte input[name=csrf]').first().inputValue(),
+            nom: 'Éditeur audit', email: INT.email, mot_de_passe: INT.mdp, role: 'editeur' },
   });
   const ctxInt = await browser.newContext();
   const pint = await ctxInt.newPage();
@@ -3260,6 +3294,239 @@ const run = async () => {
 
   await ppa.close();
   await pca.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 38. L’équipe, les clients, et ce qui part par courriel ━━');
+
+  /**
+   * Trois défauts d'un seul écran, et ils se tenaient.
+   *
+   * Un compte de l'équipe recevait une offre commerciale ; un compte créé
+   * par l'équipe n'avait aucun moyen de confirmer son adresse ; et le seul
+   * bouton à portée — celui du rôle — expédiait « Votre offre est
+   * maintenant Découverte » à quelqu'un qui n'a jamais rien acheté. Cette
+   * section les éprouve ensemble, parce qu'ils se réparent ensemble.
+   *
+   * Le transport SMTP est rallumé le temps de la section : sans lui, on ne
+   * vérifierait que des écrans, et c'est justement le COURRIEL qui était
+   * faux.
+   */
+  const pcx = await browser.newPage();
+  surveiller(pcx);
+  await connexion(pcx, ADMIN.email, ADMIN.mdp);
+
+  /**
+   * On RÉUTILISE le serveur SMTP de la section 22, encore debout.
+   *
+   * En ouvrir un second sur le même port fait tomber la recette entière —
+   * et un second port serait un deuxième bac de réception à surveiller
+   * pour rien. On se contente de rebrancher les réglages dessus, et de
+   * noter où en est le bac partagé avant chaque geste.
+   */
+  const recusCx = recus;
+  await pcx.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pcx.fill('#smtp_hote', '127.0.0.1');
+  await pcx.fill('#smtp_port', String(SMTP_PORT));
+  await pcx.selectOption('#smtp_securite', 'aucune');
+  await pcx.fill('#courriel_expediteur', 'boost@wakabileguide.com');
+  await pcx.click('button[value=enregistrer]');
+  await pcx.waitForLoadState('domcontentloaded');
+
+  await pcx.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  ok('les deux familles ont chacune leur formulaire',
+     (await pcx.locator('details.creer').count()) === 2
+     && (await pcx.locator('form[action*="creer-equipier"]').count()) === 1);
+  ok('celui de l’équipe ne propose AUCUNE offre',
+     (await pcx.locator('form[action*="creer-equipier"] select[name=formule]').count()) === 0);
+  ok('celui des clients ne propose aucun rôle interne',
+     (await pcx.locator('#c-role option').evaluateAll(
+       (n) => n.map((e) => (e as HTMLOptionElement).value)))
+       .every((r) => ['participant', 'partenaire'].includes(r)));
+
+  /* --- créer un équipier : pas d'offre, et un lien de confirmation --- */
+  const EQUIPIER = { email: `coord-${marque}@wakabileguide.com`, mdp: 'coordinateur-2026-solide' };
+  const avantEq = recusCx.length;
+  await pcx.locator('details.creer').nth(1).locator('summary').click();
+  await pcx.fill('#e-nom', `Coordinatrice ${marque}`);
+  await pcx.fill('#e-email', EQUIPIER.email);
+  await pcx.selectOption('#e-role', 'coordinateur');
+  await pcx.fill('#e-mdp', EQUIPIER.mdp);
+  await pcx.click('form[action*="creer-equipier"] button[type=submit]');
+  await pcx.waitForLoadState('domcontentloaded');
+  const creeEqui = await pcx.locator('.msg.ok').first().innerText().catch(() => '');
+  ok('un compte d’équipe se crée sans offre',
+     /Compte créé/.test(creeEqui) && /compte de l’équipe/.test(creeEqui)
+     && !/offre/i.test(creeEqui.replace(/compte de l’équipe/, '')),
+     creeEqui.replace(/\s+/g, ' ').slice(0, 90));
+  ok('et le message annonce le lien de confirmation',
+     /lien de confirmation vient de partir/.test(creeEqui));
+
+  const messageEq = recusCx.slice(avantEq).join('\n');
+  ok('un VRAI serveur SMTP a reçu le lien de confirmation',
+     recusCx.length > avantEq && /Confirmez votre adresse/i.test(objets(messageEq)),
+     objets(messageEq).slice(0, 60) || `${recusCx.length - avantEq} message(s)`);
+  ok('ce message parle de confirmation, PAS d’offre',
+     !/offre/i.test(objets(messageEq)) && /p=verifier&j=/.test(messageEq),
+     objets(messageEq).slice(0, 60));
+
+  /* --- la liste dit « sans offre », et ne propose pas d'en donner une --- */
+  await pcx.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const ligneEq = pcx.locator(`tr:has-text("Coordinatrice ${marque}")`).first();
+  ok('la ligne d’un équipier n’a pas de déroulant d’offre',
+     (await ligneEq.locator('select[name=formule]').count()) === 0
+     && (await ligneEq.innerText()).includes('sans offre'));
+
+  /* --- cliquer « OK » sans rien changer n'envoie RIEN --- */
+  const avantOk = recusCx.length;
+  await ligneEq.locator('button[type=submit]:has-text("OK")').click();
+  await pcx.waitForLoadState('domcontentloaded');
+  ok('« OK » sans changement ne change rien et ne prévient personne',
+     /Rien n’a changé/.test(await pcx.locator('.msg.ok').first().innerText().catch(() => ''))
+     && recusCx.length === avantOk,
+     `${recusCx.length - avantOk} message(s) partis`);
+
+  /* --- changer le rôle d'un équipier parle de RÔLE, pas d'offre --- */
+  const avantRole = recusCx.length;
+  await pcx.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const ligneEq2 = pcx.locator(`tr:has-text("Coordinatrice ${marque}")`).first();
+  await ligneEq2.locator('select[name=role]').selectOption('editeur');
+  await ligneEq2.locator('button[type=submit]:has-text("OK")').click();
+  await pcx.waitForLoadState('domcontentloaded');
+  const surRole = recusCx.slice(avantRole).join('\n');
+  ok('changer le rôle d’un équipier lui écrit à propos de son RÔLE',
+     /Votre rôle est maintenant/.test(objets(surRole)), objets(surRole).slice(0, 70));
+  ok('et jamais à propos d’une offre qu’il n’a pas',
+     !/offre/i.test(objets(surRole)), objets(surRole).slice(0, 70));
+
+  /* --- l'offre reste vide en base, quoi qu'on poste --- */
+  const csrfCx = await pcx.locator('.formulaire-compte input[name=csrf]').first().inputValue();
+  const idEq = await pcx.locator(`tr:has-text("Coordinatrice ${marque}") input[name=id]`)
+    .first().inputValue();
+  await pcx.request.post(`${BASE}/index.php?p=role`, {
+    form: { csrf: csrfCx, id: idEq, role: 'coordinateur', formule: 'mouvement' },
+  });
+  await pcx.goto(`${BASE}/index.php?p=organisateur&id=${encodeURIComponent(idEq)}`,
+                 { waitUntil: 'domcontentloaded' });
+  // Les pastilles d'en-tête, et elles seules : le reste de la fiche nomme
+  // les offres pour d'autres raisons — le comparatif des lignes, par exemple.
+  const pastilles = await pcx.locator('.pastilles-compte .pastille')
+    .evaluateAll((n) => n.map((e) => (e.textContent ?? '').trim()));
+  ok('un formulaire trafiqué ne colle pas une offre payante à un équipier',
+     pastilles.includes('Compte de la maison')
+     && !pastilles.some((t) => /Mouvement|Croissance|Impact|Découverte/.test(t)),
+     pastilles.join(' · '));
+  ok('et il n’a donc pas de carte d’abonnement',
+     (await pcx.locator('main .carte:has-text("Abonnement")').count()) === 0);
+
+  /* --- le lien de confirmation se renvoie depuis l'écran de l'équipe --- */
+  const avantRenvoi = recusCx.length;
+  await pcx.locator('form[action*="verif-renvoyer"] button').first().click();
+  await pcx.waitForLoadState('domcontentloaded');
+  ok('l’équipe peut renvoyer le lien de confirmation d’un compte',
+     /Lien de confirmation renvoyé/.test(await pcx.locator('.msg.ok').first().innerText().catch(() => ''))
+     && recusCx.length > avantRenvoi,
+     `${recusCx.length - avantRenvoi} message(s)`);
+
+  /**
+   * Et le lien reçu confirme VRAIMENT l'adresse.
+   *
+   * C'est le seul test qui prouve la réparation : jusqu'ici, l'équipe
+   * regardait « adresse non confirmée » sans aucun geste pour y répondre.
+   */
+  const lienVerif = /(https?:\/\/\S*p=verifier&(?:amp;)?j=[0-9a-f]{48})/
+    .exec(recusCx.slice(avantRenvoi).join('\n'));
+  ok('le message porte un lien de confirmation utilisable', lienVerif !== null);
+  if (lienVerif) {
+    const ctxV = await browser.newContext();
+    const pv2 = await ctxV.newPage();
+    surveiller(pv2);
+    await pv2.goto(lienVerif[1].replace(/&amp;/g, '&'), { waitUntil: 'domcontentloaded' });
+    ok('il confirme l’adresse SANS être connecté',
+       /confirmée|vérifiée|Merci/i.test(await pv2.locator('main').innerText()));
+    await ctxV.close();
+    await pcx.goto(`${BASE}/index.php?p=organisateur&id=${encodeURIComponent(idEq)}`,
+                   { waitUntil: 'domcontentloaded' });
+    ok('et la fiche le dit désormais',
+       (await pcx.locator('main').innerText()).includes('Adresse confirmée'));
+  }
+
+  /* --- un client, lui, garde bien son offre et son courriel d'offre --- */
+  const avantCli = recusCx.length;
+  await pcx.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  await pcx.locator('details.creer').first().locator('summary').click();
+  await pcx.fill('#c-nom', `Cliente ${marque}`);
+  await pcx.fill('#c-email', `separee-${marque}@exemple.tg`);
+  await pcx.selectOption('#c-role', 'partenaire');
+  await pcx.selectOption('#c-formule', 'impact');
+  await pcx.fill('#c-mdp', 'cliente-2026-solide');
+  await pcx.click('form[action*="creer-compte"] button[type=submit]');
+  await pcx.waitForLoadState('domcontentloaded');
+  ok('un client garde son offre à la création',
+     /offre Impact/.test(await pcx.locator('.msg.ok').first().innerText().catch(() => '')));
+  ok('et reçoit lui aussi son lien de confirmation',
+     /Confirmez votre adresse/i.test(objets(recusCx.slice(avantCli).join('\n'))),
+     objets(recusCx.slice(avantCli).join('\n')).slice(0, 60));
+
+  const ligneCli = pcx.locator(`tr:has-text("Cliente ${marque}")`).first();
+  const avantOffre = recusCx.length;
+  await ligneCli.locator('select[name=formule]').selectOption('croissance');
+  await ligneCli.locator('button[type=submit]:has-text("OK")').click();
+  await pcx.waitForLoadState('domcontentloaded');
+  ok('changer l’offre d’un client lui écrit bien à propos de son offre',
+     /Votre offre est maintenant/.test(objets(recusCx.slice(avantOffre).join('\n'))),
+     objets(recusCx.slice(avantOffre).join('\n')).slice(0, 60));
+
+  /* ---------------- l'historique des notifications ---------------- */
+
+  await pcx.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran des notifications porte un historique',
+     (await pcx.locator('main').innerText()).includes('Ce qui est déjà parti'));
+  const avantDiff = await pcx.locator('.carte:has-text("Ce qui est déjà parti") table tbody tr').count();
+
+  const TITRE_D = `Historique ${marque}`;
+  await pcx.fill('#d-titre', TITRE_D);
+  await pcx.fill('#d-corps', 'Un envoi de recette, pour vérifier qu’il laisse une trace.');
+  const envoyer = pcx.locator('form button[type=submit]:not([disabled])').last();
+  if (await envoyer.count()) {
+    await envoyer.click();
+    await pcx.waitForLoadState('domcontentloaded');
+  }
+  const bilanD = await pcx.locator('.msg').first().innerText().catch(() => '');
+  ok('le compte rendu d’envoi distingue les personnes des remises',
+     /personne\(s\)/.test(bilanD), bilanD.replace(/\s+/g, ' ').slice(0, 90));
+
+  const tableD = pcx.locator('.carte:has-text("Ce qui est déjà parti") table tbody');
+  ok('l’envoi laisse une ligne dans l’historique',
+     (await tableD.locator('tr').count()) === avantDiff + 1
+     && (await tableD.innerText()).includes(TITRE_D),
+     `${await tableD.locator('tr').count()} ligne(s)`);
+  const premiere = await tableD.locator('tr').first().innerText();
+  ok('elle porte la date et l’heure de l’envoi',
+     /\d{2}\/\d{2}\/\d{4}/.test(premiere) && /\d{2}:\d{2} UTC/.test(premiere),
+     premiere.split('\n').slice(0, 2).join(' '));
+  ok('elle porte le segment visé et le nombre d’abonnements',
+     /abonnement/.test(premiere), premiere.replace(/\s+/g, ' ').slice(0, 80));
+  ok('l’écran dit ce que « personnes » veut dire, et ce qu’il ne dit pas',
+     (await pcx.locator('.carte:has-text("Ce qui est déjà parti")').innerText())
+       .includes('ne dit que la'));
+
+  /**
+   * Un organisateur ne voit QUE ses envois.
+   *
+   * Lui montrer ceux du guide lui apprendrait la taille et le rythme d'une
+   * audience qu'il n'a pas — la même règle que pour les segments.
+   */
+  const porg = await browser.newPage();
+  surveiller(porg);
+  await connexion(porg, PART.email, PART.mdp);
+  await porg.goto(`${BASE}/index.php?p=diffusion`, { waitUntil: 'domcontentloaded' });
+  ok('l’historique d’un organisateur ne contient pas celui du guide',
+     !(await porg.locator('main').innerText()).includes(TITRE_D));
+  await porg.close();
+
+  // Le transport reste branché : la remise à zéro qui suit l'éteint, et le
+  // serveur appartient à la section 22, qui le fermera elle-même.
+  await pcx.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

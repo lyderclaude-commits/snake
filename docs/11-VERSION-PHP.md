@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **463 scénarios, 463 réussis**
+Les deux ont été vérifiés de bout en bout : **491 scénarios, 491 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,8 +116,8 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 463 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP
+npm run php:e2e          # 491 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP, carnet
 ```
 
 Contre une base MySQL :
@@ -126,7 +126,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 463 scénarios
+### Les 491 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -174,6 +174,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **La régie e-mail** | Sans l'offre, un écran d'explication et aucun lien dans le menu ; un lien hors domaine Wakabi est refusé à un organisateur, qui ne peut pas envoyer lui-même ; l'équipe prépare et envoie, un **vrai serveur SMTP** reçoit ; **chaque message porte son lien de désabonnement**, il s'ouvre sans être connecté, un clic suffit, et le désabonné ne reçoit plus rien à la campagne suivante |
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
+| **L’historique des notifications** | Chaque envoi laisse une ligne datée avec son segment, ses abonnements visés, les **personnes** touchées et les **remises** — deux nombres distincts ; l’historique d’un organisateur ne contient pas celui du guide |
+| **Les deux familles de comptes** | Deux formulaires séparés, aucune offre pour l’équipe même en postant `formule=mouvement` à la main, un « OK » sans changement qui n’écrit ni n’envoie rien, le lien de confirmation qui part à la création et se renvoie depuis l’écran de l’équipe, et le courriel qui parle de **rôle** à un équipier et d’**offre** à un client — vérifié sur un vrai serveur SMTP, objets décodés |
 | **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
 | **L'éditeur d'article** | Il remplace le champ, propose huit mises en forme, et le champ envoyé contient les **marques, pas du HTML** ; un collage riche n'apporte que son texte et rien ne s'exécute ; rouvrir un article ne le modifie pas ; la bascule vers le texte brut et le retour ne perdent rien ; la page publiée porte la même mise en forme que l'éditeur |
 | **Les rôles internes** | Scanner, Éditeur et Coordinateur n'ouvrent **que** les écrans que leur table de droits donne — vérifié route par route ; l'inscription publique ne propose que les deux rôles clients et un formulaire trafiqué est refusé côté serveur |
@@ -905,6 +907,36 @@ louer à qui paie une offre la brûlerait en trois messages.
 - Les abonnements **périmés** — navigateur vidé, notifications refusées — sont
   effacés automatiquement à l'envoi suivant, sur les réponses 404 et 410.
 
+### L'historique — ce qui est déjà parti
+
+Une diffusion ne laissait **aucune trace** : le compteur s'affichait une fois,
+sur l'écran de celui qui avait cliqué, et disparaissait au rechargement.
+Personne ne pouvait plus dire ce qui était parti, à qui, ni quand — donc
+personne ne pouvait répondre à « on leur a déjà annoncé ça ? », qui est
+précisément la question qu'on se pose *avant* d'écrire. L'historique vit donc
+sous le formulaire, sur le même écran : ailleurs, la question ne se pose pas.
+
+Chaque envoi laisse une ligne : la date et l'heure, le message, le segment
+visé, et **deux nombres qui ne disent pas la même chose**.
+
+| Le nombre | Ce qu'il compte | Pourquoi il est là |
+|---|---|---|
+| **Personnes** | Les gens atteints | C'est le chiffre qu'on cite |
+| **Remises** | Les navigateurs auxquels le service a accepté le message | Le même invité sur son téléphone et sur son poste en fait deux — sans ce second nombre, la portée serait gonflée d'un tiers sans que personne s'en aperçoive |
+
+Les échecs sont comptés à part, avec leur **motif** au survol : douze
+abonnements périmés et douze refus d'authentification demandent deux gestes
+opposés, et « 12 échecs » ne permet ni de corriger ni de savoir s'il faut
+s'inquiéter.
+
+> **Ni l'un ni l'autre ne dit que la notification a été *lue*.** Elle a été
+> acceptée par le service du navigateur, qui la remettra quand l'appareil sera
+> rallumé. L'écran l'écrit noir sur blanc — un chiffre qu'on lit de travers
+> est pire qu'un chiffre absent.
+
+Un organisateur ne voit **que ses envois** : lui montrer ceux du guide lui
+apprendrait la taille et le rythme d'une audience qu'il n'a pas.
+
 > **Il faut HTTPS.** Sans certificat, `navigator.serviceWorker` n'existe pas
 > et le navigateur refuse tout abonnement. L'écran le dit plutôt que de
 > laisser cliquer un bouton mort.
@@ -1148,6 +1180,57 @@ de l'écran. Le seul compte dont on a besoin le jour où quelque chose cloche
   choses qu'on a sous les yeux quand quelqu'un écrit pour demander de l'aide.
 - Quand la liste tronque, **elle le dit** : « 100 comptes affichés sur 213 ».
   Une liste qui tronque en silence laisse croire qu'un compte a disparu.
+
+### Deux familles, deux formulaires, et aucune offre pour la maison
+
+Un compte client s'achète une offre ; un compte de la maison est un collègue.
+Tant qu'ils partageaient un seul formulaire, la liste des rôles mêlait
+« Organisateur » et « Coordinateur » à deux lignes d'écart, et le champ
+« Offre » restait planté là — à proposer une Croissance à 25 000 F à
+quelqu'un qu'on embauche.
+
+| | Compte client | Compte de l'équipe |
+|---|---|---|
+| Rôles proposés | Participant, Organisateur | Scanner, Éditeur, Coordinateur, Équipe, Super-administrateur |
+| Offre | Oui, et une échéance suivie | **Aucune** — la colonne est vide, pas « Découverte » |
+| Qui peut le créer | `comptes` | `comptes_internes`, c'est-à-dire le super-administrateur |
+| Où | *+ Nouveau compte client* | *+ Nouveau compte de l'équipe* |
+
+La nuance entre « vide » et « Découverte » n'est pas cosmétique. Tant qu'une
+valeur traînait dans la colonne, l'écran proposait de la changer, le
+portefeuille comptait le compte dans les clients, et toucher au rôle d'un
+coordinateur lui expédiait **« Votre offre est maintenant Découverte »** — un
+courriel parlant d'un abonnement qu'il n'a jamais pris. `capacite()` et
+`quota()` répondaient déjà « tout » et « sans limite » à un compte interne
+bien avant d'y regarder : la colonne ne servait donc qu'à fabriquer des
+malentendus.
+
+- Le formulaire de l'équipe **n'existe pas** pour qui n'a pas
+  `comptes_internes` — ce n'est pas un champ grisé, c'est une porte absente.
+- Chacune des deux actions **refuse la famille de l'autre**, côté serveur : un
+  formulaire trafiqué qui poste `role=coordinateur&formule=mouvement` ne
+  fabrique pas un compte de la maison qui traîne une offre payante.
+- **Cliquer « OK » sans rien changer n'écrit rien, ne journalise rien et
+  n'envoie rien.** Un geste par acquit de conscience ne doit pas expédier
+  l'annonce d'un changement qui n'a pas eu lieu.
+- Le courriel suit la famille : à un client, ce que son offre couvre ; à un
+  équipier, **son rôle et ce qu'il ouvre**.
+- La migration v13 vide la colonne des comptes internes existants.
+
+### La confirmation d'adresse suit la création par l'équipe
+
+Un compte créé par l'équipe naissait avec une adresse non confirmée et **aucun
+moyen de la confirmer** : le bouton « renvoyer » ne vivait que sur le tableau
+de bord du titulaire, et celui-ci ne pouvait s'y rendre qu'une fois le mot de
+passe transmis. L'équipe voyait « adresse non confirmée » sur une ligne sans
+pouvoir rien y faire — et le seul bouton à portée était celui du rôle.
+
+- Le lien de confirmation part **à la création**, comme à l'inscription
+  publique, pour les deux familles.
+- Un bouton **« Renvoyer le lien »** figure sur la ligne du compte et sur sa
+  fiche. Le compteur porte sur le compte **visé** : nettoyer six comptes est
+  un geste légitime, insister six fois sur le même est du harcèlement d'une
+  boîte de réception.
 
 ### Le menu se déduit des droits
 

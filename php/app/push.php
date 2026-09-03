@@ -459,16 +459,28 @@ const PUSH_SEGMENTS = [
  * savoir s'il faut s'inquiéter : douze abonnements périmés et douze
  * refus d'authentification demandent deux gestes opposés.
  *
- * @return array{envoyes: int, echecs: int, nettoyes: int, motifs: array<string, int>}
+ * `personnes` compte les COMPTES atteints, pas les abonnements : quelqu'un
+ * qui a autorisé les notifications sur son téléphone et sur son ordinateur
+ * en a deux. Un seul chiffre gonflerait la portée d'un tiers sans que
+ * personne ne s'en aperçoive — et c'est le chiffre qu'on cite ensuite en
+ * réunion.
+ *
+ * @return array{envoyes: int, echecs: int, nettoyes: int, personnes: int,
+ *               motifs: array<string, int>}
  */
 function push_diffuser(array $abonnements, array $message): array
 {
     $envoyes = $echecs = $nettoyes = 0;
     $motifs = [];
+    $atteints = [];
     foreach ($abonnements as $a) {
         $r = push_envoyer($a, $message);
         if ($r['ok']) {
             $envoyes++;
+            // Un abonnement sans compte — quelqu'un qui s'est abonné sans
+            // se connecter — compte pour une personne à lui seul : son
+            // empreinte fait office d'identité.
+            $atteints[(string) ($a['utilisateur_id'] ?: 'anonyme:' . $a['id'])] = true;
             continue;
         }
         $echecs++;
@@ -480,7 +492,89 @@ function push_diffuser(array $abonnements, array $message): array
             $nettoyes++;
         }
     }
-    return ['envoyes' => $envoyes, 'echecs' => $echecs, 'nettoyes' => $nettoyes, 'motifs' => $motifs];
+    return ['envoyes' => $envoyes, 'echecs' => $echecs, 'nettoyes' => $nettoyes,
+            'personnes' => count($atteints), 'motifs' => $motifs];
+}
+
+/* ------------------------------------------------------------------ */
+/* L'historique                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Combien de diffusions par page. Au-delà, on cherche plutôt qu'on ne lit. */
+const DIFFUSIONS_PAR_PAGE = 25;
+
+/**
+ * Garde la trace d'une diffusion.
+ *
+ * Écrite APRÈS l'envoi et avec ce que l'envoi a réellement produit, jamais
+ * avec ce qu'on espérait : une ligne posée avant, « en cours », resterait
+ * en cours pour toujours le jour où le script est coupé — et un historique
+ * qui ment est pire que pas d'historique.
+ *
+ * Ne lève jamais : perdre la trace est regrettable, perdre l'envoi parce
+ * que la trace a échoué serait absurde.
+ */
+function diffusion_enregistrer(?string $auteur_id, array $saisie, int $vises, array $rapport): void
+{
+    try {
+        db()->prepare('INSERT INTO diffusions
+            (id, auteur_id, segment, titre, corps, lien, abonnements, remises, personnes,
+             echecs, nettoyes, motifs, cree_le)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            ->execute([
+                nouvel_id(), $auteur_id, (string) $saisie['segment'],
+                (string) $saisie['titre'], ($saisie['corps'] ?? '') ?: null,
+                ($saisie['lien'] ?? '') ?: null,
+                $vises, (int) $rapport['envoyes'], (int) ($rapport['personnes'] ?? 0),
+                (int) $rapport['echecs'], (int) $rapport['nettoyes'],
+                $rapport['motifs'] ? json_encode($rapport['motifs'], JSON_UNESCAPED_UNICODE) : null,
+                maintenant(),
+            ]);
+    } catch (Throwable) {
+        // Table absente sur une installation à moitié migrée, disque plein :
+        // on laisse passer. L'envoi, lui, a bien eu lieu.
+    }
+}
+
+/**
+ * L'historique, le sien ou celui de tout le monde.
+ *
+ * Un organisateur ne voit QUE ses envois : les siens partent vers ses
+ * invités, ceux du guide vers la base du guide, et lui montrer les seconds
+ * lui apprendrait la taille et le rythme d'une audience qu'il n'a pas.
+ */
+function diffusions_lire(?string $auteur_id, int $page = 1): array
+{
+    $decalage = max(0, ($page - 1) * DIFFUSIONS_PAR_PAGE);
+    $ou = $auteur_id === null ? '' : ' WHERE d.auteur_id = ?';
+    $s = db()->prepare('SELECT d.*, u.nom AS auteur_nom FROM diffusions d
+                        LEFT JOIN utilisateurs u ON u.id = d.auteur_id' . $ou
+                       . ' ORDER BY d.cree_le DESC LIMIT ' . DIFFUSIONS_PAR_PAGE
+                       . ' OFFSET ' . $decalage);
+    $s->execute($auteur_id === null ? [] : [$auteur_id]);
+    return $s->fetchAll();
+}
+
+function diffusions_combien(?string $auteur_id): int
+{
+    if ($auteur_id === null) {
+        return (int) db()->query('SELECT COUNT(*) FROM diffusions')->fetchColumn();
+    }
+    $s = db()->prepare('SELECT COUNT(*) FROM diffusions WHERE auteur_id = ?');
+    $s->execute([$auteur_id]);
+    return (int) $s->fetchColumn();
+}
+
+/** Les personnes touchées par ce compte ce mois-ci — de quoi doser le rythme. */
+function diffusions_du_mois(?string $auteur_id): array
+{
+    $debut = gmdate('Y-m-01\T00:00:00\Z');
+    $ou = $auteur_id === null ? '' : ' AND auteur_id = ?';
+    $s = db()->prepare('SELECT COUNT(*) AS envois, COALESCE(SUM(personnes), 0) AS personnes
+                        FROM diffusions WHERE cree_le >= ?' . $ou);
+    $s->execute($auteur_id === null ? [$debut] : [$debut, $auteur_id]);
+    $r = $s->fetch() ?: [];
+    return ['envois' => (int) ($r['envois'] ?? 0), 'personnes' => (int) ($r['personnes'] ?? 0)];
 }
 
 /** Les abonnements d'un compte — pour s'envoyer un essai à soi-même. */

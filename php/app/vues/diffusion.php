@@ -144,6 +144,108 @@ $total = array_sum($compte);
     </form>
   </div>
 
+  <!-- ---------- l'historique ---------- -->
+  <?php
+  /**
+   * Ce qui est déjà parti.
+   *
+   * Deux nombres, et ils ne disent pas la même chose : `remises` compte les
+   * NAVIGATEURS auxquels le service de notification a accepté le message,
+   * `personnes` compte les gens derrière. Le second est celui qu'on cite ;
+   * le premier est celui qui explique un écart.
+   *
+   * Aucun des deux ne prouve que quelqu'un a LU la notification — un
+   * téléphone éteint la recevra plus tard, un autre l'écartera sans la
+   * regarder. Le dire ici évite qu'on lise « 340 » comme « 340 personnes
+   * ont vu l'annonce », ce que le chiffre ne dit pas.
+   */
+  $vers = function (int $n): string { return url('?p=diffusion' . ($n > 1 ? '&n=' . $n : '')); };
+  ?>
+  <div class="carte" style="margin-top:16px">
+    <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0 0 4px">Ce qui est déjà parti</h3>
+        <p class="aide" style="margin:0">
+          <?php if ($combien_diff === 0): ?>
+            Rien encore. Chaque envoi laissera ici sa trace : à qui, combien, et quand.
+          <?php else: ?>
+            <?= (int) $combien_diff ?> envoi<?= $combien_diff > 1 ? 's' : '' ?> enregistré<?= $combien_diff > 1 ? 's' : '' ?>.
+            Ce mois-ci : <strong><?= (int) $ce_mois['envois'] ?></strong> envoi<?= $ce_mois['envois'] > 1 ? 's' : '' ?>,
+            <strong><?= (int) $ce_mois['personnes'] ?></strong> personne<?= $ce_mois['personnes'] > 1 ? 's' : '' ?> touchée<?= $ce_mois['personnes'] > 1 ? 's' : '' ?>.
+          <?php endif; ?>
+        </p>
+      </div>
+    </div>
+
+    <?php if ($historique): ?>
+      <div class="tableau" style="margin-top:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>Quand</th>
+              <th>Le message</th>
+              <th>À qui</th>
+              <th class="chiffre">Personnes</th>
+              <th class="chiffre">Remises</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php foreach ($historique as $d): $motifs = json_decode((string) ($d['motifs'] ?? ''), true); ?>
+            <tr<?= (int) $d['remises'] === 0 ? ' class="pale"' : '' ?>>
+              <td class="mono" style="white-space:nowrap">
+                <?= e(gmdate('d/m/Y', strtotime((string) $d['cree_le']))) ?>
+                <br><span class="aide"><?= e(gmdate('H:i', strtotime((string) $d['cree_le']))) ?> UTC</span>
+              </td>
+              <td>
+                <b><?= e((string) $d['titre']) ?></b>
+                <?php if ($d['corps']): ?>
+                  <br><span class="aide"><?= e(mb_strimwidth((string) $d['corps'], 0, 90, '…')) ?></span>
+                <?php endif; ?>
+                <?php if ($equipe && $d['auteur_nom']): ?>
+                  <br><span class="aide">par <?= e((string) $d['auteur_nom']) ?></span>
+                <?php endif; ?>
+              </td>
+              <td>
+                <?= e(PUSH_SEGMENTS[$d['segment']] ?? ($d['segment'] === 'mes-invites'
+                    ? 'Les invités de mes campagnes' : (string) $d['segment'])) ?>
+                <br><span class="aide"><?= (int) $d['abonnements'] ?> abonnement<?= $d['abonnements'] > 1 ? 's' : '' ?> visé<?= $d['abonnements'] > 1 ? 's' : '' ?></span>
+              </td>
+              <td class="mono chiffre"><strong><?= (int) $d['personnes'] ?></strong></td>
+              <td class="mono chiffre">
+                <?= (int) $d['remises'] ?>
+                <?php if ((int) $d['echecs']): ?>
+                  <br><span class="aide" style="color:var(--orange)" title="<?= e($motifs ? implode(' · ', array_map(
+                        fn($m, $n) => $n . ' × ' . $m, array_keys($motifs), array_values($motifs))) : '') ?>">
+                    <?= (int) $d['echecs'] ?> échec<?= $d['echecs'] > 1 ? 's' : '' ?></span>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="aide" style="margin:12px 0 0">
+        <strong>Personnes</strong> compte les gens ; <strong>remises</strong> compte les navigateurs —
+        le même invité sur son téléphone et sur son poste en fait deux. Ni l’un ni l’autre ne dit que la
+        notification a été <em>lue</em> : elle a été acceptée par le service du navigateur, qui la
+        remettra quand l’appareil sera rallumé.
+      </p>
+
+      <?php if ($pages > 1): ?>
+        <div class="rangee" style="justify-content:center;gap:12px;margin-top:16px;align-items:center">
+          <?php if ($page_n > 1): ?>
+            <a class="bouton fant petit" href="<?= e($vers($page_n - 1)) ?>">← Plus récents</a>
+          <?php endif; ?>
+          <span class="aide">Page <?= (int) $page_n ?> sur <?= (int) $pages ?></span>
+          <?php if ($page_n < $pages): ?>
+            <a class="bouton fant petit" href="<?= e($vers($page_n + 1)) ?>">Plus anciens →</a>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+    <?php endif; ?>
+  </div>
+
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Comment les gens s’abonnent</h3>
     <ul style="margin:0;padding-left:1.1em;line-height:1.7">

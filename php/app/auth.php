@@ -116,6 +116,45 @@ function interne(?array $u): bool
     return in_array($u['role'] ?? '', ROLES_INTERNES, true);
 }
 
+/**
+ * L'offre à ENREGISTRER pour un rôle donné.
+ *
+ * Un compte de la maison n'a pas d'offre — pas « l'offre Découverte », pas
+ * d'offre du tout. La nuance n'est pas cosmétique : tant qu'une valeur
+ * traînait dans la colonne, l'écran des comptes proposait de la changer,
+ * le tableau de bord comptait le compte dans le portefeuille, et modifier
+ * un rôle interne déclenchait un courriel « Votre offre est maintenant
+ * Découverte » à quelqu'un qui n'a jamais rien acheté.
+ *
+ * `capacite()` et `quota()` répondaient déjà « tout » et « sans limite »
+ * aux comptes internes : la colonne ne servait donc à RIEN sauf à
+ * fabriquer des malentendus. On y écrit désormais le vide, qui est la
+ * vérité.
+ */
+function formule_pour(string $role, ?string $demandee): string
+{
+    if (in_array($role, ROLES_INTERNES, true)) {
+        return '';
+    }
+    return isset(FORMULES[$demandee ?? '']) ? (string) $demandee : 'decouverte';
+}
+
+/**
+ * L'offre d'un compte telle qu'on l'ÉCRIT à l'écran, ou rien.
+ *
+ * Rend `null` pour un compte de la maison, et l'appelant n'affiche alors
+ * aucune pastille. Distinct de `formule_libelle()`, qui retombe sur
+ * Découverte pour une valeur inconnue — ce qui est le bon défaut pour un
+ * client dont la colonne serait vide, et le mauvais pour un coordinateur.
+ */
+function formule_affichee(?array $u): ?string
+{
+    if ($u === null || interne($u) || ($u['formule'] ?? '') === '') {
+        return null;
+    }
+    return formule_libelle((string) $u['formule']);
+}
+
 /** Ce rôle a-t-il ce droit ? La seule question que pose le contrôle d'accès. */
 function droit(?array $u, string $quoi): bool
 {
@@ -357,7 +396,7 @@ function hacher(string $mdp): string
 function creer_utilisateur(array $u): string
 {
     $id = nouvel_id();
-    $formule = $u['formule'] ?? 'decouverte';
+    $formule = formule_pour((string) ($u['role'] ?? 'participant'), $u['formule'] ?? 'decouverte');
     db()->prepare(
         'INSERT INTO utilisateurs (id, email, mot_de_passe, nom, role, formule, organisation, ville, cree_le)
          VALUES (?,?,?,?,?,?,?,?,?)'
@@ -367,7 +406,7 @@ function creer_utilisateur(array $u): string
         hacher($u['mot_de_passe']),
         trim($u['nom']),
         $u['role'] ?? 'participant',
-        isset(FORMULES[$formule]) ? $formule : 'decouverte',
+        $formule,
         $u['organisation'] ?? null,
         $u['ville'] ?? null,
         maintenant(),

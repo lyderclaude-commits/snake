@@ -29,15 +29,32 @@ $moi = $c['id'] === $me['id'];
   <?php if (!empty($_GET['ok'])): ?><div class="msg ok" role="status"><?= e($_GET['ok']) ?></div><?php endif; ?>
   <?php if (!empty($_GET['err'])): ?><div class="msg err" role="alert"><?= e($_GET['err']) ?></div><?php endif; ?>
 
-  <div class="rangee" style="gap:8px;margin-bottom:16px">
+  <div class="rangee pastilles-compte" style="gap:8px;margin-bottom:16px">
     <span class="pastille <?= $c['suspendu'] ? 'refuse' : 'publie' ?>">
       <?= $c['suspendu'] ? 'Suspendu' : 'Actif' ?>
     </span>
     <span class="pastille"><?= e(role_libelle($c['role'])) ?></span>
-    <span class="pastille"><?= e(formule_libelle($c['formule'] ?? null)) ?></span>
+    <?php
+    /* Pas de pastille d'offre pour un compte de la maison : il n'en a pas.
+       Y afficher « Découverte » revenait à lui prêter un abonnement gratuit
+       qu'il n'a jamais pris, et à laisser croire qu'il subit ses limites. */
+    ?>
+    <?php if ($offre_lue = formule_affichee($c)): ?>
+      <span class="pastille"><?= e($offre_lue) ?></span>
+    <?php else: ?>
+      <span class="pastille formule">Compte de la maison</span>
+    <?php endif; ?>
     <span class="pastille <?= empty($c['email_verifie_le']) ? 'corrections' : 'publie' ?>">
       <?= empty($c['email_verifie_le']) ? 'Adresse non confirmée' : 'Adresse confirmée' ?>
     </span>
+    <?php if (empty($c['email_verifie_le']) && $c['id'] !== $me['id']): ?>
+      <form method="post" action="<?= e(url('?p=verif-renvoyer')) ?>" style="display:inline">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="id" value="<?= e((string) $c['id']) ?>">
+        <input type="hidden" name="retour" value="fiche">
+        <button class="bouton fant petit" type="submit">Renvoyer le lien de confirmation</button>
+      </form>
+    <?php endif; ?>
   </div>
 
   <div class="grille g4" style="margin-bottom:18px">

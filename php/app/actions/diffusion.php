@@ -138,9 +138,13 @@ if ($post && ($_POST['action'] ?? '') !== 'essai') {
                 'lien' => $saisie['lien'] ?: base_url() . '/index.php?p=decors',
                 'tag' => 'diffusion-' . substr(sha1($saisie['titre'] . $saisie['corps']), 0, 8),
             ]);
+            // La trace est posée même quand tout a échoué : « on a essayé et
+            // rien n'est parti » est justement ce qu'on cherchera à savoir.
+            diffusion_enregistrer((string) $u['id'], $saisie, count($cibles), $rapport);
             $message = sprintf(
-                '%d notification(s) partie(s), %d échec(s), %d abonnement(s) périmé(s) nettoyé(s).',
-                $rapport['envoyes'], $rapport['echecs'], $rapport['nettoyes']
+                '%d notification(s) partie(s) vers %d personne(s), %d échec(s), '
+                . '%d abonnement(s) périmé(s) nettoyé(s).',
+                $rapport['envoyes'], $rapport['personnes'], $rapport['echecs'], $rapport['nettoyes']
             );
             if ($rapport['echecs'] > 0 && $rapport['motifs']) {
                 // Le motif, pas seulement le compte : « 12 échecs » ne dit
@@ -164,8 +168,24 @@ foreach ($segments as $cle => $lib) {
     $compte[$cle] = count(push_destinataires($cle, (string) $u['id']));
 }
 
+/**
+ * L'historique : le sien, ou celui de tout le monde pour l'équipe.
+ *
+ * Il vit sur le MÊME écran que le formulaire, sous lui. « Ce qu'on a déjà
+ * annoncé » est la question qu'on se pose juste avant d'écrire, pas dans
+ * un autre onglet — la mettre ailleurs revient à ne pas la poser.
+ */
+$qui = $equipe ? null : (string) $u['id'];
+$page_n = max(1, (int) ($_GET['n'] ?? 1));
+$combien_diff = diffusions_combien($qui);
+
 vue('diffusion', [
     'titre' => 'Notifications push',
+    'historique' => diffusions_lire($qui, $page_n),
+    'combien_diff' => $combien_diff,
+    'page_n' => $page_n,
+    'pages' => max(1, (int) ceil($combien_diff / DIFFUSIONS_PAR_PAGE)),
+    'ce_mois' => diffusions_du_mois($qui),
     'segments' => $segments,
     'compte' => $compte,
     'saisie' => $saisie,

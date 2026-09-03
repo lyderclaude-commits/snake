@@ -549,6 +549,8 @@ switch ($page) {
 
     case 'comptes':
     case 'creer-compte':
+    case 'creer-equipier':
+    case 'verif-renvoyer':
     case 'role':
     case 'suspendre':
     case 'bonus':

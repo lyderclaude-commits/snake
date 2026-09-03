@@ -5,7 +5,7 @@ $valeurs = ($valeurs ?? []) + [
     'formule' => 'decouverte', 'organisation' => '', 'ville' => 'lome',
 ];
 $erreur = $erreur ?? null;
-$ouvert = $ouvert ?? false;
+$ouvert = $ouvert ?? '';
 ?>
 <div class="contenu">
   <section class="entete">
@@ -20,53 +20,69 @@ $ouvert = $ouvert ?? false;
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
 
   <!-- ---------- créer un compte ---------- -->
-  <details class="carte creer"<?= $ouvert ? ' open' : '' ?>>
+  <?php
+  /**
+   * Deux formulaires, jamais un seul.
+   *
+   * Un compte client s'achète une offre ; un compte de la maison est un
+   * collègue. Tant qu'ils partageaient une liste déroulante, « Organisateur »
+   * et « Coordinateur » se touchaient à deux lignes d'écart — et le champ
+   * « Offre » restait planté là, à proposer une Croissance à quelqu'un
+   * qu'on embauche. Les séparer coûte un bouton de plus et supprime la
+   * seule erreur de cet écran dont on ne s'aperçoit pas.
+   *
+   * Les champs communs sont écrits UNE fois : deux copies finiraient par
+   * diverger sur le mot de passe provisoire ou la confirmation d'adresse.
+   */
+  $identite = function (string $prefixe, array $v) { ?>
+      <div class="champ">
+        <label for="<?= e($prefixe) ?>-nom">Nom</label>
+        <input id="<?= e($prefixe) ?>-nom" name="nom" type="text" required value="<?= e($v['nom']) ?>">
+      </div>
+      <div class="champ">
+        <label for="<?= e($prefixe) ?>-email">Adresse e-mail</label>
+        <input id="<?= e($prefixe) ?>-email" name="email" type="email" required value="<?= e($v['email']) ?>">
+        <p class="aide">Un lien de confirmation y partira tout de suite, si le transport e-mail est réglé.</p>
+      </div>
+  <?php };
+
+  $motdepasse = function (string $prefixe) { ?>
+      <div class="champ">
+        <label for="<?= e($prefixe) ?>-mdp">Mot de passe provisoire</label>
+        <input id="<?= e($prefixe) ?>-mdp" name="mot_de_passe" type="text" required minlength="8"
+               autocomplete="off" value="<?= e(bin2hex(random_bytes(5))) ?>">
+        <p class="aide">Proposé au hasard, modifiable. Il n’est plus lisible après la création :
+        notez-le avant d’envoyer le formulaire.</p>
+      </div>
+      <div class="champ" style="align-self:end">
+        <button class="bouton" type="submit" style="width:100%;justify-content:center">Créer le compte</button>
+      </div>
+  <?php };
+
+  $roles_clients = $valeurs['role'] === '' || in_array($valeurs['role'], ROLES_PUBLICS, true)
+      ? $valeurs['role'] : 'partenaire';
+  ?>
+
+  <details class="carte creer"<?= $ouvert === 'client' ? ' open' : '' ?>>
     <summary>
-      <span class="bouton petit">+ Créer un compte</span>
-      <span class="aide">Pour un organisateur qui a payé son offre, ou pour un membre de l’équipe.</span>
+      <span class="bouton petit">+ Nouveau compte client</span>
+      <span class="aide">Un organisateur ou un participant. Il a une offre, des quotas, et ne voit que ce qui lui appartient.</span>
     </summary>
 
     <form method="post" action="<?= e(url('?p=creer-compte')) ?>" class="formulaire-compte">
       <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
-
-      <div class="champ">
-        <label for="c-nom">Nom</label>
-        <input id="c-nom" name="nom" type="text" required value="<?= e($valeurs['nom']) ?>">
-      </div>
-      <div class="champ">
-        <label for="c-email">Adresse e-mail</label>
-        <input id="c-email" name="email" type="email" required value="<?= e($valeurs['email']) ?>">
-      </div>
+      <?php $identite('c', $valeurs); ?>
 
       <div class="champ">
         <label for="c-role">Rôle</label>
-        <?php
-        /* L'aide de CHAQUE rôle est écrite d'avance et montrée à la volée :
-           « Éditeur » et « Coordinateur » ne se devinent pas, et choisir de
-           travers donne à quelqu'un les clés du catalogue pour un samedi. */
-        /* Les deux familles sont SÉPARÉES dans la liste. Un compte client et
-           un compte de la maison n'ont rien à voir : les mêler dans une liste
-           à plat finit par faire créer un coordinateur là où l'on voulait un
-           organisateur. */
-        ?>
         <select id="c-role" name="role"
                 onchange="document.getElementById('c-role-aide').textContent = this.selectedOptions[0].dataset.aide">
-          <optgroup label="Comptes clients">
-            <?php foreach (ROLES_PUBLICS as $r): ?>
-              <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
-                      <?= $valeurs['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
-            <?php endforeach; ?>
-          </optgroup>
-          <?php if (droit($me, 'comptes_internes')): ?>
-            <optgroup label="Comptes de l’équipe">
-              <?php foreach (ROLES_INTERNES as $r): ?>
-                <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
-                        <?= $valeurs['role'] === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
-              <?php endforeach; ?>
-            </optgroup>
-          <?php endif; ?>
+          <?php foreach (ROLES_PUBLICS as $r): ?>
+            <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
+                    <?= $roles_clients === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+          <?php endforeach; ?>
         </select>
-        <p class="aide" id="c-role-aide"><?= e(role_aide($valeurs['role'])) ?></p>
+        <p class="aide" id="c-role-aide"><?= e(role_aide($roles_clients)) ?></p>
       </div>
 
       <div class="champ">
@@ -83,7 +99,8 @@ $ouvert = $ouvert ?? false;
               e($f['nom'] . ' · ' . $combien . ' · ' . $tarif) ?></option>
           <?php endforeach; ?>
         </select>
-        <p class="aide">Sans effet sur un compte de l’équipe, qui n’a jamais de quota.</p>
+        <p class="aide">Une offre payante ouvre une échéance de <?= (int) ABONNEMENT_JOURS ?> jours,
+        suivie et relancée automatiquement.</p>
       </div>
 
       <div class="champ">
@@ -99,19 +116,48 @@ $ouvert = $ouvert ?? false;
         </select>
       </div>
 
-      <div class="champ">
-        <label for="c-mdp">Mot de passe provisoire</label>
-        <input id="c-mdp" name="mot_de_passe" type="text" required minlength="8"
-               autocomplete="off" value="<?= e(bin2hex(random_bytes(5))) ?>">
-        <p class="aide">Proposé au hasard, modifiable. Il n’est plus lisible après la création :
-        notez-le avant d’envoyer le formulaire.</p>
-      </div>
-
-      <div class="champ" style="align-self:end">
-        <button class="bouton" type="submit" style="width:100%;justify-content:center">Créer le compte</button>
-      </div>
+      <?php $motdepasse('c'); ?>
     </form>
   </details>
+
+  <?php if (droit($me, 'comptes_internes')): ?>
+    <?php $roles_maison = in_array($valeurs['role'], ROLES_INTERNES, true) ? $valeurs['role'] : 'scanner'; ?>
+    <details class="carte creer" style="margin-top:12px"<?= $ouvert === 'equipe' ? ' open' : '' ?>>
+      <summary>
+        <span class="bouton petit fant">+ Nouveau compte de l’équipe</span>
+        <span class="aide">Quelqu’un qui travaille pour la maison. <strong>Pas d’offre, pas de quota</strong> —
+        on ne se vend pas des fonctions à soi-même.</span>
+      </summary>
+
+      <form method="post" action="<?= e(url('?p=creer-equipier')) ?>" class="formulaire-compte">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <?php $identite('e', $valeurs); ?>
+
+        <div class="champ">
+          <label for="e-role">Rôle</label>
+          <select id="e-role" name="role"
+                  onchange="document.getElementById('e-role-aide').textContent = this.selectedOptions[0].dataset.aide">
+            <?php foreach (ROLES_INTERNES as $r): ?>
+              <option value="<?= e($r) ?>" data-aide="<?= e(role_aide($r)) ?>"
+                      <?= $roles_maison === $r ? 'selected' : '' ?>><?= e(role_libelle($r)) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <p class="aide" id="e-role-aide"><?= e(role_aide($roles_maison)) ?></p>
+        </div>
+
+        <div class="champ">
+          <label for="e-ville">Ville</label>
+          <select id="e-ville" name="ville">
+            <?php foreach (['lome' => 'Lomé', 'cotonou' => 'Cotonou', 'abidjan' => 'Abidjan', 'autre' => 'Autre'] as $k => $nom): ?>
+              <option value="<?= e($k) ?>" <?= $valeurs['ville'] === $k ? 'selected' : '' ?>><?= e($nom) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <?php $motdepasse('e'); ?>
+      </form>
+    </details>
+  <?php endif; ?>
 
   <!-- ---------- la liste ---------- -->
   <?php
@@ -128,7 +174,20 @@ $ouvert = $ouvert ?? false;
             <a href="<?= e(url('?p=organisateur&id=' . rawurlencode((string) $c['id']))) ?>"><b><?= e($c['nom']) ?></b></a>
             <br><span class="aide"><?= e($c['email']) ?></span>
             <?php if (empty($c['email_verifie_le'])): ?>
+              <?php
+              /* Le constat SUIVI de son remède : « adresse non confirmée »
+                 tout seul décrivait un problème sans donner le geste, et le
+                 seul bouton à portée était celui du rôle — d'où des courriels
+                 parlant d'offre là où l'on voulait une confirmation. */
+              ?>
               <br><span class="aide" style="color:var(--orange)">adresse non confirmée</span>
+              <?php if ($c['id'] !== $me['id']): ?>
+                <form method="post" action="<?= e(url('?p=verif-renvoyer')) ?>" style="display:inline">
+                  <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+                  <input type="hidden" name="id" value="<?= e($c['id']) ?>">
+                  <button class="lien-bouton" type="submit">Renvoyer le lien</button>
+                </form>
+              <?php endif; ?>
             <?php endif; ?>
           </td>
           <td><?= e($c['organisation'] ?: 'Non renseignée') ?><br><span class="aide"><?= e($c['ville'] ?: '') ?></span></td>
@@ -186,11 +245,25 @@ $ouvert = $ouvert ?? false;
                     <option value="<?= e($c['role']) ?>" selected><?= e(role_libelle($c['role'])) ?></option>
                   <?php endif; ?>
                 </select>
-                <select name="formule" style="width:auto" aria-label="Offre de <?= e($c['nom']) ?>">
-                  <?php foreach (FORMULES as $cle => $f): ?>
-                    <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>><?= e($f['nom']) ?></option>
-                  <?php endforeach; ?>
-                </select>
+                <?php
+                /**
+                 * Le déroulant des offres n'apparaît QUE pour un client.
+                 *
+                 * Sur la ligne d'un coordinateur, il proposait de lui vendre
+                 * une Croissance — et le valider lui expédiait « Votre offre
+                 * est maintenant… ». Le serveur refuse désormais cette
+                 * combinaison ; l'écran cesse d'abord de la suggérer.
+                 */
+                ?>
+                <?php if (!in_array($c['role'], ROLES_INTERNES, true)): ?>
+                  <select name="formule" style="width:auto" aria-label="Offre de <?= e($c['nom']) ?>">
+                    <?php foreach (FORMULES as $cle => $f): ?>
+                      <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>><?= e($f['nom']) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                <?php else: ?>
+                  <span class="aide">sans offre</span>
+                <?php endif; ?>
                 <button class="bouton fant petit" type="submit">OK</button>
               </form>
             <?php endif; ?>
@@ -218,7 +291,7 @@ $ouvert = $ouvert ?? false;
     <div class="tableau">
       <table>
         <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
-        <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
+        <th class="chiffre">Ce mois</th><th>Rôle</th><th>État</th></tr></thead>
         <tbody>
         <?php foreach ($equipe as $c) { $ligne($c); } ?>
         </tbody>

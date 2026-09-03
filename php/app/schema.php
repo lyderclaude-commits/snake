@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 function assurer_schema(): void
 {
@@ -106,6 +106,7 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     migrer_donnees($pdo);
     promouvoir_fondateur($pdo);
     sauver_listes_collees($pdo);
+    delester_offres_internes($pdo);
 }
 
 /**
@@ -138,6 +139,30 @@ function promouvoir_fondateur(PDO $pdo): void
     } catch (PDOException) {
         // Table absente : c'est une installation neuve, `install.php` s'en
         // charge et crée directement un super-administrateur.
+    }
+}
+
+/**
+ * v13 — un compte de la maison perd son offre fantôme.
+ *
+ * La colonne portait « decouverte » pour tous les comptes internes, sans
+ * que rien ne la lise : `capacite()` et `quota()` répondent « tout » et
+ * « sans limite » à un compte interne bien avant d'y regarder. Mais
+ * l'écran des comptes proposait de la changer, le portefeuille comptait
+ * ces comptes comme des clients, et toucher au rôle d'un coordinateur lui
+ * expédiait un courriel « Votre offre est maintenant Découverte ».
+ *
+ * On y écrit le vide, qui est la vérité. Idempotente, et sans effet sur un
+ * seul compte client.
+ */
+function delester_offres_internes(PDO $pdo): void
+{
+    try {
+        $trous = implode(',', array_fill(0, count(ROLES_INTERNES), '?'));
+        $pdo->prepare("UPDATE utilisateurs SET formule = '' WHERE role IN ($trous) AND formule <> ''")
+            ->execute(ROLES_INTERNES);
+    } catch (PDOException) {
+        // Table absente sur une installation à moitié bâtie : sans effet.
     }
 }
 
@@ -697,6 +722,38 @@ function creer_schema(PDO $pdo, bool $mysql): void
             PRIMARY KEY (liste_id, contact_id)
         )$moteur",
 
+        /**
+         * L'historique des notifications parties.
+         *
+         * Sans lui, une diffusion ne laissait AUCUNE trace : le compteur
+         * s'affichait une fois, sur l'écran de celui qui avait cliqué, et
+         * disparaissait au rechargement. Personne ne pouvait plus dire ce
+         * qui était parti, à qui, ni quand — donc personne ne pouvait
+         * répondre à « on leur a déjà annoncé ça ? », qui est la question
+         * qu'on se pose avant chaque envoi.
+         *
+         * `abonnements` et `personnes` sont deux nombres différents et il
+         * faut les deux : quelqu'un qui a autorisé les notifications sur
+         * son téléphone ET son ordinateur compte pour deux abonnements et
+         * une personne. Les confondre gonflerait la portée d'un tiers sans
+         * que personne ne s'en aperçoive.
+         */
+        "CREATE TABLE IF NOT EXISTS diffusions (
+            id          $id PRIMARY KEY,
+            auteur_id   $id NULL,
+            segment     $court NOT NULL,
+            titre       $court NOT NULL,
+            corps       $txt NULL,
+            lien        $txt NULL,
+            abonnements INT NOT NULL DEFAULT 0,
+            remises     INT NOT NULL DEFAULT 0,
+            personnes   INT NOT NULL DEFAULT 0,
+            echecs      INT NOT NULL DEFAULT 0,
+            nettoyes    INT NOT NULL DEFAULT 0,
+            motifs      $txt NULL,
+            cree_le     $court NOT NULL
+        )$moteur",
+
         "CREATE TABLE IF NOT EXISTS prevol (
             decor_id $id PRIMARY KEY,
             passe    INT NOT NULL,
@@ -727,6 +784,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_contacts_proprietaire ON contacts (proprietaire_id)',
         'CREATE INDEX idx_contacts_listes_contact ON contacts_listes (contact_id)',
         'CREATE INDEX idx_listes_contacts_proprietaire ON listes_contacts (proprietaire_id)',
+        'CREATE INDEX idx_diffusions_date ON diffusions (cree_le)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.
