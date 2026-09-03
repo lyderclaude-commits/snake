@@ -303,6 +303,17 @@ switch ($page) {
 
     case 'compte':
         $u = exiger_role(...ROLES);
+        /**
+         * Cet écran est celui d'un INVITÉ : ses créations, ses Koris.
+         *
+         * Un compte de la maison qui y arrivait y lisait « 0 Koris
+         * gagnés » et « 0 visuels créés » — des compteurs qui ne le
+         * concernent pas, sur une page qui n'est pas la sienne. On le
+         * renvoie chez lui plutôt que de lui montrer le salon d'à côté.
+         */
+        if (interne($u)) {
+            rediriger(accueil_de($u));
+        }
         vue('compte', [
             'titre' => 'Mon compte — Wakabi Boost',
             'creations' => creations_de($u['id']),
@@ -310,12 +321,24 @@ switch ($page) {
             'historique' => koris_historique($u['id']),
         ]);
 
+    /**
+     * L'API demande un DROIT avant de demander une offre.
+     *
+     * `capacite()` dit oui à tout compte interne — on ne se vend pas des
+     * fonctions à soi-même. Mais une clé d'API est un mot de passe qui ne
+     * se déconnecte jamais : elle traverse la session et la double
+     * authentification. Un scanner, dont tout l'intérêt est que le
+     * téléphone posé à la porte n'ouvre rien d'autre, pouvait s'en
+     * fabriquer une ; un éditeur aussi. Le droit tranche d'abord, l'offre
+     * ensuite — un organisateur sans l'offre lit quand même la
+     * documentation, autant savoir ce qu'on achète.
+     */
     case 'api-doc':
-        $u = exiger_role(...ROLES);
+        $u = exiger_droit('api');
         vue('api-doc', ['titre' => 'L’API — Wakabi Boost']);
 
     case 'api-cle':
-        $u = exiger_role(...ROLES);
+        $u = exiger_droit('api');
         verifier_csrf();
         if (!capacite($u, 'api')) {
             vue('offre-requise', [

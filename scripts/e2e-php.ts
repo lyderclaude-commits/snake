@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { createServer as createServeurHttp } from 'node:http';
 import { createECDH, createHmac, randomBytes } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
-import { writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import QRCode from 'qrcode';
@@ -3629,6 +3629,167 @@ const run = async () => {
   // Le transport reste branché : la remise à zéro qui suit l'éteint, et le
   // serveur appartient à la section 22, qui le fermera elle-même.
   await pcx.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 39. Un éditeur n’ouvre QUE ce qui le concerne ━━');
+
+  /**
+   * Le balayage est exhaustif PAR CONSTRUCTION.
+   *
+   * Les routes sont lues dans `index.php` lui-même, et l'on compare
+   * l'ensemble atteint à une liste attendue, écrite ici. Une liste de
+   * pages à essayer, tapée à la main, manquerait justement la route qu'on
+   * vient d'ajouter — c'est-à-dire la seule que personne n'a encore
+   * regardée. Ici, ajouter une route sans se prononcer fait tomber la
+   * recette : quelqu'un DOIT décider si un éditeur y a droit.
+   *
+   * Ce qu'un éditeur est : il écrit décors et articles, les soumet, et
+   * range ses liens. Il ne publie pas, ne scanne pas, ne touche ni aux
+   * comptes ni aux réglages — et n'a ni régie, ni notifications push, ni
+   * clé d'API.
+   */
+  const TOUTES_ROUTES = [...readFileSync('php/index.php', 'utf8')
+    .matchAll(/^ {4}case '([^']+)':/gm)].map((x) => x[1]);
+  ok('les routes se lisent depuis index.php', TOUTES_ROUTES.length > 60,
+     `${TOUTES_ROUTES.length} routes`);
+
+  /** Ce qu'un éditeur a le droit d'ouvrir, et rien d'autre. */
+  const PERMIS_EDITEUR = new Set([
+    // Le site public, ouvert à tout le monde, connecté ou non.
+    'accueil', 'og', 'decors', 'blog', 'desabonnement', 'verifier', 'reinitialiser',
+    'qr', 'api-telechargement',
+    // Son travail.
+    'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
+    // Son compte.
+    'profil', 'profil-export', 'notifications',
+  ]);
+
+  /**
+   * Des comptes NEUFS, fabriqués ici.
+   *
+   * Ceux de la section 32 servent à d'autres scénarios qui les
+   * suspendent, les promeuvent ou leur changent d'adresse en chemin. Un
+   * balayage de droits doit partir d'un compte dont on connaît l'état,
+   * sinon un échec ne dit plus si c'est le droit ou le compte qui cloche.
+   */
+  const pAD = await browser.newPage();
+  surveiller(pAD);
+  await connexion(pAD, ADMIN.email, ADMIN.mdp);
+  await pAD.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  const csrfAD = await pAD.locator('.formulaire-compte input[name=csrf]').first().inputValue();
+  const EDI = { email: `droits-editeur-${marque}@wakabileguide.com`, mdp: 'editeur-droits-2026' };
+  const SCA = { email: `droits-scanner-${marque}@wakabileguide.com`, mdp: 'scanner-droits-2026' };
+  for (const [c, role, nom] of [[EDI, 'editeur', 'Éditeur des droits'],
+                                [SCA, 'scanner', 'Scanner des droits']] as const) {
+    await pAD.request.post(`${BASE}/index.php?p=creer-equipier`, {
+      form: { csrf: csrfAD, nom: `${nom} ${marque}`, email: c.email, role, mot_de_passe: c.mdp },
+    });
+  }
+
+  const pED = await browser.newPage();
+  surveiller(pED);
+  await connexion(pED, EDI.email, EDI.mdp);
+  ok('un éditeur arrive sur son tableau de bord', pED.url().includes('p=partenaire'),
+     pED.url().split('index.php')[1] ?? '');
+
+  const ouvertes: string[] = [];
+  for (const r of TOUTES_ROUTES) {
+    const rep = await pED.request.get(`${BASE}/index.php?p=${r}`, { maxRedirects: 0 })
+      .catch(() => null);
+    if (!rep || rep.status() !== 200) continue;
+    const t = await rep.text();
+    if (/Accès refusé|ne comprend pas cette fonction|n’ouvre pas l’API/.test(t)) continue;
+    ouvertes.push(r);
+  }
+  // `connexion`, `inscription` et `oubli` renvoient chez lui quand il est
+  // connecté — donc 302, jamais 200. Si elles remontent ici, c'est que la
+  // session ne l'a pas suivi, et le balayage ne prouverait plus rien.
+  ok('le balayage se fait bien avec sa session',
+     !ouvertes.includes('connexion') && !ouvertes.includes('inscription'),
+     ouvertes.slice(0, 4).join(' · '));
+
+  const enTrop = ouvertes.filter((r) => !PERMIS_EDITEUR.has(r));
+  const manquantes = [...PERMIS_EDITEUR].filter((r) => !ouvertes.includes(r));
+  ok('il n’atteint AUCUNE page hors de ses prérogatives',
+     enTrop.length === 0, enTrop.join(' · ') || `${ouvertes.length} pages, toutes légitimes`);
+  ok('et il atteint bien toutes les siennes',
+     manquantes.length === 0, manquantes.join(' · ') || 'aucune manquante');
+
+  /* --- les trois portes qu'on vient de fermer --- */
+  ok('la régie lui est fermée',
+     !(await pED.request.get(`${BASE}/index.php?p=regie`, { maxRedirects: 0 })).ok());
+  ok('les notifications push aussi',
+     !(await pED.request.get(`${BASE}/index.php?p=diffusion`, { maxRedirects: 0 })).ok());
+
+  /**
+   * L'API, et pourquoi elle mérite un droit à elle.
+   *
+   * Une clé d'API est un mot de passe qui ne se déconnecte jamais : elle
+   * traverse la session et la double authentification. `capacite()` disait
+   * oui à tout compte interne — un SCANNER, dont tout l'intérêt est que le
+   * téléphone posé à la porte n'ouvre rien d'autre, pouvait s'en fabriquer
+   * une.
+   */
+  await pED.goto(`${BASE}/index.php?p=api-doc`, { waitUntil: 'domcontentloaded' });
+  ok('un éditeur ne lit même pas la documentation de l’API',
+     !pED.url().includes('p=api-doc'), pED.url().split('index.php')[1] ?? '');
+
+  const pSC = await browser.newPage();
+  surveiller(pSC);
+  await connexion(pSC, SCA.email, SCA.mdp);
+  const cleScanner = await pSC.request.post(`${BASE}/index.php?p=api-cle`, {
+    form: { csrf: 'peu-importe' }, maxRedirects: 0,
+  });
+  ok('un scanner ne peut pas se fabriquer une clé d’API', !cleScanner.ok(),
+     `HTTP ${cleScanner.status()}`);
+  await pSC.close();
+
+  /* --- l'écran d'accueil ne propose plus de portes fermées --- */
+  await pED.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  const cibles = await pED.locator('.raccourci').evaluateAll(
+    (n) => n.map((e) => (e.getAttribute('href') ?? '').split('?')[1] ?? ''));
+  ok('les raccourcis du tableau de bord ne mènent nulle part d’interdit',
+     cibles.every((c) => PERMIS_EDITEUR.has(c.replace('p=', ''))
+                      || c.replace('p=', '') === 'profil'),
+     cibles.join(' · '));
+  ok('ni régie, ni push, ni API parmi eux',
+     !cibles.some((c) => /regie|diffusion|api/.test(c)), cibles.join(' · '));
+
+  const jauges = await pED.locator('.jauges .marche .haut span').evaluateAll(
+    (n) => n.map((e) => (e.textContent ?? '').trim()));
+  ok('les compteurs affichés sont ceux de droits qu’il tient vraiment',
+     !jauges.some((j) => /E-mails/i.test(j)), jauges.join(' · '));
+  ok('et le texte ne lui parle pas d’une offre qu’il n’a pas',
+     (await pED.locator('main').innerText()).includes('compte de la maison'));
+
+  /* --- son profil ne propose pas ce dont il n'a pas l'usage --- */
+  await pED.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('on ne lui demande pas la permission des notifications du navigateur',
+     (await pED.locator('#push-bouton').count()) === 0);
+  ok('et le texte de la double authentification dit ce que SON compte ouvre',
+     (await pED.locator('main').innerText()).includes('la rédaction du blog')
+     && !(await pED.locator('main').innerText()).includes('les réglages de l’installation'));
+
+  /* --- mais un organisateur et l'équipe, eux, gardent le leur --- */
+  const pPU = await browser.newPage();
+  surveiller(pPU);
+  await connexion(pPU, PART.email, PART.mdp);
+  await pPU.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur, lui, peut toujours s’abonner aux notifications',
+     (await pPU.locator('#push-bouton').count()) === 1);
+  await pPU.close();
+
+  await pe.goto(`${BASE}/index.php?p=profil`, { waitUntil: 'domcontentloaded' });
+  ok('l’équipe aussi — elle en envoie, elle doit pouvoir s’en envoyer un essai',
+     (await pe.locator('#push-bouton').count()) === 1);
+
+  /* --- l'espace des invités n'est pas le sien --- */
+  await pED.goto(`${BASE}/index.php?p=compte`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran des invités le renvoie chez lui plutôt que de lui montrer 0 Koris',
+     pED.url().includes('p=partenaire'), pED.url().split('index.php')[1] ?? '');
+
+  await pED.close();
+  await pAD.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **503 scénarios, 503 réussis**
+Les deux ont été vérifiés de bout en bout : **521 scénarios, 521 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 503 scénarios, dans un vrai navigateur
+npm run php:e2e          # 521 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP, carnet
 ```
 
@@ -126,7 +126,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 503 scénarios
+### Les 521 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -175,6 +175,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **L’historique des notifications** | Chaque envoi laisse une ligne datée avec son segment, ses abonnements visés, les **personnes** touchées et les **remises** — deux nombres distincts ; l’historique d’un organisateur ne contient pas celui du guide |
+| **Les prérogatives d’un éditeur** | Les 87 routes d’`index.php` balayées avec sa session : il n’en atteint que 17, toutes légitimes ; ni régie, ni push, ni documentation d’API ; un **scanner** ne peut pas se fabriquer de clé ; les raccourcis de son tableau de bord ne mènent nulle part d’interdit ; on ne lui demande pas la permission des notifications, et l’organisateur comme l’équipe gardent la leur |
 | **Le lien de confirmation** | Ouvert deux fois — d’abord par un filtre de messagerie, puis par la personne : le second appel annonce une **réussite**, pas une panne ; un lien inventé propose une sortie au lieu d’un mur ; le jeton d’un **mot de passe**, lui, ne sert toujours qu’une fois |
 | **Les deux familles de comptes** | Deux formulaires séparés, aucune offre pour l’équipe **ni pour un participant** même en postant `formule=mouvement` à la main, un « OK » sans changement qui n’écrit ni n’envoie rien, le lien de confirmation qui part à la création et se renvoie depuis l’écran de l’équipe, et le courriel qui parle de **rôle** à un équipier et d’**offre** à un client — vérifié sur un vrai serveur SMTP, objets décodés |
 | **Un push qui rate** | L'écran propose un essai sur soi-même, dit combien de navigateurs sont abonnés, et rend un verdict par navigateur — un abonnement injoignable est nommé avec son code HTTP, pas deviné |
@@ -1116,15 +1117,15 @@ même raison : éparpillé en `exiger_role('equipe')` dans dix-huit fichiers, un
 droit devient impossible à vérifier sans relire l'application, et le jour où
 l'on ajoute un rôle on en oublie trois.
 
-| | Entrée | Ses décors | Tous | Articles | Valider | Liens | Régie | Push | Comptes | Équipe | Réglages |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Participant** | | | | | | | | | | | |
-| **Organisateur** | | ✓ | | ✓ | | ✓ | ✓ | ✓ | | | |
-| **Scanner** | ✓ | | | | | | | | | | |
-| **Éditeur** | | ✓ | | ✓ | | ✓ | | | | | |
-| **Coordinateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
-| **Équipe** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | ✓ |
-| **Super administrateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| | Entrée | Ses décors | Tous | Articles | Valider | Liens | Régie | Push | API | Comptes | Équipe | Réglages |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **Participant** | | | | | | | | | | | | |
+| **Organisateur** | | ✓ | | ✓ | | ✓ | ✓ | ✓ | ✓ | | | |
+| **Scanner** | ✓ | | | | | | | | | | | |
+| **Éditeur** | | ✓ | | ✓ | | ✓ | | | | | | |
+| **Coordinateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | | |
+| **Équipe** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | ✓ |
+| **Super administrateur** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 **Deux familles**, et la distinction porte tout le reste. Les comptes
 **clients** — participant, organisateur — ont une offre commerciale, des
@@ -1148,6 +1149,56 @@ parce qu'on ne se vend pas des fonctions à soi-même.
   colonne, et elle est tout ce qui sépare une équipe d'une porte ouverte :
   sans elle, n'importe quel membre peut se promouvoir, promouvoir un ami, ou
   suspendre le dernier administrateur.
+
+### Une clé d'API est un droit, pas une ligne d'offre
+
+`api` est le seul droit de la table ajouté après coup, et il faut dire
+pourquoi. Une clé d'API est **un mot de passe qui ne se déconnecte jamais** :
+elle traverse la session, la double authentification et le navigateur. La
+question n'est donc pas « ce compte peut-il se l'offrir ? » — à quoi
+`capacite()` répond oui à tout compte interne — mais « ce rôle a-t-il besoin
+d'un identifiant de longue durée ? ».
+
+Un **scanner**, dont tout l'intérêt est que le téléphone posé à la porte
+n'ouvre rien d'autre, répond non. Un **éditeur**, qui écrit et soumet, aussi.
+Tous deux pouvaient pourtant s'en fabriquer une. Le droit tranche désormais
+d'abord, l'offre ensuite — et le contrôle est refait dans `api_appelant()`, pas
+seulement sur le formulaire : une clé fabriquée avant le changement cesse de
+fonctionner pour un rôle qui n'y a plus droit. Un contrôle posé uniquement sur
+l'écran n'est pas un contrôle, c'est une politesse.
+
+### Le menu et le tableau de bord posent la MÊME question
+
+`destination_permise()` teste deux conditions et il faut les deux : le **droit**
+du rôle, et — pour un client — ce que son **offre** comprend. Elle vit dans
+`auth.php` parce que le menu n'est pas seul à la poser : le tableau de bord
+range les mêmes destinations en raccourcis.
+
+Tant que chacun avait sa liste, elles ont divergé. Les raccourcis ne
+regardaient que l'offre, et `capacite()` dit oui à tout compte interne : un
+éditeur trouvait donc « Régie e-mail » et « Notifications push » sur son écran
+d'accueil — **deux portes qui se referment au clic**. Les compteurs de la même
+page suivent la même règle : on n'affiche que ceux d'un droit réellement tenu,
+parce qu'un chiffre sur un écran promet qu'il y a une porte derrière.
+
+Dans la même veine :
+
+- Le bloc **« Recevoir les notifications »** n'est proposé qu'à l'audience du
+  guide (invités, organisateurs) et à ceux qui ont le droit d'en *envoyer*,
+  pour s'adresser un essai. Une permission système demandée pour rien est une
+  permission qu'on refuse — et qu'on ne réaccordera pas le jour où elle
+  servirait.
+- Le texte de la **double authentification** nomme ce que *ce* compte ouvre.
+  Promettre « le catalogue entier et les réglages » à un éditeur qui n'a ni
+  l'un ni l'autre décrédibilise la phrase qui doit convaincre.
+- `?p=compte` est l'espace d'un **invité** : un compte de la maison qui y
+  arrivait y lisait « 0 Koris gagnés ». Il est renvoyé chez lui.
+
+> **Le balayage est exhaustif par construction.** La recette lit les 87 routes
+> dans `index.php` lui-même et compare l'ensemble qu'un éditeur atteint à la
+> liste attendue. Une liste de pages tapée à la main manquerait justement celle
+> qu'on vient d'ajouter — la seule que personne n'a encore regardée. Ici,
+> ajouter une route sans se prononcer **fait tomber la recette**.
 
 ### Ce qui est verrouillé, et pourquoi
 

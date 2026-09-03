@@ -115,6 +115,18 @@ function api_appelant(): array
     if ((int) $u['suspendu']) {
         api_erreur('Ce compte est suspendu.', 403, 'compte_suspendu');
     }
+    /**
+     * Le droit AVANT l'offre, et pas seulement à l'écran.
+     *
+     * Sans cette ligne, une clé fabriquée du temps où l'écran ne demandait
+     * rien continuerait de fonctionner pour un rôle qui n'y a plus droit.
+     * Un contrôle posé uniquement sur le formulaire n'est pas un contrôle :
+     * c'est une politesse.
+     */
+    if (!droit($u, 'api')) {
+        api_erreur('Ce rôle n’ouvre pas l’API. Elle s’adresse aux organisateurs '
+            . 'et à l’équipe.', 403, 'role_insuffisant');
+    }
     if (!capacite($u, 'api')) {
         api_erreur('L’offre ' . formule_libelle($u['formule']) . ' n’ouvre pas l’API. '
             . 'Elle est comprise dans l’offre ' . formule_libelle(offre_qui_debloque('api')) . '.',

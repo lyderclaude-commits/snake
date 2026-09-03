@@ -178,9 +178,24 @@ $verifie = email_verifie($me);
         </div>
 
       <?php else: ?>
-        <p class="aide" style="margin:8px 0 12px">Votre compte ouvre le catalogue entier, les
-        comptes clients et les réglages. Un second facteur rend inutile un mot de passe qui
-        fuirait ailleurs — il coûte six chiffres à la connexion.</p>
+        <?php
+        /* Ce que le compte ouvre VRAIMENT, et non ce qu'ouvre un compte
+           d'équipe : promettre « le catalogue entier et les réglages » à un
+           éditeur qui n'a ni l'un ni l'autre décrédibilise le reste de la
+           phrase — et c'est celle qui doit convaincre. */
+        $ouvre = array_values(array_filter([
+            droit($me, 'reglages') ? 'les réglages de l’installation' : null,
+            droit($me, 'comptes') ? 'les comptes clients' : null,
+            droit($me, 'decors_tous') ? 'le catalogue entier' : null,
+            droit($me, 'valider') ? 'la publication de ce que les autres proposent' : null,
+            droit($me, 'articles') ? 'la rédaction du blog' : null,
+        ]));
+        ?>
+        <p class="aide" style="margin:8px 0 12px">Votre compte ouvre
+        <?= e($ouvre ? implode(', ', array_slice($ouvre, 0, -1))
+              . (count($ouvre) > 1 ? ' et ' : '') . end($ouvre) : 'des écrans internes') ?>.
+        Un second facteur rend inutile un mot de passe qui fuirait ailleurs — il coûte six
+        chiffres à la connexion.</p>
         <form method="post" action="<?= e(url('?p=profil-otp')) ?>">
           <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
           <input type="hidden" name="quoi" value="preparer">
@@ -223,7 +238,19 @@ $verifie = email_verifie($me);
   </div>
 
   <!-- ---------- notifications ---------- -->
-  <?php require RACINE . '/app/vues/partiels/push-abonnement.php'; ?>
+  <?php
+  /**
+   * Proposé à qui a quelque chose à recevoir, et à personne d'autre.
+   *
+   * La décision est prise ICI et non dans le partiel : celui-ci sert aussi
+   * sur la page d'un décor, où le visiteur vient de faire son badge et
+   * n'est souvent même pas connecté — c'est là qu'on accepte le plus, et
+   * il ne faut surtout pas l'y faire taire.
+   */
+  if (push_proposable($me)) {
+      require RACINE . '/app/vues/partiels/push-abonnement.php';
+  }
+  ?>
 
   <!-- ---------- partir ---------- -->
   <?php if (!$interne): ?>

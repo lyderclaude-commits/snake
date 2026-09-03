@@ -47,14 +47,27 @@ const DROITS = [
     'liens'         => 'Liens courts',
     'regie'         => 'Campagnes e-mail',
     'push'          => 'Notifications du navigateur',
+    'api'           => 'Se connecter à l’API avec une clé',
     'comptes'       => 'Créer et gérer les comptes clients',
     'comptes_internes' => 'Créer et gérer les comptes de l’équipe',
     'reglages'      => 'Réglages, sauvegardes, maintenance',
 ];
 
+/**
+ * `api` est un DROIT et pas seulement une ligne d'offre — c'est le seul de
+ * la table à avoir été ajouté après coup, et il faut dire pourquoi.
+ *
+ * Une clé d'API est un mot de passe qui ne se déconnecte jamais : elle
+ * traverse la session, la double authentification et le navigateur. La
+ * question n'est donc pas « ce compte peut-il se l'offrir ? » — à quoi
+ * `capacite()` répond oui à tout compte interne — mais « ce rôle a-t-il
+ * besoin d'un identifiant de longue durée ? ». Un scanner, dont tout
+ * l'intérêt est que le téléphone posé à la porte n'ouvre rien d'autre,
+ * répond non. Un éditeur, qui écrit et soumet, répond non aussi.
+ */
 const ROLES_DROITS = [
     'participant'  => [],
-    'partenaire'   => ['decors_siens', 'articles', 'liens', 'regie', 'push'],
+    'partenaire'   => ['decors_siens', 'articles', 'liens', 'regie', 'push', 'api'],
     // Il tient la porte, et rien d'autre. C'est tout l'intérêt du rôle :
     // le téléphone qui scanne à l'entrée passe de main en main, et il ne
     // doit pas donner accès au catalogue ni aux comptes.
@@ -68,7 +81,7 @@ const ROLES_DROITS = [
     'coordinateur' => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
                        'liens', 'regie', 'push'],
     'equipe'       => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
-                       'liens', 'regie', 'push', 'comptes', 'reglages'],
+                       'liens', 'regie', 'push', 'api', 'comptes', 'reglages'],
     /**
      * Le compte fondateur, et le seul à pouvoir en fabriquer d'autres.
      *
@@ -79,7 +92,7 @@ const ROLES_DROITS = [
      * gestes dont on ne se relève pas sans toucher à la base de données.
      */
     'super_admin'  => ['scan', 'decors_siens', 'decors_tous', 'articles', 'valider',
-                       'liens', 'regie', 'push', 'comptes', 'comptes_internes', 'reglages'],
+                       'liens', 'regie', 'push', 'api', 'comptes', 'comptes_internes', 'reglages'],
 ];
 
 /**
@@ -173,6 +186,38 @@ function formule_affichee(?array $u): ?string
         return null;
     }
     return formule_libelle((string) $u['formule']);
+}
+
+/**
+ * Cette destination est-elle ouverte à ce compte ?
+ *
+ * DEUX conditions, et il faut les deux. Un éditeur n'a pas le DROIT
+ * d'écrire à la base, quelle que soit son offre — il n'en a pas. Un
+ * organisateur en Découverte en a le droit, mais n'a pas ACHETÉ la
+ * fonction.
+ *
+ * Écrite ici, et non dans le menu, parce que le menu n'est pas le seul à
+ * poser la question : le tableau de bord range les mêmes destinations en
+ * raccourcis. Tant que chacun avait sa liste, elles ont divergé — les
+ * raccourcis ne regardaient que l'offre, et proposaient donc « Régie
+ * e-mail » et « Notifications push » à un éditeur qui n'a ni l'une ni
+ * l'autre. Deux portes fermées, annoncées sur l'écran d'accueil.
+ */
+function destination_permise(?array $u, ?string $besoin): bool
+{
+    if ($besoin === null) {
+        return true;
+    }
+    if (!droit($u, $besoin)) {
+        return false;
+    }
+    return match ($besoin) {
+        'regie' => capacite($u, 'regie'),
+        'push' => capacite($u, 'telegram_push'),
+        'api' => capacite($u, 'api'),
+        'liens' => $u !== null && quota($u, 'liens_courts') !== 0,
+        default => true,
+    };
 }
 
 /** Ce rôle a-t-il ce droit ? La seule question que pose le contrôle d'accès. */

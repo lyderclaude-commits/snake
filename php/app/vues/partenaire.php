@@ -112,10 +112,26 @@
       Les compteurs ci-dessous sont ceux de vos propres décors : ils ne butent sur rien.</p>
     <?php endif; ?>
 
+    <?php
+    /**
+     * Un compteur par droit RÉELLEMENT tenu.
+     *
+     * `$l['inclus']` lit `capacite()`, qui dit oui à tout compte interne :
+     * un éditeur voyait donc « E-mails marketing ce mois » — le compteur
+     * d'une fonction à laquelle il n'a pas accès du tout. Un chiffre sur un
+     * écran promet qu'il y a une porte derrière.
+     */
+    $jauge_droit = [
+        'campagnes' => 'decors_siens',
+        'telechargements' => 'decors_siens',
+        'liens_courts' => 'liens',
+        'emails_par_mois' => 'regie',
+    ];
+    ?>
     <div class="grille g2 jauges" style="margin-top:14px">
       <?php foreach (['campagnes', 'telechargements', 'liens_courts', 'emails_par_mois'] as $cle):
           $l = $bilan['lignes'][$cle];
-          if (!$l['inclus']) {
+          if (!$l['inclus'] || !droit($me, $jauge_droit[$cle])) {
               continue;
           } ?>
         <div class="marche">
@@ -126,7 +142,7 @@
           <div class="rail"><i style="width:<?= $l['max'] < 0 ? 6 : $l['part'] ?>%"></i></div>
           <span class="taux">
             <?php if ($l['max'] < 0): ?>
-              Sans limite avec votre offre.
+              <?= interne($me) ? 'Sans limite : compte de la maison.' : 'Sans limite avec votre offre.' ?>
             <?php elseif ($l['reste'] === 0): ?>
               <strong>Épuisé.</strong> <?= e($l['aide']) ?>
             <?php else: ?>
@@ -289,22 +305,28 @@
 
   <?php
   /**
-   * Les raccourcis, filtrés par l'offre.
+   * Les raccourcis, filtrés par le MÊME test que le menu.
    *
    * Le tableau de bord est le point de départ : ce à quoi on a droit doit
    * y être à un clic. Ce à quoi on n'a PAS droit n'y figure pas — un
    * raccourci qui mène à « cette page vient avec une autre offre » se
    * transforme en reproche au bout de la troisième fois.
+   *
+   * Chaque ligne déclare le DROIT qu'elle demande, et `destination_permise()`
+   * tranche — la même fonction que la barre de navigation. Auparavant cette
+   * liste ne regardait que `capacite()`, qui dit oui à tout compte interne :
+   * un éditeur voyait donc « Régie e-mail » et « Notifications push » sur
+   * son écran d'accueil, deux portes qui se referment au clic.
    */
   $raccourcis = array_filter([
-      ['?p=nouveau', 'Nouveau décor', 'Créer une campagne', true],
-      ['?p=liens', 'Liens courts', 'Adresses traçables, clics comptés', quota($me, 'liens_courts') !== 0],
-      ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', capacite($me, 'regie')],
-      ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', capacite($me, 'telegram_push')],
-      ['?p=blog-admin', 'Mes articles', 'Proposer un article au blog', true],
-      ['?p=api-doc', 'L’API', 'Vos chiffres, par programme', capacite($me, 'api')],
-      ['?p=profil', 'Mon profil', 'Nom, adresse, mot de passe', true],
-  ], fn(array $r) => $r[3]);
+      ['?p=nouveau', 'Nouveau décor', 'Créer une campagne', 'decors_siens'],
+      ['?p=liens', 'Liens courts', 'Adresses traçables, clics comptés', 'liens'],
+      ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', 'regie'],
+      ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', 'push'],
+      ['?p=blog-admin', 'Mes articles', 'Proposer un article au blog', 'articles'],
+      ['?p=api-doc', 'L’API', 'Vos chiffres, par programme', 'api'],
+      ['?p=profil', 'Mon profil', 'Nom, adresse, mot de passe', null],
+  ], fn(array $r) => destination_permise($me, $r[3]));
   ?>
   <h2 class="titre-bloc" style="margin-top:26px">Faire connaître vos campagnes</h2>
   <div class="grille g3 raccourcis">

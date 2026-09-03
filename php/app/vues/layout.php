@@ -130,29 +130,14 @@ $_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'acc
     };
 
     /**
-     * Le filtre : le droit du rôle ET, pour un client, ce que son offre
-     * comprend.
+     * Le filtre vit dans `auth.php`, pas ici.
      *
-     * Les deux conditions sont distinctes et il faut les deux. Un éditeur
-     * n'a pas le droit d'écrire à la base, quelle que soit son offre — il
-     * n'en a pas. Un organisateur en Découverte a le droit, mais n'a pas
-     * acheté la fonction. Montrer un lien qui mène à un refus est une
-     * façon de vendre ; le montrer à chaque page en est une de lasser.
+     * Le menu n'est pas le seul à poser la question : le tableau de bord
+     * range les mêmes destinations en raccourcis. Tant que chacun avait sa
+     * liste, elles ont divergé. Montrer un lien qui mène à un refus est
+     * une façon de vendre ; le montrer à chaque page en est une de lasser.
      */
-    $permis = function (?string $besoin) use ($me): bool {
-        if ($besoin === null) {
-            return true;
-        }
-        if (!droit($me, $besoin)) {
-            return false;
-        }
-        return match ($besoin) {
-            'regie' => capacite($me, 'regie'),
-            'push' => capacite($me, 'telegram_push'),
-            'liens' => quota($me, 'liens_courts') !== 0,
-            default => true,
-        };
-    };
+    $permis = fn(?string $besoin): bool => destination_permise($me, $besoin);
 
     $liens = [];
     foreach ($forme as $entree) {

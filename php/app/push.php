@@ -577,6 +577,27 @@ function diffusions_du_mois(?string $auteur_id): array
     return ['envois' => (int) ($r['envois'] ?? 0), 'personnes' => (int) ($r['personnes'] ?? 0)];
 }
 
+/**
+ * À qui l'on propose de recevoir les notifications du navigateur.
+ *
+ * À l'AUDIENCE du guide — les invités et les organisateurs, ceux à qui
+ * l'on écrit — et à ceux qui ont le droit d'en envoyer, pour pouvoir
+ * s'adresser un essai avant de viser deux mille personnes.
+ *
+ * Un éditeur n'est ni l'un ni l'autre. Ce qui le concerne — son article
+ * publié, son décor renvoyé en corrections — lui arrive déjà dans ses
+ * notifications, sur un écran qu'il ouvre en travaillant. Une permission
+ * système demandée pour rien est une permission qu'on refuse, et qu'on ne
+ * réaccordera pas le jour où elle servirait.
+ *
+ * Écrite sur le modèle d'`otp_proposable()` : une fonction qui dit à qui
+ * s'adresse une fonction, à côté de la fonction elle-même.
+ */
+function push_proposable(?array $u): bool
+{
+    return in_array($u['role'] ?? '', ROLES_PUBLICS, true) || droit($u, 'push');
+}
+
 /** Les abonnements d'un compte — pour s'envoyer un essai à soi-même. */
 function push_abonnements_de(string $utilisateur_id): array
 {
