@@ -11,38 +11,84 @@ $nonlues = $me ? notifications_non_lues($me['id']) : 0;
 <title><?= e($titre ?? 'Wakabi Boost') ?></title>
 <?php
 /**
- * Les balises de partage.
+ * Les balises de partage et de référencement.
  *
- * Un lien collé dans WhatsApp arrivait nu : un titre gris, rien d'autre.
- * Or c'est par ce lien que tout circule — c'est la boucle qui remplit la
- * salle. Une vignette et un titre valent ici plus que bien des écrans.
+ * Un lien collé dans WhatsApp arrivait nu : le domaine, l'adresse en
+ * toutes lettres, rien d'autre. Or c'est par ce lien que tout circule —
+ * c'est la boucle qui remplit la salle.
  *
- * `og:url` porte l'adresse CANONIQUE : sans elle, un lien recopié avec des
- * paramètres de suivi se partage comme une page différente, et les
- * compteurs de partage repartent de zéro à chaque copie.
+ * La cause tenait en une ligne : l'adresse canonique était RECONSTRUITE en
+ * ne gardant que `p` et `slug`, alors qu'un article s'identifie par `a`.
+ * Chaque article annonçait donc l'index du blog comme sa propre adresse.
+ * `url_canonique()` procède désormais par soustraction — voir `seo.php`.
  */
-$_desc = $description ?? 'Créez votre badge et partagez-le. Wakabi Boost, le guide des bons plans.';
-$_ogt = $og_titre ?? ($titre ?? 'Wakabi Boost');
-$_ogi = $og_image ?? url_og();
-$_ogu = base_url() . '/index.php?p=' . rawurlencode((string) ($_GET['p'] ?? 'accueil'))
-      . (isset($_GET['slug']) ? '&slug=' . rawurlencode((string) $_GET['slug']) : '');
+$_page = (string) ($_GET['p'] ?? 'accueil');
+$_seo = seo_reglages();
+$_desc = trim((string) ($description ?? '')) ?: $_seo['seo_description'];
+$_ogt = $og_titre ?? ($titre ?? $_seo['seo_nom_site']);
+$_img = seo_image($og_image ?? null);
+$_ogu = $canonique ?? url_canonique();
+$_type = $og_type ?? 'website';
+$_index = seo_indexable($_page);
 ?>
 <meta name="description" content="<?= e($_desc) ?>">
 <link rel="canonical" href="<?= e($_ogu) ?>">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Wakabi Boost">
+<?php
+/* `noindex` sur tout ce qui n'est pas une page publique et stable. Ce
+   n'est pas une protection — ces écrans demandent une session — mais un
+   écran d'administration dans les résultats encombre le nom du site de
+   pages que personne ne peut ouvrir. */
+?>
+<?php if (!$_index): ?>
+<meta name="robots" content="noindex, follow">
+<?php endif; ?>
+<meta property="og:type" content="<?= e($_type) ?>">
+<meta property="og:site_name" content="<?= e($_seo['seo_nom_site']) ?>">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:title" content="<?= e($_ogt) ?>">
 <meta property="og:description" content="<?= e($_desc) ?>">
 <meta property="og:url" content="<?= e($_ogu) ?>">
-<meta property="og:image" content="<?= e($_ogi) ?>">
-<meta property="og:image:width" content="<?= OG_LARGEUR ?>">
-<meta property="og:image:height" content="<?= OG_HAUTEUR ?>">
+<meta property="og:image" content="<?= e($_img['url']) ?>">
+<meta property="og:image:secure_url" content="<?= e($_img['url']) ?>">
+<meta property="og:image:type" content="<?= e($_img['type']) ?>">
+<meta property="og:image:width" content="<?= (int) $_img['largeur'] ?>">
+<meta property="og:image:height" content="<?= (int) $_img['hauteur'] ?>">
 <meta property="og:image:alt" content="<?= e($_ogt) ?>">
+<?php
+/* Un article dit QUAND il a paru et QUI l'a écrit : c'est ce qui fait
+   apparaître une date dans les résultats, et ce qui distingue un texte
+   daté d'une page de service. */
+?>
+<?php foreach (($og_article ?? []) as $_cle => $_val): ?>
+<meta property="article:<?= e($_cle) ?>" content="<?= e((string) $_val) ?>">
+<?php endforeach; ?>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="<?= e($_ogt) ?>">
 <meta name="twitter:description" content="<?= e($_desc) ?>">
-<meta name="twitter:image" content="<?= e($_ogi) ?>">
+<meta name="twitter:image" content="<?= e($_img['url']) ?>">
+<?php if ($_seo['seo_verif_google'] !== ''): ?>
+<meta name="google-site-verification" content="<?= e($_seo['seo_verif_google']) ?>">
+<?php endif; ?>
+<?php if ($_seo['seo_verif_bing'] !== ''): ?>
+<meta name="msvalidate.01" content="<?= e($_seo['seo_verif_bing']) ?>">
+<?php endif; ?>
+<?php
+/**
+ * Les données structurées, sur les pages publiques uniquement.
+ *
+ * Sur un écran d'administration elles ne servent à rien et pèsent sur
+ * chaque affichage. Le graphe est écrit d'un bloc : Google préfère un
+ * `@graph` unique à cinq balises `<script>` qui se contredisent.
+ */
+$_graphe = array_values(array_filter([
+    jsonld_organisation(),
+    $jsonld ?? null,
+    ($fil ?? null) ? jsonld_fil($fil) : null,
+]));
+?>
+<?php if ($_index && $_graphe): ?>
+<script type="application/ld+json"><?= jsonld(['@context' => 'https://schema.org', '@graph' => $_graphe]) ?></script>
+<?php endif; ?>
 <?php $ico = logo_fichier(); ?>
 <?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?= e(actif('public/wakabi.css')) ?>">

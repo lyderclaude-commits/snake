@@ -3655,9 +3655,10 @@ const run = async () => {
 
   /** Ce qu'un éditeur a le droit d'ouvrir, et rien d'autre. */
   const PERMIS_EDITEUR = new Set([
-    // Le site public, ouvert à tout le monde, connecté ou non.
+    // Le site public, ouvert à tout le monde, connecté ou non — y compris
+    // aux robots, qui lisent robots.txt et le plan du site sans session.
     'accueil', 'og', 'decors', 'blog', 'desabonnement', 'verifier', 'reinitialiser',
-    'qr', 'api-telechargement',
+    'qr', 'api-telechargement', 'robots', 'sitemap',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
     // Son compte.
@@ -3998,6 +3999,203 @@ const run = async () => {
 
   await ctxA.close();
   await pART.close();
+
+  console.log('\n━━ 41. Ce qu’un lien partagé montre de lui-même ━━');
+
+  /**
+   * Ce que cette section éprouve n'a AUCUNE trace à l'écran.
+   *
+   * Un lien collé dans WhatsApp part chercher la page sans session, lit
+   * son en-tête, et n'affiche que ça. Rien dans l'interface ne dit si
+   * cet en-tête est bon : le défaut ne se voit qu'une fois le lien
+   * envoyé, chez le destinataire, et il est alors trop tard. On regarde
+   * donc la page avec les yeux du robot — sans cookie, et dans le HTML.
+   */
+  const pSEO = await browser.newPage();
+  surveiller(pSEO);
+  await connexion(pSEO, ADMIN.email, ADMIN.mdp);
+
+  /* --- 1. L'écran de réglages vit dans Système --- */
+  await pSEO.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  ok('les réglages mènent au référencement',
+     await pSEO.locator('a[href*="p=reglages-seo"]').count() > 0);
+
+  await pSEO.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de référencement s’ouvre',
+     /Référencement|référencement/.test(await pSEO.locator('main').innerText()));
+  ok('il montre un aperçu de partage',
+     await pSEO.locator('.apercu-partage').count() > 0);
+
+  const NOM_SEO = `Wakabi Boost ${marque}`;
+  await pSEO.fill('#s-nom', NOM_SEO);
+  await pSEO.fill('#s-desc',
+    'Le générateur de badges et l’agenda des soirées de Lomé, Cotonou et Abidjan.');
+  await pSEO.click('main button[type=submit]');
+  await pSEO.waitForLoadState('domcontentloaded');
+  ok('les réglages s’enregistrent',
+     /enregistr/i.test(await pSEO.locator('.msg').last().innerText()));
+
+  /* --- 2. Le robot arrive : sans session, sans cookie --- */
+  const robot = await browser.newContext();
+  const pRobot = await robot.newPage();
+
+  const lireMeta = async (url: string) => {
+    await pRobot.goto(url, { waitUntil: 'domcontentloaded' });
+    /**
+     * Aucune fonction nommée ici : tsx enrobe celles qu'il compile d'un
+     * appel à `__name`, qui n'existe pas dans la page. On relève donc les
+     * balises par une simple boucle.
+     */
+    const brut = await pRobot.evaluate(() => {
+      const sortie: Record<string, string> = {};
+      for (const b of Array.from(document.querySelectorAll('meta'))) {
+        const cle = b.getAttribute('property') ?? b.getAttribute('name') ?? '';
+        if (cle !== '' && !(cle in sortie)) sortie[cle] = b.getAttribute('content') ?? '';
+      }
+      sortie['#titre'] = document.title;
+      sortie['#canon'] = document.querySelector('link[rel=canonical]')
+        ?.getAttribute('href') ?? '';
+      sortie['#lang'] = document.documentElement.lang;
+      sortie['#h1'] = String(document.querySelectorAll('h1').length);
+      sortie['#jsonld'] = document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? '';
+      return sortie;
+    });
+    const v = (c: string) => brut[c] ?? '';
+    return {
+      titre: v('#titre'), canon: v('#canon'), desc: v('description'),
+      ogTitre: v('og:title'), ogDesc: v('og:description'), ogImg: v('og:image'),
+      ogUrl: v('og:url'), ogType: v('og:type'),
+      largeur: v('og:image:width'), hauteur: v('og:image:height'),
+      robots: v('robots'), lang: v('#lang'), h1: Number(v('#h1')),
+      jsonld: v('#jsonld'),
+    };
+  };
+
+  const acc = await lireMeta(`${BASE}/index.php?p=accueil`);
+  ok('l’accueil porte le nom de site réglé', acc.titre.includes(NOM_SEO), acc.titre.slice(0, 60));
+  ok('il annonce une image de partage', /^https?:\/\//.test(acc.ogImg), acc.ogImg.slice(0, 70));
+  ok('il dit la taille de cette image', +acc.largeur >= 600 && +acc.hauteur > 0,
+     `${acc.largeur}×${acc.hauteur}`);
+  ok('il déclare sa langue', acc.lang.startsWith('fr'), acc.lang);
+  ok('il n’a qu’un seul titre de niveau 1', acc.h1 === 1, `${acc.h1} <h1>`);
+
+  /* --- 3. L'article partagé : le défaut d'origine --- */
+  const urlArt = `${BASE}/index.php?p=blog&a=${slugLie}`;
+  const art = await lireMeta(urlArt);
+  ok('un article se déclare canonique VERS LUI-MÊME',
+     art.canon.includes(`a=${slugLie}`), art.canon);
+  ok('og:url dit la même chose que la canonique', art.ogUrl === art.canon);
+  ok('il s’annonce comme un article', art.ogType === 'article', art.ogType);
+  ok('son titre de partage n’est pas vide', art.ogTitre.length > 3, art.ogTitre.slice(0, 50));
+  ok('son accroche de partage tient debout', art.ogDesc.length >= 50,
+     `${art.ogDesc.length} car. — ${art.ogDesc.slice(0, 60)}`);
+  ok('son image de partage est absolue', /^https?:\/\//.test(art.ogImg), art.ogImg.slice(0, 70));
+
+  /**
+   * Une image annoncée mais non téléchargeable est le pire des cas : la
+   * messagerie garde la vignette vide en cache, et le lien reste muet
+   * même une fois l'image réparée. On va la chercher comme elle le fait.
+   */
+  const rImg = await pRobot.request.get(art.ogImg);
+  ok('cette image se télécharge sans session',
+     rImg.status() === 200 && (rImg.headers()['content-type'] ?? '').startsWith('image/'),
+     `HTTP ${rImg.status()} · ${rImg.headers()['content-type'] ?? '?'}`);
+
+  let ld: Record<string, unknown> = {};
+  try { ld = JSON.parse(art.jsonld) as Record<string, unknown>; } catch { /* ld reste vide */ }
+  ok('ses données structurées sont un JSON valide', Object.keys(ld).length > 0);
+  ok('elles décrivent bien un article',
+     JSON.stringify(ld).includes('BlogPosting'));
+
+  /* --- 4. Le décor partagé --- */
+  const decor = await lireMeta(`${BASE}/index.php?p=decor&slug=jy-serai`);
+  ok('un décor se déclare canonique vers lui-même',
+     decor.canon.includes('slug=jy-serai'), decor.canon);
+  ok('son accroche de partage tient debout aussi', decor.ogDesc.length >= 50,
+     `${decor.ogDesc.length} car.`);
+  ok('son image de partage est absolue', /^https?:\/\//.test(decor.ogImg));
+
+  /* --- 5. Le bruit d'une session ne doit pas entrer dans la canonique --- */
+  const sale = await lireMeta(`${urlArt}&ok=enregistre&jeton=abcdef123&v=7`);
+  ok('la canonique ignore les paramètres de passage',
+     !sale.canon.includes('jeton') && !sale.canon.includes('ok=') && !sale.canon.includes('v='),
+     sale.canon);
+  ok('elle reste celle de l’article', sale.canon === art.canon);
+
+  /* --- 6. Les deux fichiers que le robot lit en premier --- */
+  const rRobots = await pRobot.request.get(`${BASE}/index.php?p=robots`);
+  const txtRobots = await rRobots.text();
+  ok('robots.txt répond en texte brut',
+     rRobots.status() === 200 && (rRobots.headers()['content-type'] ?? '').startsWith('text/plain'),
+     rRobots.headers()['content-type'] ?? '');
+  ok('il désigne le plan du site', /^Sitemap: https?:\/\/\S+/m.test(txtRobots));
+  ok('il écarte les écrans d’administration', /Disallow: .*p=admin/.test(txtRobots));
+
+  const rPlan = await pRobot.request.get(`${BASE}/index.php?p=sitemap`);
+  const xml = await rPlan.text();
+  ok('le plan du site répond en XML',
+     rPlan.status() === 200 && (rPlan.headers()['content-type'] ?? '').includes('xml'));
+  ok('il est bien formé', xml.startsWith('<?xml') && xml.trimEnd().endsWith('</urlset>'));
+  /**
+   * Une esperluette nue rend le fichier ENTIER invalide, pas seulement sa
+   * ligne : le moteur rejette le plan et n'en retient aucune adresse.
+   */
+  const nues = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1]).filter((u) => /&(?!amp;|apos;|quot;|lt;|gt;|#)/.test(u));
+  ok('ses esperluettes sont échappées', nues.length === 0, nues[0] ?? '');
+  ok('il liste l’article et le décor',
+     xml.includes(slugLie) && xml.includes('jy-serai'));
+
+  /* --- 7. Ce qui doit rester hors des moteurs --- */
+  await pRobot.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  ok('un écran d’administration renvoie le robot vers la connexion',
+     pRobot.url().includes('p=connexion'), pRobot.url().replace(BASE, ''));
+  const rech = await lireMeta(`${BASE}/index.php?p=blog&q=soiree`);
+  ok('une page de résultats demande à ne pas être indexée',
+     rech.robots.includes('noindex'), rech.robots);
+
+  /* --- 8. Le grand interrupteur : couper l'indexation coupe tout --- */
+  await pSEO.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  await pSEO.uncheck('input[name=seo_indexable]');
+  await pSEO.click('main button[type=submit]');
+  await pSEO.waitForLoadState('domcontentloaded');
+
+  const eteint = await lireMeta(`${BASE}/index.php?p=accueil`);
+  ok('site fermé aux moteurs : l’accueil porte noindex',
+     eteint.robots.includes('noindex'), eteint.robots);
+  const robotsEteint = await (await pRobot.request.get(`${BASE}/index.php?p=robots`)).text();
+  ok('et robots.txt interdit tout le site',
+     /^Disallow: \/$/m.test(robotsEteint));
+
+  await pSEO.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  await pSEO.check('input[name=seo_indexable]');
+  await pSEO.click('main button[type=submit]');
+  await pSEO.waitForLoadState('domcontentloaded');
+  const rallume = await lireMeta(`${BASE}/index.php?p=accueil`);
+  ok('rouvert, l’accueil redevient indexable', !rallume.robots.includes('noindex'),
+     rallume.robots || '(aucune balise robots)');
+
+  /* --- 9. L'écran est réservé à qui règle le site --- */
+  const pEd = await browser.newPage();
+  await connexion(pEd, EDI.email, EDI.mdp);
+  await pEd.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  ok('un éditeur n’entre pas dans les réglages de référencement',
+     !/name="seo_nom_site"/.test(await pEd.content()),
+     (await pEd.url()).replace(BASE, ''));
+  await pEd.close();
+
+  /* --- 10. La recette ne laisse pas sa marque sur le site --- */
+  await pSEO.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  await pSEO.fill('#s-nom', 'Wakabi Boost');
+  await pSEO.click('main button[type=submit]');
+  await pSEO.waitForLoadState('domcontentloaded');
+  const rendu = await lireMeta(`${BASE}/index.php?p=accueil`);
+  ok('le nom du site est rendu tel qu’il était', !rendu.titre.includes(marque),
+     rendu.titre.slice(0, 50));
+
+  await robot.close();
+  await pSEO.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

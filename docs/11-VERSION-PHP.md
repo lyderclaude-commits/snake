@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **547 scénarios, 547 réussis**
+Les deux ont été vérifiés de bout en bout : **583 scénarios, 583 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,8 +116,9 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 547 scénarios, dans un vrai navigateur
-npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP, carnet
+npm run php:e2e          # 583 scénarios, dans un vrai navigateur
+npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
+                         # éditeur, TOTP, carnet, référencement
 ```
 
 Contre une base MySQL :
@@ -126,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 547 scénarios
+### Les 583 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -195,6 +196,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
 | **Le journal, la recherche, l'entretien** | Le journal est servi à qui gère les comptes ; le blog public se cherche et dit quand il ne trouve rien ; la maintenance des images rend un bilan ; une sauvegarde s'inspecte avant d'être restaurée, et un nom mal recopié annule la restauration |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
+| **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
+| **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -703,6 +706,110 @@ La vignette est **calculée une fois puis relue** dans `donnees/og/`. Son
 adresse porte une empreinte de la date de modification du décor : changer le
 cadre change l'adresse, donc l'image que WhatsApp affiche. Sans cela, son
 cache garderait l'ancienne pendant des semaines.
+
+---
+
+## Le référencement — `?p=reglages-seo`
+
+Un lien de décor collé dans WhatsApp montrait sa vignette. Un lien
+**d'article**, lui, arrivait nu : pas d'image, pas de titre, pas d'accroche.
+Les deux pages portaient pourtant les mêmes balises. La différence tenait à
+une seule ligne.
+
+### Ce qui n'allait pas : une adresse canonique bâtie par addition
+
+L'adresse canonique était recomposée en recopiant les paramètres d'une
+**liste des paramètres connus**. Un article se lit par `?p=blog&a=le-slug` ;
+`a` ne figurait pas dans cette liste. La page se déclarait donc canonique
+vers `?p=blog` — l'index du blog. WhatsApp, qui suit la canonique avant de
+composer sa vignette, allait chercher l'index, n'y trouvait ni l'image ni le
+titre de l'article, et affichait ce qu'il avait : rien.
+
+Le correctif renverse la construction. La canonique se bâtit désormais par
+**soustraction** : on part de l'adresse réelle et l'on retire les paramètres
+de passage, nommés une fois pour toutes.
+
+```php
+const SEO_BRUIT = ['ok', 'err', 'j', 'jeton', 'csrf', 'v', 'cle', 'retour', 'ouvert'];
+```
+
+La différence n'est pas de style. Une liste d'inclusions oublie
+silencieusement le paramètre qu'on vient d'ajouter, et la page part se
+déclarer canonique vers une autre — le défaut le plus coûteux qui soit, car
+il ne se voit qu'une fois le lien envoyé, chez le destinataire. Une liste
+d'exclusions, elle, laisse au pire passer un paramètre de trop : la page
+reste canonique vers elle-même.
+
+C'est la même raison qui fait que la liste des pages **indexables**, elle,
+est positive : y oublier une page nouvelle la laisse hors des moteurs, ce
+qui se répare ; l'oublier dans une liste d'exclusions la publierait, ce qui
+ne se répare pas.
+
+### Une description qui ne se contente pas de ce qui a été saisi
+
+Le chapô d'un article et le sous-titre d'un décor ne sont pas obligatoires,
+et un sous-titre tient souvent en trois mots — « Samedi, 21 h ». En dessous
+d'environ soixante-dix caractères, Google écarte la description fournie et
+compose la sienne avec ce qu'il trouve sur la page : souvent le menu.
+
+`seo_description()` prend donc plusieurs morceaux, du plus précis au plus
+général, et **complète** au lieu de remplacer jusqu'à atteindre une longueur
+utile — puis coupe au dernier mot entier :
+
+- un article : son chapô, sinon le début de son corps, sinon son titre suivi
+  de la promesse du blog ;
+- un décor : son sous-titre, puis son titre, puis ce qu'on vient y faire.
+
+### L'écran de réglages
+
+Dans **Système → Réglages → Référencement**. Il porte un **aperçu de
+partage** qui se redessine à la frappe : ce que le destinataire verra, à
+côté du champ qui le décide.
+
+| Réglage | Ce qu'il change |
+|---|---|
+| Nom du site | L'onglet du navigateur, et le suffixe de chaque titre |
+| Nom de la structure | L'éditeur du site, dans les données structurées |
+| Description par défaut | Le texte gris sous le titre — **pour les pages qui n'ont pas la leur** |
+| Image de partage | La vignette des pages sans image propre ; refusée sous 600 px de large |
+| Indexation | Un seul interrupteur : décoché, tout le site porte `noindex` **et** `robots.txt` interdit tout |
+| Vérification Google / Bing | Les balises que ces outils réclament pour ouvrir leur console |
+| Structure, téléphone, ville, pays, réseaux | La fiche de l'organisation, en JSON-LD |
+
+### Ce qui est servi aux robots
+
+`robots.txt` et `sitemap.xml` sont **calculés**, pas déposés. Le plan liste
+l'accueil, le catalogue, le blog, puis chaque décor publié et chaque article
+en ligne, avec sa date de dernière modification.
+
+Les adresses y sont du XML : l'esperluette de `?p=blog&a=le-slug` s'y écrit
+`&amp;`. Une seule esperluette nue rendrait le fichier **entier** invalide —
+le moteur rejette le plan complet, pas la ligne fautive. La recette
+l'éprouve.
+
+Le `.htaccess` les sert aussi à leur place habituelle :
+
+```apache
+RewriteRule ^robots\.txt$   index.php?p=robots  [L]
+RewriteRule ^sitemap\.xml$  index.php?p=sitemap [L]
+```
+
+Sans `mod_rewrite`, les deux restent joignables sur `?p=robots` et
+`?p=sitemap` ; l'écran de réglages affiche les deux adresses et le dit.
+
+### Comment on sait que c'est vrai
+
+`npx tsx scripts/verifier-seo.ts` parcourt le site **avec les yeux du
+robot** — sans session, dans le HTML, jamais à l'écran. 109 contrôles, dont
+ceux qui n'ont aucune trace visible :
+
+- l'image annoncée est **réellement téléchargée**, et ses dimensions sont
+  lues **dans ses octets** — une largeur annoncée que l'image ne tient pas
+  fait afficher une vignette timbre-poste, et la messagerie garde son cache ;
+- son type déclaré est comparé à celui que le serveur renvoie ;
+- chaque titre est unique d'une page à l'autre ;
+- les adresses du plan mènent à des pages **vivantes** ;
+- les écrans privés renvoient le robot au lieu de lui servir une page.
 
 ---
 

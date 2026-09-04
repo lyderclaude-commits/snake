@@ -22,6 +22,7 @@ require __DIR__ . '/app/sauvegarde.php';
 require __DIR__ . '/app/texte.php';
 require __DIR__ . '/app/regie.php';
 require __DIR__ . '/app/carnet.php';
+require __DIR__ . '/app/seo.php';
 require __DIR__ . '/app/images.php';
 require __DIR__ . '/app/push.php';
 require __DIR__ . '/app/qr.php';
@@ -82,7 +83,25 @@ switch ($page) {
     /* ---- vitrine et catalogue ---- */
 
     case 'accueil':
-        vue('accueil', ['titre' => 'Wakabi Boost — le badge qui remplit la salle']);
+        vue('accueil', [
+            'titre' => seo_reglage('seo_nom_site') . ' — le badge qui remplit la salle',
+            'description' => seo_reglage('seo_description'),
+            /**
+             * `WebSite` sur la seule page d'accueil, et nulle part ailleurs.
+             *
+             * C'est ce qui autorise Google à afficher le nom du site plutôt
+             * que le domaine dans les résultats. Le répéter sur chaque page
+             * ne l'affirme pas davantage : il le contredit.
+             */
+            'jsonld' => [
+                '@type' => 'WebSite',
+                '@id' => base_url() . '/#site',
+                'url' => base_url() . '/',
+                'name' => seo_reglage('seo_nom_site'),
+                'inLanguage' => 'fr-FR',
+                'publisher' => ['@id' => base_url() . '/#organisation'],
+            ],
+        ]);
 
     /**
      * La vignette de partage.
@@ -146,7 +165,31 @@ switch ($page) {
         exit;
 
     case 'decors':
-        vue('decors', ['titre' => 'Décors — Wakabi Boost', 'liste' => decors_publies()]);
+        $_liste = decors_publies();
+        vue('decors', [
+            'titre' => 'Les décors — ' . seo_reglage('seo_nom_site'),
+            'description' => 'Choisissez un décor, ajoutez votre photo, partagez votre badge. '
+                . 'Sans compte, en trente secondes — Lomé, Cotonou, Abidjan.',
+            'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
+                      ['Les décors', url_canonique(['p' => 'decors'])]],
+            // Une liste ordonnée plutôt qu'un `Product` par décor : on ne
+            // vend rien au visiteur, et annoncer un produit sans prix ni
+            // disponibilité fabrique un balisage que Google signale.
+            'jsonld' => [
+                '@type' => 'ItemList',
+                'name' => 'Les décors Wakabi',
+                'numberOfItems' => count($_liste),
+                'itemListElement' => array_values(array_map(
+                    fn(int $i, array $d) => [
+                        '@type' => 'ListItem', 'position' => $i + 1,
+                        'name' => (string) $d['titre'],
+                        'url' => url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]),
+                    ],
+                    array_keys($_liste), $_liste
+                )),
+            ],
+            'liste' => $_liste,
+        ]);
 
     /**
      * Un média téléversé — la couverture d'un article.
@@ -262,13 +305,40 @@ switch ($page) {
         $g = gabarit_selon_offre($g, utilisateur_par_id((string) $d['auteur_id']));
 
         evenement($d['id'], 'vue');
+        $_dcan = url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]);
+
+        /**
+         * Le sous-titre d'un décor tient souvent en trois mots — « Samedi,
+         * 21 h ». Seul, il ne dit pas de quoi la page parle ; on le fait
+         * suivre du nom du décor et de ce qu'on vient y faire.
+         */
+        $_ddesc = seo_description(
+            (string) $d['sous_titre'],
+            (string) $d['titre'],
+            'Créez votre badge personnalisé en 30 secondes, et partagez-le sur vos réseaux.'
+        );
         vue('studio', [
-            'titre' => $d['titre'] . ' — Wakabi Boost',
+            'titre' => $d['titre'] . ' — ' . seo_reglage('seo_nom_site'),
             // Ce que WhatsApp montrera du lien : le nom de la campagne, ce
             // qu'on y fait, et le badge lui-même.
-            'description' => ($d['sous_titre'] ?: 'Créez votre badge en 30 secondes, et partagez-le.'),
+            'description' => $_ddesc,
             'og_titre' => $d['titre'],
             'og_image' => url_og($d),
+            'canonique' => $_dcan,
+            'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
+                      ['Les décors', url_canonique(['p' => 'decors'])],
+                      [(string) $d['titre'], $_dcan]],
+            'jsonld' => [
+                '@type' => 'CreativeWork',
+                '@id' => $_dcan . '#decor',
+                'name' => (string) $d['titre'],
+                'description' => $_ddesc,
+                'image' => url_og($d),
+                'url' => $_dcan,
+                'inLanguage' => 'fr-FR',
+                'datePublished' => (string) ($d['publie_le'] ?: $d['cree_le']),
+                'publisher' => ['@id' => base_url() . '/#organisation'],
+            ],
             'd' => $d,
             'g' => $g,
         ]);
@@ -629,6 +699,9 @@ switch ($page) {
             'pages' => max(1, (int) ceil($total / 50)),
         ]);
 
+    case 'reglages-seo':
+        require RACINE . '/app/actions/seo.php';
+
     case 'reglages':
         require RACINE . '/app/actions/reglages.php';
 
@@ -673,6 +746,29 @@ switch ($page) {
             http_response_code(500);
             echo 'ÉCHEC ', $e->getMessage(), "\n";
         }
+        exit;
+
+    /* ---- ce que lisent les robots ---- */
+
+    /**
+     * Servis par PHP, et non déposés en fichiers.
+     *
+     * Un `robots.txt` statique ne peut pas écrire l'adresse du site : la
+     * ligne `Sitemap:` exige une URL absolue, et le même zip est
+     * décompressé sur des domaines différents. Le `.htaccess` fait
+     * pointer /robots.txt et /sitemap.xml ici ; si mod_rewrite manque,
+     * l'écran des réglages SEO donne les adresses de repli.
+     */
+    case 'robots':
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        echo robots_txt();
+        exit;
+
+    case 'sitemap':
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        echo sitemap_xml();
         exit;
 
     /* ---- confirmation d'adresse ---- */

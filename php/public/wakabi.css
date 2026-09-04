@@ -1264,3 +1264,21 @@ tr.pale td a{color:inherit}
 .partage-lien.copie::before,.partage-lien.natif::before{background:var(--primary)}
 .partage-lien.fait{border-color:#6EE7B7;background:#ECFDF5;color:#065F46}
 .partage-lien.fait::before{background:#059669}
+
+/* ------------------------------------------------------------------ */
+/* L'aperçu d'un partage, sur l'écran de référencement                 */
+/* ------------------------------------------------------------------ */
+
+/* La forme d'une carte WhatsApp : l'image en haut, le texte dessous, et
+   le domaine en petit. Ce n'est pas une capture d'écran mais la vraie
+   image et les vrais textes — l'intérêt est justement de voir ce qui
+   partira, pas une maquette de ce qui pourrait partir. */
+.apercu-partage{
+  max-width:400px;border:1px solid var(--border);border-radius:var(--r10);
+  overflow:hidden;background:var(--paper);box-shadow:var(--ombre);
+}
+.apercu-partage img{width:100%;height:auto;aspect-ratio:1200/630;object-fit:cover;display:block;background:var(--bg2)}
+.apercu-texte{padding:10px 13px}
+.apercu-texte b{display:block;font-size:.92rem;line-height:1.3}
+.apercu-texte span{display:block;font-size:.83rem;color:var(--text2);margin-top:3px;line-height:1.45}
+.apercu-texte .apercu-hote{color:var(--text3);font-size:.78rem;margin-top:6px}

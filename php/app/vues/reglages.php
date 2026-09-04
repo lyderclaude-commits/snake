@@ -6,9 +6,19 @@ $branche = courriel_branche();
 ?>
 <div class="contenu">
   <section class="entete">
-    <h1>Réglages</h1>
-    <p>Le transport e-mail. Sans lui, un partenaire ne sait qu’en revenant sur le site
-    que son décor a été relu — et une adresse ne peut pas être confirmée.</p>
+    <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div>
+        <h1>Réglages</h1>
+        <p>Le transport e-mail. Sans lui, un partenaire ne sait qu’en revenant sur le site
+        que son décor a été relu — et une adresse ne peut pas être confirmée.</p>
+      </div>
+      <?php
+      /* Le référencement est un réglage, et il vit ici plutôt que dans le
+         menu : celui-ci tient en trois groupes de quatre destinations, et
+         cette règle vaut mieux qu'une entrée de plus. */
+      ?>
+      <a class="bouton fant" href="<?= e(url('?p=reglages-seo')) ?>">Référencement</a>
+    </div>
   </section>
 
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>

@@ -30,11 +30,58 @@ if ($slug !== '') {
         article_lu((string) $a['id']);
     }
 
+    /**
+     * Un article se présente comme un ARTICLE, pas comme une page de site.
+     *
+     * `og:type=article` fait apparaître la date et l'auteur dans les
+     * aperçus et les résultats ; `website` les fait disparaître. Et
+     * l'adresse canonique est celle de CET article — c'est la ligne qui
+     * manquait, et qui rendait chaque partage muet.
+     */
+    $lien_canonique = url_canonique(['p' => 'blog', 'a' => (string) $a['slug']]);
+
+    /**
+     * Le chapô n'est pas obligatoire, et un corps peut tenir en une ligne.
+     * On descend donc jusqu'à ce qui reste vrai de tout article du blog.
+     */
+    $_desc = seo_description(
+        (string) $a['chapo'],
+        texte_extrait((string) $a['corps']),
+        (string) $a['titre'],
+        'Un article du blog ' . seo_reglage('seo_nom_site')
+            . ', pour remplir vos salles à Lomé, Cotonou et Abidjan.'
+    );
     vue('article', [
-        'titre' => $a['titre'] . ' — Le blog Wakabi',
-        'description' => $a['chapo'] ?: texte_extrait((string) $a['corps']),
+        'titre' => $a['titre'] . ' — Le blog ' . seo_reglage('seo_nom_site'),
+        'description' => $_desc,
         'og_titre' => $a['titre'],
-        'og_image' => $a['couverture'] ?: url_og(null),
+        'og_type' => 'article',
+        'canonique' => $lien_canonique,
+        'og_image' => illustration_article($a),
+        'og_article' => array_filter([
+            'published_time' => $a['publie_le'] ?: null,
+            'modified_time' => $a['maj_le'] ?: null,
+            'author' => $a['auteur_nom'] ?: null,
+            'section' => 'Le blog',
+        ]),
+        'fil' => [
+            [seo_reglage('seo_nom_site'), base_url() . '/'],
+            ['Le blog', url_canonique(['p' => 'blog'])],
+            [(string) $a['titre'], $lien_canonique],
+        ],
+        'jsonld' => [
+            '@type' => 'BlogPosting',
+            '@id' => $lien_canonique . '#article',
+            'mainEntityOfPage' => $lien_canonique,
+            'headline' => mb_substr((string) $a['titre'], 0, 110),
+            'description' => $_desc,
+            'image' => seo_image(illustration_article($a))['url'],
+            'datePublished' => (string) ($a['publie_le'] ?: $a['cree_le']),
+            'dateModified' => (string) ($a['maj_le'] ?: $a['cree_le']),
+            'author' => ['@type' => 'Person', 'name' => (string) ($a['auteur_nom'] ?: 'La rédaction Wakabi')],
+            'publisher' => ['@id' => base_url() . '/#organisation'],
+            'inLanguage' => 'fr-FR',
+        ],
         'a' => $a,
         // Vérifié à la LECTURE, pas à l'écriture : un décor archivé depuis
         // la parution ne laisse pas une carte qui mène à une page morte.
@@ -60,7 +107,28 @@ $cherche = trim((string) ($_GET['q'] ?? ''));
 $total = compter_articles_publies_cherches($cherche);
 
 vue('blog', [
-    'titre' => $cherche !== '' ? 'Recherche « ' . $cherche . ' » — Le blog' : 'Le blog — Wakabi Boost',
+    'titre' => $cherche !== ''
+        ? 'Recherche « ' . $cherche . ' » — Le blog'
+        : ($page_n > 1
+            ? 'Le blog, page ' . $page_n . ' — ' . seo_reglage('seo_nom_site')
+            : 'Le blog — ' . seo_reglage('seo_nom_site')),
+    /**
+     * Une page 2 porte SON titre et SON adresse.
+     *
+     * Se déclarer canonique vers la page 1 ferait disparaître des moteurs
+     * tout ce qui n'est pas récent — c'est-à-dire le fond de catalogue,
+     * qui est justement ce qui ramène du monde des mois plus tard.
+     */
+    'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
+              ['Le blog', url_canonique(['p' => 'blog'])]],
+    'jsonld' => [
+        '@type' => 'Blog',
+        '@id' => url_canonique(['p' => 'blog']) . '#blog',
+        'name' => 'Le blog ' . seo_reglage('seo_nom_site'),
+        'url' => url_canonique(['p' => 'blog']),
+        'inLanguage' => 'fr-FR',
+        'publisher' => ['@id' => base_url() . '/#organisation'],
+    ],
     'description' => 'Nos conseils pour remplir une salle à Lomé, Cotonou et Abidjan : '
         . 'campagnes de badges, affichage, présence à l’entrée.',
     'liste' => articles_publies(BLOG_PAR_PAGE, ($page_n - 1) * BLOG_PAR_PAGE, $cherche),

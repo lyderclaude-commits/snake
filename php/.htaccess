@@ -16,6 +16,14 @@
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^([A-HJ-NP-Za-hj-np-z2-9]{6})$ index.php?p=l&c=$1 [L,QSA]
+
+  # Ce que lisent les robots, aux adresses où ils le cherchent.
+  #
+  # Les deux fichiers sont ENGENDRÉS : un robots.txt déposé sur le disque
+  # ne pourrait pas écrire la ligne « Sitemap: », qui exige une adresse
+  # absolue — or le même zip se décompresse sur des domaines différents.
+  RewriteRule ^robots\.txt$ index.php?p=robots [L]
+  RewriteRule ^sitemap\.xml$ index.php?p=sitemap [L]
 </IfModule>
 
 <IfModule mod_headers.c>
