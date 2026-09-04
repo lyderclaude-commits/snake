@@ -1399,11 +1399,12 @@ function article_creer(array $a): string
     $id = nouvel_id();
     $now = maintenant();
     db()->prepare('INSERT INTO articles
-        (id, slug, titre, chapo, corps, couverture, statut, auteur_id, auteur_nom, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,\'brouillon\',?,?,?,?)')
+        (id, slug, titre, chapo, corps, couverture, decor_id, statut, auteur_id, auteur_nom, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,?,\'brouillon\',?,?,?,?)')
       ->execute([
           $id, $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'],
-          $a['couverture'] ?: null, $a['auteur_id'], $a['auteur_nom'], $now, $now,
+          $a['couverture'] ?: null, ($a['decor_id'] ?? '') ?: null,
+          $a['auteur_id'], $a['auteur_nom'], $now, $now,
       ]);
     return $id;
 }
@@ -1418,11 +1419,103 @@ function article_creer(array $a): string
 function article_maj(string $id, array $a): void
 {
     db()->prepare('UPDATE articles SET slug = ?, titre = ?, chapo = ?, corps = ?, couverture = ?,
-                   maj_le = ? WHERE id = ?')
+                   decor_id = ?, maj_le = ? WHERE id = ?')
         ->execute([
             $a['slug'], $a['titre'], $a['chapo'] ?: null, $a['corps'], $a['couverture'] ?: null,
-            maintenant(), $id,
+            ($a['decor_id'] ?? '') ?: null, maintenant(), $id,
         ]);
+}
+
+/**
+ * Les décors qu'un auteur a le droit de citer dans un article.
+ *
+ * Ceux qui sont PUBLIÉS — un lecteur pourra les ouvrir — et, en plus, les
+ * siens quels que soient leur état : un organisateur qui écrit sur sa
+ * soirée de samedi lie son décor avant de le publier, et les deux
+ * paraissent ensemble. Citer le brouillon d'un AUTRE en révélerait le
+ * titre avant l'heure ; c'est le seul cas qu'on ferme.
+ *
+ * L'équipe voit tout, comme partout ailleurs.
+ *
+ * LES SIENS D'ABORD, et la liste est courte. Neuf fois sur dix on cite son
+ * propre décor, celui qu'on vient de faire ; le chercher au milieu de
+ * quatre cents entrées classées par date de publication, c'est renoncer et
+ * n'en lier aucun. Un déroulant de quatre cents lignes n'est pas une
+ * liste, c'est un mur.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+const DECORS_LIABLES_MAX = 60;
+
+function decors_liables(?array $u): array
+{
+    if ($u === null) {
+        return decors_publies(DECORS_LIABLES_MAX);
+    }
+    $siens = droit($u, 'decors_tous')
+        ? db()->query('SELECT d.*, ' . STATS_SQL . ' FROM decors d
+                       ORDER BY d.maj_le DESC LIMIT ' . DECORS_LIABLES_MAX)->fetchAll()
+        : decors_de((string) $u['id']);
+
+    $vus = [];
+    $out = [];
+    foreach ([...$siens, ...decors_publies(DECORS_LIABLES_MAX)] as $d) {
+        if (isset($vus[$d['id']]) || count($out) >= DECORS_LIABLES_MAX) {
+            continue;
+        }
+        $vus[$d['id']] = true;
+        $out[] = $d;
+    }
+    return $out;
+}
+
+/**
+ * Le décor à MONTRER au bas d'un article, ou rien.
+ *
+ * On revérifie qu'il est publié et non expiré au moment de la lecture, et
+ * non au moment de l'écriture : un décor archivé six mois après la
+ * parution ne doit pas laisser dans l'article une carte qui mène à une
+ * page morte. L'article, lui, survit — c'est la carte qui disparaît.
+ */
+function decor_lie(?array $article): ?array
+{
+    if (($article['decor_id'] ?? '') === '' || $article['decor_id'] === null) {
+        return null;
+    }
+    $d = decor_par_id((string) $article['decor_id']);
+    if (!$d || $d['statut'] !== 'publie') {
+        return null;
+    }
+    if (($d['expire_le'] ?? null) !== null && $d['expire_le'] <= maintenant()) {
+        return null;
+    }
+    return $d;
+}
+
+/**
+ * L'illustration d'un article dans une grille. Jamais rien.
+ *
+ * Trois sources, dans cet ordre : sa couverture, le cadre du décor qu'il
+ * cite, et à défaut la vignette de la maison. Une carte sans image au
+ * milieu de deux cartes qui en ont ne se lit pas comme « cet article n'a
+ * pas d'image » mais comme « cette carte est cassée » — et la grille
+ * entière se met de travers, parce que les cartes n'ont plus la même
+ * hauteur.
+ *
+ * Le cadre du décor est le repli le plus utile : un article qui parle
+ * d'une soirée montre l'affiche de cette soirée. C'est aussi ce qui rend
+ * la grille cohérente sans demander une image de plus à l'auteur.
+ */
+function illustration_article(?array $a): string
+{
+    if (($a['couverture'] ?? '') !== '') {
+        return (string) $a['couverture'];
+    }
+    $d = decor_lie($a);
+    if ($d && ($d['cadre_url'] ?? '') !== '') {
+        return (string) $d['cadre_url'];
+    }
+    return url_og(null);
 }
 
 /** Les articles d'un auteur, tous états confondus. */

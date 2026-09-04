@@ -3791,6 +3791,214 @@ const run = async () => {
   await pED.close();
   await pAD.close();
 
+  /* ================================================================== */
+  console.log('\n━━ 40. Un article qui mène à son décor, et qui se partage ━━');
+
+  /**
+   * Le lien article → décor est VIVANT, pas une image recopiée.
+   *
+   * La carte est reconstruite à chaque lecture depuis le décor lui-même.
+   * C'est ce qui permet d'écrire l'article avant que le décor soit en
+   * ligne, et surtout ce qui évite qu'un décor archivé six mois plus tard
+   * laisse dans l'article un bouton qui mène à une page morte.
+   */
+  const pART = await browser.newPage();
+  surveiller(pART);
+  await connexion(pART, ADMIN.email, ADMIN.mdp);
+
+  /* --- un décor à citer, fabriqué ici pour pouvoir l'archiver ensuite --- */
+  const DECOR_ART = `Soirée liée ${marque}`;
+  await pART.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pART.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pART.fill('input[name=titre]', DECOR_ART);
+  await pART.fill('input[name=redirection]', 'https://wakabileguide.com/p/lie');
+  await pART.click('main button[type=submit]');
+  await pART.waitForLoadState('domcontentloaded');
+
+  await pART.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_ART)}`,
+                  { waitUntil: 'domcontentloaded' });
+  const carteDecor = pART.locator(`.carte:has-text("${DECOR_ART}")`).first();
+  await carteDecor.locator('form[action*="p=statut"] button:has-text("Publier")')
+    .first().click().catch(() => {});
+  await pART.waitForLoadState('domcontentloaded');
+  await pART.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_ART)}`,
+                  { waitUntil: 'domcontentloaded' });
+  const idDecorLie = await pART.locator(`.carte:has-text("${DECOR_ART}") input[name=id]`)
+    .first().inputValue().catch(() => '');
+  ok('un décor publié est prêt à être cité', idDecorLie !== '',
+     idDecorLie.slice(0, 8) + '…');
+
+  /* --- l'article le cite --- */
+  const TITRE_LIE = `Le récit du décor ${marque}`;
+  await pART.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  ok('le sélecteur de décor est présent et FACULTATIF',
+     (await pART.locator('#a-decor').count()) === 1
+     && (await pART.locator('#a-decor option').first().innerText()).includes('Aucun'));
+  ok('la liste des décors citables est plafonnée',
+     (await pART.locator('#a-decor option').count()) <= 61,
+     `${await pART.locator('#a-decor option').count()} entrées`);
+
+  await pART.fill('#a-titre', TITRE_LIE);
+  await pART.fill('#a-chapo', 'Un récit qui mène au décor dont il parle.');
+  await pART.locator('#a-bascule').click();
+  await pART.fill('#a-corps', 'Le récit complet de la soirée, assez long pour passer '
+    + 'la validation, et qui se termine sur une invitation à faire son badge.');
+  await pART.selectOption('#a-decor', idDecorLie);
+  await pART.click('button[value=publier]');
+  await pART.waitForLoadState('domcontentloaded');
+
+  const slugLie = `le-recit-du-decor-${marque}`;
+  const lireLie = `${BASE}/index.php?p=blog&a=${slugLie}`;
+
+  /* --- un lecteur ANONYME voit la carte --- */
+  const ctxA = await browser.newContext();
+  const pAN = await ctxA.newPage();
+  surveiller(pAN);
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  ok('le décor cité apparaît dans l’article publié',
+     (await pAN.locator('.decor-lie').count()) === 1
+     && (await pAN.locator('.decor-lie').innerText()).includes(DECOR_ART),
+     (await pAN.locator('.decor-lie h3').innerText().catch(() => '—')));
+  ok('avec un bouton qui mène au décor, pas au catalogue',
+     (await pAN.locator(`.decor-lie a[href*="p=decor&slug="]`).count()) >= 1);
+  ok('et il REMPLACE l’invitation générique plutôt que de s’y ajouter',
+     !(await pAN.locator('main').innerText()).includes('Votre prochain événement'));
+
+  /* --- le partage --- */
+  const reseaux = await pAN.locator('.partage-lien').evaluateAll(
+    (n) => n.map((e) => (e.textContent ?? '').trim()));
+  ok('l’article propose de se partager',
+     ['WhatsApp', 'Facebook', 'X', 'Telegram'].every((r) => reseaux.includes(r)),
+     reseaux.join(' · '));
+  const hrefWa = (await pAN.locator('.partage-lien.wa').getAttribute('href')) ?? '';
+  ok('le lien WhatsApp porte l’adresse de CET article, encodée',
+     hrefWa.startsWith('https://wa.me/?text=')
+     && hrefWa.includes(encodeURIComponent(lireLie).replace(/%3A/g, '%3A')),
+     hrefWa.slice(0, 58));
+  const hrefFb = (await pAN.locator('.partage-lien.fb').getAttribute('href')) ?? '';
+  ok('celui de Facebook aussi', hrefFb.includes(encodeURIComponent(lireLie)));
+  ok('les liens sortants portent rel="noopener"',
+     (await pAN.locator('.partage-lien[target=_blank]').evaluateAll(
+       (n) => n.every((e) => (e.getAttribute('rel') ?? '').includes('noopener')))));
+
+  /**
+   * Aucun script tiers : les boutons officiels des réseaux pistent chaque
+   * lecteur d'une page où ils figurent, qu'on clique ou non — et pèsent
+   * sur une connexion de Lomé. Une adresse `https://` fait le même travail.
+   */
+  const scripts = await pAN.locator('script[src]').evaluateAll(
+    (n) => n.map((e) => (e as HTMLScriptElement).src));
+  ok('et la page ne charge AUCUN script de réseau social',
+     !scripts.some((x) => /facebook|twitter|x\.com|telegram|whatsapp|platform\./.test(x)),
+     scripts.map((x) => x.split('/').pop()).join(' · ') || 'aucun script externe');
+
+  /* --- rouvrir l'article ne détache pas son décor --- */
+  await pART.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  await pART.locator(`tr:has-text("${TITRE_LIE}") a`).first().click();
+  await pART.waitForLoadState('domcontentloaded');
+  ok('rouvrir l’article garde son décor sélectionné',
+     (await pART.locator('#a-decor').inputValue()) === idDecorLie);
+  // Relevé MAINTENANT : après l'enregistrement, la page redirige vers la
+  // liste et l'identifiant a disparu de l'adresse.
+  const idArticleLie = /[?&]id=([^&]+)/.exec(pART.url())?.[1] ?? '';
+  const csvArticle = await pART.locator('form input[name=csrf]').first().inputValue();
+  ok('l’identifiant de l’article est relevé', idArticleLie !== '', idArticleLie.slice(0, 8) + '…');
+  await pART.click('button[value=enregistrer]');
+  await pART.waitForLoadState('domcontentloaded');
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  ok('et le réenregistrer ne l’efface pas',
+     (await pAN.locator('.decor-lie').count()) === 1);
+
+  /* --- un identifiant trafiqué est ignoré, pas obéi --- */
+  await pART.request.post(`${BASE}/index.php?p=blog-editer&id=${idArticleLie}`, {
+    form: { csrf: csvArticle, titre: TITRE_LIE, chapo: 'x', slug: slugLie,
+            corps: 'Un corps assez long pour passer la validation des quarante caractères.',
+            decor_id: '00000000-0000-4000-8000-000000000000', action: 'enregistrer' },
+  });
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  ok('un identifiant de décor inventé est ignoré, sans casser l’article',
+     (await pAN.locator('h1').innerText()).includes(TITRE_LIE)
+     && (await pAN.locator('.decor-lie').count()) === 0);
+  ok('et l’invitation générique reprend sa place',
+     (await pAN.locator('main').innerText()).includes('Votre prochain événement'));
+
+  /* --- un décor archivé après la parution : la carte s’en va, le texte reste --- */
+  await pART.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  await pART.locator(`tr:has-text("${TITRE_LIE}") a`).first().click();
+  await pART.waitForLoadState('domcontentloaded');
+  await pART.selectOption('#a-decor', idDecorLie);
+  await pART.click('button[value=enregistrer]');
+  await pART.waitForLoadState('domcontentloaded');
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  ok('le décor est de nouveau cité', (await pAN.locator('.decor-lie').count()) === 1);
+
+  await pART.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_ART)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pART.locator(`.carte:has-text("${DECOR_ART}") form[action*="p=statut"] button:has-text("Archiver")`)
+    .first().click();
+  await pART.waitForLoadState('domcontentloaded');
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  ok('un décor archivé après la parution ne laisse pas un bouton mort',
+     (await pAN.locator('.decor-lie').count()) === 0);
+  ok('mais l’article, lui, survit intact',
+     (await pAN.locator('h1').innerText()).includes(TITRE_LIE)
+     && (await pAN.locator('.corps-article').innerText()).trim().length > 40
+     && (await pAN.locator('.partage-lien').count()) > 0,
+     `${(await pAN.locator('.corps-article').innerText()).trim().length} caractères de texte`);
+
+  /* --- « À lire aussi » : trois cartes, trois images --- */
+
+  /**
+   * Une carte sans image au milieu de deux qui en ont ne se lit pas comme
+   * « cet article n'a pas d'image » mais comme « cette carte est cassée ».
+   * On en garantit donc trois choses : qu'il y a une image, qu'elle s'est
+   * VRAIMENT chargée, et que les trois cartes ont la même hauteur.
+   */
+  await pAN.goto(lireLie, { waitUntil: 'domcontentloaded' });
+  const aussi = pAN.locator('section:has-text("À lire aussi") .vignette.article');
+  const nAussi = await aussi.count();
+  ok('« À lire aussi » propose bien trois articles', nAussi === 3, `${nAussi} carte(s)`);
+  ok('chacune porte une image',
+     (await aussi.locator('img').count()) === nAussi,
+     `${await aussi.locator('img').count()} image(s) pour ${nAussi} carte(s)`);
+
+  const chargees = await aussi.locator('img').evaluateAll(
+    (n) => n.map((e) => (e as HTMLImageElement).naturalWidth));
+  ok('et chaque image s’est réellement chargée — pas un cadre vide',
+     chargees.length > 0 && chargees.every((w) => w > 0), chargees.join(' · '));
+
+  const hauteurs = await aussi.locator('img').evaluateAll(
+    (n) => n.map((e) => Math.round(e.getBoundingClientRect().height)));
+  ok('les trois cartes ont la même hauteur d’image : la grille ne se tord pas',
+     new Set(hauteurs).size === 1, hauteurs.join(' · '));
+
+  await pAN.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
+  const cartesBlog = pAN.locator('.vignette.article');
+  ok('au blog aussi, chaque carte porte son image',
+     (await cartesBlog.count()) > 0
+     && (await cartesBlog.locator('img').count()) === (await cartesBlog.count()),
+     `${await cartesBlog.locator('img').count()} / ${await cartesBlog.count()}`);
+  const hBlog = await cartesBlog.locator('img').evaluateAll(
+    (n) => n.map((e) => Math.round(e.getBoundingClientRect().height)));
+  ok('et toutes au même format',
+     new Set(hBlog).size === 1, [...new Set(hBlog)].join(' · '));
+
+  /* --- un brouillon ne propose pas de se partager --- */
+  await pART.goto(`${BASE}/index.php?p=blog-editer`, { waitUntil: 'domcontentloaded' });
+  await pART.fill('#a-titre', `Brouillon sans partage ${marque}`);
+  await pART.locator('#a-bascule').click();
+  await pART.fill('#a-corps', 'Un brouillon, qui n’est visible que de son auteur et de la rédaction.');
+  await pART.click('button[value=enregistrer]');
+  await pART.waitForLoadState('domcontentloaded');
+  await pART.goto(`${BASE}/index.php?p=blog&a=brouillon-sans-partage-${marque}`,
+                  { waitUntil: 'domcontentloaded' });
+  ok('un article pas encore en ligne ne propose pas de le partager',
+     (await pART.locator('.partage-lien').count()) === 0,
+     `${await pART.locator('.partage-lien').count()} bouton(s)`);
+
+  await ctxA.close();
+  await pART.close();
+
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pe.fill('#smtp_hote', '');

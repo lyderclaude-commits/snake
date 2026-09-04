@@ -115,6 +115,17 @@ function installer_articles(string $admin_id): void
             'chapo' => 'Au Maquis Akwaba, en mars, la salle était pleine. Le budget communication '
                      . 'tenait dans un décor et un QR Code. Voici le détail, chiffres compris.',
             'auteur' => $admin, 'statut' => 'publie',
+            /**
+             * Le récit mène à un décor, et le lecteur arrive sur celui-là
+             * plutôt que sur un catalogue.
+             *
+             * On cite un décor PUBLIÉ — « J'y serai » et non celui du
+             * Maquis, que la démonstration laisse volontairement en
+             * relecture pour garnir la file. Un article de démonstration
+             * qui pointerait un décor invisible ne montrerait rien du tout,
+             * et l'on chercherait longtemps pourquoi.
+             */
+            'decor' => 'jy-serai',
             'corps' => <<<'TXT'
 Le patron du Maquis Akwaba nous a appelés un mardi. Sa soirée live du samedi
 était dans quatre jours, et il lui restait **zéro franc** de budget affichage.
@@ -223,12 +234,14 @@ TXT,
             continue;
         }
         $auteur = $a['auteur'] ?: $admin;
+        $decor = ($a['decor'] ?? '') !== '' ? decor_par_slug((string) $a['decor']) : null;
         $id = article_creer([
             'slug' => $a['slug'],
             'titre' => $a['titre'],
             'chapo' => $a['chapo'],
             'corps' => trim($a['corps']),
             'couverture' => '',
+            'decor_id' => $decor['id'] ?? '',
             'auteur_id' => $auteur['id'] ?? $admin_id,
             'auteur_nom' => $auteur['nom'] ?? 'La rédaction Wakabi',
         ]);

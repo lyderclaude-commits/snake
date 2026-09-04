@@ -36,6 +36,10 @@ if ($slug !== '') {
         'og_titre' => $a['titre'],
         'og_image' => $a['couverture'] ?: url_og(null),
         'a' => $a,
+        // Vérifié à la LECTURE, pas à l'écriture : un décor archivé depuis
+        // la parution ne laisse pas une carte qui mène à une page morte.
+        'decor' => decor_lie($a),
+        'lien_article' => base_url() . '/index.php?p=blog&a=' . rawurlencode((string) $a['slug']),
         'autres' => array_slice(array_filter(
             articles_publies(4),
             fn(array $x) => $x['id'] !== $a['id']

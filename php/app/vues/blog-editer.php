@@ -87,6 +87,43 @@ $etats = [
     </div>
 
     <div class="carte" style="margin-top:16px">
+      <h3 style="margin:0 0 4px">Le décor dont parle l’article <span style="font-weight:400">(facultatif)</span></h3>
+      <p class="aide" style="margin:0 0 14px">Il apparaît en bas de l’article, avec un bouton
+      pour faire son badge. Un récit de soirée qui ne mène nulle part est une belle page ;
+      le même récit qui mène au décor est une campagne.</p>
+
+      <?php
+      /**
+       * Le décor lié n'est PAS une image de plus : c'est un lien vivant.
+       *
+       * La carte est reconstruite à chaque lecture depuis le décor
+       * lui-même. Un décor archivé six mois après la parution ne laisse
+       * donc pas dans l'article une carte qui mène à une page morte — elle
+       * disparaît, l'article reste.
+       */
+      ?>
+      <div class="champ">
+        <label for="a-decor">Le décor</label>
+        <select id="a-decor" name="decor_id">
+          <option value="">— Aucun —</option>
+          <?php foreach ($liables as $d): ?>
+            <option value="<?= e((string) $d['id']) ?>" <?= $valeurs['decor_id'] === $d['id'] ? 'selected' : '' ?>>
+              <?= e((string) $d['titre']) ?><?= $d['ville'] ? ' · ' . e(ucfirst((string) $d['ville'])) : '' ?><?=
+                $d['statut'] === 'publie' ? '' : ' (' . e($d['statut']) . ')' ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <?php if (!$liables): ?>
+          <p class="aide">Vous n’avez encore aucun décor, et aucun n’est publié.
+          <a href="<?= e(url('?p=nouveau')) ?>">En créer un</a>.</p>
+        <?php else: ?>
+          <p class="aide">Un décor pas encore publié peut être choisi : la carte n’apparaîtra
+          au lecteur qu’une fois le décor en ligne.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="carte" style="margin-top:16px">
       <div class="rangee" style="justify-content:space-between;align-items:baseline;margin:0 0 12px">
         <h3 style="margin:0">Le texte</h3>
         <?php

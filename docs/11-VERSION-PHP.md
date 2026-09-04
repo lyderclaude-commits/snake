@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **521 scénarios, 521 réussis**
+Les deux ont été vérifiés de bout en bout : **547 scénarios, 547 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 521 scénarios, dans un vrai navigateur
+npm run php:e2e          # 547 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push, éditeur, TOTP, carnet
 ```
 
@@ -126,7 +126,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 521 scénarios
+### Les 547 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -175,6 +175,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **L’historique des notifications** | Chaque envoi laisse une ligne datée avec son segment, ses abonnements visés, les **personnes** touchées et les **remises** — deux nombres distincts ; l’historique d’un organisateur ne contient pas celui du guide |
+| **L’article et son décor** | Le décor cité apparaît dans l’article publié avec un bouton vers lui, et **remplace** l’invitation générique ; rouvrir l’article ne le détache pas ; un identifiant trafiqué est ignoré sans casser l’article ; un décor **archivé après la parution** retire sa carte et laisse le texte intact |
+| **Le partage d’un article** | Six boutons, l’adresse de l’article correctement encodée, `rel="noopener"` sur les liens sortants, **aucun script de réseau social** chargé, et rien du tout sur un brouillon |
 | **Les prérogatives d’un éditeur** | Les 87 routes d’`index.php` balayées avec sa session : il n’en atteint que 17, toutes légitimes ; ni régie, ni push, ni documentation d’API ; un **scanner** ne peut pas se fabriquer de clé ; les raccourcis de son tableau de bord ne mènent nulle part d’interdit ; on ne lui demande pas la permission des notifications, et l’organisateur comme l’équipe gardent la leur |
 | **Le lien de confirmation** | Ouvert deux fois — d’abord par un filtre de messagerie, puis par la personne : le second appel annonce une **réussite**, pas une panne ; un lien inventé propose une sortie au lieu d’un mur ; le jeton d’un **mot de passe**, lui, ne sert toujours qu’une fois |
 | **Les deux familles de comptes** | Deux formulaires séparés, aucune offre pour l’équipe **ni pour un participant** même en postant `formule=mouvement` à la main, un « OK » sans changement qui n’écrit ni n’envoie rien, le lien de confirmation qui part à la création et se renvoie depuis l’écran de l’équipe, et le courriel qui parle de **rôle** à un équipier et d’**offre** à un client — vérifié sur un vrai serveur SMTP, objets décodés |
@@ -1531,6 +1533,70 @@ lui-même n'a plus besoin d'attendre qu'on ait le temps.
 **Trois articles sont installés** avec le contenu de démonstration : deux
 publiés, un en attente de relecture signé de l'organisatrice fictive — pour que
 la file de relecture montre à quoi elle sert dès l'installation.
+
+---
+
+## Un article mène à son décor, et se partage
+
+Un récit de soirée qui ne mène nulle part est une belle page ; le même récit
+qui mène au décor est une campagne. Un article peut donc **citer un décor**,
+facultativement, dans un simple déroulant sous le texte.
+
+### Le lien est vivant, pas une image recopiée
+
+La carte est reconstruite **à chaque lecture** depuis le décor lui-même. Deux
+conséquences, et ce sont les deux qui comptent :
+
+- On peut écrire l'article **avant** que le décor soit en ligne. La carte
+  n'apparaîtra au lecteur qu'une fois le décor publié — les deux paraissent
+  ensemble.
+- Un décor **archivé six mois après** la parution ne laisse pas dans l'article
+  un bouton qui mène à une page morte : la carte disparaît, l'article reste
+  intact.
+
+La carte **remplace** l'invitation générique au lieu de s'y ajouter : deux
+appels à l'action l'un sous l'autre se neutralisent, et le lecteur qui vient de
+lire le récit d'une soirée ne veut pas « voir les décors », il veut celui-là.
+
+| | |
+|---|---|
+| Décors citables | Les siens (quel que soit leur état) **d'abord**, puis les publiés |
+| Plafond | 60 — un déroulant de quatre cents lignes n'est pas une liste, c'est un mur |
+| Citer le brouillon d'un autre | Refusé : cela en révélerait le titre avant l'heure |
+| Un identifiant trafiqué | Traité comme « aucun décor », pas comme une erreur — on ne fait pas recommencer un article pour un champ facultatif |
+| Rouvrir l'article | Garde son décor, même si celui-ci est sorti de la liste depuis |
+
+### Le partage, sans mouchard
+
+Six boutons en bas de chaque article **publié** — WhatsApp d'abord, et ce n'est
+pas un détail : c'est là que se partage réellement une soirée à Lomé, Cotonou ou
+Abidjan. Puis Facebook, X, Telegram, l'e-mail, et « copier le lien ». Le bouton
+**« Partager… »** du téléphone n'apparaît que si le navigateur sait ouvrir le
+menu du système, qui connaît les applications installées mieux que nous.
+
+> **Aucun script tiers n'est chargé.** Les boutons officiels des réseaux pistent
+> chaque lecteur d'une page où ils figurent, qu'on clique ou non, et ils
+> ralentissent l'affichage sur une connexion lente. Une adresse `https://` fait
+> exactement le même travail. La recette le vérifie : elle liste les scripts de
+> la page et refuse d'y trouver un domaine de réseau social.
+
+Un **brouillon** ne propose pas de se partager : il n'est visible que de son
+auteur et de la rédaction.
+
+### Chaque carte d'article porte une image
+
+Trois sources, dans cet ordre : sa **couverture**, à défaut le **cadre du décor
+qu'il cite**, à défaut la **vignette de la maison**. Une carte sans image au
+milieu de deux qui en ont ne se lit pas comme « cet article n'a pas d'image »
+mais comme « cette carte est cassée ».
+
+> Au passage, un défaut ancien : `aspect-ratio` **ne s'applique que si l'une des
+> deux dimensions reste libre**. Les attributs `width` et `height` de la balise
+> fixaient une hauteur définie, et le rapport 16/9 était donc ignoré — une carte
+> avec image gardait les proportions du fichier à côté d'une carte qui, elle,
+> respectait le rapport. La grille était de travers pour une raison qu'on ne
+> voit pas en lisant la feuille de style. `height:auto` la remet d'aplomb, ici
+> et au catalogue des décors.
 
 ---
 

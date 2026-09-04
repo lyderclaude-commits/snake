@@ -119,7 +119,31 @@ if ($page === 'blog-editer') {
         'chapo' => $a['chapo'] ?? '',
         'corps' => $a['corps'] ?? '',
         'couverture' => $a['couverture'] ?? '',
+        'decor_id' => $a['decor_id'] ?? '',
     ];
+    // L'auteur d'un article repris par la rédaction reste celui qui décide
+    // de ce qu'il peut citer : la liste est la SIENNE, pas celle du relecteur.
+    $liables = decors_liables($a && $a['auteur_id']
+        ? (utilisateur_par_id((string) $a['auteur_id']) ?? $u)
+        : $u);
+
+    /**
+     * Le décor DÉJÀ lié reste dans la liste, même s'il en sort par le
+     * plafond ou par l'archivage.
+     *
+     * Sans cette ligne, rouvrir un vieil article pour corriger une virgule
+     * détacherait son décor en silence : le déroulant retomberait sur
+     * « Aucun », et l'enregistrement suivant l'écrirait pour de bon. C'est
+     * la même famille de perte que la couverture effacée à chaque
+     * enregistrement — invisible le jour même, découverte des mois après.
+     */
+    if (($valeurs['decor_id'] ?? '') !== ''
+        && !in_array($valeurs['decor_id'], array_column($liables, 'id'), true)) {
+        $deja = decor_par_id((string) $valeurs['decor_id']);
+        if ($deja) {
+            array_unshift($liables, $deja);
+        }
+    }
 
     /**
      * Un article en relecture ne se modifie plus sous le nez du relecteur.
@@ -163,6 +187,24 @@ if ($page === 'blog-editer') {
          * liens en silence — et c'est le genre de perte qu'on ne remarque
          * que six mois plus tard, dans les statistiques.
          */
+        /**
+         * Le décor cité, confronté à la liste des décors citables.
+         *
+         * Une liste déroulante n'est pas une autorisation : un formulaire
+         * trafiqué qui poste l'identifiant du brouillon d'un autre en
+         * révélerait le titre avant l'heure. Un identifiant hors liste est
+         * traité comme « aucun décor », pas comme une erreur — on ne fait
+         * pas recommencer un article pour un champ facultatif.
+         */
+        $decor_voulu = trim((string) ($_POST['decor_id'] ?? ''));
+        $valeurs['decor_id'] = '';
+        foreach ($liables as $d) {
+            if ((string) $d['id'] === $decor_voulu) {
+                $valeurs['decor_id'] = $decor_voulu;
+                break;
+            }
+        }
+
         $slug_saisi = trim((string) ($_POST['slug'] ?? ''));
         $valeurs['slug'] = $a && $a['statut'] === 'publie'
             ? $a['slug']
@@ -248,6 +290,7 @@ if ($page === 'blog-editer') {
         'valeurs' => $valeurs,
         'existant' => $a,
         'equipe' => $equipe,
+        'liables' => $liables,
         'erreur' => $erreur,
     ]);
 }

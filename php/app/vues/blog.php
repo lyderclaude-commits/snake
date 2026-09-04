@@ -43,13 +43,17 @@
     <div class="grille g3">
       <?php foreach ($liste as $a): ?>
         <a class="vignette article" href="<?= e(url('?p=blog&a=' . urlencode($a['slug']))) ?>">
-          <?php if ($a['couverture']):
-              $_im = image_reduite($a['couverture'], 320); ?>
-            <img src="<?= e($_im['src']) ?>"
-                 <?= $_im['srcset'] ? 'srcset="' . e($_im['srcset']) . '" sizes="(max-width:700px) 92vw, 320px"' : '' ?>
-                 <?= $_im['largeur'] ? 'width="' . $_im['largeur'] . '" height="' . $_im['hauteur'] . '"' : '' ?>
-                 alt="" loading="lazy" decoding="async">
-          <?php endif; ?>
+          <?php
+          /* Toujours une image : sa couverture, à défaut le cadre du décor
+             qu'il cite, à défaut la vignette de la maison. Une carte sans
+             image au milieu de deux qui en ont ne se lit pas comme « pas
+             d'image » mais comme « carte cassée ». */
+          $_im = image_reduite(illustration_article($a), 320);
+          ?>
+          <img src="<?= e($_im['src']) ?>"
+               <?= $_im['srcset'] ? 'srcset="' . e($_im['srcset']) . '" sizes="(max-width:700px) 92vw, 320px"' : '' ?>
+               <?= $_im['largeur'] ? 'width="' . $_im['largeur'] . '" height="' . $_im['hauteur'] . '"' : '' ?>
+               alt="" loading="lazy" decoding="async">
           <div class="bas">
             <b><?= e($a['titre']) ?></b>
             <span><?= e(gmdate('d/m/Y', strtotime((string) $a['publie_le']))) ?>

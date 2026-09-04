@@ -335,7 +335,13 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 #toile:active{cursor:grabbing}
 
 .vignette{display:block;background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);overflow:hidden;text-decoration:none;color:inherit;box-shadow:var(--ombre)}
-.vignette img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--bg2)}
+/* `height:auto` n'est pas décoratif : sans lui, l'attribut `height` de la
+   balise fixe une hauteur DÉFINIE, et `aspect-ratio` est alors ignoré —
+   la règle ne s'applique que si l'une des deux dimensions reste libre.
+   Une carte avec image gardait donc les proportions du fichier, à côté
+   d'une carte sans image qui, elle, respectait le rapport. La grille était
+   de travers pour une raison qu'on ne voit pas en lisant la feuille. */
+.vignette img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;display:block;background:var(--bg2)}
 .vignette .bas{padding:12px 14px}
 .vignette b{display:block;font-family:var(--display);font-size:.95rem;font-weight:700}
 .vignette span{display:block;font-size:.82rem;color:var(--text3);margin-top:2px}
@@ -1210,3 +1216,51 @@ tr.pale td a{color:inherit}
    risque : rouge plein, il attirerait le clic qu'il cherche à retenir. */
 .bouton.fant.danger{background:var(--paper);color:var(--rouge);border-color:#F3C2C2}
 .bouton.fant.danger:hover{border-color:var(--rouge);color:var(--rouge);background:#FEF2F2}
+
+/* ------------------------------------------------------------------ */
+/* Le décor cité par un article, et le partage                         */
+/* ------------------------------------------------------------------ */
+
+/* La carte du décor n'est pas une carte comme les autres : elle porte
+   l'image du cadre, qui est verticale. En colonne sur téléphone, côte à
+   côte dès qu'il y a la place — une image verticale posée en pleine
+   largeur pousserait le bouton hors de l'écran. */
+.decor-lie{
+  display:grid;grid-template-columns:minmax(0,220px) 1fr;gap:20px;align-items:center;
+  margin:30px 0 0;padding:18px;border:1px solid var(--border);border-radius:var(--r16);
+  background:linear-gradient(180deg,var(--primary-wash),var(--paper) 65%);
+}
+@media(max-width:660px){.decor-lie{grid-template-columns:1fr;gap:14px}}
+.decor-lie-image{display:block;line-height:0;border-radius:var(--r10);overflow:hidden;box-shadow:var(--ombre)}
+.decor-lie-image img{width:100%;height:auto;display:block}
+.decor-lie-sur{
+  margin:0 0 2px;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;
+  font-weight:800;color:var(--primary-d);
+}
+.decor-lie-texte h3{margin:0 0 4px;font-size:1.35rem;line-height:1.15}
+.decor-lie-texte .aide{margin:0}
+
+/* Le partage : des liens qui ressemblent à des boutons, jamais les vrais
+   boutons officiels — ceux-là pistent chaque lecteur de la page, qu'on
+   clique ou non, et pèsent sur une connexion lente. */
+.partage{margin:34px 0 0;padding-top:22px;border-top:1px solid var(--border)}
+.partage h2{font-size:1rem;margin:0 0 12px;color:var(--text2)}
+.partage-liens{display:flex;flex-wrap:wrap;gap:8px}
+.partage-lien{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;
+  border:1px solid var(--border);background:var(--paper);color:var(--ink);
+  font:inherit;font-size:.87rem;font-weight:700;text-decoration:none;cursor:pointer;
+  transition:border-color .12s,color .12s,background .12s;
+}
+.partage-lien:hover{border-color:var(--primary);color:var(--primary-d);background:var(--primary-wash)}
+/* Une pastille de la couleur du service : elle se reconnaît de loin, sans
+   charger la moindre icône depuis un serveur tiers. */
+.partage-lien::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--text3)}
+.partage-lien.wa::before{background:#25D366}
+.partage-lien.fb::before{background:#1877F2}
+.partage-lien.x::before{background:#0F172A}
+.partage-lien.tg::before{background:#2AABEE}
+.partage-lien.ml::before{background:var(--orange)}
+.partage-lien.copie::before,.partage-lien.natif::before{background:var(--primary)}
+.partage-lien.fait{border-color:#6EE7B7;background:#ECFDF5;color:#065F46}
+.partage-lien.fait::before{background:#059669}

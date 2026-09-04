@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 function assurer_schema(): void
 {
@@ -96,6 +96,8 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         // v12 — le carnet d'adresses : une campagne « liste » désigne
         // désormais une liste enregistrée, au lieu de porter son collage.
         "ALTER TABLE campagnes_email ADD COLUMN liste_id $id NULL",
+        // v15 — un article peut renvoyer vers le décor dont il parle.
+        "ALTER TABLE articles ADD COLUMN decor_id $id NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -592,6 +594,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
             chapo      $txt NULL,
             corps      $txt NOT NULL,
             couverture $court NULL,
+            decor_id   $id NULL,
             statut     $court NOT NULL DEFAULT 'brouillon',
             auteur_id  $id NULL,
             auteur_nom $court NULL,
