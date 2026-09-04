@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **583 scénarios, 583 réussis**
+Les deux ont été vérifiés de bout en bout : **613 scénarios, 613 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 583 scénarios, dans un vrai navigateur
+npm run php:e2e          # 613 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 583 scénarios
+### Les 613 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -198,6 +198,8 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
 | **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
 | **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
+| **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
+| **La vitrine, et elle seule** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; le pied de page du guide n'apparaît que sur la vitrine, avec ses quatre réseaux **dessinés sur place** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -810,6 +812,48 @@ ceux qui n'ont aucune trace visible :
 - chaque titre est unique d'une page à l'autre ;
 - les adresses du plan mènent à des pages **vivantes** ;
 - les écrans privés renvoient le robot au lieu de lui servir une page.
+
+---
+
+## Un lien déjà partagé ne devient jamais muet
+
+Une adresse de décor n'est pas une page parmi d'autres : c'est **tout ce
+qu'on lui demande de faire**. Elle part dans les groupes WhatsApp, dans les
+bios Instagram, dans les messages qu'on renvoie. Elle a une vie propre, plus
+longue que la campagne.
+
+Un décor archivé répondait 404. Les messageries n'affichent **aucun aperçu**
+pour un 404 — ni image, ni titre, ni accroche. Le jour où un organisateur
+rangeait une campagne finie, tous les liens qu'il avait envoyés devenaient
+des lignes grises, d'un coup, pour tout le monde, sans que rien ne l'en
+avertisse.
+
+Archivé, un décor répond désormais **200** : sa vignette, son titre, et une
+page qui dit franchement que la campagne est terminée, avec le chemin vers
+les décors du moment. Un `noindex` le tient hors des résultats de recherche —
+répondre encore n'est pas vouloir être trouvé : la page sert les liens
+d'hier, pas la concurrence des campagnes d'aujourd'hui.
+
+Un décor **jamais publié** reste un 404, lui : son adresse n'a rien promis à
+personne, et une page d'attente y serait une fuite.
+
+### Éprouver un lien soi-même
+
+Dans **Système → Référencement**, un champ prend l'adresse d'un article,
+d'un décor ou de n'importe quelle page du site, et rend le verdict que
+personne ne peut lire à l'écran :
+
+- la page se déclare-t-elle canonique vers **elle-même** — ou vers une autre,
+  auquel cas c'est l'aperçu de celle-là qui s'affichera ;
+- son titre et son accroche sont-ils là, et l'accroche est-elle assez longue ;
+- l'image annoncée se **télécharge**-t-elle vraiment, et quelles sont ses
+  dimensions **réelles** ;
+- et si la page répond 404, il le dit en premier, parce que tout le reste
+  devient sans objet.
+
+L'épreuve se fait **dans le navigateur**, pas sur le serveur : un hébergement
+mutualisé qui ne sert qu'une requête à la fois s'attendrait lui-même, et la
+page se figerait jusqu'au délai d'attente.
 
 ---
 

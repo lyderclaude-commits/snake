@@ -53,6 +53,26 @@ $v = $valeurs;
     </p>
   </div>
 
+  <!-- ---------- éprouver un lien précis ---------- -->
+  <div class="carte" style="margin-bottom:16px">
+    <h3 style="margin:0 0 4px">Éprouver un lien</h3>
+    <p class="aide" style="margin:0 0 14px">Collez l’adresse d’un article, d’un décor ou de
+    n’importe quelle page de ce site. On la lit <strong>comme le ferait WhatsApp</strong> :
+    sans votre session, dans le HTML, et l’image est réellement téléchargée.</p>
+
+    <div class="champ">
+      <label for="t-url">Adresse à éprouver</label>
+      <div class="rangee" style="gap:8px;align-items:stretch">
+        <input id="t-url" type="url" placeholder="<?= e(base_url()) ?>/index.php?p=decor&amp;slug=…"
+               style="flex:1" autocomplete="off">
+        <button class="bouton" id="t-go" type="button">Éprouver</button>
+      </div>
+      <p class="aide">Seules les adresses de ce site sont acceptées.</p>
+    </div>
+
+    <div id="t-sortie" hidden style="margin-top:16px"></div>
+  </div>
+
   <!-- ---------- ce que les moteurs vont chercher ---------- -->
   <div class="carte" style="margin-bottom:16px">
     <h3 style="margin:0 0 4px">Les deux fichiers que cherchent les moteurs</h3>
@@ -210,3 +230,144 @@ $v = $valeurs;
     </div>
   </form>
 </div>
+
+<script>
+/**
+ * L'épreuve d'un lien, faite DANS LE NAVIGATEUR et non sur le serveur.
+ *
+ * Le serveur ne peut pas s'interroger lui-même : sur un hébergement
+ * mutualisé qui ne sert qu'une requête à la fois, il s'attendrait
+ * lui-même et la page se figerait jusqu'au délai d'attente. Le
+ * navigateur, lui, a déjà une connexion ouverte et n'a rien à attendre.
+ *
+ * C'est aussi la fidélité qui compte : on lit le HTML tel qu'il arrive,
+ * et l'image est vraiment téléchargée puis mesurée — pas crue sur parole.
+ */
+(function () {
+  var champ = document.getElementById('t-url');
+  var bouton = document.getElementById('t-go');
+  var sortie = document.getElementById('t-sortie');
+  if (!champ || !bouton || !sortie) { return; }
+
+  var BASE = <?= json_encode(base_url(), JSON_UNESCAPED_SLASHES) ?>;
+  var MIN = <?= SEO_IMAGE_MIN ?>;
+
+  function ligne(etat, texte) {
+    var p = document.createElement('p');
+    p.className = 'aide';
+    p.style.margin = '0 0 6px';
+    p.style.color = etat === 'mal' ? 'var(--rouge, #B91C1C)'
+                  : etat === 'moyen' ? 'var(--orange, #C2410C)' : 'var(--text2)';
+    p.textContent = (etat === 'bien' ? '✓ ' : etat === 'moyen' ? '! ' : '✗ ') + texte;
+    return p;
+  }
+
+  function meta(doc, cle) {
+    var b = doc.querySelector('meta[property="' + cle + '"], meta[name="' + cle + '"]');
+    return b ? (b.getAttribute('content') || '') : '';
+  }
+
+  /** Les dimensions réelles, mesurées en chargeant l'image. */
+  function mesurer(url) {
+    return new Promise(function (res) {
+      var i = new Image();
+      i.onload = function () { res({ l: i.naturalWidth, h: i.naturalHeight }); };
+      i.onerror = function () { res(null); };
+      i.src = url;
+    });
+  }
+
+  bouton.addEventListener('click', function () {
+    var url = (champ.value || '').trim();
+    sortie.hidden = false;
+    sortie.textContent = '';
+
+    if (url.indexOf(BASE) !== 0) {
+      sortie.appendChild(ligne('mal', 'Cette adresse n’appartient pas à ce site. Elle doit '
+        + 'commencer par ' + BASE));
+      return;
+    }
+
+    sortie.appendChild(ligne('neutre', 'Lecture en cours…'));
+
+    fetch(url, { credentials: 'omit', redirect: 'follow' }).then(function (r) {
+      return r.text().then(function (t) { return { statut: r.status, html: t, fin: r.url }; });
+    }).then(function (rep) {
+      sortie.textContent = '';
+      var doc = new DOMParser().parseFromString(rep.html, 'text/html');
+      var titre = meta(doc, 'og:title') || (doc.querySelector('title') || {}).textContent || '';
+      var desc = meta(doc, 'og:description');
+      var img = meta(doc, 'og:image');
+      var canon = (doc.querySelector('link[rel=canonical]') || { getAttribute: function () { return ''; } })
+        .getAttribute('href') || '';
+
+      /**
+       * Le verdict d'abord, le détail ensuite. Une page qui répond 404 ne
+       * montre AUCUN aperçu — ni image, ni titre, ni accroche : c'est le
+       * cas qu'il faut nommer en premier, parce que tout le reste devient
+       * sans objet.
+       */
+      if (rep.statut >= 400) {
+        sortie.appendChild(ligne('mal', 'La page répond ' + rep.statut + '. Aucun aperçu ne '
+          + 's’affichera — ni image, ni titre, ni accroche. C’est le cas d’un décor jamais '
+          + 'publié, ou d’une adresse qui a changé.'));
+        return;
+      }
+
+      if (canon && canon.replace(/&amp;/g, '&') !== rep.fin.replace(/&amp;/g, '&')) {
+        sortie.appendChild(ligne('mal', 'Cette page se déclare canonique vers une AUTRE '
+          + 'adresse : ' + canon + '. C’est l’aperçu de celle-là qui s’affichera, pas le sien.'));
+      } else if (canon) {
+        sortie.appendChild(ligne('bien', 'Elle se déclare canonique vers elle-même.'));
+      } else {
+        sortie.appendChild(ligne('moyen', 'Elle n’annonce pas d’adresse canonique.'));
+      }
+
+      sortie.appendChild(ligne(titre ? 'bien' : 'mal',
+        titre ? 'Titre : ' + titre : 'Aucun titre de partage.'));
+      sortie.appendChild(ligne(desc.length >= 50 ? 'bien' : desc ? 'moyen' : 'mal',
+        desc ? 'Accroche (' + desc.length + ' car.) : ' + desc
+             : 'Aucune accroche de partage.'));
+
+      if (!img) {
+        sortie.appendChild(ligne('mal', 'Aucune image annoncée : la vignette restera vide.'));
+        return;
+      }
+
+      mesurer(img).then(function (d) {
+        if (!d) {
+          sortie.appendChild(ligne('mal', 'L’image annoncée ne se télécharge pas : ' + img
+            + '. La vignette restera vide, et la messagerie gardera ce vide en cache.'));
+          return;
+        }
+        sortie.appendChild(ligne(d.l >= MIN ? 'bien' : 'moyen',
+          'Image téléchargée, ' + d.l + ' × ' + d.h + ' px'
+          + (d.l >= MIN ? '.' : ' — en dessous de ' + MIN + ' px, la vignette est réduite '
+            + 'à un timbre-poste.')));
+
+        var carte = document.createElement('div');
+        carte.className = 'apercu-partage';
+        carte.style.marginTop = '12px';
+        var vi = document.createElement('img');
+        vi.src = img; vi.alt = '';
+        var tx = document.createElement('div');
+        tx.className = 'apercu-texte';
+        var b = document.createElement('b'); b.textContent = titre;
+        var s1 = document.createElement('span'); s1.textContent = desc;
+        var s2 = document.createElement('span'); s2.className = 'apercu-hote';
+        s2.textContent = location.host;
+        tx.appendChild(b); tx.appendChild(s1); tx.appendChild(s2);
+        carte.appendChild(vi); carte.appendChild(tx);
+        sortie.appendChild(carte);
+      });
+    }).catch(function (e) {
+      sortie.textContent = '';
+      sortie.appendChild(ligne('mal', 'La page n’a pas pu être lue : ' + e.message));
+    });
+  });
+
+  champ.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); bouton.click(); }
+  });
+})();
+</script>

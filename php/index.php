@@ -288,9 +288,48 @@ switch ($page) {
 
     case 'decor':
         $d = decor_par_slug((string) ($_GET['slug'] ?? ''));
+
+        /**
+         * Une campagne terminée garde sa page. C'est la règle entière.
+         *
+         * Un décor archivé répondait 404. Or son adresse a CIRCULÉ — c'est
+         * même tout ce qu'on lui demandait de faire : elle est dans les
+         * groupes WhatsApp, dans les bios Instagram, dans les messages
+         * qu'on renvoie. Un 404 ne prive pas seulement de la page : les
+         * messageries n'affichent AUCUN aperçu pour un 404, si bien que
+         * chaque lien déjà partagé devient une ligne grise sans image, sans
+         * titre, sans accroche — le jour où l'organisateur archive, et sans
+         * que rien ne l'en avertisse.
+         *
+         * Archivé, le décor répond donc 200 avec sa vignette et son titre,
+         * et dit franchement que la campagne est terminée. `noindex` le
+         * tient hors des moteurs : il n'a plus à être trouvé, seulement à
+         * rester lisible pour qui arrive par un lien d'hier.
+         *
+         * Un décor qui n'a JAMAIS été publié, lui, reste un 404 : son
+         * adresse n'a jamais rien promis à personne.
+         */
+        if ($d && in_array($d['statut'], ['archive', 'expire'], true)) {
+            $_fcan = url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]);
+            vue('decor-termine', [
+                'titre' => $d['titre'] . ' — campagne terminée',
+                'description' => seo_description(
+                    (string) $d['sous_titre'],
+                    (string) $d['titre'],
+                    'Cette campagne est terminée. Retrouvez les décors du moment sur '
+                        . seo_reglage('seo_nom_site') . '.'
+                ),
+                'og_titre' => $d['titre'],
+                'og_image' => url_og($d),
+                'canonique' => $_fcan,
+                'indexable' => false,
+                'd' => $d,
+            ]);
+        }
+
         if (!$d || $d['statut'] !== 'publie') {
             http_response_code(404);
-            vue('introuvable', ['titre' => 'Décor introuvable']);
+            vue('introuvable', ['titre' => 'Décor introuvable', 'indexable' => false]);
         }
         $g = json_lire($d['gabarit']);
         // Le gabarit doit rester valide : sinon le Studio dessinerait faux.

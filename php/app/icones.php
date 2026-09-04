@@ -81,3 +81,35 @@ function logo_wakabi(string $classe = 'logo'): string
         ? '<span class="' . e($classe) . '-texte">WAKABI</span>'
         : '<img class="' . e($classe) . '" src="' . e($f['url']) . '" alt="Wakabi Boost">';
 }
+
+/**
+ * Les réseaux du guide, dessinés ici plutôt que chargés d'ailleurs.
+ *
+ * Le pied de page du site principal va chercher quatre PNG sur un
+ * sous-domaine WordPress. Les recopier ici lierait ce paquet à un serveur
+ * qu'il ne contrôle pas : le jour où ce sous-domaine bouge, quatre carrés
+ * vides apparaissent dans le pied de page de toutes les installations.
+ * Un tracé vectoriel ne pèse rien, ne se charge pas, et suit la couleur
+ * du texte.
+ */
+const RESEAUX_WAKABI = [
+    'facebook'  => ['Facebook',  'https://www.facebook.com/wakabileguide'],
+    'instagram' => ['Instagram', 'https://www.instagram.com/wakabileguide'],
+    'tiktok'    => ['TikTok',    'https://www.tiktok.com/@wakabileguide'],
+    'youtube'   => ['YouTube',   'https://www.youtube.com/@WakabiLeGuideDesBonsCoins'],
+];
+
+function icone_reseau(string $nom): string
+{
+    $d = match ($nom) {
+        'facebook' => 'M14 8.5h2V6h-2c-1.9 0-3.5 1.6-3.5 3.5V11H8.5v2.5h2V20H13v-6.5h2.2l.3-2.5H13V9.5c0-.55.45-1 1-1z',
+        'instagram' => 'M8.5 3.5h7A5 5 0 0 1 20.5 8.5v7a5 5 0 0 1-5 5h-7a5 5 0 0 1-5-5v-7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h7a3 3 0 0 0 3-3v-7a3 3 0 0 0-3-3h-7zM12 7.75A4.25 4.25 0 1 1 7.75 12 4.25 4.25 0 0 1 12 7.75zm0 2A2.25 2.25 0 1 0 14.25 12 2.25 2.25 0 0 0 12 9.75zM16.8 6.6a1.1 1.1 0 1 1-1.1 1.1 1.1 1.1 0 0 1 1.1-1.1z',
+        'tiktok' => 'M14.5 3h2.2a4.6 4.6 0 0 0 3.8 3.9v2.2a6.9 6.9 0 0 1-3.8-1.3v6.4a5.2 5.2 0 1 1-5.2-5.2c.24 0 .47.02.7.05v2.3a2.9 2.9 0 1 0 2.3 2.85z',
+        'youtube' => 'M21.3 8.1a2.4 2.4 0 0 0-1.7-1.7C18.1 6 12 6 12 6s-6.1 0-7.6.4A2.4 2.4 0 0 0 2.7 8.1 25 25 0 0 0 2.3 12a25 25 0 0 0 .4 3.9 2.4 2.4 0 0 0 1.7 1.7C5.9 18 12 18 12 18s6.1 0 7.6-.4a2.4 2.4 0 0 0 1.7-1.7 25 25 0 0 0 .4-3.9 25 25 0 0 0-.4-3.9zM10.2 14.4V9.6l4.1 2.4z',
+        default => '',
+    };
+    return $d === ''
+        ? ''
+        : '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">'
+          . '<path fill="currentColor" d="' . $d . '"/></svg>';
+}

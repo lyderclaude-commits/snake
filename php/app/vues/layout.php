@@ -29,7 +29,15 @@ $_ogt = $og_titre ?? ($titre ?? $_seo['seo_nom_site']);
 $_img = seo_image($og_image ?? null);
 $_ogu = $canonique ?? url_canonique();
 $_type = $og_type ?? 'website';
-$_index = seo_indexable($_page);
+/**
+ * Une page peut se retirer elle-même des moteurs.
+ *
+ * `seo_indexable()` raisonne par ROUTE ; certaines pages n'engagent
+ * qu'elles-mêmes — un décor archivé garde son aperçu de partage intact,
+ * mais n'a plus à figurer dans les résultats. La route, elle, reste
+ * indexable pour les décors en ligne.
+ */
+$_index = ($indexable ?? true) && seo_indexable($_page);
 ?>
 <meta name="description" content="<?= e($_desc) ?>">
 <link rel="canonical" href="<?= e($_ogu) ?>">
@@ -169,9 +177,21 @@ $_graphe = array_values(array_filter([
             ['?p=compte', 'Mon compte',  null],
             ['?p=profil', 'Mon profil',  null],
         ],
+        /**
+         * Le visiteur pas encore connecté, lui, voit d'abord les DEUX
+         * produits — le générateur de badges et le guide dont il est né.
+         * Un lien vers le guide ne dit pas seulement où aller : il dit à
+         * qui l'on a affaire, et c'est ce qui manque le plus à une
+         * vitrine que personne ne connaît encore.
+         *
+         * Les deux disparaissent à la connexion : le membre sait où il
+         * est, et son menu doit se remplir de ce qu'il vient y faire.
+         */
         default => [
-            ['?p=decors', 'Les décors', null],
-            ['?p=blog',   'Le blog',    null],
+            ['?p=accueil', 'Wakabi Boost',    null],
+            [GUIDE_URL,    'Wakabi le guide', null],
+            ['?p=decors',  'Les décors',      null],
+            ['?p=blog',    'Le blog',         null],
         ],
     };
 
@@ -221,9 +241,17 @@ $_graphe = array_values(array_filter([
         $p = substr($cible, 3);
         return $ici === $p || str_starts_with($ici, $p . '-');
     };
+    /**
+     * Une cible absolue s'en va telle quelle, et emporte les précautions
+     * qui vont avec : `rel` coupe l'accès à notre fenêtre depuis la sienne.
+     * Une cible relative, elle, passe par `url()` comme avant.
+     */
     $lien = function (string $cible, string $nom) use ($courante): string {
-        return '<a href="' . e(url($cible)) . '"' . ($courante($cible) ? ' aria-current="page"' : '') . '>'
-             . e($nom) . '</a>';
+        $externe = str_starts_with($cible, 'http://') || str_starts_with($cible, 'https://');
+        $href = $externe ? $cible : url($cible);
+        $marque = !$externe && $courante($cible) ? ' aria-current="page"' : '';
+        $sortie = $externe ? ' rel="noopener noreferrer"' : '';
+        return '<a href="' . e($href) . '"' . $marque . $sortie . '>' . e($nom) . '</a>';
     };
     ?>
 
@@ -284,6 +312,89 @@ $_graphe = array_values(array_filter([
 
 <main><?= $contenu ?></main>
 
+<?php
+/**
+ * Deux pieds de page, et un seul par écran.
+ *
+ * La VITRINE est la seule page qu'un inconnu ouvre. Elle doit dire qui
+ * édite ce service, où le trouver ailleurs, et à quoi il s'engage — c'est
+ * le pied de page du guide, celui que le reste de la maison porte déjà.
+ *
+ * Partout ailleurs on est CHEZ SOI, connecté, au travail : un pied de
+ * page à quatre colonnes de liens vers le site public n'y rendrait aucun
+ * service, et pousserait vers le bas l'écran qu'on est venu utiliser. La
+ * signature discrète suffit.
+ */
+$_vitrine = $_page === 'accueil';
+?>
+
+<?php if ($_vitrine): ?>
+<footer class="pied-guide">
+  <div class="contenu">
+    <div class="pg-grille">
+      <div>
+        <a href="<?= e(url('')) ?>" aria-label="Wakabi Boost, accueil"><?= logo_wakabi('logo pg-logo') ?></a>
+        <p class="pg-accroche">Le guide qui transforme chaque sortie en expérience
+        inoubliable. Explorez. Découvrez. Connectez.</p>
+        <div class="pg-reseaux">
+          <?php foreach (RESEAUX_WAKABI as $cle => [$nom, $adresse]): ?>
+            <a class="pg-soc" href="<?= e($adresse) ?>" target="_blank"
+               rel="noopener noreferrer" aria-label="<?= e($nom) ?>"><?= icone_reseau($cle) ?></a>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <?php
+      /**
+       * Les colonnes du guide. Elles sortent vers wakabileguide.com, sauf
+       * les deux qui vivent ICI — les décors et le blog de Boost.
+       */
+      $colonnes = [
+        'Produit' => [
+          ['Les décors',        url('?p=decors')],
+          ['Le blog',           url('?p=blog')],
+          ['L’application',     GUIDE_URL . '/application.html'],
+          ['Télécharger',       'https://play.google.com/store/apps/details?id=com.wakabi.wakabimobile'],
+        ],
+        'Partenaires' => [
+          ['Devenir partenaire', GUIDE_URL . '/partenaires.html'],
+          ['Créer un compte',    url('?p=inscription')],
+          ['Nos villes',         GUIDE_URL . '/villes.html'],
+          ['Partenariat',        GUIDE_URL . '/contact.html'],
+        ],
+        'Wakabi' => [
+          ['À propos',        GUIDE_URL . '/a-propos.html'],
+          ['Le guide',        GUIDE_URL . '/'],
+          ['Contact',         GUIDE_URL . '/contact.html'],
+          ['Confidentialité', GUIDE_URL . '/confidentialite.html'],
+          ['CGU',             GUIDE_URL . '/cgu.html'],
+        ],
+      ];
+      foreach ($colonnes as $titre => $entrees): ?>
+        <div class="pg-col">
+          <h4><?= e($titre) ?></h4>
+          <div class="pg-liens">
+            <?php foreach ($entrees as [$nom, $adresse]): ?>
+              <a href="<?= e($adresse) ?>"<?= str_starts_with($adresse, GUIDE_URL) || str_starts_with($adresse, 'https://play')
+                    ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= e($nom) ?></a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+
+    <div class="pg-bas">
+      <span class="pg-copy">© <?= date('Y') ?> Wakabileguide.com — Tous droits réservés.
+      Fait avec amour.</span>
+      <div class="pg-legal">
+        <a href="<?= e(GUIDE_URL) ?>/confidentialite.html" target="_blank" rel="noopener noreferrer">Politique de confidentialité</a>
+        <a href="<?= e(GUIDE_URL) ?>/cgu.html" target="_blank" rel="noopener noreferrer">CGU</a>
+        <span class="pg-version">v<?= e(VERSION) ?></span>
+      </div>
+    </div>
+  </div>
+</footer>
+<?php else: ?>
 <footer>
   <div class="contenu pied">
     <a href="<?= e(url('')) ?>" aria-label="Wakabi Boost, accueil"><?= logo_wakabi('logo pied-logo') ?></a>
@@ -291,6 +402,7 @@ $_graphe = array_values(array_filter([
     <span class="aide" style="margin-left:8px">v<?= e(VERSION) ?></span></span>
   </div>
 </footer>
+<?php endif; ?>
 
 <?php
 /**

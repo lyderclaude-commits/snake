@@ -4197,6 +4197,176 @@ const run = async () => {
   await robot.close();
   await pSEO.close();
 
+  console.log('\n━━ 42. Un lien de décor déjà partagé ne devient jamais muet ━━');
+
+  /**
+   * Le jour où l'on archive, tous les liens déjà envoyés changent d'état.
+   *
+   * Un décor archivé répondait 404. Les messageries n'affichent AUCUN
+   * aperçu pour un 404 : ni image, ni titre, ni accroche. Chaque lien
+   * posté dans un groupe WhatsApp devenait donc une ligne grise — le jour
+   * de l'archivage, pour tout le monde à la fois, et sans que rien ne
+   * prévienne l'organisateur qui venait de ranger sa campagne finie.
+   *
+   * Le décor archivé de la section 40 sert de sujet : il a été publié,
+   * partagé, puis rangé. C'est exactement le trajet qu'on éprouve.
+   */
+  const pFin = await browser.newContext();
+  const pF = await pFin.newPage();
+
+  const partage = async (url: string) => {
+    const r = await pF.goto(url, { waitUntil: 'domcontentloaded' });
+    const brut = await pF.evaluate(() => {
+      const s: Record<string, string> = {};
+      for (const b of Array.from(document.querySelectorAll('meta'))) {
+        const c = b.getAttribute('property') ?? b.getAttribute('name') ?? '';
+        if (c !== '' && !(c in s)) s[c] = b.getAttribute('content') ?? '';
+      }
+      s['#h1'] = document.querySelector('h1')?.textContent ?? '';
+      return s;
+    });
+    return {
+      statut: r?.status() ?? 0,
+      titre: brut['og:title'] ?? '', desc: brut['og:description'] ?? '',
+      image: brut['og:image'] ?? '', robots: brut['robots'] ?? '', h1: brut['#h1'],
+    };
+  };
+
+  const fini = await partage(`${BASE}/index.php?p=decor&slug=soiree-liee-${marque}`);
+  ok('un décor archivé RÉPOND encore — 404 tuerait tout aperçu',
+     fini.statut === 200, `HTTP ${fini.statut}`);
+  ok('il garde son propre titre, pas « introuvable »',
+     fini.titre.includes(DECOR_ART), fini.titre);
+  ok('il garde une accroche digne de ce nom', fini.desc.length >= 50,
+     `${fini.desc.length} car. — ${fini.desc.slice(0, 60)}`);
+  ok('et il dit franchement que la campagne est finie',
+     /terminée/i.test(fini.desc) || /terminée/i.test(await pF.locator('main').innerText()));
+  ok('sa vignette se télécharge toujours',
+     (await pF.request.get(fini.image)).status() === 200, fini.image.slice(-40));
+  /**
+   * Répondre 200 ne veut pas dire vouloir être trouvé : la page sert les
+   * liens d'hier, elle n'a pas à concurrencer les campagnes d'aujourd'hui
+   * dans les résultats de recherche.
+   */
+  ok('mais il se retire des moteurs', fini.robots.includes('noindex'), fini.robots);
+  ok('et il ne propose plus de fabriquer un badge',
+     (await pF.locator('#toile').count()) === 0);
+  ok('il renvoie vers les décors du moment',
+     (await pF.locator('a[href*="p=decors"]').count()) >= 1);
+
+  /**
+   * Un décor JAMAIS publié, lui, reste un 404 : son adresse n'a rien
+   * promis à personne, et une page d'attente y serait une fuite.
+   */
+  const jamais = await partage(`${BASE}/index.php?p=decor&slug=decor-qui-nexiste-pas-${marque}`);
+  ok('une adresse qui n’a jamais existé reste un 404', jamais.statut === 404,
+     `HTTP ${jamais.statut}`);
+  ok('et elle ne s’offre pas aux moteurs', jamais.robots.includes('noindex'));
+
+  /* --- l'outil qui permet d'éprouver un lien soi-même --- */
+  /**
+   * Cette page n'est PAS surveillée, et c'est voulu : l'outil qu'on y
+   * éprouve va justement chercher une adresse morte, et le navigateur
+   * journalise ce 404 comme il le doit. Le surveiller ferait échouer la
+   * recette sur le comportement même qu'elle vient vérifier.
+   */
+  const pDiag = await browser.newPage();
+  await connexion(pDiag, ADMIN.email, ADMIN.mdp);
+  await pDiag.goto(`${BASE}/index.php?p=reglages-seo`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de référencement propose d’éprouver un lien',
+     (await pDiag.locator('#t-url').count()) === 1);
+  await pDiag.fill('#t-url', `${BASE}/index.php?p=decor&slug=jy-serai`);
+  await pDiag.click('#t-go');
+  await pDiag.waitForSelector('#t-sortie .apercu-partage', { timeout: 20_000 });
+  const diagnostic = await pDiag.locator('#t-sortie').innerText();
+  ok('il rend un diagnostic sur la canonique', /canonique vers elle-même/i.test(diagnostic));
+  ok('il mesure vraiment l’image', /Image téléchargée, \d+ × \d+/.test(diagnostic),
+     (/Image téléchargée[^\n]*/.exec(diagnostic) ?? [''])[0]);
+
+  await pDiag.fill('#t-url', `${BASE}/index.php?p=decor&slug=decor-qui-nexiste-pas-${marque}`);
+  await pDiag.click('#t-go');
+  await pDiag.waitForFunction(() => /répond 404/.test(
+    document.getElementById('t-sortie')?.textContent ?? ''), null, { timeout: 20_000 });
+  ok('et il NOMME la cause quand la page répond 404',
+     /Aucun aperçu ne s’affichera/.test(await pDiag.locator('#t-sortie').innerText()));
+
+  await pDiag.fill('#t-url', 'https://exemple.invalide/page');
+  await pDiag.click('#t-go');
+  await pDiag.waitForFunction(() => /n’appartient pas à ce site/.test(
+    document.getElementById('t-sortie')?.textContent ?? ''), null, { timeout: 10_000 });
+  ok('une adresse étrangère au site est refusée', true);
+
+  await pDiag.close();
+  await pFin.close();
+
+  console.log('\n━━ 43. La vitrine, et ce qu’elle seule porte ━━');
+
+  /**
+   * La vitrine est la seule page qu'un inconnu ouvre. Elle porte donc le
+   * pied de page du guide — et elle est la seule : ailleurs on est
+   * connecté, au travail, et quatre colonnes de liens vers le site public
+   * repousseraient vers le bas l'écran qu'on est venu utiliser.
+   */
+  const ctxVitrine = await browser.newContext();
+  const pAnon = await ctxVitrine.newPage();
+
+  await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const menu = await pAnon.locator('header nav > a, header nav > details > summary')
+    .evaluateAll((n) => n.map((x) => (x.textContent ?? '').trim()).filter(Boolean));
+  ok('la vitrine mène aux deux produits, puis aux décors et au blog',
+     menu.slice(0, 4).join(' · ') === 'Wakabi Boost · Wakabi le guide · Les décors · Le blog',
+     menu.join(' · '));
+  ok('« Wakabi le guide » sort vraiment vers le guide',
+     ((await pAnon.locator('header nav a:has-text("Wakabi le guide")').getAttribute('href')) ?? '')
+       .startsWith('https://wakabileguide.com'));
+  ok('et il emporte rel="noopener"',
+     ((await pAnon.locator('header nav a:has-text("Wakabi le guide")').getAttribute('rel')) ?? '')
+       .includes('noopener'));
+  ok('les deux boutons d’entrée suivent',
+     (await pAnon.locator('header nav a:has-text("Connexion")').count()) === 1
+     && (await pAnon.locator('header nav a:has-text("Créer un compte")').count()) === 1);
+
+  ok('la vitrine porte le pied de page du guide',
+     (await pAnon.locator('footer.pied-guide').count()) === 1);
+  const colonnes = await pAnon.locator('.pg-col h4')
+    .evaluateAll((n) => n.map((x) => (x.textContent ?? '').trim()));
+  ok('avec ses trois colonnes', colonnes.join(' · ') === 'Produit · Partenaires · Wakabi',
+     colonnes.join(' · '));
+  ok('et ses quatre réseaux', (await pAnon.locator('.pg-soc').count()) === 4);
+  /**
+   * Les icônes sont dessinées ici, pas chargées ailleurs : un pied de
+   * page qui va chercher quatre PNG sur un sous-domaine WordPress se vide
+   * le jour où ce sous-domaine bouge.
+   */
+  ok('dessinés sur place, sans rien charger d’un autre serveur',
+     (await pAnon.locator('.pg-soc svg').count()) === 4
+     && (await pAnon.locator('.pg-soc img').count()) === 0);
+  ok('les liens du guide s’ouvrent à part',
+     (await pAnon.locator('.pg-liens a[href^="https://wakabileguide.com"][target="_blank"]').count()) >= 3);
+
+  /* --- et nulle part ailleurs --- */
+  for (const p of ['blog', 'decors', 'connexion']) {
+    await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
+    ok(`« ${p} » garde la signature discrète`,
+       (await pAnon.locator('footer.pied-guide').count()) === 0
+       && (await pAnon.locator('footer .pied').count()) === 1);
+  }
+
+  /* --- une fois connecté, les deux entrées de vitrine s'effacent --- */
+  await pAnon.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  await pAnon.fill('input[name=email]', ADMIN.email);
+  await pAnon.fill('input[name=mot_de_passe]', ADMIN.mdp);
+  await pAnon.click('main button[type=submit]');
+  await pAnon.waitForLoadState('domcontentloaded');
+  const menuConnecte = await pAnon.locator('header nav').innerText();
+  ok('connecté, le menu ne propose plus « Wakabi Boost » ni « Wakabi le guide »',
+     !/Wakabi Boost|Wakabi le guide/.test(menuConnecte),
+     menuConnecte.replace(/\s+/g, ' ').slice(0, 70));
+  ok('et aucun lien ne sort vers le guide depuis le menu',
+     (await pAnon.locator('header nav a[href^="https://wakabileguide.com"]').count()) === 0);
+
+  await ctxVitrine.close();
+
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pe.fill('#smtp_hote', '');

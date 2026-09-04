@@ -18,6 +18,9 @@ const WAKABI_SIGNATURE = 'LE GUIDE DES BONS PLANS';
  */
 const WAKABI_DOMAINES = ['wakabileguide.com', 'studio.wakabileguide.com'];
 
+/** Le guide dont ce générateur est né : la vitrine y renvoie. */
+const GUIDE_URL = 'https://wakabileguide.com';
+
 /**
  * Cette adresse passe-t-elle le garde-fou ?
  *
