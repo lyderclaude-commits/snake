@@ -115,7 +115,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <?php if ($vitrine): ?>
 <section class="bloc">
   <div class="contenu" style="padding-bottom:0">
-    <div class="tete">
+    <div class="tete centre">
       <p class="sur">Le Studio</p>
       <h2>Vos invités font <em>l’affiche</em></h2>
       <p>Une photo, un décor, trente secondes. La photo ne quitte jamais leur téléphone.</p>
@@ -396,7 +396,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <?php if ($articles): ?>
 <section class="bloc" style="background:var(--bg2)">
   <div class="contenu" style="padding-bottom:0">
-    <div class="tete">
+    <div class="tete centre">
       <p class="sur">Le blog</p>
       <h2>Ce qu’on apprend <em>en remplissant des salles</em></h2>
       <p>Des campagnes réelles, à Lomé, Cotonou et Abidjan. Les chiffres, et ce qui n’a pas marché.</p>

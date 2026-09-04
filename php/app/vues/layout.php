@@ -316,16 +316,21 @@ $_graphe = array_values(array_filter([
 /**
  * Deux pieds de page, et un seul par écran.
  *
- * La VITRINE est la seule page qu'un inconnu ouvre. Elle doit dire qui
- * édite ce service, où le trouver ailleurs, et à quoi il s'engage — c'est
- * le pied de page du guide, celui que le reste de la maison porte déjà.
+ * Les pages PUBLIQUES — la vitrine, le catalogue, le blog et ses
+ * articles — sont celles qu'un inconnu ouvre. Elles doivent dire qui
+ * édite ce service, où le trouver ailleurs, et à quoi il s'engage :
+ * c'est le pied de page du guide, celui que le reste de la maison porte
+ * déjà. Un lecteur qui vient de finir un article est exactement celui à
+ * qui l'on veut montrer le chemin vers la suite.
  *
- * Partout ailleurs on est CHEZ SOI, connecté, au travail : un pied de
- * page à quatre colonnes de liens vers le site public n'y rendrait aucun
- * service, et pousserait vers le bas l'écran qu'on est venu utiliser. La
- * signature discrète suffit.
+ * Le Studio (`?p=decor`) en est exclu, bien qu'il soit public : on n'y
+ * lit pas, on y fabrique. Quatre colonnes de liens sous l'outil
+ * pousseraient vers le bas la seule chose qu'on est venu y faire.
+ *
+ * Partout ailleurs on est CHEZ SOI, connecté, au travail : la signature
+ * discrète suffit, et rien ne doit repousser l'écran qu'on utilise.
  */
-$_vitrine = $_page === 'accueil';
+$_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
 ?>
 
 <?php if ($_vitrine): ?>

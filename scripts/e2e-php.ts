@@ -4326,6 +4326,16 @@ const run = async () => {
      (await pAnon.locator('header nav a:has-text("Connexion")').count()) === 1
      && (await pAnon.locator('header nav a:has-text("Créer un compte")').count()) === 1);
 
+  /**
+   * Les en-têtes de section sont TOUS centrés. Deux d'entre eux ne
+   * l'étaient pas, et la page tirait à gauche deux fois sur neuf — le
+   * genre de décalage qu'on ne nomme pas mais qu'on voit.
+   */
+  const tetes = await pAnon.locator('.tete').count();
+  const centrees = await pAnon.locator('.tete.centre').count();
+  ok('tous les en-têtes de section sont centrés', tetes === centrees && tetes >= 6,
+     `${centrees} centrés sur ${tetes}`);
+
   ok('la vitrine porte le pied de page du guide',
      (await pAnon.locator('footer.pied-guide').count()) === 1);
   const colonnes = await pAnon.locator('.pg-col h4')
@@ -4344,13 +4354,36 @@ const run = async () => {
   ok('les liens du guide s’ouvrent à part',
      (await pAnon.locator('.pg-liens a[href^="https://wakabileguide.com"][target="_blank"]').count()) >= 3);
 
-  /* --- et nulle part ailleurs --- */
-  for (const p of ['blog', 'decors', 'connexion']) {
+  /* --- les autres pages publiques le portent aussi --- */
+  for (const p of ['decors', 'blog']) {
+    await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
+    ok(`« ${p} » porte le pied de page du guide`,
+       (await pAnon.locator('footer.pied-guide').count()) === 1);
+  }
+  /**
+   * Un article aussi : c'est la même route, et un lecteur qui vient d'en
+   * finir un est précisément celui à qui montrer le chemin vers la suite.
+   */
+  const unLu = await pAnon.locator('a[href*="p=blog&a="]').first().getAttribute('href') ?? '';
+  if (unLu) {
+    await pAnon.goto(unLu.startsWith('http') ? unLu : `${BASE}/${unLu.replace(/^\//, '')}`,
+                     { waitUntil: 'domcontentloaded' });
+    ok('un article aussi', (await pAnon.locator('footer.pied-guide').count()) === 1);
+  }
+
+  /**
+   * Le Studio en est exclu, bien qu'il soit public : on n'y lit pas, on y
+   * fabrique. Et les écrans de travail gardent la signature discrète.
+   */
+  for (const p of ['connexion', 'inscription']) {
     await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
     ok(`« ${p} » garde la signature discrète`,
        (await pAnon.locator('footer.pied-guide').count()) === 0
        && (await pAnon.locator('footer .pied').count()) === 1);
   }
+  await pAnon.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
+  ok('le Studio n’est pas repoussé par quatre colonnes de liens',
+     (await pAnon.locator('footer.pied-guide').count()) === 0);
 
   /* --- une fois connecté, les deux entrées de vitrine s'effacent --- */
   await pAnon.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });

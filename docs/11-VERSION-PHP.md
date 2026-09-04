@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **613 scénarios, 613 réussis**
+Les deux ont été vérifiés de bout en bout : **617 scénarios, 617 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 613 scénarios, dans un vrai navigateur
+npm run php:e2e          # 617 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 613 scénarios
+### Les 617 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -199,7 +199,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
 | **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
 | **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
-| **La vitrine, et elle seule** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; le pied de page du guide n'apparaît que sur la vitrine, avec ses quatre réseaux **dessinés sur place** |
+| **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; le pied de page du guide couvre la vitrine, le catalogue, le blog et ses articles — **pas** le Studio, où l'on fabrique — avec ses quatre réseaux **dessinés sur place** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
