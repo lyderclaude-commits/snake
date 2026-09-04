@@ -242,16 +242,15 @@ $_graphe = array_values(array_filter([
         return $ici === $p || str_starts_with($ici, $p . '-');
     };
     /**
-     * Une cible absolue s'en va telle quelle, et emporte les précautions
-     * qui vont avec : `rel` coupe l'accès à notre fenêtre depuis la sienne.
-     * Une cible relative, elle, passe par `url()` comme avant.
+     * Une cible absolue s'en va telle quelle, et `sortie_externe()` décide
+     * seule si elle mérite un onglet. Une cible relative passe par `url()`
+     * comme avant, et ne peut pas sortir.
      */
     $lien = function (string $cible, string $nom) use ($courante): string {
-        $externe = str_starts_with($cible, 'http://') || str_starts_with($cible, 'https://');
-        $href = $externe ? $cible : url($cible);
-        $marque = !$externe && $courante($cible) ? ' aria-current="page"' : '';
-        $sortie = $externe ? ' rel="noopener noreferrer"' : '';
-        return '<a href="' . e($href) . '"' . $marque . $sortie . '>' . e($nom) . '</a>';
+        $href = est_externe($cible) ? $cible : url($cible);
+        $marque = !est_externe($cible) && $courante($cible) ? ' aria-current="page"' : '';
+        return '<a href="' . e($href) . '"' . $marque . sortie_externe($href) . '>'
+             . e($nom) . '</a>';
     };
     ?>
 
@@ -343,8 +342,8 @@ $_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
         inoubliable. Explorez. Découvrez. Connectez.</p>
         <div class="pg-reseaux">
           <?php foreach (RESEAUX_WAKABI as $cle => [$nom, $adresse]): ?>
-            <a class="pg-soc" href="<?= e($adresse) ?>" target="_blank"
-               rel="noopener noreferrer" aria-label="<?= e($nom) ?>"><?= icone_reseau($cle) ?></a>
+            <a class="pg-soc" href="<?= e($adresse) ?>"<?= sortie_externe($adresse) ?>
+               aria-label="<?= e($nom) ?>"><?= icone_reseau($cle) ?></a>
           <?php endforeach; ?>
         </div>
       </div>
@@ -380,8 +379,7 @@ $_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
           <h4><?= e($titre) ?></h4>
           <div class="pg-liens">
             <?php foreach ($entrees as [$nom, $adresse]): ?>
-              <a href="<?= e($adresse) ?>"<?= str_starts_with($adresse, GUIDE_URL) || str_starts_with($adresse, 'https://play')
-                    ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= e($nom) ?></a>
+              <a href="<?= e($adresse) ?>"<?= sortie_externe($adresse) ?>><?= e($nom) ?></a>
             <?php endforeach; ?>
           </div>
         </div>
@@ -392,8 +390,8 @@ $_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
       <span class="pg-copy">© <?= date('Y') ?> Wakabileguide.com — Tous droits réservés.
       Fait avec amour.</span>
       <div class="pg-legal">
-        <a href="<?= e(GUIDE_URL) ?>/confidentialite.html" target="_blank" rel="noopener noreferrer">Politique de confidentialité</a>
-        <a href="<?= e(GUIDE_URL) ?>/cgu.html" target="_blank" rel="noopener noreferrer">CGU</a>
+        <a href="<?= e(GUIDE_URL) ?>/confidentialite.html"<?= sortie_externe(GUIDE_URL) ?>>Politique de confidentialité</a>
+        <a href="<?= e(GUIDE_URL) ?>/cgu.html"<?= sortie_externe(GUIDE_URL) ?>>CGU</a>
         <span class="pg-version">v<?= e(VERSION) ?></span>
       </div>
     </div>

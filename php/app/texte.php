@@ -55,9 +55,19 @@ function texte_en_ligne(string $echappe): string
             if (!preg_match('~^https?://~i', $url)) {
                 return $m[0];
             }
-            $interne = str_starts_with($url, base_url());
+            /**
+             * On compare les HÔTES, pas les préfixes d'adresse. Sur un site
+             * servi depuis `boost.exemple.com`, une adresse pointant vers
+             * `boost.exemple.com.ailleurs.net` commence par la nôtre sans
+             * être la nôtre : le test par préfixe la déclarait interne, et
+             * elle s'ouvrait dans notre onglet, sans `noopener`.
+             *
+             * `nofollow` s'ajoute ici et pas ailleurs : ces liens sont
+             * écrits dans un article, donc par une personne, et le site ne
+             * se porte pas garant de ce qu'elle cite.
+             */
             return '<a href="' . e($url) . '"'
-                 . ($interne ? '' : ' target="_blank" rel="noopener nofollow"')
+                 . sortie_externe($url, 'nofollow')
                  . '>' . $m[1] . '</a>';
         },
         $t

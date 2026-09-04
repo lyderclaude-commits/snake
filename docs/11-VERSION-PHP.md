@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **617 scénarios, 617 réussis**
+Les deux ont été vérifiés de bout en bout : **622 scénarios, 622 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 617 scénarios, dans un vrai navigateur
+npm run php:e2e          # 622 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 617 scénarios
+### Les 622 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -200,6 +200,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
 | **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
 | **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; le pied de page du guide couvre la vitrine, le catalogue, le blog et ses articles — **pas** le Studio, où l'on fabrique — avec ses quatre réseaux **dessinés sur place** |
+| **Les liens qui sortent** | Balayage **exhaustif par construction** : toutes les ancres de chaque page publique, filtrées sur l'hôte — les 53 qui quittent le site portent `target="_blank"` **et** `noopener`, et cliquer sur « Wakabi le guide » ouvre vraiment un second onglet en laissant le premier ouvert |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -854,6 +855,46 @@ personne ne peut lire à l'écran :
 L'épreuve se fait **dans le navigateur**, pas sur le serveur : un hébergement
 mutualisé qui ne sert qu'une requête à la fois s'attendrait lui-même, et la
 page se figerait jusqu'au délai d'attente.
+
+---
+
+## Un lien qui sort ouvre un onglet
+
+Un visiteur qui part sur wakabileguide.com, sur le Play Store ou sur un
+réseau social ne doit pas perdre la page qu'il lisait. Il reviendra rarement,
+et jamais à l'endroit exact : le nouvel onglet n'est pas une politesse, c'est
+ce qui garde la campagne ouverte derrière lui.
+
+Une seule fonction en décide, `sortie_externe()`, et elle rend les deux
+attributs ensemble. Le second n'est pas décoratif : sans `noopener`, la page
+ouverte garde une poignée sur la nôtre par `window.opener` et peut la
+remplacer à distance. Les écrire à la main, c'était en oublier un — et c'est
+exactement ce qui était arrivé à l'entrée « Wakabi le guide » du menu, qui
+portait le `rel` sans l'onglet.
+
+### On compare les hôtes, pas les préfixes
+
+Le rendu des articles décidait par `str_starts_with($url, base_url())`. Sur
+un site servi depuis `boost.exemple.com`, une adresse pointant vers
+`boost.exemple.com.ailleurs.net` commence par la nôtre **sans être la
+nôtre** : elle était déclarée interne, s'ouvrait dans notre onglet, et sans
+`noopener`. La comparaison porte désormais sur l'hôte.
+
+C'est aussi ce qui rend la règle juste quel que soit le domaine : le même
+paquet se décompresse sur `boost.wakabileguide.com` comme sur un domaine
+d'essai, et « externe » se recalcule à chaque fois.
+
+### Comment on sait que c'est vrai
+
+La recette ne vérifie pas une liste de liens écrite à la main — elle
+manquerait justement celui qu'on vient d'ajouter. Elle **ramasse toutes les
+ancres** de chaque page publique, garde celles dont l'hôte n'est pas le
+nôtre, et exige des deux attributs à la fois. Un lien sortant ajouté demain
+sans onglet fait tomber la recette.
+
+Et parce qu'un attribut posé dans le HTML peut être défait par un script, le
+dernier contrôle **clique** sur « Wakabi le guide » et regarde s'il naît un
+second onglet — c'est le clic, pas l'attribut, que fait le visiteur.
 
 ---
 

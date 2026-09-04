@@ -76,6 +76,47 @@ function url(string $chemin = ''): string
 }
 
 /**
+ * Les attributs d'un lien qui QUITTE ce site.
+ *
+ * Un visiteur qui part sur wakabileguide.com, sur le Play Store ou sur un
+ * réseau social ne doit pas perdre la page qu'il lisait : il reviendra
+ * rarement, et jamais à l'endroit exact. Le nouvel onglet n'est donc pas
+ * une politesse, c'est ce qui garde la campagne ouverte derrière lui.
+ *
+ * `rel` va avec, et n'est pas décoratif : sans `noopener`, la page ouverte
+ * garde une poignée sur la nôtre par `window.opener` et peut la remplacer
+ * à distance. Les deux vont ensemble ou pas du tout — c'est pourquoi une
+ * seule fonction les rend, et qu'on ne les écrit plus à la main.
+ *
+ * La comparaison porte sur l'HÔTE, pas sur le préfixe de l'adresse : le
+ * même paquet se décompresse sur des domaines différents, et un test sur
+ * `base_url()` déclarerait interne un lien vers un tout autre site
+ * commençant par les mêmes lettres.
+ */
+function sortie_externe(string $adresse, string ...$rel_en_plus): string
+{
+    if (!est_externe($adresse)) {
+        return '';
+    }
+    // Un seul attribut `rel` : deux sur la même balise, et le navigateur
+    // ne garde que le premier — le `nofollow` d'un lien d'article serait
+    // perdu sans bruit.
+    $rel = array_unique(array_merge(['noopener', 'noreferrer'], $rel_en_plus));
+    return ' target="_blank" rel="' . e(implode(' ', $rel)) . '"';
+}
+
+/** Vrai si l'adresse mène hors de cette installation. */
+function est_externe(string $adresse): bool
+{
+    $hote = parse_url($adresse, PHP_URL_HOST);
+    // Sans hôte, l'adresse est relative : elle ne peut pas sortir.
+    if ($hote === null || $hote === false || $hote === '') {
+        return false;
+    }
+    return strcasecmp($hote, (string) parse_url(base_url(), PHP_URL_HOST)) !== 0;
+}
+
+/**
  * L'adresse d'un fichier servi tel quel, avec une empreinte de sa version.
  *
  * Sans elle, une mise à jour ne change RIEN pour qui a déjà visité le

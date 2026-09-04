@@ -1573,8 +1573,17 @@ const run = async () => {
      (await pa.locator('.corps-article strong').first().innerText()) === '400 personnes');
   ok('la liste est une vraie liste', (await pa.locator('.corps-article li').count()) === 2);
   ok('la citation est une citation', (await pa.locator('.corps-article blockquote').count()) === 1);
+  /**
+   * On éprouve les JETONS, pas la chaîne exacte : l'ordre et le nombre de
+   * valeurs de `rel` peuvent changer sans que la garantie change, et une
+   * assertion sur le libellé exact tomberait pour la mauvaise raison.
+   */
+  const sortant = pa.locator('.corps-article a[href^="http"]:not([href*="127.0.0.1"])').first();
+  const relSortant = (await sortant.getAttribute('rel')) ?? '';
   ok('un lien sortant s’ouvre à part et ne nous engage pas',
-     (await pa.locator('.corps-article a[rel="noopener nofollow"]').count()) === 1);
+     (await sortant.getAttribute('target')) === '_blank'
+     && ['noopener', 'noreferrer', 'nofollow'].every((j) => relSortant.includes(j)),
+     `target="${await sortant.getAttribute('target')}" rel="${relSortant}"`);
 
   /**
    * Le scénario qui compte : le corps est du TEXTE.
@@ -4384,6 +4393,63 @@ const run = async () => {
   await pAnon.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
   ok('le Studio n’est pas repoussé par quatre colonnes de liens',
      (await pAnon.locator('footer.pied-guide').count()) === 0);
+
+  /**
+   * Le balayage est exhaustif PAR CONSTRUCTION, comme celui des droits.
+   *
+   * On ne vérifie pas une liste de liens écrite à la main — elle
+   * manquerait justement celui qu'on vient d'ajouter. On ramasse TOUTES
+   * les ancres de chaque page publique, on garde celles dont l'hôte n'est
+   * pas le nôtre, et l'on exige des deux attributs à la fois : l'onglet,
+   * pour que le visiteur ne perde pas la page qu'il lisait, et `noopener`,
+   * sans quoi la page ouverte garde une poignée sur la nôtre.
+   */
+  const sorties = async (chemin: string) => {
+    await pAnon.goto(`${BASE}/index.php?p=${chemin}`, { waitUntil: 'domcontentloaded' });
+    return pAnon.evaluate((hote) => Array.from(document.querySelectorAll('a[href]'))
+      .map((a) => {
+        const el = a as HTMLAnchorElement;
+        return { href: el.href, hote: el.hostname, cible: el.target, rel: el.rel,
+                 texte: (el.textContent ?? '').trim().slice(0, 24) };
+      })
+      .filter((l) => /^https?:$/.test(new URL(l.href).protocol) && l.hote !== hote),
+      new URL(BASE).hostname);
+  };
+
+  let dehors = 0;
+  const fautifs: string[] = [];
+  for (const p of ['accueil', 'decors', 'blog', 'connexion', 'inscription']) {
+    for (const l of await sorties(p)) {
+      dehors++;
+      if (l.cible !== '_blank' || !l.rel.includes('noopener')) {
+        fautifs.push(`${p} · ${l.texte} → ${l.hote} (cible="${l.cible}" rel="${l.rel}")`);
+      }
+    }
+  }
+  ok('des liens sortants ont bien été trouvés à éprouver', dehors >= 8, `${dehors} liens`);
+  ok('TOUS s’ouvrent dans un onglet neuf, et lâchent notre fenêtre',
+     fautifs.length === 0, fautifs[0] ?? `${dehors} liens vérifiés`);
+
+  /* --- et le guide en particulier, puisque c'est par lui qu'on est venu --- */
+  await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const guide = pAnon.locator('header nav a:has-text("Wakabi le guide")');
+  ok('« Wakabi le guide » s’ouvre dans un nouvel onglet',
+     (await guide.getAttribute('target')) === '_blank',
+     `target="${await guide.getAttribute('target')}"`);
+
+  /**
+   * L'épreuve la plus fidèle : on CLIQUE, et l'on regarde s'il naît un
+   * onglet. Un `target` posé dans le HTML peut être défait par un script,
+   * et c'est le clic, pas l'attribut, que fait le visiteur.
+   */
+  const [neuf] = await Promise.all([
+    pAnon.context().waitForEvent('page', { timeout: 15_000 }).catch(() => null),
+    guide.click(),
+  ]);
+  ok('et cliquer dessus ouvre VRAIMENT un second onglet', neuf !== null);
+  ok('la page de départ reste ouverte derrière',
+     pAnon.url().includes('p=accueil'), pAnon.url().replace(BASE, ''));
+  if (neuf) await neuf.close().catch(() => {});
 
   /* --- une fois connecté, les deux entrées de vitrine s'effacent --- */
   await pAnon.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
