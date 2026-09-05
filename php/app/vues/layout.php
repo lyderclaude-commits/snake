@@ -311,6 +311,65 @@ $_graphe = array_values(array_filter([
 
 <main><?= $contenu ?></main>
 
+<?php if ($_page === 'accueil'): ?>
+<?php
+/**
+ * Le retour en tête, sur la vitrine seule.
+ *
+ * Neuf sections, dont un comparatif et une grille de tarifs : arrivé au
+ * pied de page, le visiteur est loin des deux boutons qui décident de
+ * tout. Sur un téléphone, remonter au pouce prend une dizaine de gestes,
+ * et beaucoup préfèrent fermer l'onglet — c'est-à-dire partir.
+ *
+ * Ailleurs, la question ne se pose pas : les écrans de travail tiennent
+ * en un écran ou deux, et un bouton flottant y masquerait une ligne de
+ * tableau.
+ *
+ * Il est CACHÉ au départ, et par l'attribut `hidden` plutôt que par le
+ * style : sans script, il ne s'affiche jamais — mieux vaut pas de bouton
+ * qu'un bouton qui ne fait rien.
+ */
+?>
+<button class="haut-de-page" id="haut-de-page" type="button" hidden
+        aria-label="Revenir en haut de la page">
+  <?= icone('haut') ?>
+</button>
+<script>
+(function () {
+  var b = document.getElementById('haut-de-page');
+  if (!b) { return; }
+
+  /* Le seuil : une hauteur d'écran. En dessous, le haut est encore à
+     portée de deux gestes, et le bouton ne ferait qu'encombrer. */
+  var seuil = function () { return window.innerHeight * 1.2; };
+  var attend = false;
+
+  var juger = function () {
+    b.hidden = window.scrollY < seuil();
+    attend = false;
+  };
+  /* Le défilement se déclenche des dizaines de fois par seconde ; on ne
+     décide qu'une fois par image, sinon la page saccade sur un téléphone
+     modeste au moment précis où elle doit être fluide. */
+  window.addEventListener('scroll', function () {
+    if (!attend) { attend = true; requestAnimationFrame(juger); }
+  }, { passive: true });
+  juger();
+
+  b.addEventListener('click', function () {
+    /* Qui a demandé moins d'animations en a demandé ici aussi : un long
+       glissement de six écrans donne le vertige à qui y est sensible. */
+    var doux = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: doux ? 'smooth' : 'auto' });
+    /* Le focus revient au début du document : sans cela, la tabulation
+       repartirait d'en bas, là où l'œil n'est plus. */
+    var premier = document.querySelector('header a, header button');
+    if (premier) { premier.focus({ preventScroll: true }); }
+  });
+})();
+</script>
+<?php endif; ?>
+
 <?php
 /**
  * Deux pieds de page, et un seul par écran.

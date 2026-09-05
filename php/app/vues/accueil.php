@@ -399,7 +399,6 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     <div class="tete centre">
       <p class="sur">Le blog</p>
       <h2>Ce qu’on apprend <em>en remplissant des salles</em></h2>
-      <p>Des campagnes réelles, à Lomé, Cotonou et Abidjan. Les chiffres, et ce qui n’a pas marché.</p>
     </div>
     <div class="grille g3">
       <?php foreach ($articles as $a): ?>

@@ -4395,6 +4395,50 @@ const run = async () => {
      (await pAnon.locator('footer.pied-guide').count()) === 0);
 
   /**
+   * Le retour en tête : on l'éprouve en DÉFILANT, pas en lisant le HTML.
+   *
+   * Un bouton présent dans la page mais toujours caché, ou visible dès le
+   * premier écran, sont deux défauts qu'aucune lecture du balisage ne
+   * distingue. On regarde donc ce que voit quelqu'un qui descend.
+   */
+  await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const haut = pAnon.locator('#haut-de-page');
+  ok('la vitrine porte un retour en tête de page', (await haut.count()) === 1);
+  ok('mais il ne s’affiche pas tant qu’on est déjà en haut', await haut.isHidden());
+
+  await pAnon.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await pAnon.waitForFunction(() => {
+    const b = document.getElementById('haut-de-page');
+    return b !== null && !b.hidden;
+  }, null, { timeout: 10_000 }).catch(() => {});
+  ok('il apparaît une fois qu’on a descendu la page', await haut.isVisible());
+  ok('il dit aux lecteurs d’écran ce qu’il fait',
+     ((await haut.getAttribute('aria-label')) ?? '').length > 5,
+     (await haut.getAttribute('aria-label')) ?? '');
+
+  await haut.click();
+  await pAnon.waitForFunction(() => window.scrollY === 0, null, { timeout: 10_000 })
+    .catch(() => {});
+  ok('cliquer dessus ramène VRAIMENT en haut',
+     (await pAnon.evaluate(() => window.scrollY)) === 0,
+     `y = ${await pAnon.evaluate(() => window.scrollY)}`);
+  ok('et le bouton se retire de lui-même une fois arrivé', await haut.isHidden());
+
+  /**
+   * Il n'existe QUE sur la vitrine : ailleurs, les écrans tiennent en un
+   * écran ou deux, et un bouton flottant masquerait une ligne de tableau.
+   */
+  for (const p of ['decors', 'blog', 'connexion']) {
+    await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
+    ok(`« ${p} » n’en porte pas`, (await pAnon.locator('#haut-de-page').count()) === 0);
+  }
+
+  /* --- l'accroche retirée de la section du blog --- */
+  await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  ok('la section du blog n’a plus d’accroche sous son titre',
+     !/Des campagnes réelles/.test(await pAnon.locator('main').innerText()));
+
+  /**
    * Le balayage est exhaustif PAR CONSTRUCTION, comme celui des droits.
    *
    * On ne vérifie pas une liste de liens écrite à la main — elle

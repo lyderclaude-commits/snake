@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **622 scénarios, 622 réussis**
+Les deux ont été vérifiés de bout en bout : **632 scénarios, 632 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 622 scénarios, dans un vrai navigateur
+npm run php:e2e          # 632 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 622 scénarios
+### Les 632 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -201,6 +201,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
 | **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; le pied de page du guide couvre la vitrine, le catalogue, le blog et ses articles — **pas** le Studio, où l'on fabrique — avec ses quatre réseaux **dessinés sur place** |
 | **Les liens qui sortent** | Balayage **exhaustif par construction** : toutes les ancres de chaque page publique, filtrées sur l'hôte — les 53 qui quittent le site portent `target="_blank"` **et** `noopener`, et cliquer sur « Wakabi le guide » ouvre vraiment un second onglet en laissant le premier ouvert |
+| **Le retour en tête** | Éprouvé en **défilant**, pas en lisant le balisage : caché tant qu'on est en haut, présent une fois la page descendue, il ramène vraiment à zéro puis se retire — et n'existe que sur la vitrine |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.

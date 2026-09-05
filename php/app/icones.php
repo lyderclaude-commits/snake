@@ -39,6 +39,9 @@ function icone(string $nom): string
         // Chevron — un groupe de liens qui se déplie
         'chevron' => '<path d="M6.5 9.5 12 15l5.5-5.5"/>',
 
+        // Flèche vers le haut — le retour en tête de page
+        'haut' => '<path d="M12 19V6"/><path d="M6 11.5 12 5.5l6 6"/>',
+
         // Trois traits — le menu replié du mobile
         'menu' => '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
 

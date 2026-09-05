@@ -1324,3 +1324,28 @@ tr.pale td a{color:inherit}
   .pg-bas{flex-direction:column;text-align:center;gap:10px}
   .pg-legal{justify-content:center}
 }
+
+/* ============ le retour en tête de page ============
+   Il flotte au-dessus du contenu, mais du côté du pouce et jamais sur
+   le texte : à droite, à la hauteur où la main tient le téléphone. */
+.haut-de-page{position:fixed;right:18px;bottom:18px;z-index:40;
+  width:46px;height:46px;border-radius:999px;border:1px solid var(--border);
+  background:var(--paper);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--ombre);cursor:pointer;
+  transition:transform .18s,box-shadow .18s,background .18s}
+.haut-de-page svg{width:20px;height:20px}
+.haut-de-page:hover{background:var(--primary);color:#fff;
+  transform:translateY(-2px);box-shadow:0 6px 20px -6px rgba(37,99,235,.5)}
+.haut-de-page:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+.haut-de-page:active{transform:translateY(0)}
+
+@media (max-width:620px){
+  /* Plus bas et plus petit : le pouce y arrive sans traverser l'écran,
+     et le bouton ne recouvre pas la dernière ligne du pied de page. */
+  .haut-de-page{right:14px;bottom:14px;width:42px;height:42px}
+}
+@media (prefers-reduced-motion:reduce){
+  .haut-de-page{transition:none}
+  .haut-de-page:hover{transform:none}
+}
