@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **632 scénarios, 632 réussis**
+Les deux ont été vérifiés de bout en bout : **656 scénarios, 656 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 632 scénarios, dans un vrai navigateur
+npm run php:e2e          # 656 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 632 scénarios
+### Les 656 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -202,6 +202,7 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; le pied de page du guide couvre la vitrine, le catalogue, le blog et ses articles — **pas** le Studio, où l'on fabrique — avec ses quatre réseaux **dessinés sur place** |
 | **Les liens qui sortent** | Balayage **exhaustif par construction** : toutes les ancres de chaque page publique, filtrées sur l'hôte — les 53 qui quittent le site portent `target="_blank"` **et** `noopener`, et cliquer sur « Wakabi le guide » ouvre vraiment un second onglet en laissant le premier ouvert |
 | **Le retour en tête** | Éprouvé en **défilant**, pas en lisant le balisage : caché tant qu'on est en haut, présent une fois la page descendue, il ramène vraiment à zéro puis se retire — et n'existe que sur la vitrine |
+| **L'atelier d'un décor** | L'écran tient en un écran et demi, l'aperçu et le bouton se voient sans descendre, les réglages sont en trois étapes ; **tourner un curseur redessine l'aperçu pendant qu'on le voit** ; enregistrer avec un champ requis vide **ouvre l'étape fautive** au lieu de ne rien faire ; sur téléphone l'aperçu reste collé sans manger l'écran |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -896,6 +897,61 @@ sans onglet fait tomber la recette.
 Et parce qu'un attribut posé dans le HTML peut être défait par un script, le
 dernier contrôle **clique** sur « Wakabi le guide » et regarde s'il naît un
 second onglet — c'est le clic, pas l'attribut, que fait le visiteur.
+
+---
+
+## L'atelier d'un décor — `?p=nouveau`
+
+L'aperçu vivait **sous** les dix-sept curseurs d'apparence, à deux mille
+pixels du haut de la page. Tirer « marge gauche du texte » ne montrait donc
+rien : on réglait, on descendait voir, on remontait corriger. Le défaut
+n'était pas d'avoir un aperçu tardif — c'était de rendre chaque réglage
+aveugle, et un réglage aveugle se fait au hasard.
+
+### Deux colonnes, et l'aperçu ne quitte jamais l'écran
+
+À droite, **collés** : l'aperçu, le bouton d'enregistrement et la liste de ce
+que la relecture vérifie. Les trois choses dont on a besoin à tout instant,
+jamais à chercher. À gauche, les réglages.
+
+L'écran est passé de **2 599 px à 1 037 px** — de trois écrans à un et demi.
+
+### Trois étapes, qui sont des onglets et non un tunnel
+
+| Étape | Ce qu'on y règle |
+|---|---|
+| **Le cadre** | Le gabarit, l'image de fond, le format — le format vit ici parce que c'est le cadre qui l'impose |
+| **La campagne** | Titre, sous-titre, accroche, ville, destination, expiration |
+| **L'apparence** | Les dix-sept réglages, en trois groupes nommés : le texte, le QR et le filigrane, la fenêtre photo |
+
+Cet écran sert deux gestes très différents : créer un décor, où l'ordre aide,
+et en corriger un mot six semaines plus tard, où un tunnel obligerait à
+retraverser trois pages pour changer une date. Les panneaux restent donc tous
+accessibles en un clic, et les boutons « Continuer » ne guident que la
+première fois.
+
+Rien n'est retiré du document : un panneau replié garde ses champs, qui
+partent avec le formulaire. **On enregistre depuis n'importe quelle étape.**
+
+### Le piège que cette organisation crée, et comment il est désamorcé
+
+« Titre » et « Page de destination » sont obligatoires et vivent dans l'étape
+2. Enregistrer depuis l'étape 3 fait donc refuser l'envoi au navigateur, qui
+essaie alors de pointer un champ **qu'il ne peut pas montrer** : sur
+plusieurs navigateurs, rien ne se passe — pas de message, pas d'envoi.
+L'écran paraît cassé alors qu'il se protège.
+
+L'événement `invalid` est donc écouté en capture : le panneau du champ fautif
+s'ouvre, puis la main est rendue au navigateur pour qu'il dise ce qui ne va
+pas, maintenant qu'il a de quoi le montrer. La recette éprouve exactement ce
+trajet.
+
+### Sur un téléphone
+
+Une colonne, l'aperçu **devant** les réglages et collé en haut, resserré à un
+cinquième de l'écran : au-delà, il ne montre plus l'aperçu, il cache les
+réglages qu'on est en train de tourner. La liste de relecture, elle, passe en
+fin de page.
 
 ---
 

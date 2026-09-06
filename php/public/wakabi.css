@@ -383,7 +383,7 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 /* ---- l'atelier d'apparence ----
    Les réglages à gauche, l'aperçu à droite et COLLÉ : on règle en regardant,
    sinon on règle à l'aveugle et on enregistre pour voir. */
-.atelier{display:grid;gap:22px;grid-template-columns:minmax(0,1fr) 320px;align-items:start}
+/* L'atelier d'un décor : réglages à gauche, aperçu collé à droite. */
 .reglages{display:grid;gap:0 18px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .reglage{margin-bottom:12px}
 .reglage label{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
@@ -396,12 +396,86 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .apercu-boite canvas{border-radius:var(--r10);background:var(--paper);max-width:100%;height:auto;
   box-shadow:0 14px 30px -18px rgba(15,23,42,.5)}
 .apercu-boite .aide{margin:0;text-align:center}
-@media(max-width:860px){
-  /* Sur téléphone l'aperçu passe DEVANT les réglages : il faut le voir en
-     tournant les curseurs, pas après avoir fait défiler la page. */
-  .atelier{grid-template-columns:1fr}
-  .apercu-boite{order:-1;position:sticky;top:70px;z-index:5}
-  .apercu-boite canvas{max-height:38vh}
+
+/* ---- l'atelier d'un décor : deux colonnes, l'aperçu collé ---- */
+.sd{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:24px;align-items:start}
+.sd-gauche{min-width:0}
+
+/* Les étapes. Trois onglets numérotés, larges assez pour le pouce. */
+.sd-etapes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.sd-etape{display:flex;align-items:center;gap:10px;text-align:left;
+  padding:11px 13px;border:1px solid var(--border);border-radius:var(--r10);
+  background:var(--paper);cursor:pointer;font:inherit;color:var(--text2);
+  transition:border-color .15s,background .15s,color .15s}
+.sd-etape:hover{border-color:var(--primary);color:var(--ink)}
+.sd-etape:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.sd-num{flex:none;width:24px;height:24px;border-radius:999px;background:var(--bg2);
+  color:var(--text2);display:grid;place-items:center;font-size:.8rem;font-weight:700}
+.sd-nom{display:flex;flex-direction:column;line-height:1.25;font-weight:600;font-size:.9rem;min-width:0}
+.sd-nom small{font-weight:400;font-size:.75rem;color:var(--text3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sd-etape.actif{border-color:var(--primary);background:var(--primary-wash);color:var(--ink)}
+.sd-etape.actif .sd-num{background:var(--primary);color:#fff}
+
+.sd-panneau{margin:0}
+/* Les groupes de réglages : un cadre léger, pour savoir où l'un finit. */
+.sd-groupe{border:0;border-top:1px solid var(--border);margin:0;padding:14px 0 2px}
+.sd-groupe:first-of-type{border-top:0;padding-top:10px}
+.sd-groupe legend{padding:0;font-size:.78rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.sd-duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 18px}
+.sd-suite{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.sd-suite:has(> :only-child){justify-content:flex-end}
+
+/* L'aperçu, le bouton et la relecture : les trois choses dont on a besoin
+   à tout instant. Collés, donc jamais à chercher. */
+.sd-apercu{position:sticky;top:78px;display:grid;gap:12px}
+.sd-carte-apercu{padding:14px}
+.sd-carte-apercu .apercu-boite{position:static;margin-bottom:12px}
+.sd-enregistrer{width:100%;justify-content:center}
+.sd-note{margin:8px 0 0;text-align:center}
+.sd-relecture{padding:0}
+.sd-relecture > summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:.9rem;
+  list-style:none;display:flex;align-items:center;gap:8px}
+.sd-relecture > summary::-webkit-details-marker{display:none}
+.sd-relecture > summary::before{content:"›";display:inline-block;color:var(--text3);
+  transition:transform .15s}
+.sd-relecture[open] > summary::before{transform:rotate(90deg)}
+.sd-relecture ul{margin:0;padding:0 16px 14px 2.1em;color:var(--text2);font-size:.86rem}
+.sd-relecture li{margin-bottom:4px}
+
+@media(max-width:1040px){
+  /* Une colonne, et l'aperçu passe DEVANT les réglages : il faut le voir
+     en tournant les curseurs, pas après avoir fait défiler la page.
+     `display:contents` dissout la colonne de droite pour que ses trois
+     cartes deviennent des éléments de la grille : sans cela, la liste de
+     relecture resterait collée sous l'aperçu, entre lui et les étapes. */
+  .sd{grid-template-columns:1fr}
+  .sd-apercu{display:contents}
+  .sd-carte-apercu{order:-1;position:sticky;top:70px;z-index:5;
+    display:grid;grid-template-columns:auto minmax(180px,1fr);
+    gap:14px;align-items:center}
+  .sd-carte-apercu .apercu-boite{margin:0}
+  .sd-carte-apercu canvas{max-height:24vh}
+  .sd-relecture{order:99}
+}
+@media(max-width:620px){
+  .sd-etapes{grid-template-columns:1fr}
+  .sd-nom small{white-space:normal}
+  .sd-suite{gap:8px}
+  .sd-suite .bouton{flex:1 1 auto;justify-content:center}
+  /* Le bandeau collant se resserre : au-delà d'un cinquième de l'écran, il
+     ne montre plus l'aperçu, il cache les réglages qu'on est en train de
+     tourner. La vignette rétrécit, le bouton garde sa place. */
+  .sd-carte-apercu{padding:10px;gap:10px;grid-template-columns:auto minmax(140px,1fr)}
+  .sd-carte-apercu .apercu-boite{padding:6px}
+  .sd-carte-apercu canvas{max-height:18vh;max-width:34vw}
+  .sd-carte-apercu .apercu-boite .aide{display:none}
+  .sd-note{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .sd-etape,.sd-relecture > summary::before{transition:none}
 }
 
 /* La création de compte est repliée : la page sert d'abord à consulter la

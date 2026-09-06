@@ -232,6 +232,22 @@ async function connexion(p: Page, email: string, mdp: string) {
   await p.waitForLoadState('domcontentloaded');
 }
 
+/**
+ * Ouvrir une étape de l'atelier d'un décor.
+ *
+ * Les réglages y sont rangés en trois panneaux, et un panneau replié n'est
+ * pas remplissable — c'est vrai pour un robot comme pour une personne. Les
+ * scénarios qui touchent au titre ou à la destination passent donc par
+ * cette porte, comme le ferait quelqu'un devant l'écran.
+ */
+async function etapeDecor(p: Page, cle: string) {
+  const onglet = p.locator(`.sd-etape[data-etape="${cle}"]`);
+  if (await onglet.count()) {
+    await onglet.click();
+    await p.waitForSelector(`#panneau-${cle}:not([hidden])`, { timeout: 5_000 });
+  }
+}
+
 async function inscription(p: Page, email: string, mdp: string, role: string, nom: string) {
   await p.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
   // On ne propose plus de créer un compte à qui en a déjà un d'ouvert :
@@ -473,6 +489,7 @@ const run = async () => {
   await inscription(p, PART.email, PART.mdp, 'partenaire', 'Test Partenaire');
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', 'Décor hors domaine');
   await p.fill('input[name=redirection]', 'https://mon-restaurant.tg/promo');
   await p.click('main button[type=submit]');
@@ -483,6 +500,7 @@ const run = async () => {
   console.log('\n━━ 8. Le pré-vol ━━');
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'scripts/fixtures/opaque.png');
+  await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', 'Cadre aplati de test');
   await p.fill('input[name=redirection]', 'https://wakabileguide.com/p/test');
   await p.click('main button[type=submit]');
@@ -498,6 +516,7 @@ const run = async () => {
   const campagne = `Soirée de recette ${marque}`;
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', campagne);
   await p.fill('input[name=redirection]', 'https://wakabileguide.com/p/recette');
   await p.click('main button[type=submit]');
@@ -533,8 +552,10 @@ const run = async () => {
   const titreEquipe = `Décor équipe ${marque}`;
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'php/public/cadres/story.png');
-  await p.fill('input[name=titre]', titreEquipe);
+  await etapeDecor(p, 'cadre');
   await p.selectOption('select[name=disposition]', 'story');
+  await etapeDecor(p, 'campagne');
+  await p.fill('input[name=titre]', titreEquipe);
   // L'équipe n'est pas tenue au garde-fou : elle peut co-brander ailleurs.
   await p.fill('input[name=redirection]', 'https://partenaire-externe.tg/soiree');
   await p.click('main button[type=submit]');
@@ -558,6 +579,7 @@ const run = async () => {
   await p.waitForLoadState('domcontentloaded');
   const slugAvant = await p.locator('code').first().innerText().catch(() => '');
   ok('le formulaire est pré-rempli', (await p.inputValue('input[name=titre]')) === titreEquipe);
+  await etapeDecor(p, 'campagne');
   await p.fill('input[name=sous_titre]', 'Sous-titre ajouté par l’équipe');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
@@ -610,11 +632,13 @@ const run = async () => {
   `));
   ok('l’aperçu s’affiche pour le gabarit par défaut', Math.abs((await forme()) - 1) < 0.02);
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'instagram');
   await p.waitForTimeout(1100);
   ok('changer de format change la forme de l’aperçu', Math.abs((await forme()) - 0.8) < 0.03,
      `${(await forme()).toFixed(2)} attendu 0.80`);
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'tiktok');
   await p.waitForTimeout(1100);
   ok('TikTok remonte le QR hors de la zone de la légende',
@@ -636,6 +660,7 @@ const run = async () => {
   ok('le gabarit part avec la fenêtre de son cadre', f.h < 0.95 && f.h > 0.3,
      `hauteur ${f.h}`);
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'bandeau');
   await p.waitForTimeout(1100);
   ok('changer de gabarit reprend SON format d’origine', (await fenetre()).format === '1:1',
@@ -659,18 +684,23 @@ const run = async () => {
              e.value = '0.5'; e.dispatchEvent(new Event('input', { bubbles: true })); })()
   `);
   await p.waitForTimeout(700);
+  await etapeDecor(p, 'apparence');
   await p.click('#detecter-fenetre');
   await p.waitForTimeout(2600);
   ok('« relever sur le cadre » retrouve l’ouverture',
      Math.abs((await fenetre()).y - f.y) < 0.02, `${(await fenetre()).y} attendu ${f.y}`);
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'instagram');
   await p.waitForTimeout(1100);
 
   // Un cadre livré avec l'application : aucun fichier à téléverser.
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#cadre_fourni', 'instagram.png');
+  await etapeDecor(p, 'campagne');
   await p.fill('#titre', titreIg);
   await p.fill('#redirection', 'https://wakabileguide.com/p/instagram');
+  await etapeDecor(p, 'apparence');
   await p.selectOption('#r-qr_position', 'top-right');
   await p.evaluate(`
     (() => { const e = document.getElementById('r-bloc_y');
@@ -697,6 +727,7 @@ const run = async () => {
   ok('l’aperçu rouvre au bon format', Math.abs((await forme()) - 0.8) < 0.03);
 
   // Le bouton « réglages du gabarit » remet l'apparence d'usine.
+  await etapeDecor(p, 'apparence');
   await p.click('#apparence-defaut');
   await p.waitForTimeout(900);
   ok('« réglages du gabarit » restaure les valeurs d’usine',
@@ -708,9 +739,12 @@ const run = async () => {
   const titreMuet = `Sans texte ${marque}`;
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(1100);
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'facebook');
   await p.waitForTimeout(1000);
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#cadre_fourni', 'facebook.png');
+  await etapeDecor(p, 'campagne');
   await p.fill('#titre', titreMuet);
   await p.fill('#accroche', '');
   await p.fill('#champ_libelle', '');
@@ -744,18 +778,23 @@ const run = async () => {
   ok('les réglages de la page blanche restent cachés ailleurs',
      await p.locator('.si-vierge').first().isHidden());
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#disposition', 'vierge');
   await p.waitForTimeout(1200);
   ok('la page blanche ouvre ses propres réglages',
      !(await p.locator('.si-vierge').first().isHidden()));
 
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#r-format', '9:16');
   await p.waitForTimeout(1200);
   ok('le format choisi s’applique à l’aperçu', Math.abs((await forme()) - 0.5625) < 0.03,
      `${(await forme()).toFixed(2)} attendu 0.56`);
 
+  await etapeDecor(p, 'apparence');
   await p.selectOption('#r-photo_forme', 'cercle');
+  await etapeDecor(p, 'cadre');
   await p.selectOption('#r-fond', 'brand.primary');
+  await etapeDecor(p, 'campagne');
   await p.fill('#titre', titrePB);
   await p.fill('#redirection', 'https://wakabileguide.com/p/page-blanche');
   await p.waitForTimeout(800);
@@ -1124,6 +1163,7 @@ const run = async () => {
   ok('« Toutes les villes » est désactivé en Découverte',
      await po.locator('#ville option[value=all]').isDisabled());
   await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(po, 'campagne');
   await po.fill('input[name=titre]', `Ciblage refusé ${marque}`);
   await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/ciblage');
   // L'option est désactivée dans le menu : on force la valeur, comme le
@@ -1217,6 +1257,7 @@ const run = async () => {
   const titreQuota = `Quota ${marque}`;
   await po.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(po, 'campagne');
   await po.fill('input[name=titre]', titreQuota);
   await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/quota');
   await po.click('#form-decor button[type=submit]');
@@ -2965,6 +3006,7 @@ const run = async () => {
   // Un décor, et une soumission qui doit être refusée.
   await pv.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await pv.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(pv, 'campagne');
   await pv.fill('input[name=titre]', `Décor à vérifier ${marque}`);
   await pv.fill('input[name=redirection]', 'https://wakabileguide.com/p/verif');
   await pv.click('main button[type=submit]');
@@ -3820,6 +3862,7 @@ const run = async () => {
   const DECOR_ART = `Soirée liée ${marque}`;
   await pART.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await pART.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(pART, 'campagne');
   await pART.fill('input[name=titre]', DECOR_ART);
   await pART.fill('input[name=redirection]', 'https://wakabileguide.com/p/lie');
   await pART.click('main button[type=submit]');
@@ -4393,6 +4436,152 @@ const run = async () => {
   await pAnon.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
   ok('le Studio n’est pas repoussé par quatre colonnes de liens',
      (await pAnon.locator('footer.pied-guide').count()) === 0);
+
+  console.log('\n━━ 44. L’atelier d’un décor : régler en regardant ━━');
+
+  /**
+   * Ce que cette section éprouve tient en une phrase : on ne règle plus à
+   * l'aveugle.
+   *
+   * L'aperçu vivait SOUS les dix-sept curseurs d'apparence, à deux mille
+   * pixels du haut. Tirer « marge gauche du texte » ne montrait donc rien :
+   * on réglait, on descendait voir, on remontait corriger. Le défaut ne
+   * s'attrape pas en lisant le balisage — l'aperçu était bien là — mais en
+   * regardant si on le VOIT au moment où l'on touche un réglage.
+   */
+  const pAT = await browser.newPage();
+  surveiller(pAT);
+  await connexion(pAT, ADMIN.email, ADMIN.mdp);
+  await pAT.setViewportSize({ width: 1440, height: 900 });
+  await pAT.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pAT.waitForTimeout(600);
+
+  ok('l’écran tient en un écran et demi',
+     (await pAT.evaluate(() => document.body.scrollHeight)) < 1500,
+     `${await pAT.evaluate(() => document.body.scrollHeight)} px`);
+  ok('l’aperçu se voit sans avoir à descendre', await pAT.locator('#apercu').isVisible());
+  ok('le bouton d’enregistrement aussi', await pAT.locator('.sd-enregistrer').isVisible());
+
+  /* --- les trois étapes --- */
+  const noms = await pAT.locator('.sd-etape .sd-nom').evaluateAll(
+    (n) => n.map((x) => (x.querySelector('small')?.previousSibling?.textContent ?? '').trim()));
+  ok('les réglages sont rangés en trois étapes',
+     noms.join(' · ') === 'Le cadre · La campagne · L’apparence', noms.join(' · '));
+  ok('la première est ouverte, les autres repliées',
+     (await pAT.locator('#panneau-cadre').isVisible())
+     && (await pAT.locator('#panneau-campagne').isHidden())
+     && (await pAT.locator('#panneau-apparence').isHidden()));
+
+  await pAT.locator('.sd-etape[data-etape=apparence]').click();
+  ok('changer d’étape ouvre la sienne et referme l’autre',
+     (await pAT.locator('#panneau-apparence').isVisible())
+     && (await pAT.locator('#panneau-cadre').isHidden()));
+  ok('et l’aperçu, lui, ne bouge pas', await pAT.locator('#apercu').isVisible());
+  /* `allInnerTexts` rend le texte TEL QU'AFFICHÉ, et la feuille de style
+     met ces légendes en capitales : on compare donc sans la casse. */
+  const legendes = (await pAT.locator('#panneau-apparence .sd-groupe legend').allInnerTexts())
+    .join(' · ').toLocaleLowerCase('fr');
+  ok('les dix-sept réglages sont groupés et nommés',
+     legendes === 'le texte · le qr et le filigrane · la fenêtre photo', legendes);
+
+  /**
+   * L'épreuve qui compte : on tourne un curseur, et l'on regarde si le
+   * dessin change PENDANT qu'on le voit. C'est tout l'objet de la refonte.
+   */
+  const dessin = () => pAT.evaluate(
+    () => (document.getElementById('apercu') as HTMLCanvasElement).toDataURL().length);
+  const avantR = await dessin();
+  await pAT.evaluate(() => {
+    const r = document.getElementById('r-bloc_y') as HTMLInputElement;
+    r.value = '0.3'; r.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pAT.waitForTimeout(1500);
+  ok('tourner un curseur redessine l’aperçu', (await dessin()) !== avantR);
+  ok('et l’aperçu était VISIBLE pendant qu’on le tournait',
+     await pAT.locator('#apercu').isVisible());
+  ok('la valeur du curseur s’affiche à côté de son nom',
+     (await pAT.locator('#v-bloc_y').innerText()).includes('30'),
+     await pAT.locator('#v-bloc_y').innerText());
+
+  /**
+   * Le piège de cet écran, et la raison d'un bout de script.
+   *
+   * « Titre » est obligatoire et vit dans l'étape 2. Enregistrer depuis
+   * l'étape 3 fait refuser l'envoi au navigateur, qui essaie alors de
+   * pointer un champ qu'il ne peut pas montrer : sur plusieurs
+   * navigateurs, RIEN ne se passe — pas de message, pas d'envoi. L'écran
+   * paraît cassé alors qu'il se protège.
+   */
+  await pAT.locator('.sd-enregistrer').click();
+  await pAT.waitForTimeout(600);
+  ok('enregistrer avec un champ requis vide OUVRE l’étape fautive',
+     await pAT.locator('#panneau-campagne').isVisible());
+  ok('et l’onglet correspondant se marque',
+     (await pAT.locator('.sd-etape[data-etape=campagne]').getAttribute('aria-selected')) === 'true');
+  ok('le champ fautif est alors désignable',
+     await pAT.evaluate(() => document.getElementById('titre')!.offsetParent !== null));
+  ok('on est resté sur la page, rien n’a été perdu', pAT.url().includes('p=nouveau'));
+
+  /* --- créer pour de bon, en passant par les trois étapes --- */
+  const DECOR_AT = `Atelier ${marque}`;
+  await pAT.locator('.sd-etape[data-etape=cadre]').click();
+  await pAT.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pAT.waitForTimeout(900);
+  await pAT.locator('#panneau-cadre [data-vers=campagne]').click();
+  ok('« Continuer » mène à l’étape suivante',
+     await pAT.locator('#panneau-campagne').isVisible());
+  await pAT.fill('#titre', DECOR_AT);
+  await pAT.fill('#redirection', 'https://wakabileguide.com/p/atelier');
+  await pAT.locator('#panneau-campagne [data-vers=apparence]').click();
+  await pAT.locator('.sd-enregistrer').click();
+  await pAT.waitForLoadState('domcontentloaded');
+  await pAT.waitForTimeout(500);
+  ok('on enregistre depuis N’IMPORTE QUELLE étape', pAT.url().includes('p=catalogue'));
+
+  await pAT.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_AT)}`,
+                 { waitUntil: 'domcontentloaded' });
+  ok('le décor est bien né de ce parcours',
+     (await pAT.locator(`.carte:has-text("${DECOR_AT}")`).count()) === 1);
+
+  /* --- la modification rouvre le même atelier --- */
+  const idAT = await pAT.locator(`.carte:has-text("${DECOR_AT}") input[name=id]`).first().inputValue();
+  await pAT.goto(`${BASE}/index.php?p=modifier&id=${idAT}`, { waitUntil: 'domcontentloaded' });
+  await pAT.waitForTimeout(400);
+  ok('modifier ouvre le même atelier', (await pAT.locator('.sd-etape').count()) === 3);
+  ok('avec les valeurs déjà saisies',
+     (await pAT.locator('#titre').inputValue()) === DECOR_AT);
+  /**
+   * La carte d'équipe porte ses PROPRES formulaires. Elle doit donc rester
+   * hors de celui du décor : un formulaire imbriqué dans un autre est
+   * ignoré par le navigateur, et « Lui confier » n'enverrait rien.
+   */
+  ok('la gestion d’équipe reste hors du formulaire du décor',
+     await pAT.evaluate(() => {
+       const f = document.getElementById('form-decor')!;
+       const h = Array.from(document.querySelectorAll('h3'))
+         .find((x) => /Qui travaille/.test(x.textContent ?? ''));
+       return h !== undefined && !f.contains(h);
+     }));
+
+  /* --- sur un téléphone, l'aperçu ne quitte pas non plus l'écran --- */
+  await pAT.setViewportSize({ width: 390, height: 844 });
+  await pAT.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pAT.waitForTimeout(700);
+  await pAT.locator('.sd-etape[data-etape=apparence]').click();
+  await pAT.evaluate(() => window.scrollTo(0, 600));
+  await pAT.waitForTimeout(400);
+  ok('sur téléphone l’aperçu reste collé en haut pendant qu’on règle',
+     await pAT.locator('#apercu').isVisible());
+  const bande = await pAT.locator('.sd-carte-apercu').boundingBox();
+  ok('et il ne mange pas l’écran', (bande?.height ?? 999) < 844 * 0.32,
+     `${Math.round(bande?.height ?? 0)} px sur 844`);
+  ok('la page ne glisse pas de côté',
+     await pAT.evaluate(() => {
+       const d = document.documentElement;
+       return d.scrollWidth <= d.clientWidth + 1;
+     }));
+  await pAT.setViewportSize({ width: 1280, height: 900 });
+  await pAT.close();
 
   /**
    * Le retour en tête : on l'éprouve en DÉFILANT, pas en lisant le HTML.
