@@ -29,6 +29,8 @@ interface Contexte {
   cadreUrl: string | null;
   base: string;
   connecte: boolean;
+  /** Non nul quand le décor ne peut pas être fabriqué (cadre introuvable). */
+  panne?: string | null;
 }
 
 const $ = <T extends HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -549,6 +551,28 @@ function demarrer(ctx: Contexte) {
       e.preventDefault();
       basculer(vers, lien);
     });
+  }
+
+  /**
+   * Un décor qu'on ne peut pas fabriquer le dit, et ne se laisse pas
+   * télécharger.
+   *
+   * Sans cadre, le badge n'est plus celui de la campagne : ni la marque, ni
+   * le placement, rien que la photo et le QR. Le laisser partir, c'est le
+   * laisser circuler.
+   */
+  if (ctx.panne) {
+    bloquer(ctx.panne);
+    // Et l'on ferme aussi le choix de la photo : la laisser poser
+    // donnerait à voir un badge sans cadre, qu'on croirait être le badge.
+    const champPhoto = document.getElementById('photo') as HTMLInputElement | null;
+    if (champPhoto) champPhoto.disabled = true;
+    const bouton = document.querySelector('.bouton.fichier') as HTMLElement | null;
+    if (bouton) {
+      bouton.setAttribute('aria-disabled', 'true');
+      bouton.style.opacity = '.5';
+      bouton.style.pointerEvents = 'none';
+    }
   }
 
   void chargerImages();

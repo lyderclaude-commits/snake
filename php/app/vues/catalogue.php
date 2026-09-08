@@ -62,6 +62,27 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
       $peut_archiver = transition_permise($d['statut'], 'archive', 'equipe');
   ?>
     <div class="carte" style="margin-bottom:12px">
+      <?php
+      /**
+       * Le fichier du cadre a-t-il survécu ?
+       *
+       * L'adresse du cadre vit en base, le fichier dans `donnees/cadres/`.
+       * Un déploiement qui remplace le dossier sans emporter ses données
+       * les sépare — la base est ailleurs, elle survit — et le décor sert
+       * alors un badge sans cadre. C'est ici qu'on le voit, parce que c'est
+       * ici qu'on regarde ses campagnes.
+       */
+      $_sans_fichier = $d['cadre_url'] && chemin_cadre((string) $d['cadre_url']) === null;
+      ?>
+      <?php if ($_sans_fichier): ?>
+        <p class="msg err" style="margin:0 0 12px">
+          <b>Cadre introuvable sur le serveur.</b>
+          Ce décor pointe vers un fichier qui n’existe plus : le badge ne peut pas être
+          fabriqué. Téléversez le cadre à nouveau depuis « Modifier », ou restaurez une
+          sauvegarde.
+        </p>
+      <?php endif; ?>
+
       <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:16px">
         <?php if ($d['cadre_url']): ?>
           <img src="<?= e($d['cadre_url']) ?>" alt="" loading="lazy"

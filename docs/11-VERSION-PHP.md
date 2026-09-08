@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **692 scénarios, 692 réussis**
+Les deux ont été vérifiés de bout en bout : **699 scénarios, 699 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 692 scénarios, dans un vrai navigateur
+npm run php:e2e          # 699 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 692 scénarios
+### Les 699 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1070,6 +1070,43 @@ est bornée pour laisser voir les réglages qu'on touche ; la borne était posé
 en CSS, et `max-height` ne rabat qu'un côté. Le badge gardait sa largeur de
 carré et perdait sa hauteur. C'est le Studio qui calcule maintenant la place,
 où les deux côtés se décident ensemble.
+
+### Un décor qui a perdu son cadre le dit
+
+L'adresse du cadre vit **en base** ; le fichier vit dans `donnees/cadres/`.
+Les deux se séparent au premier déploiement qui remplace le dossier de
+l'application sans emporter ses données — avec MySQL, la base est ailleurs,
+elle survit, et chaque décor se met à pointer vers un 404.
+
+Le Studio n'en disait rien. `renderScene` passe sans un mot une couche image
+dont il n'a pas le bitmap : l'invité recevait **un aplat gris**, avec un
+bouton « Télécharger mon badge » qui marchait — et un badge sans cadre n'est
+pas le badge de la campagne, il n'en porte ni la marque ni le placement.
+
+Trois endroits le disent désormais :
+
+| Où | Ce qu'on voit |
+|---|---|
+| La page du décor | Un bandeau qui nomme la cause ; le téléchargement **et** le choix de la photo sont fermés |
+| Sous la toile | Le même message, là où l'invité regarde |
+| Le catalogue | La carte du décor porte l'alerte, avec quoi faire : téléverser à nouveau, ou restaurer |
+
+Le contrôle porte sur le format **servi** : une déclinaison dont le cadre
+manque n'empêche pas le format natif de fonctionner, et l'inverse est vrai
+aussi.
+
+**Pour récupérer un site dans cet état** : restaurer `donnees/` depuis une
+archive de sauvegarde (Administration → Sauvegardes), qui contient les cadres
+au dernier octet ; sinon, rouvrir chaque décor signalé et reposer son cadre.
+Et pour la prochaine fois : un déploiement se fait **par-dessus** l'existant,
+jamais dans un dossier vidé — `donnees/` et `config.php` ne sont pas dans le
+zip, précisément pour qu'ils survivent.
+
+### Les étapes se numérotent d'après ce qui est affiché
+
+« 2 · Votre texte » ne s'affiche que si le décor a un champ à remplir. Sur un
+décor qui n'en a pas, l'invité lisait « 1 » puis « 3 » et cherchait l'étape
+manquante. Les numéros sont maintenant comptés à l'affichage.
 
 ---
 

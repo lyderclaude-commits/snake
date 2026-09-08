@@ -355,6 +355,34 @@ switch ($page) {
         // à cet instant, pas au jour où le décor a été créé.
         $g = gabarit_selon_offre($g, utilisateur_par_id((string) $d['auteur_id']));
 
+        /**
+         * Le fichier du cadre existe-t-il encore ?
+         *
+         * Un décor garde l'ADRESSE de son cadre en base ; le fichier, lui,
+         * vit dans `donnees/cadres/`. Les deux se séparent au premier
+         * déploiement qui remplace le dossier sans emporter ses données —
+         * la base MySQL est ailleurs, elle survit, et chaque décor pointe
+         * alors vers un 404.
+         *
+         * Le Studio n'en disait rien : `renderScene` passe une couche image
+         * dont il n'a pas le bitmap, et l'invité recevait un aplat gris. Un
+         * badge sans son cadre n'est pas le badge de la campagne, et il
+         * circulerait tel quel.
+         */
+        $_cadre_manque = null;
+        $_couche_cadre = null;
+        foreach ($g['layers'] ?? [] as $_l) {
+            if (($_l['id'] ?? '') === 'frame' && ($_l['type'] ?? '') === 'image') {
+                $_couche_cadre = (string) ($_l['src'] ?? '');
+            }
+        }
+        if ($_couche_cadre !== null && $_couche_cadre !== ''
+            && chemin_cadre($_couche_cadre) === null) {
+            $_cadre_manque = 'Le fichier du cadre de ce décor est introuvable sur le serveur : '
+                . 'le badge ne peut pas être fabriqué. L’organisateur doit le téléverser à nouveau '
+                . 'depuis « Modifier », ou restaurer une sauvegarde.';
+        }
+
         evenement($d['id'], 'vue');
 
         /**
@@ -428,6 +456,9 @@ switch ($page) {
              * la bascule se fait sur place.
              */
             'gabarits' => $_gabarits,
+            // Dit à l'invité pourquoi son badge ne se fabrique pas, plutôt
+            // que de lui montrer un rectangle gris sans explication.
+            'panne' => $_cadre_manque,
         ]);
 
     /* ---- comptes ---- */

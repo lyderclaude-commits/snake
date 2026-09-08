@@ -1,4 +1,17 @@
-<?php $champs = array_values(array_filter($g['layers'], fn($l) => ($l['type'] ?? '') === 'text' && !empty($l['editable']))); ?>
+<?php
+$champs = array_values(array_filter($g['layers'], fn($l) => ($l['type'] ?? '') === 'text' && !empty($l['editable'])));
+
+/**
+ * Les étapes se numérotent d'après ce qui est affiché, pas d'après un
+ * chiffre écrit à la main.
+ *
+ * « 2 · Votre texte » ne s'affiche que si le décor a un champ à remplir.
+ * Sur un décor qui n'en a pas, l'invité lisait « 1 » puis « 3 » et
+ * cherchait l'étape manquante.
+ */
+$_pas = 0;
+$pas = function () use (&$_pas) { return ++$_pas; };
+?>
 <div class="contenu">
   <section class="entete" style="padding-bottom:14px">
     <h1><?= e($d['titre']) ?></h1>
@@ -30,6 +43,10 @@
     <?php endif; ?>
   </section>
 
+  <?php if (!empty($panne)): ?>
+    <div class="msg err" role="alert" style="margin-bottom:14px"><?= e($panne) ?></div>
+  <?php endif; ?>
+
   <div class="studio">
     <div class="toile-boite">
       <canvas id="toile" width="640" height="640" aria-label="Aperçu de votre badge"></canvas>
@@ -39,7 +56,7 @@
     <div class="pile">
       <div class="carte">
         <div class="champ">
-          <p class="pas">1 · Votre photo</p>
+          <p class="pas"><?= $pas() ?> · Votre photo</p>
           <!-- Le champ natif reste, caché mais focusable : c'est lui qui ouvre
                la galerie, et le clavier y accède toujours. Le libellé visible
                est le nôtre : celui du navigateur s'affiche dans SA langue,
@@ -88,7 +105,7 @@
 
       <?php if ($champs): ?>
       <div class="carte">
-        <h3 style="margin-bottom:12px">2 · Votre texte</h3>
+        <h3 style="margin-bottom:12px"><?= $pas() ?> · Votre texte</h3>
         <?php foreach ($champs as $c): ?>
           <div class="champ">
             <label for="champ-<?= e($c['id']) ?>"><?= e($c['placeholder'] ?? 'Texte') ?></label>
@@ -102,7 +119,7 @@
       <?php endif; ?>
 
       <div class="carte">
-        <h3 style="margin-bottom:10px">3 · Récupérer votre badge</h3>
+        <h3 style="margin-bottom:10px"><?= $pas() ?> · Récupérer votre badge</h3>
         <button class="bouton" id="telecharger" type="button" style="width:100%;justify-content:center">
           Télécharger mon badge
         </button>
@@ -160,7 +177,10 @@ window.WAKABI = {
   slug: <?= json_encode($d['slug']) ?>,
   cadreUrl: <?= json_encode($d['cadre_url']) ?>,
   base: <?= json_encode(url('')) ?>,
-  connecte: <?= $me ? 'true' : 'false' ?>
+  connecte: <?= $me ? 'true' : 'false' ?>,
+  // Non nul quand le décor ne peut pas être fabriqué : le Studio le dit et
+  // ferme le téléchargement plutôt que de livrer un badge sans son cadre.
+  panne: <?= json_encode($panne ?? null, JSON_UNESCAPED_UNICODE) ?>
 };
 </script>
 <script src="<?= e(actif('public/studio.js')) ?>" defer></script>

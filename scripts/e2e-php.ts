@@ -300,6 +300,15 @@ const run = async () => {
       // un badge parce que l'offre de l'organisateur est épuisée, et la
       // recette le provoque exprès. Le navigateur le journalise quand même.
       if (/429/.test(c.text())) return;
+      /**
+       * Le 404 du cadre introuvable est PROVOQUÉ, lui aussi.
+       *
+       * La section 45 déclare une déclinaison dont le fichier n'existe
+       * pas, pour éprouver que le Studio le dit au lieu de dessiner un
+       * aplat gris. Le sentinelle est reconnaissable : un UUID nul, qu'on
+       * n'écrit nulle part ailleurs.
+       */
+      if (source.includes('00000000-0000-4000-8000-000000000000')) return;
       if (source === '' || source.startsWith(notre_origine)) {
         errs.push('CONSOLE ' + c.text());
       }
@@ -4926,6 +4935,101 @@ const run = async () => {
      }));
   await pAT.setViewportSize({ width: 1280, height: 900 });
   await pAT.close();
+
+  console.log('\n━━ 45. Un décor qui a perdu son cadre le DIT ━━');
+
+  /**
+   * L'adresse du cadre vit en base, le fichier dans `donnees/cadres/`.
+   *
+   * Les deux se séparent au premier déploiement qui remplace le dossier
+   * sans emporter ses données : la base est ailleurs, elle survit, et
+   * chaque décor pointe vers un 404. Le Studio n'en disait rien —
+   * `renderScene` passe une couche image dont il n'a pas le bitmap — et
+   * l'invité recevait un aplat gris, sans un mot, avec un bouton
+   * « Télécharger mon badge » qui marchait.
+   *
+   * On éprouve le cas par une DÉCLINAISON dont le cadre n'existe pas :
+   * même chemin de code, et la recette n'a pas à toucher au disque du
+   * serveur — elle ne sait pas où il est.
+   */
+  const pPerdu = await browser.newPage();
+  surveiller(pPerdu);
+  await connexion(pPerdu, ADMIN.email, ADMIN.mdp);
+
+  const DECOR_PERDU = `Cadre perdu ${marque}`;
+  await pPerdu.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pPerdu.waitForTimeout(600);
+  await etapeDecor(pPerdu, 'cadre');
+  await pPerdu.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pPerdu.waitForFunction(
+    () => (document.querySelector('input[name=cadre_url]') as HTMLInputElement).value !== '',
+    null, { timeout: 25_000 });
+
+  // Une déclinaison story dont le cadre a la bonne FORME d'adresse et
+  // aucun fichier derrière : exactement ce que laisse un dossier effacé.
+  await pPerdu.evaluate((base) => {
+    const champ = document.getElementById('champ-variantes') as HTMLInputElement;
+    champ.value = JSON.stringify({
+      '9:16': { cadreUrl: base + '?p=cadre&f=00000000-0000-4000-8000-000000000000.webp' },
+    });
+  }, BASE + '/');
+
+  await etapeDecor(pPerdu, 'campagne');
+  await pPerdu.fill('#titre', DECOR_PERDU);
+  await pPerdu.fill('#accroche', '');
+  await pPerdu.fill('#champ_libelle', '');
+  await pPerdu.fill('#redirection', 'https://wakabileguide.com/p/perdu');
+  await pPerdu.locator('.sd-enregistrer').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+
+  await pPerdu.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_PERDU)}`,
+                    { waitUntil: 'domcontentloaded' });
+  await pPerdu.locator(`.carte:has-text("${DECOR_PERDU}") form[action*="p=statut"] button:has-text("Publier")`)
+    .first().click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  const slugPerdu = `cadre-perdu-${marque}`;
+
+  /* --- le format sain ne crie pas au loup --- */
+  await pPerdu.goto(`${BASE}/index.php?p=decor&slug=${slugPerdu}`, { waitUntil: 'domcontentloaded' });
+  await pPerdu.waitForSelector('#toile');
+  await pPerdu.waitForTimeout(1200);
+  ok('le format dont le cadre existe s’ouvre normalement',
+     (await pPerdu.locator('.contenu > .msg.err').count()) === 0
+     && !(await pPerdu.locator('#telecharger').isDisabled()));
+
+  /**
+   * Et la numérotation suit ce qui est AFFICHÉ.
+   *
+   * Ce décor n'a pas de champ à remplir : la carte « Votre texte »
+   * disparaît. L'invité lisait alors « 1 » puis « 3 », et cherchait une
+   * étape qui n'existait pas.
+   */
+  const pasVus = await pPerdu.locator('.pas, .pile h3').allInnerTexts();
+  ok('les étapes se numérotent sans trou',
+     pasVus.filter((t) => /^\s*\d/.test(t)).map((t) => t.trim()[0]).join('') === '12',
+     pasVus.map((t) => t.replace(/\s+/g, ' ')).join(' / '));
+
+  /* --- le format dont le fichier manque le dit, et ferme le badge --- */
+  await pPerdu.goto(`${BASE}/index.php?p=decor&slug=${slugPerdu}&f=${encodeURIComponent('9:16')}`,
+                    { waitUntil: 'domcontentloaded' });
+  await pPerdu.waitForSelector('#toile');
+  await pPerdu.waitForTimeout(1500);
+  const dit = await pPerdu.locator('.contenu > .msg.err').first().innerText().catch(() => '');
+  ok('un cadre introuvable est ANNONCÉ, pas dessiné en gris',
+     /introuvable sur le serveur/.test(dit), dit.replace(/\s+/g, ' ').slice(0, 70));
+  ok('et le Studio le répète là où l’invité regarde',
+     /introuvable/.test(await pPerdu.locator('#etat').innerText()));
+  ok('le téléchargement est fermé : un badge sans cadre n’est pas le badge',
+     await pPerdu.locator('#telecharger').isDisabled());
+  ok('et la photo ne se choisit pas non plus',
+     await pPerdu.locator('#photo').isDisabled());
+
+  /* --- l'organisateur le voit dans son catalogue --- */
+  await pPerdu.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_PERDU)}`,
+                    { waitUntil: 'domcontentloaded' });
+  ok('un décor au cadre présent n’est pas signalé à tort',
+     (await pPerdu.locator(`.carte:has-text("${DECOR_PERDU}") .msg.err`).count()) === 0);
+  await pPerdu.close();
 
   /**
    * Le retour en tête : on l'éprouve en DÉFILANT, pas en lisant le HTML.
