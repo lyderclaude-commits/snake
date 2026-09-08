@@ -104,7 +104,53 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
 
       <!-- ═══════════ 1 · Le cadre ═══════════ -->
       <section class="carte sd-panneau" id="panneau-cadre" role="tabpanel" aria-labelledby="onglet-cadre">
-        <div class="champ">
+        <?php
+        /**
+         * La galerie de modèles, et le menu déroulant qu'elle habille.
+         *
+         * On choisissait « Bandeau bas · Carré » dans une liste de texte,
+         * sans voir à quoi cela ressemble — alors que la seule question
+         * qu'on se pose devant un gabarit est justement de quoi il a l'air.
+         *
+         * Le `<select>` RESTE, caché derrière la galerie. Il porte toujours
+         * la valeur envoyée, il fonctionne sans script, et le clavier le
+         * trouve. La galerie ne fait que l'actionner : rien de ce qui
+         * marchait ne dépend d'elle.
+         */
+        $par_nature = [
+          'Formats Wakabi' => ['bandeau', 'angle', 'story'],
+          'Réseaux sociaux' => ['instagram', 'facebook', 'tiktok'],
+          'Sur mesure' => ['vierge'],
+        ];
+        $fiches = [];
+        foreach (dispositions() as $d) {
+            $fiches[$d['id']] = $d;
+        }
+        ?>
+        <div class="champ sd-galerie-champ">
+          <span class="champ-titre">Modèle</span>
+          <div class="sd-galerie" role="radiogroup" aria-label="Modèle de décor">
+            <?php foreach ($par_nature as $nature => $ids): ?>
+              <?php foreach ($ids as $id): if (!isset($fiches[$id])) { continue; } $d = $fiches[$id]; ?>
+                <button type="button" class="sd-modele<?= $valeurs['disposition'] === $id ? ' actif' : '' ?>"
+                        role="radio" aria-checked="<?= $valeurs['disposition'] === $id ? 'true' : 'false' ?>"
+                        data-modele="<?= e($id) ?>" title="<?= e($d['aide']) ?>">
+                  <?php $vign = $id === 'vierge' ? '' : cadre_du_format($id); ?>
+                  <span class="sd-modele-image">
+                    <?php if ($vign): ?>
+                      <img src="<?= e($vign) ?>" alt="" loading="lazy" decoding="async">
+                    <?php else: ?><span class="sd-modele-vide">Page<br>blanche</span><?php endif; ?>
+                    <span class="sd-modele-ratio"><?= e(canevas($id)['ratio']) ?></span>
+                  </span>
+                  <span class="sd-modele-nom"><?= e($d['nom']) ?></span>
+                  <span class="sd-modele-nature"><?= e($nature) ?></span>
+                </button>
+              <?php endforeach; ?>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
+        <div class="champ sd-champ-disposition">
           <label for="disposition">Gabarit</label>
           <select id="disposition" name="disposition">
             <?php
@@ -899,5 +945,41 @@ window.WAKABI_APERCU = {
   });
 
   dessinerListe();
+})();
+</script>
+
+<script>
+/**
+ * La galerie actionne le menu déroulant.
+ *
+ * Elle ne porte aucune valeur elle-même : elle pose celle du `<select>` et
+ * lui envoie un `change`, exactement comme si on l'avait déplié. Tout ce
+ * qui écoute ce champ — l'aperçu, la remise aux réglages d'usine — continue
+ * donc de fonctionner sans rien savoir de la galerie.
+ */
+(function () {
+  var choix = document.getElementById('disposition');
+  var vignettes = Array.prototype.slice.call(document.querySelectorAll('.sd-modele'));
+  if (!choix || !vignettes.length) { return; }
+
+  var marquer = function () {
+    vignettes.forEach(function (v) {
+      var actif = v.dataset.modele === choix.value;
+      v.classList.toggle('actif', actif);
+      v.setAttribute('aria-checked', actif ? 'true' : 'false');
+    });
+  };
+
+  vignettes.forEach(function (v) {
+    v.addEventListener('click', function () {
+      if (choix.value === v.dataset.modele) { return; }
+      choix.value = v.dataset.modele;
+      choix.dispatchEvent(new Event('change', { bubbles: true }));
+      marquer();
+    });
+  });
+  /* Le menu reste utilisable : s'il change, la galerie suit. */
+  choix.addEventListener('change', marquer);
+  marquer();
 })();
 </script>

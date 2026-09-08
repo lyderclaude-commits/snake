@@ -4613,6 +4613,44 @@ const run = async () => {
      await pAT.evaluate(() => document.getElementById('titre')!.offsetParent !== null));
   ok('on est resté sur la page, rien n’a été perdu', pAT.url().includes('p=nouveau'));
 
+  /* ---- la galerie de modèles ---- */
+  await pAT.locator('.sd-etape[data-etape=cadre]').click();
+  ok('les gabarits se choisissent sur vignette',
+     (await pAT.locator('.sd-modele').count()) === 7,
+     `${await pAT.locator('.sd-modele').count()} modèles`);
+  /**
+   * Le `<select>` reste, caché derrière la galerie : il porte la valeur
+   * envoyée, il marche sans script, et le clavier le trouve. La galerie ne
+   * fait que l'actionner — c'est ce qui permet à tout le reste du produit
+   * de ne rien savoir d'elle.
+   */
+  await pAT.locator('.sd-modele[data-modele=story]').click();
+  await pAT.waitForTimeout(2000);
+  ok('cliquer une vignette actionne le menu qui, lui, part avec le formulaire',
+     (await pAT.inputValue('#disposition')) === 'story');
+  const formeStory = (await pAT.locator('#apercu').boundingBox())!;
+  ok('et l’aperçu prend le format du modèle',
+     Math.abs(formeStory.height / formeStory.width - 16 / 9) < 0.06,
+     (formeStory.height / formeStory.width).toFixed(2));
+  await pAT.locator('.sd-modele[data-modele=bandeau]').click();
+  await pAT.waitForTimeout(2000);
+
+  /* ---- la palette relevée sur le cadre ---- */
+  const teintes = await pAT.locator('#r-texte_couleur optgroup[data-cadre] option')
+    .evaluateAll((n) => n.map((o) => (o as HTMLOptionElement).value));
+  ok('les couleurs du cadre sont proposées', teintes.length >= 3
+     && teintes.every((t) => /^#[0-9A-F]{6}$/.test(t)), teintes.join(' '));
+
+  /**
+   * La police du produit était DEMANDÉE sans jamais être servie : le
+   * moteur réclame Bricolage Grotesque pour chaque accroche, et le
+   * navigateur retombait en silence sur la police du système. Un défaut
+   * qui ne se voit pas, parce qu'il produit du texte correct — simplement
+   * pas le bon.
+   */
+  ok('la police de titrage est vraiment servie',
+     await pAT.evaluate(() => document.fonts.check("800 64px 'Bricolage Grotesque'")));
+
   /**
    * La santé du décor, dite PENDANT qu'on règle.
    *

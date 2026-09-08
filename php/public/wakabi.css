@@ -87,6 +87,63 @@
   unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* ============ Bricolage Grotesque, la police des badges ============
+   Le moteur de rendu la demande pour chaque accroche — c'est la police de
+   TITRAGE du produit. Elle n'était pourtant servie nulle part : le
+   navigateur retombait en silence sur `system-ui`, et tous les badges
+   sortaient dans la police du téléphone de l'invité plutôt que dans celle
+   du décor. Un défaut qu'on ne voit pas, parce qu'il produit du texte
+   correct — simplement pas le bon. */
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-400-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-700-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-800-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
 /* Charte Wakabi — valeurs réelles, extraites du site de production.
    Seul fichier de l'application qui porte des couleurs. */
 
@@ -1461,3 +1518,29 @@ tr.pale td a{color:inherit}
 .sd-cal-nom{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sd-cal-eti{font-size:.7rem;color:var(--text3);flex:none}
 .sd-libre{border-top:1px solid var(--border);padding-top:14px}
+
+/* ---- la galerie de modèles ---- */
+.sd-galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:11px}
+.sd-modele{display:flex;flex-direction:column;gap:5px;padding:6px;border:1px solid var(--border);
+  border-radius:var(--r10);background:var(--paper);cursor:pointer;font:inherit;text-align:left;
+  transition:border-color .15s,box-shadow .15s}
+.sd-modele:hover{border-color:var(--primary)}
+.sd-modele:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.sd-modele.actif{border-color:var(--primary);border-width:2px;padding:5px;
+  box-shadow:0 8px 18px -12px rgba(37,99,235,.7)}
+/* Hauteur FIXE, forme réelle à l'intérieur : les vignettes vont du carré au
+   9:16, et suivre chaque ratio donnerait une grille en dents de scie. La
+   boîte est régulière, l'image y garde ses proportions. */
+.sd-modele-image{position:relative;display:grid;place-items:center;height:92px;
+  border-radius:7px;overflow:hidden;background:var(--bg2)}
+.sd-modele-image img{max-width:100%;max-height:100%;width:auto;height:auto;
+  object-fit:contain;display:block}
+.sd-modele-vide{font-size:.7rem;color:var(--text3);text-align:center;line-height:1.4}
+.sd-modele-ratio{position:absolute;right:4px;top:4px;background:rgba(15,23,42,.78);color:#fff;
+  font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px}
+.sd-modele-nom{font-size:.78rem;font-weight:600;line-height:1.25}
+.sd-modele-nature{font-size:.66rem;color:var(--text3)}
+/* Le menu reste là, pour le clavier et pour qui n'a pas de script — mais
+   il n'a plus à occuper la place d'un champ principal. */
+.sd-champ-disposition{margin-top:10px}
+.sd-champ-disposition label{font-size:.8rem;color:var(--text2)}

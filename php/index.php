@@ -1070,6 +1070,14 @@ switch ($page) {
              * plus tard, ce qu'on pouvait lui dire tout de suite.
              */
             'sante' => prevol($g, $cadre),
+            /**
+             * Les teintes du cadre, relues à chaque aperçu.
+             *
+             * Elles suivent donc le fichier : changer de cadre change la
+             * palette, sans qu'on ait à penser à la rafraîchir. Le calcul
+             * échantillonne une grille — quelques millisecondes.
+             */
+            'palette' => couleurs_du_cadre(chemin_cadre($cadre) ?? ''),
             'apparence' => $apparence,
             'cadre' => $cadre,
             'photo' => url('public/apercu-photo.webp'),

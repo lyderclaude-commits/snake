@@ -517,10 +517,11 @@ function apparence_propre(string $disposition, array $saisie): array
     };
 
     return [
-        'texte_couleur' => $parmi('texte_couleur', APPARENCE_COULEURS),
+        // Un jeton de la charte, ou une teinte relevée sur le cadre.
+        'texte_couleur' => couleur_propre($saisie['texte_couleur'] ?? null, (string) $d['texte_couleur']),
         'texte_align' => $parmi('texte_align', APPARENCE_ALIGNEMENTS),
         'format' => $parmi('format', FORMATS),
-        'fond' => $parmi('fond', APPARENCE_COULEURS),
+        'fond' => couleur_propre($saisie['fond'] ?? null, (string) $d['fond']),
         // Bornes larges : l'ouverture d'un cadre peut être un médaillon
         // dans un coin. Les serrer reviendrait à refuser des cadres dont
         // la fenêtre est petite ou basse — et à rendre inexploitable la
@@ -567,6 +568,118 @@ function rectangles_textes(array $a): array
         'accroche' => ['x' => $a['bloc_x'], 'y' => $a['bloc_y'], 'w' => $largeur, 'h' => $h_accroche],
         'champ' => ['x' => $a['bloc_x'], 'y' => $y_champ, 'w' => $largeur, 'h' => $h_champ],
     ];
+}
+
+/* ---------------- la palette du cadre ---------------- */
+
+/** Combien de teintes on propose : au-delà, on choisit moins bien. */
+const PALETTE_MAX = 5;
+
+/**
+ * Les couleurs dominantes d'un cadre.
+ *
+ * Six couleurs imposées, c'est une charte — celle de Wakabi, pas celle de
+ * l'organisateur. Lui demander un code hexadécimal serait pire : personne
+ * ne connaît le sien par cœur, et il est dans le fichier qu'il vient de
+ * téléverser. On le lui relit donc.
+ *
+ * On échantillonne une grille plutôt que tous les pixels : un cadre de
+ * 1080 × 1080 en compte plus d'un million, et la teinte dominante ne se
+ * cache pas dans le millionième. Les pixels TRANSPARENTS sont écartés —
+ * c'est le trou par lequel on voit la photo, il n'a pas de couleur.
+ *
+ * Les teintes sont arrondies avant d'être comptées : sans cela, un dégradé
+ * donnerait mille couleurs presque identiques, et aucune ne l'emporterait.
+ */
+function couleurs_du_cadre(string $chemin): array
+{
+    if (!is_file($chemin) || !function_exists('imagecreatefrompng')) {
+        return [];
+    }
+    $info = @getimagesize($chemin);
+    $img = match ($info[2] ?? 0) {
+        IMAGETYPE_PNG => @imagecreatefrompng($chemin),
+        IMAGETYPE_WEBP => @imagecreatefromwebp($chemin),
+        IMAGETYPE_JPEG => @imagecreatefromjpeg($chemin),
+        default => null,
+    };
+    if (!$img) {
+        return [];
+    }
+
+    $l = imagesx($img);
+    $h = imagesy($img);
+    $pas = max(1, (int) floor(min($l, $h) / 64));
+    $seaux = [];
+
+    for ($y = 0; $y < $h; $y += $pas) {
+        for ($x = 0; $x < $l; $x += $pas) {
+            $c = imagecolorat($img, $x, $y);
+            // GD code l'alpha de 0 (opaque) à 127 (transparent).
+            if ((($c >> 24) & 0x7F) > 40) {
+                continue;
+            }
+            $r = ($c >> 16) & 0xFF;
+            $v = ($c >> 8) & 0xFF;
+            $b = $c & 0xFF;
+            // Arrondi à 24 niveaux par canal : assez fin pour distinguer un
+            // bleu d'un teal, assez large pour rassembler un dégradé.
+            $cle = (intdiv($r, 24) << 10) | (intdiv($v, 24) << 5) | intdiv($b, 24);
+            if (!isset($seaux[$cle])) {
+                $seaux[$cle] = ['n' => 0, 'r' => 0, 'v' => 0, 'b' => 0];
+            }
+            $seaux[$cle]['n']++;
+            $seaux[$cle]['r'] += $r;
+            $seaux[$cle]['v'] += $v;
+            $seaux[$cle]['b'] += $b;
+        }
+    }
+    imagedestroy($img);
+    if (!$seaux) {
+        return [];
+    }
+
+    uasort($seaux, fn($a, $b) => $b['n'] <=> $a['n']);
+    $sortie = [];
+    foreach ($seaux as $s) {
+        $hex = sprintf('#%02X%02X%02X',
+            (int) round($s['r'] / $s['n']),
+            (int) round($s['v'] / $s['n']),
+            (int) round($s['b'] / $s['n']));
+        // Deux teintes trop proches n'offrent pas un choix, elles l'encombrent.
+        foreach ($sortie as $deja) {
+            if (distance_couleur($hex, $deja) < 40) {
+                continue 2;
+            }
+        }
+        $sortie[] = $hex;
+        if (count($sortie) >= PALETTE_MAX) {
+            break;
+        }
+    }
+    return $sortie;
+}
+
+/** Distance entre deux couleurs, en droite ligne dans le cube RVB. */
+function distance_couleur(string $a, string $b): float
+{
+    [$ar, $av, $ab] = sscanf($a, '#%02x%02x%02x') ?: [0, 0, 0];
+    [$br, $bv, $bb] = sscanf($b, '#%02x%02x%02x') ?: [0, 0, 0];
+    return sqrt(($ar - $br) ** 2 + ($av - $bv) ** 2 + ($ab - $bb) ** 2);
+}
+
+/**
+ * Une couleur de texte : un jeton de la charte, ou un hexadécimal relevé
+ * sur le cadre. Tout le reste retombe sur la valeur de départ — une
+ * couleur venue d'un formulaire ne doit pas pouvoir devenir `url(...)`.
+ */
+function couleur_propre(mixed $saisie, string $defaut): string
+{
+    $v = is_string($saisie) ? trim($saisie) : '';
+    if (isset(APPARENCE_COULEURS[$v])) {
+        return $v;
+    }
+    return preg_match('/^#[0-9A-Fa-f]{6}$/', $v) ? strtoupper($v) : $defaut;
 }
 
 /* ---------------- les calques libres ---------------- */
@@ -647,8 +760,7 @@ function calques_propres(mixed $saisie): array
             $calque += [
                 'valeur' => $valeur,
                 'taille' => $borne('taille', 0.012, 0.14, 0.04),
-                'couleur' => isset(APPARENCE_COULEURS[(string) ($brut['couleur'] ?? '')])
-                    ? (string) $brut['couleur'] : 'brand.paper',
+                'couleur' => couleur_propre($brut['couleur'] ?? null, 'brand.paper'),
                 'align' => isset(APPARENCE_ALIGNEMENTS[(string) ($brut['align'] ?? '')])
                     ? (string) $brut['align'] : 'left',
                 'police' => isset(APPARENCE_POLICES[(string) ($brut['police'] ?? '')])

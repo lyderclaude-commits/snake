@@ -11,6 +11,7 @@
  */
 
 import { renderScene } from '@/core/renderScene';
+import { attendrePolices } from '@/core/polices';
 import { decodePhoto, loadImage } from '@/core/imagePipeline';
 import { clampPhoto, containScale } from '@/core/fitPhoto';
 import { canShareFile, chooseRoute, shareFile, slugifyFilename, triggerDownload } from '@/lib/share';
@@ -398,6 +399,15 @@ function demarrer(ctx: Contexte) {
 
   chargerCadre();
   dessiner();
+  /**
+   * Puis on redessine une fois les polices là.
+   *
+   * Le premier dessin part TOUT DE SUITE : sur une connexion lente, un
+   * canevas vide en attendant une fonte donnerait l'impression que le
+   * Studio ne s'ouvre pas. Le second remet le texte dans la bonne police,
+   * et c'est celui-là que l'invité voit avant de télécharger.
+   */
+  void attendrePolices().then(dessiner);
 }
 
 declare global {

@@ -16,6 +16,7 @@ import type { LayerAssets, LoadedImage, RenderSpec } from '@/core/types';
 import type { Rect } from '@/core/fitPhoto';
 import { fenetreOuverte, fenetreArrondie, formatProche } from '@/core/photoWindow';
 import type { Fenetre } from '@/core/photoWindow';
+import { attendrePolices } from '@/core/polices';
 
 interface Contexte {
   base: string;
@@ -214,6 +215,7 @@ function demarrer(ctx: Contexte) {
 
     dessiner(tpl);
     montrerSante(d.sante);
+    montrerPalette(d.palette);
     etat.textContent = fichierUrl
       ? 'Aperçu avec votre cadre et une photo d’exemple.'
       : 'Aperçu avec un cadre et une photo d’exemple.';
@@ -494,6 +496,50 @@ function demarrer(ctx: Contexte) {
    * côté navigateur aurait donné deux vérités, et c'est toujours la plus
    * optimiste qu'on croit.
    */
+  /**
+   * Les teintes du cadre s'ajoutent aux couleurs proposées.
+   *
+   * Six couleurs imposées, c'est la charte de Wakabi, pas celle de
+   * l'organisateur. Les siennes sont dans le fichier qu'il vient de
+   * déposer : on les lui relit plutôt que de lui demander un code
+   * hexadécimal que personne ne connaît par cœur.
+   *
+   * On REMPLACE le groupe à chaque fois : changer de cadre change la
+   * palette, et laisser traîner les teintes du cadre précédent proposerait
+   * des couleurs qui ne sont plus nulle part sur l'image.
+   */
+  function montrerPalette(palette: unknown) {
+    const teintes = Array.isArray(palette) ? (palette as string[]) : [];
+    for (const sel of document.querySelectorAll('select')) {
+      const s = sel as HTMLSelectElement;
+      if (!/couleur|fond/.test(s.id) && !/couleur|fond/.test(s.name)) continue;
+
+      const choisie = s.value;
+      s.querySelector('optgroup[data-cadre]')?.remove();
+      if (!teintes.length) continue;
+
+      const g = document.createElement('optgroup');
+      g.label = 'Relevées sur votre cadre';
+      g.setAttribute('data-cadre', '1');
+      for (const hex of teintes) {
+        const o = document.createElement('option');
+        o.value = hex;
+        o.textContent = hex;
+        g.appendChild(o);
+      }
+      s.appendChild(g);
+      // Une teinte choisie qui vient de disparaître ne doit pas faire
+      // retomber le select sur sa première option en silence.
+      if (choisie) s.value = choisie;
+      if (s.value !== choisie && choisie.startsWith('#')) {
+        const o = document.createElement('option');
+        o.value = choisie; o.textContent = choisie + ' (cadre précédent)';
+        g.appendChild(o);
+        s.value = choisie;
+      }
+    }
+  }
+
   /** Le décor ne se laisse pas juger : on le dit, plutôt que de mentir. */
   function santeIndecise(pourquoi: string) {
     const liste = document.getElementById('sd-sante-liste');
@@ -742,7 +788,8 @@ function demarrer(ctx: Contexte) {
 
   afficherValeurs();
   ajusterGroupes();
-  rafraichir();
+  // Les polices d'abord : un canevas dessine avec ce qui est chargé.
+  void attendrePolices().then(() => rafraichir());
 }
 
 const ctx = (window as unknown as { WAKABI_APERCU?: Contexte }).WAKABI_APERCU;
