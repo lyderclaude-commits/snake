@@ -792,5 +792,30 @@ function demarrer(ctx: Contexte) {
   void attendrePolices().then(() => rafraichir());
 }
 
+/**
+ * Relever l'ouverture d'un cadre, depuis l'extérieur du module.
+ *
+ * Une déclinaison arrive avec SON cadre, dont l'ouverture n'est pas celle
+ * du cadre natif : une story ouvre haut et étroit là où un carré ouvre
+ * large. Sans ce relevé, la photo de l'invité se posait dans la fenêtre du
+ * format d'origine — donc à côté du trou.
+ *
+ * Le script de la rangée des formats est du JavaScript en clair dans la
+ * page ; c'est pourquoi la fonction est posée sur `window` plutôt
+ * qu'exportée. Elle rend la MÊME mesure que « Détecter dans le cadre »,
+ * parce que c'est la même fonction.
+ */
+(window as any).wakabiFenetre = async (url: string): Promise<Fenetre | null> => {
+  try {
+    const img = await loadImage(url);
+    const iw = (img as HTMLImageElement).width || 1;
+    const ih = (img as HTMLImageElement).height || 1;
+    const f = fenetreDuCadre(img as CanvasImageSource, iw, ih);
+    return f ? fenetreArrondie(f) : null;
+  } catch {
+    return null;
+  }
+};
+
 const ctx = (window as unknown as { WAKABI_APERCU?: Contexte }).WAKABI_APERCU;
 if (ctx) demarrer(ctx);

@@ -356,6 +356,29 @@ switch ($page) {
         $g = gabarit_selon_offre($g, utilisateur_par_id((string) $d['auteur_id']));
 
         evenement($d['id'], 'vue');
+
+        /**
+         * Chaque format, prêt à dessiner.
+         *
+         * On repasse par les MÊMES fonctions que pour le format demandé —
+         * la déclinaison, puis les règles de l'offre. Un filigrane retiré
+         * du carré et laissé sur la story serait un décor qui ment.
+         */
+        $_brut = json_lire($d['gabarit']);
+        $_formats = formats_du_decor($_brut);
+        $_gabarits = [];
+        foreach ($_formats as $_r) {
+            try {
+                $_v = gabarit_pour_format($_brut, $_r);
+                valider_gabarit($_v);
+                $_gabarits[$_r] = gabarit_selon_offre($_v, utilisateur_par_id((string) $d['auteur_id']));
+            } catch (GabaritInvalide) {
+                // Une déclinaison cassée ne doit pas emporter le décor :
+                // on la retire du choix plutôt que de fermer la page.
+                $_formats = array_values(array_filter($_formats, fn($x) => $x !== $_r));
+            }
+        }
+
         $_dcan = url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]);
 
         /**
@@ -392,8 +415,19 @@ switch ($page) {
             ],
             'd' => $d,
             'g' => $g,
-            'formats' => formats_du_decor(json_lire($d['gabarit'])),
+            'formats' => $_formats,
             'format_courant' => (string) $g['canvas']['ratio'],
+            /**
+             * Tous les formats partent AVEC la page.
+             *
+             * Changer de format rechargeait la page — et l'invité y
+             * perdait sa photo, son cadrage, et jusqu'à son badge : le
+             * jeton est émis au chargement, donc en essayer trois en
+             * consommait trois sur l'offre de l'organisateur. Les trois
+             * gabarits pèsent quelques kilo-octets ; on les emporte, et
+             * la bascule se fait sur place.
+             */
+            'gabarits' => $_gabarits,
         ]);
 
     /* ---- comptes ---- */
@@ -1112,6 +1146,32 @@ switch ($page) {
          * refuse. Le message part à l'INVITÉ, qui n'y est pour rien — il
          * doit comprendre que ce n'est ni sa faute ni une panne.
          */
+
+        /**
+         * Le badge que l'invité tient déjà lui est RENDU, pas refait.
+         *
+         * Il n'y a qu'une raison de redemander un badge pour un décor
+         * qu'on a déjà en main : la page a été rechargée — en changeant de
+         * format, par exemple. Ce n'est pas une seconde personne. En
+         * émettre un second coûterait une place sur l'offre de
+         * l'organisateur, et laisserait à quelqu'un deux codes valables à
+         * l'entrée, dont un à donner.
+         *
+         * Le jeton n'est rendu que s'il appartient bien à CE décor : celui
+         * d'une autre campagne, affiché ici, ne vaudrait rien au contrôle
+         * et l'invité ne l'apprendrait qu'à la porte.
+         */
+        $_deja = strtoupper(trim((string) ($corps['jeton'] ?? '')));
+        if ($_deja !== '') {
+            $_b = badge_lire($_deja);
+            if ($_b && $_b['decor_id'] === $d['id']) {
+                json_repondre([
+                    'jeton' => $_b['jeton'],
+                    'qr' => Qr::dataUri(url('?p=qr&jeton=' . $_b['jeton']), 512),
+                ]);
+            }
+        }
+
         $limite = quota_telechargements($d);
         if (!$limite['ok']) {
             alerter_quota_plein($d);

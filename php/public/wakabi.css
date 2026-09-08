@@ -932,11 +932,14 @@ input[type=file].fichier-natif{
    Sur un petit écran, la toile et les réglages ne tiennent pas ensemble :
    en faisant défiler pour attraper le zoom, on perdait de vue le badge
    qu'on est en train de régler. La toile reste donc collée sous la barre,
-   et sa hauteur est bornée pour laisser la place aux réglages. */
+   et sa hauteur est bornée pour laisser la place aux réglages.
+
+   Cette borne est posée par le Studio lui-même (`placeDisponible`), et non
+   ici : `max-height` ne rabat qu'un côté, et un badge 9:16 s'affichait
+   écrasé — large comme un carré, court comme un carré. */
 @media(max-width:860px){
   .studio{gap:14px}
   .toile-boite{position:sticky;top:64px;z-index:10;padding:10px}
-  #toile{max-height:44vh;width:auto}
   #etat{margin-top:6px!important}
   input[type=range]{height:30px}
 }

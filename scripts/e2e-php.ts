@@ -307,6 +307,27 @@ const run = async () => {
   };
   surveiller(p);
 
+  /**
+   * La base est remise dans un état connu AVANT de commencer.
+   *
+   * La recette allume un transport de courriel pour l'éprouver, et
+   * l'éteint à la fin. Une exécution interrompue au milieu — un sélecteur
+   * qui change, une coupure — laissait donc l'installation de
+   * développement avec un serveur SMTP qui n'écoute plus : la garde
+   * « confirmez votre adresse » s'activait, et l'exécution SUIVANTE
+   * échouait sur une section qui n'y était pour rien. On ne diagnostique
+   * pas deux fois la même chose.
+   */
+  const pRAZ = await browser.newPage();
+  await connexion(pRAZ, ADMIN.email, ADMIN.mdp);
+  await pRAZ.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  if ((await pRAZ.inputValue('#smtp_hote')) !== '') {
+    await pRAZ.fill('#smtp_hote', '');
+    await pRAZ.click('button[value=enregistrer]');
+    await pRAZ.waitForLoadState('domcontentloaded');
+  }
+  await pRAZ.close();
+
   console.log('\n━━ 1. Vitrine et catalogue ━━');
   await p.goto(BASE, { waitUntil: 'domcontentloaded' });
   ok('vitrine chargée', /Wakabi Boost/.test(await p.title()));
@@ -4692,19 +4713,61 @@ const run = async () => {
   ]);
   await choixCadre.setFiles('php/public/cadres/story.png');
   await pAT.waitForFunction(
-    () => (document.getElementById('champ-variantes') as HTMLInputElement).value !== '{}',
-    null, { timeout: 20_000 }).catch(() => {});
+    () => {
+      const v = (document.getElementById('champ-variantes') as HTMLInputElement).value;
+      return v !== '{}' && v.includes('photo');
+    },
+    null, { timeout: 25_000 }).catch(() => {});
   const declinees = JSON.parse(await pAT.inputValue('#champ-variantes'));
   ok('ajouter un format lui demande SON cadre — sans quoi il s’étirerait',
      !!declinees['9:16']?.cadreUrl, Object.keys(declinees).join(' '));
+
+  /**
+   * Et l'ouverture de CE cadre est relevée, pas héritée.
+   *
+   * Une story ouvre haut et étroit là où un carré ouvre large. Sans ce
+   * relevé, la déclinaison gardait la fenêtre du format d'origine : la
+   * photo de l'invité se posait à côté du trou, et l'on voyait le fond du
+   * décor à la place de son visage.
+   */
+  const fenetre916 = declinees['9:16']?.photo;
+  const fenetreNative = {
+    y: Number(await pAT.inputValue('#r-photo_y')),
+    h: Number(await pAT.inputValue('#r-photo_h')),
+  };
+  ok('l’ouverture de la déclinaison est relevée sur SON cadre',
+     !!fenetre916 && Math.abs(fenetre916.y - fenetreNative.y) > 0.02,
+     `story ${JSON.stringify(fenetre916)} vs natif y=${fenetreNative.y} h=${fenetreNative.h}`);
   ok('et l’écran rappelle que le quota n’en compte qu’une',
      /une seule place de quota/.test(await pAT.locator('#fmt-aide').innerText()));
+
+  /**
+   * Un logo de sponsor, posé comme calque image.
+   *
+   * Il reste sur le décor jusqu'à la page publique : c'est là que se
+   * jouait le défaut. Le calque existait, l'atelier le montrait — il
+   * charge toutes les images — et le Studio de l'invité n'en chargeait
+   * qu'une, le cadre. Le logo était donc absent du badge REÇU, sans que
+   * rien ne le signale : `renderScene` passe une couche image dont il n'a
+   * pas le bitmap.
+   */
+  await pAT.locator('.sd-etape[data-etape=apparence]').click();
+  await pAT.setInputFiles('#calque-fichier', 'php/public/logo.png');
+  await pAT.waitForFunction(
+    () => JSON.parse((document.getElementById('champ-calques') as HTMLInputElement).value)
+      .some((c: any) => c.sorte === 'image'),
+    null, { timeout: 25_000 });
+  const logoAT = JSON.parse(await pAT.inputValue('#champ-calques'))
+    .find((c: any) => c.sorte === 'image');
+  ok('une image de calque est téléversée sur NOTRE site',
+     /[?&]p=cadre&f=|public\/cadres\//.test(String(logoAT?.src ?? '')), String(logoAT?.src ?? ''));
 
   /* --- créer pour de bon, en passant par les trois étapes --- */
   const DECOR_AT = `Atelier ${marque}`;
   await pAT.locator('.sd-etape[data-etape=cadre]').click();
   await pAT.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await pAT.waitForTimeout(900);
+  const cadreNatif = await pAT.inputValue('input[name=cadre_url]');
   await pAT.locator('#panneau-cadre [data-vers=campagne]').click();
   ok('« Continuer » mène à l’étape suivante',
      await pAT.locator('#panneau-campagne').isVisible());
@@ -4726,21 +4789,91 @@ const run = async () => {
     .first().click().catch(() => {});
   await pAT.waitForLoadState('domcontentloaded');
   const slugAT = `atelier-${marque}`;
+
+  // Ce que le navigateur de l'invité va vraiment chercher : c'est la seule
+  // preuve directe qu'une couche image est dessinée plutôt que sautée.
+  const demandes: string[] = [];
+  pAT.on('request', (r) => demandes.push(r.url()));
+
   await pAT.goto(`${BASE}/index.php?p=decor&slug=${slugAT}`, { waitUntil: 'domcontentloaded' });
   ok('le décor publié propose ses deux formats',
      (await pAT.locator('.format-choix').count()) === 2,
      `${await pAT.locator('.format-choix').count()} format(s)`);
   await pAT.waitForSelector('#toile', { timeout: 15_000 });
+
+  /**
+   * L'invité pose sa photo AVANT de changer de format.
+   *
+   * C'est le seul ordre qui éprouve ce qui compte : la bascule ne doit lui
+   * coûter ni sa photo, ni son cadrage, ni son badge.
+   */
+  await pAT.setInputFiles('#photo', 'scripts/fixtures/photo.png');
+  await pAT.waitForTimeout(2500);
+  const jetonCarre = ((await pAT.locator('#jeton').textContent()) ?? '').trim();
+  ok('un badge est émis dès la photo posée', /^[A-Z0-9]{6,}$/.test(jetonCarre), jetonCarre);
+
+  ok('le logo du sponsor arrive jusqu’au badge de l’invité',
+     demandes.some((u) => u === String(logoAT?.src ?? '')),
+     String(logoAT?.src ?? ''));
+
   const carre = (await pAT.locator('#toile').boundingBox())!;
-  await pAT.locator('.format-choix:has-text("Story")').click();
-  await pAT.waitForLoadState('domcontentloaded');
-  await pAT.waitForSelector('#toile', { timeout: 15_000 });
-  await pAT.waitForTimeout(1500);
+  await pAT.locator('.format-choix[data-format="9:16"]').click();
+  await pAT.waitForTimeout(1800);
   const story = (await pAT.locator('#toile').boundingBox())!;
   ok('basculer de format change VRAIMENT la toile',
      Math.abs(carre.height / carre.width - 1) < 0.05
      && Math.abs(story.height / story.width - 16 / 9) < 0.08,
      `${(carre.height / carre.width).toFixed(2)} puis ${(story.height / story.width).toFixed(2)}`);
+
+  /**
+   * La bascule se fait SUR PLACE.
+   *
+   * Suivre le lien rechargeait la page, et l'invité y reperdait sa photo :
+   * il devait la rechoisir et la recadrer à chaque format essayé. Les
+   * outils de recadrage restent ouverts, donc la photo est toujours là.
+   */
+  ok('changer de format ne fait pas reperdre sa photo',
+     !(await pAT.locator('#outils').isHidden()));
+
+  /**
+   * Et surtout : il ne coûte pas une place d'offre par format.
+   *
+   * Le jeton est émis au chargement de la page. Trois formats regardés,
+   * c'étaient trois badges facturés à l'organisateur — et trois codes
+   * valables à l'entrée pour une seule personne, dont deux à donner.
+   */
+  ok('et le badge reste le même d’un format à l’autre',
+     ((await pAT.locator('#jeton').textContent()) ?? '').trim() === jetonCarre,
+     `${jetonCarre} → ${((await pAT.locator('#jeton').textContent()) ?? '').trim()}`);
+
+  ok('l’adresse suit tout de même le format regardé',
+     decodeURIComponent(pAT.url()).includes('f=9:16'), pAT.url());
+
+  /**
+   * Le lien reste un lien : sans JavaScript, il navigue, et un format
+   * s'envoie toujours par message.
+   */
+  ok('le format reste un vrai lien, pas un bouton déguisé',
+     ((await pAT.locator('.format-choix[data-format="9:16"]').getAttribute('href')) ?? '')
+       .includes('f=9'),
+     (await pAT.locator('.format-choix[data-format="9:16"]').getAttribute('href')) ?? '');
+
+  /**
+   * Et suivre ce lien charge le cadre de la STORY, pas celui du décor.
+   *
+   * Le Studio préférait la colonne `cadre_url` du décor, qui ne connaît que
+   * le format natif : ouvrir « ?f=9:16 » collait donc le cadre carré sur un
+   * canevas 9:16, étiré sur seize neuvièmes. C'est le gabarit du format
+   * servi qui nomme son cadre, et lui seul.
+   */
+  demandes.length = 0;
+  await pAT.goto(`${BASE}/index.php?p=decor&slug=${slugAT}&f=${encodeURIComponent('9:16')}`,
+                 { waitUntil: 'domcontentloaded' });
+  await pAT.waitForTimeout(2000);
+  const cadreStory = String(declinees['9:16']?.cadreUrl ?? '');
+  ok('le lien d’un format charge le cadre de CE format',
+     demandes.some((u) => u === cadreStory) && !demandes.some((u) => u === cadreNatif),
+     `story ${demandes.some((u) => u === cadreStory)}, natif ${demandes.some((u) => u === cadreNatif)}`);
   /**
    * Un format est une VUE du même décor, pas une autre page : une adresse
    * canonique par format découperait la campagne en trois aux yeux des

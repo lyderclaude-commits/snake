@@ -1069,13 +1069,42 @@ window.WAKABI_APERCU = {
       .then(function (d) {
         fichier.value = '';
         if (!d.url) { aide.textContent = d.erreur || 'Cadre refusé.'; return; }
-        var v = lire();
-        v[enCours] = { cadreUrl: d.url };
-        ecrire(v);
-        aide.textContent = LIBELLES[enCours] + ' ajouté. Le décor se prend maintenant dans '
-          + (Object.keys(v).length + 1) + ' formats, pour une seule place de quota.';
+        var r = enCours;
         enCours = '';
+        var v = lire();
+        v[r] = { cadreUrl: d.url };
+        ecrire(v);
+        aide.textContent = LIBELLES[r] + ' ajouté. Lecture de son ouverture…';
         dessiner();
+
+        /**
+         * L'ouverture du cadre de la déclinaison, relevée sur CE cadre.
+         *
+         * Elle n'est pas celle du format d'origine — une story ouvre haut
+         * et étroit là où un carré ouvre large. Sans ce relevé, la photo
+         * de l'invité se posait dans la fenêtre du cadre natif, c'est-à-dire
+         * à côté du trou : on voyait le fond du décor à la place du visage.
+         *
+         * C'est le même relevé que « Détecter dans le cadre », la même
+         * fonction : deux mesures de la même chose finiraient par diverger.
+         */
+        var relever = window.wakabiFenetre;
+        if (typeof relever !== 'function') { return; }
+        relever(d.url).then(function (f) {
+          var v2 = lire();
+          if (!v2[r]) { return; }
+          if (f) {
+            v2[r].photo = { x: f.x, y: f.y, w: f.w, h: f.h };
+            ecrire(v2);
+            aide.textContent = LIBELLES[r] + ' ajouté, et son ouverture relevée. Le décor se prend'
+              + ' maintenant dans ' + (Object.keys(v2).length + 1)
+              + ' formats, pour une seule place de quota.';
+          } else {
+            aide.textContent = LIBELLES[r] + ' ajouté, mais son cadre n’a pas d’ouverture'
+              + ' transparente nette : la photo s’y placera comme dans le format d’origine.';
+          }
+          dessiner();
+        });
       })
       .catch(function () { fichier.value = ''; aide.textContent = 'Le cadre n’a pas pu être envoyé.'; });
   });

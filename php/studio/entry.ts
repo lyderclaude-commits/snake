@@ -20,6 +20,10 @@ import type { Rect } from '@/core/fitPhoto';
 
 interface Contexte {
   gabarit: any;
+  /** Les gabarits de chaque format, indexés par rapport (« 1:1 », « 9:16 »). */
+  gabarits?: Record<string, any>;
+  /** Le format affiché au chargement. */
+  format?: string;
   decorId: string;
   slug: string;
   cadreUrl: string | null;
@@ -32,7 +36,10 @@ const $ = <T extends HTMLElement>(s: string) => document.querySelector(s) as T;
 function demarrer(ctx: Contexte) {
   const canvas = $('#toile') as HTMLCanvasElement;
   const ctx2d = canvas.getContext('2d')!;
-  const tpl = ctx.gabarit;
+  let tpl = ctx.gabarit;
+
+  // Le format qu'on regarde. Il change quand on clique une pastille.
+  let ratio = String(ctx.format || ctx.gabarit?.canvas?.ratio || '');
 
   const assets: LayerAssets = {};
   let spec: RenderSpec = {
@@ -51,8 +58,8 @@ function demarrer(ctx: Contexte) {
   const champs = (tpl.layers ?? []).filter((l: any) => l.type === 'text' && l.editable);
   for (const c of champs) spec.texts[c.id] = c.value ?? '';
 
-  const couchePhoto = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot');
-  const emplacement: Rect = couchePhoto?.rect ?? { x: 0, y: 0, w: 1, h: 1 };
+  let couchePhoto = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot');
+  let emplacement: Rect = couchePhoto?.rect ?? { x: 0, y: 0, w: 1, h: 1 };
 
   /**
    * Les bornes du zoom viennent du gabarit.
@@ -61,10 +68,27 @@ function demarrer(ctx: Contexte) {
    * dont la moitié gauche ne faisait rien : le cadrage refusait alors tout
    * ce qui passait sous 1.
    */
-  const bornes = {
+  let bornes = {
     min: Number(couchePhoto?.minScale ?? 0.2),
     max: Number(couchePhoto?.maxScale ?? 4),
   };
+
+  /**
+   * Adopter un gabarit : c'est tout ce qui change d'un format à l'autre.
+   *
+   * La toile, le cadre et la fenêtre de la photo — rien d'autre. Les textes
+   * sont en fractions du canevas et se replacent seuls, et c'est
+   * précisément ce qui permet de décliner un décor sans le refaire.
+   */
+  function adopter(g: any): void {
+    tpl = g;
+    couchePhoto = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot');
+    emplacement = couchePhoto?.rect ?? { x: 0, y: 0, w: 1, h: 1 };
+    bornes = {
+      min: Number(couchePhoto?.minScale ?? 0.2),
+      max: Number(couchePhoto?.maxScale ?? 4),
+    };
+  }
 
   /** La photo reste dans son emplacement, plus petite ou plus grande que lui. */
   function recadrer(p: PhotoState): PhotoState {
@@ -88,10 +112,39 @@ function demarrer(ctx: Contexte) {
   /* ---------------- rendu ---------------- */
 
   const COTE = 640;
+
+  /**
+   * La place où la toile doit tenir — largeur ET hauteur.
+   *
+   * Sur téléphone, la toile est collée en haut pendant qu'on règle : sa
+   * hauteur est donc bornée pour laisser voir les réglages qu'on touche.
+   * Cette borne était posée en CSS (`max-height`), qui ne sait rabattre
+   * qu'une dimension : un badge 9:16 y gardait sa largeur et perdait sa
+   * hauteur — il s'affichait écrasé, et ce n'était pas le badge qu'on
+   * allait télécharger. C'est ici qu'il faut la poser, où les deux côtés
+   * se calculent ensemble.
+   */
+  function placeDisponible(): { w: number; h: number } {
+    const boite = canvas.parentElement;
+    let large = COTE;
+    if (boite) {
+      const st = getComputedStyle(boite);
+      const dedans = boite.clientWidth
+        - parseFloat(st.paddingLeft || '0') - parseFloat(st.paddingRight || '0');
+      if (dedans > 120) large = Math.min(COTE, dedans);
+    }
+    // Le même seuil que la feuille de style : au-delà, la toile n'est plus
+    // collée et rien ne borne sa hauteur.
+    const haut = window.innerWidth <= 860 ? Math.round(window.innerHeight * 0.44) : COTE;
+    return { w: large, h: Math.max(160, haut) };
+  }
+
   function dessiner() {
     const ratio = tpl.canvas.width / tpl.canvas.height;
-    const w = ratio >= 1 ? COTE : Math.round(COTE * ratio);
-    const h = ratio >= 1 ? Math.round(COTE / ratio) : COTE;
+    const place = placeDisponible();
+    // Le plus grand rectangle du bon rapport qui tienne dans cette place.
+    const w = Math.round(Math.min(place.w, place.h * ratio));
+    const h = Math.round(w / ratio);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
 
     canvas.width = w * dpr;
@@ -105,16 +158,46 @@ function demarrer(ctx: Contexte) {
     renderScene(ctx2d, spec, tpl, assets, echelle);
   }
 
-  /* ---------------- chargement du cadre ---------------- */
+  /* ---------------- chargement des images ---------------- */
 
-  async function chargerCadre() {
-    const couche = (tpl.layers ?? []).find((l: any) => l.type === 'image');
-    if (!couche) return;
-    try {
-      assets[couche.id] = await loadImage(ctx.cadreUrl ?? couche.src);
-    } catch {
-      // Un cadre manquant ne doit pas empêcher d'écrire son prénom.
-      console.warn('cadre introuvable :', couche.src);
+  /**
+   * Ce que chaque couche image doit charger, dans le format courant.
+   *
+   * C'est le gabarit qui le dit, jamais la colonne `cadre_url` du décor :
+   * celle-ci ne connaît que le cadre du format natif, et l'imposer à une
+   * story y collait le cadre carré, étiré sur seize neuvièmes. Elle ne
+   * sert plus que de recours si le gabarit ne nomme rien.
+   */
+  function sourceDe(couche: any): string {
+    return String(couche.src || (couche.id === 'frame' ? ctx.cadreUrl ?? '' : ''));
+  }
+
+  /** Ce qui est déjà chargé, et depuis où : on ne retélécharge pas pour rien. */
+  const chargees: Record<string, string> = {};
+
+  /**
+   * Le cadre ET les images posées par l'auteur.
+   *
+   * Seul le cadre était chargé. Un logo de sponsor existait donc dans le
+   * gabarit, s'affichait dans l'atelier — qui, lui, charge tout — et
+   * disparaissait du badge de l'invité : `renderScene` ne trouve pas son
+   * bitmap et passe la couche sans rien dire. L'organisateur n'avait aucun
+   * moyen de s'en apercevoir avant de voir un badge reçu.
+   */
+  async function chargerImages() {
+    const couches = (tpl.layers ?? []).filter((l: any) => l.type === 'image');
+    for (const couche of couches) {
+      const source = sourceDe(couche);
+      if (!source || chargees[couche.id] === source) continue;
+      try {
+        assets[couche.id] = await loadImage(source);
+        chargees[couche.id] = source;
+      } catch {
+        // Une image manquante ne doit pas empêcher d'écrire son prénom.
+        delete assets[couche.id];
+        delete chargees[couche.id];
+        console.warn('image de calque introuvable :', source);
+      }
     }
     dessiner();
   }
@@ -168,12 +251,28 @@ function demarrer(ctx: Contexte) {
     }
   }
 
+  /**
+   * Où l'on retient le badge déjà obtenu, le temps de la visite.
+   *
+   * `sessionStorage` et non `localStorage` : quelqu'un qui revient la
+   * semaine prochaine mérite un nouveau badge — c'est une nouvelle
+   * participation. Ce qu'on veut éviter, c'est qu'une même visite en
+   * consomme trois parce qu'elle a regardé les trois formats.
+   */
+  const CLE_JETON = 'wakabi.badge.' + ctx.decorId;
+
+  function jetonRetenu(): string {
+    try { return sessionStorage.getItem(CLE_JETON) ?? ''; } catch { return ''; }
+  }
+
   async function emettreBadge() {
     try {
       const r = await fetch(ctx.base + '?p=api-badge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decor: ctx.decorId }),
+        // Le serveur rend celui-là s'il est bien de ce décor, au lieu d'en
+        // émettre un second : une place d'offre, un code d'entrée.
+        body: JSON.stringify({ decor: ctx.decorId, jeton: jetonRetenu() || undefined }),
       });
       const d = await r.json();
       if (d.quota) {
@@ -182,6 +281,7 @@ function demarrer(ctx: Contexte) {
       }
       if (!d.jeton) return;
       jeton = d.jeton;
+      try { sessionStorage.setItem(CLE_JETON, d.jeton); } catch { /* navigation privée */ }
       spec.qr = await loadImage(d.qr);
       const el = document.getElementById('jeton');
       if (el) {
@@ -397,7 +497,61 @@ function demarrer(ctx: Contexte) {
     }
   });
 
-  chargerCadre();
+  /* ---------------- changer de format ---------------- */
+
+  /**
+   * Les formats basculent SUR PLACE, sans recharger la page.
+   *
+   * Les liens restent de vrais liens — sans JavaScript, ils naviguent, et
+   * un format reste partageable. Mais suivre le lien coûtait cher à
+   * l'invité : il reperdait sa photo et son cadrage à chaque essai, et
+   * l'organisateur y perdait une place d'offre par format regardé, le
+   * jeton étant émis à chaque chargement.
+   *
+   * L'adresse est tout de même mise à jour : celui qui copie ce qu'il voit
+   * dans sa barre partage le format qu'il regarde.
+   */
+  function basculer(vers: string, lien: HTMLAnchorElement): void {
+    const g = (ctx.gabarits ?? {})[vers];
+    if (!g || vers === ratio) return;
+
+    ratio = vers;
+    adopter(g);
+
+    // La photo garde son cadrage, ramené dans la nouvelle fenêtre : une
+    // story est plus haute qu'un carré, le zoom qui convenait à l'un peut
+    // laisser un vide dans l'autre.
+    if (spec.photo) spec.photo = recadrer(spec.photo);
+
+    for (const a of document.querySelectorAll('.format-choix')) {
+      const ici = a === lien;
+      a.classList.toggle('actif', ici);
+      if (ici) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    }
+
+    dessiner();
+    void chargerImages();
+    if (spec.photo) {
+      ($('#zoom') as HTMLInputElement).min = String(bornes.min);
+      ($('#zoom') as HTMLInputElement).max = String(bornes.max);
+      ($('#zoom') as HTMLInputElement).value = String(spec.photo.scale);
+      afficherZoom();
+    }
+    try { history.replaceState(null, '', lien.href); } catch { /* peu importe */ }
+  }
+
+  for (const noeud of document.querySelectorAll('.format-choix')) {
+    const lien = noeud as HTMLAnchorElement;
+    const vers = lien.dataset.format ?? '';
+    if (!(ctx.gabarits ?? {})[vers]) continue;
+    lien.addEventListener('click', (e) => {
+      e.preventDefault();
+      basculer(vers, lien);
+    });
+  }
+
+  void chargerImages();
   dessiner();
   /**
    * Puis on redessine une fois les polices là.

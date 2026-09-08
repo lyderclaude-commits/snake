@@ -19,7 +19,7 @@
     ?>
       <div class="formats-decor" role="group" aria-label="Format du badge">
         <?php foreach ($formats as $r): $ici = $r === ($format_courant ?? ''); ?>
-          <a class="format-choix<?= $ici ? ' actif' : '' ?>"
+          <a class="format-choix<?= $ici ? ' actif' : '' ?>" data-format="<?= e($r) ?>"
              href="<?= e(url('?p=decor&slug=' . urlencode((string) $d['slug'])
                             . ($r === $formats[0] ? '' : '&f=' . urlencode($r)))) ?>"
              <?= $ici ? 'aria-current="true"' : '' ?>>
@@ -152,6 +152,10 @@
 <script>
 window.WAKABI = {
   gabarit: <?= json_encode($g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+  // Les autres formats du décor, pour basculer sans recharger : la photo
+  // reste en mémoire, le badge reste le même.
+  gabarits: <?= json_encode($gabarits ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+  format: <?= json_encode($format_courant ?? '') ?>,
   decorId: <?= json_encode($d['id']) ?>,
   slug: <?= json_encode($d['slug']) ?>,
   cadreUrl: <?= json_encode($d['cadre_url']) ?>,

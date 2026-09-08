@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **683 scénarios, 683 réussis**
+Les deux ont été vérifiés de bout en bout : **692 scénarios, 692 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 683 scénarios, dans un vrai navigateur
+npm run php:e2e          # 692 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 683 scénarios
+### Les 692 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1034,6 +1034,42 @@ raison pour laquelle le modèle est normalisé depuis le début.
 Un format est une **vue** du même décor : l'adresse canonique reste celle du
 décor, le QR mène au même endroit, les statistiques comptent une campagne, et
 **le quota une seule place**.
+
+### Quatre défauts vus en regardant l'écran de l'invité
+
+Les six chantiers du studio étaient verts en recette. Il a suffi d'ouvrir la
+page telle qu'un invité la reçoit, sur un décor à trois formats et un logo de
+sponsor, pour en trouver quatre — dont aucun ne faisait échouer un test,
+parce qu'aucun ne produit d'erreur : ils produisent une image, simplement pas
+la bonne.
+
+**Le logo du sponsor n'arrivait pas sur le badge.** Le Studio de l'invité ne
+chargeait qu'une image, le cadre. Une couche image dont `renderScene` n'a pas
+le bitmap est passée sans un mot : le calque existait, l'atelier le montrait
+— il charge tout — et le badge reçu ne le portait pas. C'est le défaut le
+plus coûteux des quatre : un logo de partenaire qu'on a vendu et qui
+n'apparaît nulle part.
+
+**Changer de format coûtait une place d'offre.** Le jeton du badge est émis
+au chargement de la page ; suivre le lien d'un format rechargeait donc la
+page, et en émettait un second. Trois formats regardés, c'étaient trois
+badges facturés à l'organisateur — et trois codes valables à l'entrée pour
+une seule personne, dont deux à donner. L'invité y reperdait aussi sa photo
+et son cadrage à chaque essai. Les formats basculent maintenant **sur place**
+et le serveur **rend** le badge déjà émis plutôt que d'en refaire un ; les
+pastilles restent de vrais liens, qu'on peut envoyer par message.
+
+**L'ouverture de la déclinaison n'était jamais relevée.** Une story ouvre
+haut et étroit là où un carré ouvre large ; la déclinaison gardait la fenêtre
+du format d'origine, et la photo se posait à côté du trou. Elle est
+maintenant mesurée sur le cadre téléversé, par la **même** fonction que
+« Détecter dans le cadre ».
+
+**Un badge 9:16 s'affichait écrasé sur téléphone.** La hauteur de l'aperçu y
+est bornée pour laisser voir les réglages qu'on touche ; la borne était posée
+en CSS, et `max-height` ne rabat qu'un côté. Le badge gardait sa largeur de
+carré et perdait sa hauteur. C'est le Studio qui calcule maintenant la place,
+où les deux côtés se décident ensemble.
 
 ---
 
