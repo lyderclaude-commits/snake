@@ -1423,3 +1423,25 @@ tr.pale td a{color:inherit}
   .haut-de-page{transition:none}
   .haut-de-page:hover{transform:none}
 }
+
+/* ---- le panneau de calques ---- */
+.sd-calques{margin-bottom:6px}
+.sd-liste-calques{list-style:none;margin:0;padding:0;border:1px solid var(--border);
+  border-radius:var(--r10);overflow:hidden}
+.sd-calque{display:flex;align-items:center;gap:9px;padding:8px 11px;font-size:.84rem;
+  border-bottom:1px solid var(--border);cursor:pointer;background:var(--paper);
+  transition:background .12s}
+.sd-calque:last-child{border-bottom:0}
+.sd-calque:hover{background:var(--bg2)}
+.sd-calque.sel{background:var(--primary-wash);box-shadow:inset 3px 0 0 var(--primary);font-weight:700}
+/* Les trois objets qu'on ne peut ni ajouter ni retirer : hachurés, pour que
+   leur nature se voie sans avoir à lire l'étiquette. */
+.sd-calque.fixe{color:var(--text2);cursor:default;
+  background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(148,163,184,.06) 6px 12px)}
+.sd-calque.fixe:hover{background:repeating-linear-gradient(45deg,var(--bg2) 0 6px,rgba(148,163,184,.1) 6px 12px)}
+.sd-cal-oeil{border:0;background:none;padding:0;width:16px;font-size:.7rem;cursor:pointer;
+  color:var(--text3);line-height:1}
+.sd-cal-oeil[aria-pressed=true]{color:var(--border)}
+.sd-cal-nom{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sd-cal-eti{font-size:.7rem;color:var(--text3);flex:none}
+.sd-libre{border-top:1px solid var(--border);padding-top:14px}

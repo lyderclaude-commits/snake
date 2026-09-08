@@ -4479,17 +4479,61 @@ const run = async () => {
   ok('et l’aperçu, lui, ne bouge pas', await pAT.locator('#apercu').isVisible());
   /* `allInnerTexts` rend le texte TEL QU'AFFICHÉ, et la feuille de style
      met ces légendes en capitales : on compare donc sans la casse. */
-  const legendes = (await pAT.locator('#panneau-apparence .sd-groupe legend').allInnerTexts())
+  const legendes = (await pAT.locator('#panneau-apparence .sd-natif legend').allInnerTexts())
     .join(' · ').toLocaleLowerCase('fr');
-  ok('les dix-sept réglages sont groupés et nommés',
+  ok('les réglages du décor sont groupés et nommés',
      legendes === 'le texte · le qr et le filigrane · la fenêtre photo', legendes);
+
+  const dessin = () => pAT.evaluate(
+    () => (document.getElementById('apercu') as HTMLCanvasElement).toDataURL().length);
+
+  /* ---- les calques libres ---- */
+  ok('le panneau de calques montre les trois objets fixes',
+     (await pAT.locator('.sd-calque.fixe').count()) === 3);
+  ok('et aucun calque libre au départ',
+     (await pAT.locator('.sd-calque:not(.fixe)').count()) === 0);
+
+  const dessinAvant = await dessin();
+  await pAT.locator('#calque-texte').click();
+  await pAT.fill('#l-valeur', `Soirée du ${marque}`);
+  await pAT.waitForTimeout(1600);
+  ok('ajouter un texte le fait apparaître dans la liste',
+     (await pAT.locator('.sd-calque:not(.fixe)').count()) === 1);
+  ok('et le dessine sur le badge', (await dessin()) !== dessinAvant);
+  ok('son nom suit le texte tant qu’on ne le nomme pas',
+     (await pAT.locator('.sd-calque:not(.fixe) .sd-cal-nom').innerText()).includes(marque));
+
+  /**
+   * Prendre un calque en main REMPLACE les réglages du décor par les siens.
+   * C'est tout l'objet du panneau : quatre réglages qui concernent l'objet
+   * qu'on regarde, au lieu de dix-sept dont quinze ne le concernent pas.
+   */
+  ok('ses réglages remplacent ceux du décor',
+     (await pAT.locator('#groupe-libre').isVisible())
+     && (await pAT.locator('#panneau-apparence .sd-natif').first().isHidden()));
+  await pAT.locator('.sd-calque.fixe').first().click();
+  ok('et cliquer un objet fixe ramène aux réglages du décor',
+     (await pAT.locator('#groupe-libre').isHidden())
+     && (await pAT.locator('#panneau-apparence .sd-natif').first().isVisible()));
+
+  /**
+   * L'état ne vit QU'À UN endroit : le champ caché. La liste à l'écran ne
+   * peut donc pas diverger de ce qui sera enregistré — c'est la même chaîne.
+   */
+  const brutCalques = JSON.parse(await pAT.inputValue('#champ-calques')) as any[];
+  ok('l’état tient dans un seul champ, en JSON', brutCalques.length === 1
+     && brutCalques[0].valeur.includes(marque), `${brutCalques.length} calque(s)`);
+
+  await pAT.locator('.sd-calque:not(.fixe)').first().click();
+  await pAT.locator('#calque-supprimer').click();
+  ok('supprimer le retire de la liste et de l’état',
+     (await pAT.locator('.sd-calque:not(.fixe)').count()) === 0
+     && JSON.parse(await pAT.inputValue('#champ-calques')).length === 0);
 
   /**
    * L'épreuve qui compte : on tourne un curseur, et l'on regarde si le
    * dessin change PENDANT qu'on le voit. C'est tout l'objet de la refonte.
    */
-  const dessin = () => pAT.evaluate(
-    () => (document.getElementById('apercu') as HTMLCanvasElement).toDataURL().length);
   const avantR = await dessin();
   await pAT.evaluate(() => {
     const r = document.getElementById('r-bloc_y') as HTMLInputElement;

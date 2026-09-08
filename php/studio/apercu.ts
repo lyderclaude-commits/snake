@@ -27,6 +27,7 @@ const CHAMPS = [
   'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
   'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
   'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
+  'calques',
 ];
 
 // Les curseurs affichent une fraction de la hauteur du canevas : un
@@ -159,7 +160,14 @@ function demarrer(ctx: Contexte) {
     }
 
     const tpl = d.gabarit;
-    const couche = (tpl.layers ?? []).find((l: any) => l.type === 'image');
+    /**
+     * Le cadre se retrouve par son IDENTIFIANT, pas par son type.
+     *
+     * Depuis que l'on peut poser ses propres images — un logo de sponsor —,
+     * « la première couche image » n'est plus le cadre : ce serait le logo,
+     * et l'on chargerait le fichier du cadre à sa place.
+     */
+    const couche = (tpl.layers ?? []).find((l: any) => l.id === 'frame');
     cadreServeur = d.cadre || '';
     const source = fichierUrl ?? cadreServeur;
 
@@ -172,6 +180,19 @@ function demarrer(ctx: Contexte) {
         cadreCharge = '';
       }
     }
+    /**
+     * Les images posées par l'auteur — un logo de sponsor — se chargent
+     * comme le cadre. Sans cela, `renderScene` ne trouve pas leur bitmap et
+     * ne dessine rien : le calque existe dans la liste, il est absent de
+     * l'image, et l'on cherche longtemps pourquoi.
+     */
+    for (const l of (tpl.layers ?? []) as any[]) {
+      if (l.type !== 'image' || l.id === 'frame' || assets[l.id] || !l.src) continue;
+      try {
+        assets[l.id] = await loadImage(l.src);
+      } catch { /* une image injoignable laisse simplement sa place vide */ }
+    }
+
     if (!photo && d.photo) {
       try {
         photo = await loadImage(d.photo);

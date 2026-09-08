@@ -119,6 +119,15 @@ export const PhotoSlotLayer = z.object({
 export const ImageLayer = z.object({
   type: z.literal('image'),
   id: z.string(),
+  /**
+   * Nom donné par l'auteur, montré dans le panneau de calques.
+   *
+   * Le moteur de rendu ne le lit jamais : il ne sert qu'à retrouver un objet
+   * dans une liste. Il vit ici plutôt que dans une table à côté parce qu'un
+   * gabarit doit se suffire — on le copie, on le restaure, on l'exporte, et
+   * ses objets doivent garder leurs noms.
+   */
+  name: z.string().max(40).optional(),
   /** PNG ou WebP avec canal alpha, servi par le CDN. */
   src: z.string().url(),
   rect: NormRect.default({ x: 0, y: 0, w: 1, h: 1 }),
@@ -132,6 +141,15 @@ export const ImageLayer = z.object({
 export const TextLayer = z.object({
   type: z.literal('text'),
   id: z.string(),
+  /**
+   * Nom donné par l'auteur, montré dans le panneau de calques.
+   *
+   * Le moteur de rendu ne le lit jamais : il ne sert qu'à retrouver un objet
+   * dans une liste. Il vit ici plutôt que dans une table à côté parce qu'un
+   * gabarit doit se suffire — on le copie, on le restaure, on l'exporte, et
+   * ses objets doivent garder leurs noms.
+   */
+  name: z.string().max(40).optional(),
   rect: NormRect,
   /** true → l'utilisateur peut saisir ce champ (prénom, ville…). */
   editable: z.boolean().default(false),

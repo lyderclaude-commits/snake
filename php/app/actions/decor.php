@@ -169,6 +169,16 @@ $valeurs = [
     'champ_valeur' => 'Kossi', 'redirection' => 'https://wakabileguide.com/',
     'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'cadre_url' => '',
     'cadre_fourni' => '',
+    /**
+     * Les calques libres voyagent en JSON dans un champ caché.
+     *
+     * Ils sont de longueur variable — zéro à douze objets, chacun avec neuf
+     * propriétés. Un formulaire HTML ne sait pas décrire cela sans une nuée
+     * de champs indexés qu'il faudrait renuméroter à chaque suppression.
+     * Le champ caché est réécrit par le panneau de calques à chaque geste,
+     * et relu tel quel côté serveur, où il est nettoyé comme une saisie.
+     */
+    'calques' => '[]',
 ] + apparence_par_defaut('bandeau');
 
 if ($modifie && !$post) {
@@ -211,6 +221,7 @@ if ($modifie && !$post) {
             ? 'cercle'
             : (($photo['mask']['radius'] ?? 0) > 0 ? 'arrondi' : 'rect'),
         'cadre_fourni' => '',
+        'calques' => json_encode(calques_depuis_gabarit($g), JSON_UNESCAPED_UNICODE),
         'titre' => $modifie['titre'],
         'sous_titre' => (string) $modifie['sous_titre'],
         'ville' => $modifie['ville'],
@@ -325,6 +336,7 @@ if ($post) {
                 'legende' => $valeurs['legende'],
                 'expire_le' => $valeurs['expire_le'],
                 'apparence' => array_intersect_key($valeurs, array_flip(CLES_APPARENCE)),
+                'calques' => $valeurs['calques'],
                 'cree_par' => $modifie ? $modifie['cree_par'] : (droit($u, 'valider') ? 'equipe' : 'partenaire'),
                 'partenaire_id' => $u['role'] === 'partenaire' ? $u['id'] : null,
             ]);

@@ -569,6 +569,196 @@ function rectangles_textes(array $a): array
     ];
 }
 
+/* ---------------- les calques libres ---------------- */
+
+/**
+ * Le plafond du nombre de calques libres.
+ *
+ * Il n'est pas là pour brider la création — douze textes sur un badge, c'est
+ * déjà beaucoup plus qu'aucun décor n'en portera. Il est là parce que chaque
+ * calque est dessiné à chaque aperçu, sur le téléphone de l'invité : une
+ * liste sans borne venue d'un formulaire est une manière de rendre le Studio
+ * inutilisable pour tout le monde depuis un seul décor.
+ */
+const CALQUES_LIBRES_MAX = 12;
+
+/** Les polices proposées, et le nom que le moteur de rendu leur donne. */
+const APPARENCE_POLICES = ['display' => 'Titrage', 'body' => 'Texte courant'];
+
+/**
+ * Nettoie la liste des calques libres venue du formulaire.
+ *
+ * Elle arrive en JSON parce qu'elle est de longueur variable — un formulaire
+ * HTML ne sait pas décrire « zéro à douze objets, chacun avec neuf
+ * propriétés » sans une nuée de champs indexés. C'est la seule entrée du
+ * produit dans ce format, et elle est donc traitée avec la même méfiance
+ * qu'une saisie : rien n'est cru, tout est ramené dans ses bornes.
+ *
+ * Un calque illisible est ÉCARTÉ, pas rejeté : refuser tout le décor parce
+ * qu'un objet sur douze a une largeur aberrante ferait perdre le reste du
+ * travail. Ce qui compte est qu'il ne sorte d'ici que des calques valides.
+ */
+function calques_propres(mixed $saisie): array
+{
+    if (is_string($saisie)) {
+        $saisie = json_decode($saisie, true);
+    }
+    if (!is_array($saisie)) {
+        return [];
+    }
+
+    $sortie = [];
+    foreach ($saisie as $brut) {
+        if (!is_array($brut) || count($sortie) >= CALQUES_LIBRES_MAX) {
+            continue;
+        }
+        $sorte = (string) ($brut['sorte'] ?? 'texte');
+        if ($sorte !== 'texte' && $sorte !== 'image') {
+            continue;
+        }
+
+        $borne = static function (string $cle, float $min, float $max, float $defaut) use ($brut): float {
+            $v = $brut[$cle] ?? null;
+            return is_numeric($v) ? max($min, min($max, (float) $v)) : $defaut;
+        };
+
+        $x = $borne('x', 0, 0.98, 0.1);
+        $y = $borne('y', 0, 0.98, 0.1);
+        $calque = [
+            'sorte' => $sorte,
+            'nom' => mb_substr(trim((string) ($brut['nom'] ?? '')), 0, 40),
+            // La largeur ne peut pas dépasser ce qui reste à droite du point
+            // de départ : le validateur refuserait le gabarit entier, et
+            // l'auteur n'aurait aucun moyen de savoir lequel des douze.
+            'x' => $x,
+            'y' => $y,
+            'w' => min($borne('w', 0.03, 1, 0.4), 1 - $x),
+            'h' => min($borne('h', 0.02, 1, 0.08), 1 - $y),
+            'visible' => ($brut['visible'] ?? true) ? true : false,
+        ];
+
+        if ($sorte === 'texte') {
+            $valeur = mb_substr((string) ($brut['valeur'] ?? ''), 0, 80);
+            // Un texte vide ne réserve pas une zone pour rien — même règle
+            // que pour l'accroche et le champ à remplir.
+            if (trim($valeur) === '') {
+                continue;
+            }
+            $calque += [
+                'valeur' => $valeur,
+                'taille' => $borne('taille', 0.012, 0.14, 0.04),
+                'couleur' => isset(APPARENCE_COULEURS[(string) ($brut['couleur'] ?? '')])
+                    ? (string) $brut['couleur'] : 'brand.paper',
+                'align' => isset(APPARENCE_ALIGNEMENTS[(string) ($brut['align'] ?? '')])
+                    ? (string) $brut['align'] : 'left',
+                'police' => isset(APPARENCE_POLICES[(string) ($brut['police'] ?? '')])
+                    ? (string) $brut['police'] : 'display',
+                'majuscules' => ($brut['majuscules'] ?? false) ? true : false,
+            ];
+        } else {
+            /**
+             * La source d'une image est une adresse de CE site, jamais une
+             * adresse libre. Un calque pointant ailleurs ferait aller
+             * chercher un fichier tiers à chaque badge fabriqué : le décor
+             * deviendrait un mouchard, et l'hôte distant pourrait changer
+             * l'image après la relecture.
+             */
+            $src = (string) ($brut['src'] ?? '');
+            if (!image_de_calque_permise($src)) {
+                continue;
+            }
+            $calque += ['src' => $src, 'opacite' => $borne('opacite', 0.1, 1, 1)];
+        }
+
+        $sortie[] = $calque;
+    }
+    return $sortie;
+}
+
+/**
+ * Une image de calque doit venir de chez nous.
+ *
+ * Deux formes seulement, les mêmes que pour un cadre : le fichier téléversé,
+ * servi par `?p=cadre&f=`, et un cadre livré avec l'application. Tout le
+ * reste est refusé — y compris une adresse de notre domaine qui ne
+ * ressemblerait à aucune des deux, car le jour où une autre route sert des
+ * fichiers, elle ne doit pas devenir une porte par héritage.
+ */
+function image_de_calque_permise(string $src): bool
+{
+    if ($src === '' || !str_starts_with($src, base_url() . '/')) {
+        return false;
+    }
+    $reste = substr($src, strlen(base_url() . '/'));
+    return (bool) preg_match('~^\?p=cadre&f=[A-Za-z0-9._-]+$~', $reste)
+        || (bool) preg_match('~^public/cadres/[A-Za-z0-9._-]+$~', $reste);
+}
+
+/**
+ * Les calques libres, relus depuis un gabarit enregistré.
+ *
+ * Le trajet doit être exactement réversible : ce qui a été construit se
+ * relit, se remontre dans le formulaire, et se reconstruit à l'identique.
+ * Sans cela, rouvrir un décor pour corriger une virgule en déplacerait les
+ * objets — le pire des défauts, parce qu'il ne se voit qu'après coup.
+ */
+function calques_depuis_gabarit(array $g): array
+{
+    $sortie = [];
+    foreach ($g['layers'] ?? [] as $l) {
+        if (!str_starts_with((string) ($l['id'] ?? ''), 'libre-')) {
+            continue;
+        }
+        $r = $l['rect'] ?? [];
+        $commun = [
+            'nom' => (string) ($l['name'] ?? ''),
+            'x' => (float) ($r['x'] ?? 0), 'y' => (float) ($r['y'] ?? 0),
+            'w' => (float) ($r['w'] ?? 0.4), 'h' => (float) ($r['h'] ?? 0.08),
+            'visible' => true,
+        ];
+        if (($l['type'] ?? '') === 'text') {
+            $sortie[] = $commun + [
+                'sorte' => 'texte',
+                'valeur' => (string) ($l['value'] ?? ''),
+                'taille' => (float) ($l['size'] ?? 0.04),
+                'couleur' => (string) ($l['color'] ?? 'brand.paper'),
+                'align' => (string) ($l['align'] ?? 'left'),
+                'police' => (string) ($l['font'] ?? 'display'),
+                'majuscules' => (bool) ($l['uppercase'] ?? false),
+            ];
+        } elseif (($l['type'] ?? '') === 'image') {
+            $sortie[] = $commun + [
+                'sorte' => 'image',
+                'src' => (string) ($l['src'] ?? ''),
+                'opacite' => (float) ($l['opacity'] ?? 1),
+            ];
+        }
+    }
+    return $sortie;
+}
+
+/** Traduit un calque libre propre en calque de gabarit. */
+function calque_en_couche(array $c, int $rang): array
+{
+    $rect = ['x' => $c['x'], 'y' => $c['y'], 'w' => $c['w'], 'h' => $c['h']];
+    // `name` porte le nom que l'auteur a donné à l'objet. Le moteur de
+    // rendu l'ignore ; le panneau de calques en vit.
+    if ($c['sorte'] === 'texte') {
+        return [
+            'type' => 'text', 'id' => 'libre-' . $rang, 'name' => $c['nom'],
+            'value' => $c['valeur'], 'editable' => false, 'placeholder' => '',
+            'maxLength' => 80, 'uppercase' => $c['majuscules'], 'rect' => $rect,
+            'size' => $c['taille'], 'align' => $c['align'], 'color' => $c['couleur'],
+            'font' => $c['police'], 'autoShrink' => true,
+        ];
+    }
+    return [
+        'type' => 'image', 'id' => 'libre-' . $rang, 'name' => $c['nom'],
+        'src' => $c['src'], 'rect' => $rect,
+        'opacity' => $c['opacite'], 'blendMode' => 'normal',
+    ];
+}
+
 /* ---------------- fabrication ---------------- */
 
 class GabaritInvalide extends RuntimeException
@@ -585,6 +775,7 @@ function construire_gabarit(array $i): array
     $a = apparence_propre($i['disposition'], $i['apparence'] ?? []);
     $c = canevas($i['disposition'], $a['format']);
     $t = rectangles_textes($a);
+    $libres = calques_propres($i['calques'] ?? []);
 
     /**
      * La zone photo ne sort pas du canevas, et le masque suit la forme
@@ -672,6 +863,18 @@ function construire_gabarit(array $i): array
         'layers' => [
             ...$calques,
             ...$textes,
+            /**
+             * Les calques libres viennent EN DERNIER, donc au-dessus.
+             *
+             * C'est l'ordre dans lequel on les a posés, et celui qu'on
+             * attend d'un éditeur : le dernier objet ajouté est visible.
+             * Le panneau de calques les montre à l'envers — du dessus vers
+             * le dessous — comme le fait tout logiciel de composition.
+             */
+            ...array_map(
+                fn(int $r): array => calque_en_couche($libres[$r], $r + 1),
+                array_keys($libres)
+            ),
         ],
         // Le filigrane et le QR se déplacent, ne se retirent pas : ce sont
         // les deux informations qui font la différence avec une image.

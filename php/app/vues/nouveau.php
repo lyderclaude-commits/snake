@@ -268,10 +268,43 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
       <!-- ═══════════ 3 · L'apparence ═══════════ -->
       <section class="carte sd-panneau" id="panneau-apparence" role="tabpanel"
                aria-labelledby="onglet-apparence" hidden>
-        <div class="rangee" style="justify-content:space-between;align-items:baseline;margin-bottom:4px">
-          <p class="aide" style="margin:0;max-width:34ch">Tout se déplace sauf l’essentiel : le QR,
+        <div class="rangee" style="justify-content:space-between;align-items:baseline;margin-bottom:12px">
+          <p class="aide" style="margin:0;max-width:32ch">Tout se déplace sauf l’essentiel : le QR,
           le filigrane et la zone photo restent, où que vous les mettiez.</p>
           <button class="bouton fant petit" type="button" id="apparence-defaut">Réglages du gabarit</button>
+        </div>
+
+        <?php
+        /**
+         * Le panneau de calques, et les réglages de CELUI qu'on a pris en main.
+         *
+         * Les dix-sept réglages restent tous là — ils vivent plus bas, dans
+         * des groupes que le script montre ou cache selon la sélection. Ce
+         * n'est donc pas un écran de plus : c'est le même, trié par objet
+         * plutôt qu'en une grille où l'on cherchait « taille du QR » parmi
+         * les curseurs du texte.
+         *
+         * La liste est écrite par le script, à partir du champ caché
+         * `calques` et des trois objets que tout décor porte. Le serveur ne
+         * la rend pas : elle change à chaque geste, et un rendu initial en
+         * PHP se contredirait dès le premier ajout.
+         */
+        ?>
+        <div class="sd-calques">
+          <div class="rangee" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+            <p class="pas" style="margin:0">Calques</p>
+            <div class="rangee" style="gap:6px">
+              <button class="bouton fant petit" type="button" id="calque-texte">+ Texte</button>
+              <button class="bouton fant petit" type="button" id="calque-image">+ Image</button>
+            </div>
+          </div>
+          <ul class="sd-liste-calques" id="liste-calques"></ul>
+          <input type="hidden" name="calques" id="champ-calques"
+                 value="<?= e($valeurs['calques']) ?>">
+          <p class="aide" id="calques-aide" style="margin:8px 0 0"></p>
+          <!-- Le téléversement d'une image de calque emprunte le même
+               chemin que le cadre : rien n'entre par une autre porte. -->
+          <input id="calque-fichier" type="file" accept="image/png,image/webp" hidden>
         </div>
 
         <?php
@@ -283,7 +316,77 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * d'un regard, et surtout : on sait quand on a fini l'un d'eux.
          */
         ?>
-        <fieldset class="sd-groupe">
+        <?php
+        /**
+         * Les réglages d'un calque libre.
+         *
+         * Ils ne sont pas rendus par le serveur avec une valeur : c'est le
+         * script qui les remplit depuis l'objet sélectionné, et qui réécrit
+         * l'objet à chaque frappe. Ils ne portent donc PAS d'attribut
+         * `name` — ils n'ont rien à envoyer, seul le champ caché `calques`
+         * part avec le formulaire.
+         */
+        ?>
+        <fieldset class="sd-groupe sd-libre" id="groupe-libre" hidden>
+          <legend id="libre-titre">Le calque</legend>
+          <div class="champ" id="libre-champ-valeur">
+            <label for="l-valeur">Texte</label>
+            <input id="l-valeur" type="text" maxlength="80" autocomplete="off">
+          </div>
+          <div class="champ" id="libre-champ-nom">
+            <label for="l-nom">Nom dans la liste
+              <span style="font-weight:400">(facultatif)</span></label>
+            <input id="l-nom" type="text" maxlength="40" autocomplete="off">
+            <p class="aide">Laissé vide, il suit le texte. « Date et lieu » se retrouve
+            plus vite dans une liste de douze objets que « SAM. 12 AVRIL · 21 H ».</p>
+          </div>
+          <div class="reglages">
+            <div class="champ reglage" id="libre-champ-police">
+              <label for="l-police">Police</label>
+              <select id="l-police">
+                <?php foreach (APPARENCE_POLICES as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="champ reglage" id="libre-champ-couleur">
+              <label for="l-couleur">Couleur</label>
+              <select id="l-couleur">
+                <?php foreach (APPARENCE_COULEURS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="champ reglage" id="libre-champ-taille">
+              <label for="l-taille">Taille <output id="v-l-taille"></output></label>
+              <input id="l-taille" type="range" min="0.012" max="0.14" step="0.002">
+            </div>
+            <div class="champ reglage" id="libre-champ-align">
+              <label for="l-align">Alignement</label>
+              <select id="l-align">
+                <?php foreach (APPARENCE_ALIGNEMENTS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="champ reglage"><label for="l-x">Position gauche <output id="v-l-x"></output></label>
+              <input id="l-x" type="range" min="0" max="0.98" step="0.005"></div>
+            <div class="champ reglage"><label for="l-y">Position haute <output id="v-l-y"></output></label>
+              <input id="l-y" type="range" min="0" max="0.98" step="0.005"></div>
+            <div class="champ reglage"><label for="l-w">Largeur <output id="v-l-w"></output></label>
+              <input id="l-w" type="range" min="0.03" max="1" step="0.005"></div>
+            <div class="champ reglage"><label for="l-h">Hauteur <output id="v-l-h"></output></label>
+              <input id="l-h" type="range" min="0.02" max="1" step="0.005"></div>
+          </div>
+          <label class="case" id="libre-champ-majuscules" style="max-width:420px;margin-top:2px">
+            <input id="l-majuscules" type="checkbox"><span>Tout en capitales</span>
+          </label>
+          <div class="rangee" style="margin-top:12px;gap:8px">
+            <button class="bouton fant petit" type="button" id="calque-supprimer">Supprimer ce calque</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="sd-groupe sd-natif">
           <legend>Le texte</legend>
           <div class="reglages">
             <?php $liste('texte_couleur', 'Couleur', APPARENCE_COULEURS, (string) $valeurs['texte_couleur']); ?>
@@ -296,7 +399,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           </div>
         </fieldset>
 
-        <fieldset class="sd-groupe">
+        <fieldset class="sd-groupe sd-natif">
           <legend>Le QR et le filigrane</legend>
           <div class="reglages">
             <?php $liste('qr_position', 'Coin du QR Code', APPARENCE_QR, (string) $valeurs['qr_position']); ?>
@@ -321,7 +424,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * remplit l'ouverture, le zoom et le glissement s'y rapportent.
          */
         ?>
-        <fieldset class="sd-groupe fenetre-photo">
+        <fieldset class="sd-groupe sd-natif fenetre-photo">
           <legend>La fenêtre photo</legend>
           <div class="rangee" style="justify-content:space-between;align-items:baseline;margin-bottom:10px">
             <p class="aide" style="margin:0;max-width:32ch">Le pointillé sur l’aperçu montre où la
@@ -503,3 +606,254 @@ window.WAKABI_APERCU = {
 };
 </script>
 <script src="<?= e(actif('public/apercu.js')) ?>" defer></script>
+
+<script>
+/**
+ * Le panneau de calques.
+ *
+ * L'état vit dans UN SEUL endroit : le champ caché `calques`, en JSON. Le
+ * panneau le lit pour se dessiner et le réécrit à chaque geste ; l'aperçu le
+ * poste avec le reste du formulaire et le serveur le renvoie dessiné. Il n'y
+ * a donc jamais deux vérités à réconcilier — la liste à l'écran ne peut pas
+ * diverger de ce qui sera enregistré, puisque c'est la même chaîne.
+ */
+(function () {
+  var champ = document.getElementById('champ-calques');
+  var liste = document.getElementById('liste-calques');
+  var form = document.getElementById('form-decor');
+  if (!champ || !liste || !form) { return; }
+
+  var groupeLibre = document.getElementById('groupe-libre');
+  var natifs = Array.prototype.slice.call(document.querySelectorAll('.sd-natif'));
+  var aide = document.getElementById('calques-aide');
+  var MAX = 12;
+
+  /** -1 = aucun calque libre sélectionné ; on montre alors les réglages du décor. */
+  var choisi = -1;
+
+  var lire = function () {
+    try { var v = JSON.parse(champ.value || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  };
+  var ecrire = function (cs) {
+    champ.value = JSON.stringify(cs);
+    /* `input` et non `change` : c'est l'événement que l'aperçu écoute, et il
+       redessine donc au même rythme que pour un curseur. */
+    champ.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  /**
+   * Les trois objets que TOUT décor porte.
+   *
+   * Ils ne sont pas dans le champ caché : ils vivent dans les réglages du
+   * gabarit, et ne peuvent être ni ajoutés ni retirés. Ils figurent dans la
+   * liste parce qu'un panneau de calques qui ne montrerait pas le QR ni la
+   * photo mentirait sur ce que contient le décor.
+   */
+  var FIXES = [
+    { nom: 'QR Code', eti: 'fixe' },
+    { nom: 'Filigrane Wakabi', eti: 'fixe' },
+    { nom: 'Fenêtre photo', eti: 'fixe' }
+  ];
+
+  function dessinerListe() {
+    var cs = lire();
+    liste.textContent = '';
+
+    /* Du dessus vers le dessous, comme tout logiciel de composition : le
+       dernier calque posé est le premier de la liste. */
+    for (var i = cs.length - 1; i >= 0; i--) {
+      liste.appendChild(ligneLibre(cs[i], i));
+    }
+    FIXES.forEach(function (f) { liste.appendChild(ligneFixe(f)); });
+
+    aide.textContent = cs.length >= MAX
+      ? 'Douze calques, c’est le maximum : chacun est redessiné à chaque aperçu.'
+      : (cs.length === 0
+        ? 'Ajoutez une date, un lieu, un hashtag, le logo d’un partenaire.'
+        : cs.length + ' calque' + (cs.length > 1 ? 's' : '') + ' sur ' + MAX + '.');
+  }
+
+  function ligneLibre(c, i) {
+    var li = document.createElement('li');
+    li.className = 'sd-calque' + (i === choisi ? ' sel' : '');
+    li.dataset.rang = String(i);
+
+    var oeil = document.createElement('button');
+    oeil.type = 'button';
+    oeil.className = 'sd-cal-oeil';
+    oeil.setAttribute('aria-label', c.visible === false ? 'Montrer ce calque' : 'Masquer ce calque');
+    oeil.setAttribute('aria-pressed', c.visible === false ? 'true' : 'false');
+    oeil.textContent = c.visible === false ? '◌' : '●';
+    oeil.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var cs = lire();
+      cs[i].visible = cs[i].visible === false;
+      ecrire(cs); dessinerListe();
+    });
+
+    var nom = document.createElement('span');
+    nom.className = 'sd-cal-nom';
+    nom.textContent = c.nom || (c.sorte === 'image' ? 'Image' : (c.valeur || 'Texte'));
+
+    var eti = document.createElement('span');
+    eti.className = 'sd-cal-eti';
+    eti.textContent = c.sorte === 'image' ? 'image' : 'texte';
+
+    li.appendChild(oeil); li.appendChild(nom); li.appendChild(eti);
+    li.addEventListener('click', function () { selectionner(i); });
+    return li;
+  }
+
+  function ligneFixe(f) {
+    var li = document.createElement('li');
+    li.className = 'sd-calque fixe';
+    li.innerHTML = '<span class="sd-cal-oeil" aria-hidden="true">●</span>'
+      + '<span class="sd-cal-nom"></span><span class="sd-cal-eti">🔒 ' + f.eti + '</span>';
+    li.querySelector('.sd-cal-nom').textContent = f.nom;
+    /* Cliquer un objet fixe ramène aux réglages du décor, où il se règle. */
+    li.addEventListener('click', function () { selectionner(-1); });
+    return li;
+  }
+
+  /* ---- la sélection décide de ce qu'on voit ---- */
+  function selectionner(i) {
+    choisi = i;
+    var cs = lire();
+    var c = i >= 0 ? cs[i] : null;
+
+    natifs.forEach(function (n) { n.hidden = c !== null; });
+    groupeLibre.hidden = c === null;
+    dessinerListe();
+    if (!c) { return; }
+
+    var texte = c.sorte !== 'image';
+    document.getElementById('libre-titre').textContent =
+      texte ? 'Le texte « ' + (c.nom || c.valeur || '') + ' »' : 'L’image « ' + (c.nom || '') + ' »';
+    document.getElementById('libre-champ-valeur').hidden = !texte;
+    ['libre-champ-police', 'libre-champ-couleur', 'libre-champ-taille',
+     'libre-champ-align', 'libre-champ-majuscules'].forEach(function (id) {
+      document.getElementById(id).hidden = !texte;
+    });
+
+    poser('l-valeur', c.valeur || '');
+    poser('l-nom', c.nom || '');
+    poser('l-police', c.police || 'display');
+    poser('l-couleur', c.couleur || 'brand.paper');
+    poser('l-align', c.align || 'left');
+    poser('l-taille', c.taille != null ? c.taille : 0.04);
+    poser('l-x', c.x); poser('l-y', c.y); poser('l-w', c.w); poser('l-h', c.h);
+    document.getElementById('l-majuscules').checked = !!c.majuscules;
+    montrerNombres();
+  }
+
+  function poser(id, v) {
+    var el = document.getElementById(id);
+    if (el) { el.value = String(v); }
+  }
+
+  function montrerNombres() {
+    [['l-taille', 'v-l-taille'], ['l-x', 'v-l-x'], ['l-y', 'v-l-y'],
+     ['l-w', 'v-l-w'], ['l-h', 'v-l-h']].forEach(function (p) {
+      var e = document.getElementById(p[0]), o = document.getElementById(p[1]);
+      if (e && o) { o.textContent = Math.round(Number(e.value) * 100) + ' %'; }
+    });
+  }
+
+  /* ---- toute modification réécrit l'objet sélectionné ---- */
+  var lie = {
+    'l-valeur': 'valeur', 'l-nom': 'nom', 'l-police': 'police', 'l-couleur': 'couleur',
+    'l-align': 'align', 'l-taille': 'taille', 'l-x': 'x', 'l-y': 'y', 'l-w': 'w', 'l-h': 'h'
+  };
+  Object.keys(lie).forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) { return; }
+    el.addEventListener('input', function () {
+      if (choisi < 0) { return; }
+      var cs = lire();
+      if (!cs[choisi]) { return; }
+      var cle = lie[id];
+      var avant = cs[choisi][cle];
+      cs[choisi][cle] = el.type === 'range' ? Number(el.value) : el.value;
+      /**
+       * Le nom suit le texte tant qu'il n'a pas été changé à la main.
+       *
+       * On le sait sans drapeau, en comparant : si le nom actuel est encore
+       * l'ancien texte, c'est qu'il suivait. Un drapeau aurait été plus
+       * simple à écrire, et faux dès le premier enregistrement — il ne
+       * survit pas à l'aller-retour par le serveur, qui ne garde que les
+       * propriétés du modèle.
+       */
+      if (cle === 'valeur' && (cs[choisi].nom || '') === String(avant || '')) {
+        cs[choisi].nom = el.value.slice(0, 40);
+      }
+      ecrire(cs); montrerNombres(); dessinerListe();
+      var t = document.getElementById('libre-titre');
+      if (t && cs[choisi].sorte !== 'image') { t.textContent = 'Le texte « ' + (cs[choisi].nom || '') + ' »'; }
+    });
+  });
+  document.getElementById('l-majuscules').addEventListener('change', function () {
+    if (choisi < 0) { return; }
+    var cs = lire();
+    cs[choisi].majuscules = this.checked;
+    ecrire(cs);
+  });
+
+  /* ---- ajouter, supprimer ---- */
+  document.getElementById('calque-texte').addEventListener('click', function () {
+    var cs = lire();
+    if (cs.length >= MAX) { return; }
+    /* Le nom part ÉGAL au texte : c'est ce qui fait qu'il le suit ensuite
+       (voir la règle de comparaison plus bas). */
+    cs.push({ sorte: 'texte', nom: 'Votre texte', valeur: 'Votre texte',
+              x: 0.1, y: 0.1, w: 0.5, h: 0.07, taille: 0.04,
+              couleur: 'brand.paper', align: 'left', police: 'display',
+              majuscules: false, visible: true });
+    ecrire(cs); selectionner(cs.length - 1);
+    document.getElementById('l-valeur').select();
+  });
+
+  /**
+   * Une image de calque passe par le MÊME téléversement que le cadre.
+   *
+   * C'est ce qui garantit qu'elle est servie depuis ce site : le serveur
+   * refuse tout calque image dont la source n'est pas une de nos deux
+   * adresses connues. Un lien collé à la main ne passerait pas.
+   */
+  var fichier = document.getElementById('calque-fichier');
+  document.getElementById('calque-image').addEventListener('click', function () {
+    if (lire().length >= MAX) { return; }
+    fichier.click();
+  });
+  fichier.addEventListener('change', function () {
+    var f = fichier.files && fichier.files[0];
+    if (!f) { return; }
+    aide.textContent = 'Envoi de l’image…';
+    var corps = new FormData();
+    corps.append('csrf', (form.elements.namedItem('csrf') || {}).value || '');
+    corps.append('image', f);
+    fetch((window.WAKABI_APERCU || {}).base + '?p=api-calque-image',
+          { method: 'POST', body: corps })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        fichier.value = '';
+        if (!d.url) { aide.textContent = d.erreur || 'Image refusée.'; return; }
+        var cs = lire();
+        cs.push({ sorte: 'image', nom: f.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40),
+                  src: d.url, x: 0.68, y: 0.05, w: 0.26, h: 0.14,
+                  opacite: 1, visible: true });
+        ecrire(cs); selectionner(cs.length - 1);
+      })
+      .catch(function () { fichier.value = ''; aide.textContent = 'L’image n’a pas pu être envoyée.'; });
+  });
+
+  document.getElementById('calque-supprimer').addEventListener('click', function () {
+    if (choisi < 0) { return; }
+    var cs = lire();
+    cs.splice(choisi, 1);
+    ecrire(cs); selectionner(-1);
+  });
+
+  dessinerListe();
+})();
+</script>

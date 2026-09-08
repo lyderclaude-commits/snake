@@ -953,6 +953,47 @@ switch ($page) {
      * exacte qui sera stockée et la dessine avec le même renderer que le
      * Studio. Un aperçu qui mentirait ne servirait à rien.
      */
+    /**
+     * Téléverser l'image d'un calque — un logo de partenaire, un sceau.
+     *
+     * Elle passe par la MÊME porte que le cadre : même dossier, mêmes deux
+     * formats, même plafond. C'est ce qui rend vraie la règle du modèle
+     * (« la source d'un calque image est une adresse de ce site ») : si
+     * l'on pouvait déposer ailleurs, la règle ne protégerait rien.
+     *
+     * Elle répond du JSON parce que le panneau de calques l'appelle sans
+     * quitter la page : recharger le formulaire pour un logo perdrait les
+     * onze autres calques en cours de réglage.
+     */
+    case 'api-calque-image':
+        exiger_droit('decors_siens');
+        verifier_csrf();
+
+        $f = $_FILES['image'] ?? null;
+        if (!$f || empty($f['tmp_name']) || !is_uploaded_file($f['tmp_name'])) {
+            json_repondre(['erreur' => 'Aucune image reçue.']);
+        }
+        $info = @getimagesize($f['tmp_name']);
+        $ext = match ($info[2] ?? 0) {
+            IMAGETYPE_PNG => 'png',
+            IMAGETYPE_WEBP => 'webp',
+            default => null,
+        };
+        if (!$ext) {
+            json_repondre(['erreur' => 'PNG ou WebP seulement. Le SVG est refusé pour raison de sécurité.']);
+        }
+        if (($f['size'] ?? 0) > 2 * 1024 * 1024) {
+            json_repondre(['erreur' => 'L’image dépasse 2 Mo.']);
+        }
+        $nom = nouvel_id() . '.' . $ext;
+        if (!move_uploaded_file($f['tmp_name'], dossier_cadres() . '/' . $nom)) {
+            json_repondre(['erreur' => 'L’image n’a pas pu être enregistrée.']);
+        }
+        // Recompressée comme un cadre : l'invité paiera ce transfert, sur
+        // une connexion où le mégaoctet se compte.
+        $c = compresser_cadre(dossier_cadres(), $nom);
+        json_repondre(['url' => url('?p=cadre&f=' . $c['nom'])]);
+
     case 'api-apercu':
         $u = exiger_droit('decors_siens');
         verifier_csrf();
@@ -1010,6 +1051,7 @@ switch ($page) {
                 'legende' => '',
                 'expire_le' => '',
                 'apparence' => $apparence,
+                'calques' => (string) ($_POST['calques'] ?? '[]'),
                 'cree_par' => 'equipe',
             ]);
         } catch (GabaritInvalide $e) {
