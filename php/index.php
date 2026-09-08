@@ -1060,6 +1060,16 @@ switch ($page) {
 
         json_repondre([
             'gabarit' => $g,
+            /**
+             * La santé du décor, calculée par le MÊME pré-vol que la
+             * relecture — pas par une seconde liste de contrôles qui
+             * finirait par diverger de celle qui décide vraiment.
+             *
+             * Vingt millisecondes : c'est moins que le trajet réseau qui
+             * l'apporte, et cela évite d'apprendre à l'auteur, deux jours
+             * plus tard, ce qu'on pouvait lui dire tout de suite.
+             */
+            'sante' => prevol($g, $cadre),
             'apparence' => $apparence,
             'cadre' => $cadre,
             'photo' => url('public/apercu-photo.webp'),

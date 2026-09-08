@@ -435,6 +435,22 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .sd-carte-apercu .apercu-boite{position:static;margin-bottom:12px}
 .sd-enregistrer{width:100%;justify-content:center}
 .sd-note{margin:8px 0 0;text-align:center}
+/* ---- la santé du décor, dite pendant qu'on règle ---- */
+.sd-sante{padding:14px 16px}
+.sd-sante-liste{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.sd-ct{display:flex;gap:8px;padding:8px 11px;border-radius:9px;font-size:.8rem;line-height:1.4}
+.sd-ct::before{flex:none;font-weight:700}
+.sd-ct.ok{background:#ECFDF5;color:#047857}
+.sd-ct.ok::before{content:"✓"}
+.sd-ct.alerte{background:#FFF7ED;color:#C2410C}
+.sd-ct.alerte::before{content:"!"}
+.sd-ct.echec{background:#FEF2F2;color:#B91C1C}
+.sd-ct.echec::before{content:"✗"}
+/* Avant le premier aperçu : on annonce ce qui SERA vérifié, sans prétendre
+   que ce l'est déjà. */
+.sd-ct.attente{background:var(--bg2);color:var(--text3)}
+.sd-ct.attente::before{content:"·"}
+
 .sd-relecture{padding:0}
 .sd-relecture > summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:.9rem;
   list-style:none;display:flex;align-items:center;gap:8px}

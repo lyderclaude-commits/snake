@@ -145,6 +145,13 @@ function demarrer(ctx: Contexte) {
 
     if (d.erreur) {
       etat.textContent = d.erreur;
+      /**
+       * Un réglage vient de rendre le décor invalide, donc impossible à
+       * juger. Laisser la santé sur ses coches vertes d'il y a une seconde
+       * dirait le contraire de la vérité, au moment précis où l'auteur a
+       * besoin de savoir que quelque chose ne va pas.
+       */
+      santeIndecise(d.erreur);
       return;
     }
 
@@ -206,6 +213,7 @@ function demarrer(ctx: Contexte) {
     if (mien !== tour) return;
 
     dessiner(tpl);
+    montrerSante(d.sante);
     etat.textContent = fichierUrl
       ? 'Aperçu avec votre cadre et une photo d’exemple.'
       : 'Aperçu avec un cadre et une photo d’exemple.';
@@ -252,6 +260,265 @@ function demarrer(ctx: Contexte) {
     renderScene(dessin, spec, tpl, assets, (l * dpr) / tpl.canvas.width);
     guide(emplacement, (tpl.layers ?? []).find((c: any) => c.type === 'photoSlot')?.mask,
           l * dpr, h * dpr);
+    dernierTpl = tpl;
+    poignees(l * dpr, h * dpr);
+  }
+
+  /* ================================================================ */
+  /* Prendre les objets à la main                                      */
+  /* ================================================================ */
+
+  /**
+   * Quatre curseurs pour poser un objet, c'est viser sans regarder.
+   *
+   * On garde les curseurs — ils donnent la valeur exacte, et permettent de
+   * recopier un réglage d'un décor à l'autre — mais on peut aussi saisir
+   * l'objet là où il est. Les deux commandes écrivent au même endroit, si
+   * bien qu'aucune ne peut mentir sur ce que l'autre a fait.
+   */
+  type Prise =
+    | { quoi: 'libre'; rang: number }
+    | { quoi: 'photo' }
+    | { quoi: 'texte' };
+
+  let dernierTpl: any = null;
+  let prise: Prise | null = null;
+  let glisse: { coin: string; x0: number; y0: number; r0: Rect } | null = null;
+
+  const champCalques = document.getElementById('champ-calques') as HTMLInputElement | null;
+
+  const lireCalques = (): any[] => {
+    if (!champCalques) return [];
+    try {
+      const v = JSON.parse(champCalques.value || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  };
+
+  /** Le rectangle de l'objet pris, en fractions du canevas. */
+  function rectDe(p: Prise): Rect | null {
+    if (p.quoi === 'libre') {
+      const c = lireCalques()[p.rang];
+      return c ? { x: c.x, y: c.y, w: c.w, h: c.h } : null;
+    }
+    if (p.quoi === 'photo') {
+      return { x: +val('photo_x'), y: +val('photo_y'), w: +val('photo_w'), h: +val('photo_h') };
+    }
+    /**
+     * Le bloc de texte n'a pas de hauteur réglable : elle se déduit de la
+     * taille de l'accroche. On la reconstitue pour dessiner une prise qui
+     * corresponde à ce qu'on voit, sinon la poignée du bas serait ailleurs
+     * que le bas du texte.
+     */
+    const t = dernierTpl?.layers?.find((c: any) => c.id === 'claim')?.rect;
+    return t ? { x: t.x, y: t.y, w: t.w, h: t.h } : null;
+  }
+
+  /** Écrit le rectangle de l'objet pris, et redessine tout de suite. */
+  function poserRect(p: Prise, r: Rect) {
+    const borne = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    r = {
+      x: borne(r.x, 0, 0.98), y: borne(r.y, 0, 0.98),
+      w: borne(r.w, 0.03, 1), h: borne(r.h, 0.02, 1),
+    };
+    if (r.x + r.w > 1) r.w = 1 - r.x;
+    if (r.y + r.h > 1) r.h = 1 - r.y;
+
+    if (p.quoi === 'libre' && champCalques) {
+      const cs = lireCalques();
+      if (!cs[p.rang]) return;
+      Object.assign(cs[p.rang], r);
+      champCalques.value = JSON.stringify(cs);
+      // Le panneau de calques écoute `input` : ses curseurs suivent la souris.
+      champCalques.dispatchEvent(new Event('input', { bubbles: true }));
+      if (dernierTpl) {
+        const c = dernierTpl.layers?.find((x: any) => x.id === 'libre-' + (p.rang + 1));
+        if (c) c.rect = { ...r };
+      }
+    } else if (p.quoi === 'photo') {
+      poserCurseur('photo_x', r.x); poserCurseur('photo_y', r.y);
+      poserCurseur('photo_w', r.w); poserCurseur('photo_h', r.h);
+      const c = dernierTpl?.layers?.find((x: any) => x.type === 'photoSlot');
+      if (c) c.rect = { ...r };
+    } else {
+      poserCurseur('bloc_x', r.x); poserCurseur('bloc_y', r.y); poserCurseur('bloc_w', r.w);
+      const c = dernierTpl?.layers?.find((x: any) => x.id === 'claim');
+      if (c) c.rect = { ...c.rect, x: r.x, y: r.y, w: r.w };
+    }
+    afficherValeurs();
+    if (dernierTpl) dessiner(dernierTpl);
+  }
+
+  function poserCurseur(nom: string, v: number) {
+    const el = form.elements.namedItem(nom) as HTMLInputElement | null;
+    if (!el) return;
+    const min = Number(el.min || 0), max = Number(el.max || 1);
+    el.value = String(Math.max(min, Math.min(max, v)));
+  }
+
+  /**
+   * Le contour et les quatre coins de l'objet pris.
+   *
+   * Deux traits superposés, comme pour la fenêtre photo : un décor peut être
+   * noir ou blanc, et une seule couleur disparaîtrait sur l'un des deux.
+   */
+  function poignees(W: number, H: number) {
+    if (!prise) return;
+    const r = rectDe(prise);
+    if (!r) return;
+    const x = r.x * W, y = r.y * H, w = r.w * W, h = r.h * H;
+
+    dessin.save();
+    dessin.lineWidth = 2;
+    dessin.strokeStyle = 'rgba(15,23,42,.65)';
+    dessin.strokeRect(x, y, w, h);
+    dessin.strokeStyle = '#2563EB';
+    dessin.setLineDash([6, 4]);
+    dessin.strokeRect(x, y, w, h);
+    dessin.setLineDash([]);
+
+    const c = 5;
+    for (const [px, py] of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) {
+      dessin.fillStyle = '#FFFFFF';
+      dessin.fillRect(px - c, py - c, c * 2, c * 2);
+      dessin.strokeStyle = '#2563EB';
+      dessin.lineWidth = 2;
+      dessin.strokeRect(px - c, py - c, c * 2, c * 2);
+    }
+    dessin.restore();
+  }
+
+  /** L'objet le plus HAUT sous le pointeur — celui qu'on voit, donc. */
+  function objetSous(fx: number, fy: number): Prise | null {
+    const dans = (r: Rect | null) =>
+      !!r && fx >= r.x && fx <= r.x + r.w && fy >= r.y && fy <= r.y + r.h;
+
+    const cs = lireCalques();
+    for (let i = cs.length - 1; i >= 0; i--) {
+      if (cs[i].visible !== false && dans({ x: cs[i].x, y: cs[i].y, w: cs[i].w, h: cs[i].h })) {
+        return { quoi: 'libre', rang: i };
+      }
+    }
+    if (dans(rectDe({ quoi: 'texte' }))) return { quoi: 'texte' };
+    if (dans(rectDe({ quoi: 'photo' }))) return { quoi: 'photo' };
+    return null;
+  }
+
+  /** Le coin saisi, s'il y en a un — sinon on déplace l'objet entier. */
+  function coinSous(r: Rect, fx: number, fy: number): string {
+    const t = 0.045;
+    const g = Math.abs(fx - r.x) < t, d = Math.abs(fx - (r.x + r.w)) < t;
+    const hh = Math.abs(fy - r.y) < t, b = Math.abs(fy - (r.y + r.h)) < t;
+    if (g && hh) return 'gh';
+    if (d && hh) return 'dh';
+    if (g && b) return 'gb';
+    if (d && b) return 'db';
+    return '';
+  }
+
+  const fractions = (e: PointerEvent) => {
+    const b = toile.getBoundingClientRect();
+    return { fx: (e.clientX - b.left) / b.width, fy: (e.clientY - b.top) / b.height };
+  };
+
+  toile.style.touchAction = 'none';
+  toile.addEventListener('pointerdown', (e) => {
+    const { fx, fy } = fractions(e);
+    const cible = objetSous(fx, fy);
+    prise = cible;
+    if (!cible) { if (dernierTpl) dessiner(dernierTpl); return; }
+
+    /* Prendre un objet sur l'image le sélectionne aussi dans le panneau :
+       une seule sélection pour les deux, sinon on règle un objet en en
+       regardant un autre. */
+    if (cible.quoi === 'libre') {
+      document.dispatchEvent(new CustomEvent('wakabi:calque', { detail: cible.rang }));
+    }
+    const r = rectDe(cible);
+    if (!r) return;
+    glisse = { coin: coinSous(r, fx, fy), x0: fx, y0: fy, r0: { ...r } };
+    toile.setPointerCapture(e.pointerId);
+    if (dernierTpl) dessiner(dernierTpl);
+  });
+
+  toile.addEventListener('pointermove', (e) => {
+    if (!prise || !glisse) {
+      // Sans prise en cours, le curseur annonce ce qu'on peut saisir.
+      const { fx, fy } = fractions(e);
+      const cible = objetSous(fx, fy);
+      const r = cible ? rectDe(cible) : null;
+      toile.style.cursor = !cible ? 'default'
+        : (r && coinSous(r, fx, fy) ? 'nwse-resize' : 'move');
+      return;
+    }
+    const { fx, fy } = fractions(e);
+    const dx = fx - glisse.x0, dy = fy - glisse.y0, r0 = glisse.r0;
+    const r = { ...r0 };
+    switch (glisse.coin) {
+      case 'gh': r.x = r0.x + dx; r.y = r0.y + dy; r.w = r0.w - dx; r.h = r0.h - dy; break;
+      case 'dh': r.y = r0.y + dy; r.w = r0.w + dx; r.h = r0.h - dy; break;
+      case 'gb': r.x = r0.x + dx; r.w = r0.w - dx; r.h = r0.h + dy; break;
+      case 'db': r.w = r0.w + dx; r.h = r0.h + dy; break;
+      default: r.x = r0.x + dx; r.y = r0.y + dy;
+    }
+    poserRect(prise, r);
+  });
+
+  const relacher = (e: PointerEvent) => {
+    if (!glisse) return;
+    glisse = null;
+    try { toile.releasePointerCapture(e.pointerId); } catch { /* déjà relâché */ }
+    /**
+     * Pendant le glissement on redessine LOCALEMENT, sans le serveur : une
+     * requête par image rendrait le geste saccadé sur une connexion lente,
+     * et c'est précisément le geste qui doit être fluide. Le serveur a le
+     * dernier mot une fois le doigt levé.
+     */
+    plusTard();
+  };
+  toile.addEventListener('pointerup', relacher);
+  toile.addEventListener('pointercancel', relacher);
+
+  /* Le panneau de calques annonce sa sélection ; l'aperçu la suit. */
+  document.addEventListener('wakabi:selection', (e) => {
+    const rang = (e as CustomEvent).detail;
+    prise = typeof rang === 'number' && rang >= 0 ? { quoi: 'libre', rang } : null;
+    if (dernierTpl) dessiner(dernierTpl);
+  });
+
+  /**
+   * La santé du décor, telle que le pré-vol la rend.
+   *
+   * On n'invente rien ici : on affiche ce que le serveur a calculé avec la
+   * fonction qui décide vraiment. Écrire une seconde liste de contrôles
+   * côté navigateur aurait donné deux vérités, et c'est toujours la plus
+   * optimiste qu'on croit.
+   */
+  /** Le décor ne se laisse pas juger : on le dit, plutôt que de mentir. */
+  function santeIndecise(pourquoi: string) {
+    const liste = document.getElementById('sd-sante-liste');
+    if (!liste) return;
+    liste.textContent = '';
+    const li = document.createElement('li');
+    li.className = 'sd-ct echec';
+    li.textContent = pourquoi;
+    liste.appendChild(li);
+  }
+
+  function montrerSante(rapport: any) {
+    const liste = document.getElementById('sd-sante-liste');
+    if (!liste || !rapport || !Array.isArray(rapport.controles)) return;
+
+    liste.textContent = '';
+    for (const c of rapport.controles) {
+      // Le contrat de données n'apprend rien à l'auteur : il est vrai ou le
+      // gabarit ne serait pas là. On ne montre que ce sur quoi il peut agir.
+      if (c.id === 'schema' && c.etat === 'ok') continue;
+      const li = document.createElement('li');
+      li.className = 'sd-ct ' + (c.etat === 'ok' ? 'ok' : c.etat === 'alerte' ? 'alerte' : 'echec');
+      li.textContent = c.message;
+      liste.appendChild(li);
+    }
   }
 
   /**
@@ -389,6 +656,34 @@ function demarrer(ctx: Contexte) {
       : `Format du décor aligné sur le cadre (${format}). Placez la fenêtre photo à la main.`;
   }
 
+  /**
+   * Envoyer le cadre tout de suite, sans attendre l'enregistrement.
+   *
+   * Il passe par la même porte que les images de calque, et son adresse
+   * remplace `cadre_url` : à partir de là, l'aperçu et le pré-vol parlent
+   * du même fichier. C'est aussi ce qui fait qu'un cadre survit à une
+   * erreur de saisie — il était déjà déposé.
+   */
+  async function envoyerCadre(f: File) {
+    const champ = form.elements.namedItem('cadre_url') as HTMLInputElement | null;
+    if (!champ) return;
+    const corps = new FormData();
+    const jeton = form.elements.namedItem('csrf') as HTMLInputElement | null;
+    corps.append('csrf', jeton?.value ?? '');
+    corps.append('image', f);
+    try {
+      const r = await fetch(ctx.base + '?p=api-calque-image', { method: 'POST', body: corps });
+      const d = await r.json();
+      if (!d.url) return;
+      champ.value = d.url;
+      // Le fichier local a fait son office ; le serveur sert la suite.
+      if (fichierUrl) URL.revokeObjectURL(fichierUrl);
+      fichierUrl = null;
+      cadreCharge = '';
+      plusTard();
+    } catch { /* on garde l'aperçu local : la saisie n'est pas perdue */ }
+  }
+
   /* ---------------- écoute du formulaire ---------------- */
 
   const plusTard = (reinit: '' | 'disposition' | 'format' = '') => {
@@ -412,16 +707,21 @@ function demarrer(ctx: Contexte) {
   form.addEventListener('change', (e) => {
     const cible = e.target as HTMLInputElement;
     if (cible.id === 'cadre') {
-      // Le cadre choisi n'est pas encore sur le serveur : on le lit sur place.
+      // On le lit sur place pour que l'image apparaisse SANS ATTENDRE le
+      // réseau : sur une connexion lente, deux secondes d'écran vide après
+      // avoir choisi un fichier font croire que rien ne s'est passé.
       if (fichierUrl) URL.revokeObjectURL(fichierUrl);
       const f = cible.files?.[0];
       fichierUrl = f ? URL.createObjectURL(f) : null;
       cadreCharge = '';
       const nom = document.querySelector('.fichier .texte');
       if (nom) nom.textContent = f ? f.name : 'Choisir un fichier';
-      // Un cadre neuf porte sa propre ouverture : la relever maintenant
-      // évite d'avoir à espérer que quelqu'un y pense.
-      if (fichierUrl) {
+      if (f) {
+        // …puis on l'envoie, parce que le serveur ne peut juger que ce
+        // qu'il a. Sans cela la santé du décor se prononcerait sur le cadre
+        // PRÉCÉDENT, et dirait « 36 Ko, bien lisible » d'un fichier qu'elle
+        // n'a jamais vu — le pire des mensonges, celui qui rassure.
+        envoyerCadre(f);
         detecterFenetre(true);
         return;
       }

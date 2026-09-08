@@ -468,16 +468,30 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
        * n'apprend plus qu'une chose, c'est qu'il faut recommencer.
        */
       ?>
-      <details class="carte plate sd-relecture">
-        <summary>Ce que la relecture vérifie</summary>
-        <ul>
-          <li>La zone photo reste visible : un cadre opaque est refusé</li>
-          <li>Les textes tiennent dans le cadre</li>
-          <li>Aucun texte sous le filigrane ni sous le QR</li>
-          <li>Format et poids du cadre soutenables en 3G</li>
-          <li>La redirection pointe vers un domaine Wakabi</li>
+      <?php
+      /**
+       * La santé du décor, dite PENDANT qu'on règle.
+       *
+       * C'était une liste figée de ce que la relecture vérifierait un jour.
+       * Elle est maintenant le résultat du pré-vol lui-même, recalculé à
+       * chaque geste : les mêmes contrôles, la même fonction, mais rendus
+       * avant l'envoi plutôt qu'après. Un décor refusé, c'est deux jours
+       * perdus ; le dire tout de suite ne coûte que vingt millisecondes.
+       *
+       * La liste de départ reste écrite en dur : tant que le premier aperçu
+       * n'est pas revenu, elle annonce au moins CE QUI SERA vérifié.
+       */
+      ?>
+      <div class="carte sd-sante" id="sd-sante">
+        <p class="pas" style="margin:0 0 10px">Santé du décor</p>
+        <ul class="sd-sante-liste" id="sd-sante-liste">
+          <li class="sd-ct attente">La zone photo reste visible</li>
+          <li class="sd-ct attente">Les textes tiennent dans le cadre</li>
+          <li class="sd-ct attente">Aucun texte sous le filigrane ni sous le QR</li>
+          <li class="sd-ct attente">Format et poids soutenables en 3G</li>
+          <li class="sd-ct attente">Les textes restent lisibles sur toute photo</li>
         </ul>
-      </details>
+      </div>
     </aside>
   </form>
 
@@ -719,6 +733,9 @@ window.WAKABI_APERCU = {
   /* ---- la sélection décide de ce qu'on voit ---- */
   function selectionner(i) {
     choisi = i;
+    /* L'aperçu suit : une seule sélection pour les deux, sinon on règle un
+       objet en en regardant un autre. */
+    document.dispatchEvent(new CustomEvent('wakabi:selection', { detail: i }));
     var cs = lire();
     var c = i >= 0 ? cs[i] : null;
 
@@ -736,6 +753,21 @@ window.WAKABI_APERCU = {
       document.getElementById(id).hidden = !texte;
     });
 
+    remplirCommandes(c);
+  }
+
+  /**
+   * Les commandes reprennent les valeurs de l'objet.
+   *
+   * Rejoué quand l'aperçu écrit dans le champ caché — c'est-à-dire quand on
+   * a glissé l'objet à la souris. Sans cela, les curseurs continueraient
+   * d'afficher la position d'avant le geste : deux commandes pour la même
+   * chose, et l'une des deux qui ment.
+   *
+   * Poser une valeur par script ne déclenche PAS `input` : la boucle ne se
+   * referme donc pas sur elle-même.
+   */
+  function remplirCommandes(c) {
     poser('l-valeur', c.valeur || '');
     poser('l-nom', c.nom || '');
     poser('l-police', c.police || 'display');
@@ -852,6 +884,18 @@ window.WAKABI_APERCU = {
     var cs = lire();
     cs.splice(choisi, 1);
     ecrire(cs); selectionner(-1);
+  });
+
+  /* L'aperçu vient d'écrire dans le champ : les commandes le rattrapent. */
+  champ.addEventListener('input', function () {
+    if (choisi < 0) { return; }
+    var c = lire()[choisi];
+    if (c) { remplirCommandes(c); }
+  });
+
+  /* …et inversement : prendre un objet sur l'image l'ouvre dans le panneau. */
+  document.addEventListener('wakabi:calque', function (e) {
+    if (e.detail !== choisi) { selectionner(e.detail); }
   });
 
   dessinerListe();

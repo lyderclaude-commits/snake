@@ -3649,10 +3649,19 @@ const run = async () => {
      /personne\(s\)/.test(bilanD), bilanD.replace(/\s+/g, ' ').slice(0, 90));
 
   const tableD = pcx.locator('.carte:has-text("Ce qui est déjà parti") table tbody');
+  /**
+   * L'historique est PAGINÉ à vingt-cinq lignes.
+   *
+   * Exiger « une ligne de plus » tenait tant que la base de recette était
+   * jeune, et tombait le jour où l'historique atteignait la page pleine —
+   * pour une raison qui n'avait rien à voir avec ce qu'on éprouve. Ce qui
+   * compte est que l'envoi FIGURE, et en tête : c'est le plus récent.
+   */
+  const lignesD = await tableD.locator('tr').count();
   ok('l’envoi laisse une ligne dans l’historique',
-     (await tableD.locator('tr').count()) === avantDiff + 1
-     && (await tableD.innerText()).includes(TITRE_D),
-     `${await tableD.locator('tr').count()} ligne(s)`);
+     (await tableD.innerText()).includes(TITRE_D)
+     && lignesD >= Math.min(avantDiff + 1, 25),
+     `${lignesD} ligne(s), ${avantDiff} avant`);
   const premiere = await tableD.locator('tr').first().innerText();
   ok('elle porte la date et l’heure de l’envoi',
      /\d{2}\/\d{2}\/\d{4}/.test(premiere) && /\d{2}:\d{2} UTC/.test(premiere),
@@ -4524,6 +4533,44 @@ const run = async () => {
   ok('l’état tient dans un seul champ, en JSON', brutCalques.length === 1
      && brutCalques[0].valeur.includes(marque), `${brutCalques.length} calque(s)`);
 
+  /**
+   * Prendre l'objet À LA MAIN sur l'image.
+   *
+   * C'est l'épreuve qui compte : un `pointerdown` suivi d'un déplacement,
+   * comme le ferait un doigt. Vérifier que les poignées sont dessinées ne
+   * dirait rien — ce qu'on veut savoir, c'est que l'objet suit, et que les
+   * curseurs racontent ensuite la même chose que l'image.
+   */
+  await pAT.locator('.sd-calque:not(.fixe)').first().click();
+  const avantGlisse = JSON.parse(await pAT.inputValue('#champ-calques'))[0];
+  const cadreToile = (await pAT.locator('#apercu').boundingBox())!;
+  await pAT.mouse.move(
+    cadreToile.x + (avantGlisse.x + avantGlisse.w / 2) * cadreToile.width,
+    cadreToile.y + (avantGlisse.y + avantGlisse.h / 2) * cadreToile.height);
+  await pAT.mouse.down();
+  await pAT.mouse.move(cadreToile.x + 0.5 * cadreToile.width,
+                       cadreToile.y + 0.62 * cadreToile.height, { steps: 12 });
+  await pAT.mouse.up();
+  await pAT.waitForTimeout(1300);
+  const apresGlisse = JSON.parse(await pAT.inputValue('#champ-calques'))[0];
+  ok('glisser un calque sur l’aperçu le déplace vraiment',
+     Math.abs(apresGlisse.y - avantGlisse.y) > 0.05,
+     `y ${avantGlisse.y.toFixed(2)} → ${apresGlisse.y.toFixed(2)}`);
+  ok('et les curseurs racontent la même chose que l’image',
+     Math.abs(Number(await pAT.inputValue('#l-x')) - apresGlisse.x) < 0.011);
+
+  const largeurAvant = apresGlisse.w;
+  await pAT.mouse.move(cadreToile.x + (apresGlisse.x + apresGlisse.w) * cadreToile.width,
+                       cadreToile.y + (apresGlisse.y + apresGlisse.h) * cadreToile.height);
+  await pAT.mouse.down();
+  await pAT.mouse.move(cadreToile.x + (apresGlisse.x + apresGlisse.w) * cadreToile.width + 55,
+                       cadreToile.y + (apresGlisse.y + apresGlisse.h) * cadreToile.height + 30,
+                       { steps: 10 });
+  await pAT.mouse.up();
+  await pAT.waitForTimeout(1300);
+  ok('tirer un coin le redimensionne',
+     JSON.parse(await pAT.inputValue('#champ-calques'))[0].w > largeurAvant + 0.02);
+
   await pAT.locator('.sd-calque:not(.fixe)').first().click();
   await pAT.locator('#calque-supprimer').click();
   ok('supprimer le retire de la liste et de l’état',
@@ -4565,6 +4612,29 @@ const run = async () => {
   ok('le champ fautif est alors désignable',
      await pAT.evaluate(() => document.getElementById('titre')!.offsetParent !== null));
   ok('on est resté sur la page, rien n’a été perdu', pAT.url().includes('p=nouveau'));
+
+  /**
+   * La santé du décor, dite PENDANT qu'on règle.
+   *
+   * On lui donne un cadre opaque — celui-là même qui fait échouer le
+   * pré-vol à la relecture — et l'on vérifie qu'elle proteste tout de
+   * suite, sans attendre l'envoi. C'est toute la valeur de la chose :
+   * apprendre deux jours plus tard qu'un cadre est opaque, c'est
+   * recommencer.
+   */
+  await pAT.locator('.sd-etape[data-etape=cadre]').click();
+  await pAT.setInputFiles('input[name=cadre]', 'scripts/fixtures/opaque.png');
+  await pAT.waitForTimeout(3500);
+  ok('le cadre choisi part tout de suite au serveur',
+     (await pAT.inputValue('input[name=cadre_url]')) !== '',
+     (await pAT.inputValue('input[name=cadre_url]')).slice(-22));
+  const sante = await pAT.locator('#sd-sante-liste').innerText();
+  ok('la santé du décor se prononce sur CE cadre',
+     /Ko —|Cadre (PNG|WebP)/.test(sante));
+  ok('et elle proteste tout de suite contre un cadre opaque',
+     (await pAT.locator('.sd-ct.echec, .sd-ct.alerte').count()) >= 1
+     && /recouvre|opaque|n’apparaîtra/.test(sante),
+     sante.replace(/\s+/g, ' ').slice(0, 80));
 
   /* --- créer pour de bon, en passant par les trois étapes --- */
   const DECOR_AT = `Atelier ${marque}`;
