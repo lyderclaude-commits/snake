@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **656 scénarios, 656 réussis**
+Les deux ont été vérifiés de bout en bout : **683 scénarios, 683 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,7 +116,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 656 scénarios, dans un vrai navigateur
+npm run php:e2e          # 683 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, référencement
 ```
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 656 scénarios
+### Les 683 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -203,6 +203,11 @@ BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 | **Les liens qui sortent** | Balayage **exhaustif par construction** : toutes les ancres de chaque page publique, filtrées sur l'hôte — les 53 qui quittent le site portent `target="_blank"` **et** `noopener`, et cliquer sur « Wakabi le guide » ouvre vraiment un second onglet en laissant le premier ouvert |
 | **Le retour en tête** | Éprouvé en **défilant**, pas en lisant le balisage : caché tant qu'on est en haut, présent une fois la page descendue, il ramène vraiment à zéro puis se retire — et n'existe que sur la vitrine |
 | **L'atelier d'un décor** | L'écran tient en un écran et demi, l'aperçu et le bouton se voient sans descendre, les réglages sont en trois étapes ; **tourner un curseur redessine l'aperçu pendant qu'on le voit** ; enregistrer avec un champ requis vide **ouvre l'étape fautive** au lieu de ne rien faire ; sur téléphone l'aperçu reste collé sans manger l'écran |
+| **Les calques** | Autant de textes et d'images qu'il en faut — douze au plus, parce que chacun est redessiné à chaque aperçu ; le QR, le filigrane et la fenêtre photo y figurent **verrouillés** ; prendre un calque en main **remplace** les dix-sept réglages par les quatre qui le concernent |
+| **Prendre à la main** | Glisser un objet sur l'aperçu le déplace, tirer un coin le redimensionne, et les curseurs racontent ensuite la même chose que l'image — vérifié par un vrai `pointerdown` suivi d'un déplacement |
+| **La santé du décor** | Le **pré-vol lui-même**, recalculé à chaque geste : un cadre opaque est signalé pendant qu'on règle, pas deux jours plus tard à la relecture |
+| **Modèles, palette, police** | Sept gabarits sur vignette (le `<select>` reste dessous et part avec le formulaire) ; les couleurs dominantes du cadre sont proposées ; la police de titrage est **vraiment servie** |
+| **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
 > soumission à chaque exécution : pas besoin de remettre la base à zéro.
@@ -952,6 +957,83 @@ Une colonne, l'aperçu **devant** les réglages et collé en haut, resserré à 
 cinquième de l'écran : au-delà, il ne montre plus l'aperçu, il cache les
 réglages qu'on est en train de tourner. La liste de relecture, elle, passe en
 fin de page.
+
+---
+
+## Le studio : ce qu'on peut composer
+
+### Des calques, et non quatre cases
+
+Un gabarit ne connaissait que **quatre calques figés** — le cadre, la photo,
+l'accroche, le prénom. On ne pouvait donc écrire ni la date, ni le lieu, ni un
+hashtag, ni poser le logo d'un partenaire.
+
+Le schéma et le moteur de rendu bouclaient pourtant **déjà** sur `layers` sans
+limite : seul le constructeur PHP en fabriquait quatre. Le travail a été de
+lever une borne écrite à la main, pas d'inventer une structure.
+
+Douze calques au maximum. Pas pour brider — aucun décor n'en portera autant —
+mais parce que chacun est redessiné à chaque aperçu, sur le téléphone de
+l'invité.
+
+**La source d'un calque image est une adresse de ce site**, et de deux formes
+seulement. Un calque pointant ailleurs ferait aller chercher un fichier tiers
+à chaque badge fabriqué : le décor deviendrait un mouchard, et l'hôte distant
+pourrait changer l'image après la relecture.
+
+### Le panneau remplace le mur de curseurs
+
+L'état vit dans **un seul endroit**, un champ caché en JSON : le panneau le
+lit pour se dessiner et le réécrit à chaque geste, l'aperçu le poste, le
+serveur le renvoie dessiné. Jamais deux vérités à réconcilier.
+
+Prendre un calque en main remplace les réglages du décor par les siens :
+**quatre réglages au lieu de dix-sept**, dont quinze ne concernaient pas
+l'objet qu'on regarde.
+
+### Prendre les objets à la main
+
+Glisser déplace, tirer un coin redimensionne. Les curseurs restent — ils
+donnent la valeur exacte, et permettent de recopier un réglage d'un décor à
+l'autre, ce qu'une souris ne sait pas faire. Les deux commandes écrivent au
+même endroit et se relisent l'une l'autre.
+
+Pendant le glissement on redessine **localement**, sans le serveur : une
+requête par image rendrait saccadé le geste qui doit précisément être fluide.
+
+### La santé du décor, dite pendant qu'on règle
+
+C'est le **pré-vol lui-même** — la fonction qui décide vraiment — et non une
+seconde liste de contrôles côté navigateur qui aurait fini par diverger.
+Vingt millisecondes, moins que le trajet réseau qui l'apporte.
+
+Un défaut trouvé en le branchant : elle se prononçait sur le cadre
+**précédent**, le fichier choisi n'étant lu que par le navigateur. Le cadre
+part donc au serveur dès qu'on le choisit.
+
+### La police que le produit demandait sans jamais la servir
+
+Le moteur réclame Bricolage Grotesque pour chaque accroche. Elle n'était
+servie nulle part : le navigateur retombait en silence sur `system-ui`, et
+tous les badges sortaient dans la police du téléphone de l'invité. La servir
+ne suffisait pas — un canevas dessine avec la police chargée à l'instant où
+l'ordre est donné, et ne l'attend pas. Les deux studios l'attendent
+désormais.
+
+### Les déclinaisons : un décor, plusieurs formats
+
+Couvrir le fil et la story demandait **deux décors** — deux fois les mêmes
+réglages, deux liens, deux places de quota, pour une seule campagne.
+
+Une déclinaison ne garde que ce qu'un autre format oblige à changer : **son
+cadre**, qui est un fichier aux proportions données, et la fenêtre photo qui
+en dépend. Textes, QR et filigrane sont en fractions du canevas et se
+replacent seuls — c'est la différence entre recalculer et étirer, et la
+raison pour laquelle le modèle est normalisé depuis le début.
+
+Un format est une **vue** du même décor : l'adresse canonique reste celle du
+décor, le QR mène au même endroit, les statistiques comptent une campagne, et
+**le quota une seule place**.
 
 ---
 

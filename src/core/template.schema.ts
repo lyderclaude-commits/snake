@@ -293,6 +293,31 @@ export const DecorTemplate = z
     /* -- options offertes à l'utilisateur -- */
     filters: z.array(FilterId).default(['none', 'wakabi-blue']),
 
+    /**
+     * Les déclinaisons : le même décor dans un autre format.
+     *
+     * Couvrir le fil, la story et la bannière demandait trois décors, donc
+     * trois fois les mêmes réglages, trois liens et trois places de quota —
+     * alors que c'est une seule campagne.
+     *
+     * On ne garde QUE ce qu'un autre format oblige à changer : le cadre,
+     * qui est un fichier aux proportions données, et la fenêtre photo, qui
+     * dépend de l'ouverture de ce cadre. Tout le reste — textes, QR,
+     * filigrane — est exprimé en fractions du canevas et se replace seul.
+     *
+     * C'est la différence entre RECALCULER et étirer : un gabarit carré
+     * posé tel quel dans un 9:16 aplatirait le visage de l'invité.
+     */
+    variantes: z
+      .record(
+        AspectRatio,
+        z.object({
+          cadreUrl: z.string().url().optional(),
+          photo: NormRect.optional(),
+        }),
+      )
+      .optional(),
+
     /* -- export -- */
     export: z.object({
       formats: z.array(AspectRatio).min(1).default(['1:1', '9:16']),

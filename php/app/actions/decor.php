@@ -179,6 +179,8 @@ $valeurs = [
      * et relu tel quel côté serveur, où il est nettoyé comme une saisie.
      */
     'calques' => '[]',
+    /** Les déclinaisons, en JSON pour la même raison que les calques. */
+    'variantes' => '{}',
 ] + apparence_par_defaut('bandeau');
 
 if ($modifie && !$post) {
@@ -222,6 +224,7 @@ if ($modifie && !$post) {
             : (($photo['mask']['radius'] ?? 0) > 0 ? 'arrondi' : 'rect'),
         'cadre_fourni' => '',
         'calques' => json_encode(calques_depuis_gabarit($g), JSON_UNESCAPED_UNICODE),
+        'variantes' => json_encode((object) ($g['variantes'] ?? []), JSON_UNESCAPED_SLASHES),
         'titre' => $modifie['titre'],
         'sous_titre' => (string) $modifie['sous_titre'],
         'ville' => $modifie['ville'],
@@ -337,6 +340,7 @@ if ($post) {
                 'expire_le' => $valeurs['expire_le'],
                 'apparence' => array_intersect_key($valeurs, array_flip(CLES_APPARENCE)),
                 'calques' => $valeurs['calques'],
+                'variantes' => $valeurs['variantes'],
                 'cree_par' => $modifie ? $modifie['cree_par'] : (droit($u, 'valider') ? 'equipe' : 'partenaire'),
                 'partenaire_id' => $u['role'] === 'partenaire' ? $u['id'] : null,
             ]);

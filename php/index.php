@@ -332,6 +332,18 @@ switch ($page) {
             vue('introuvable', ['titre' => 'Décor introuvable', 'indexable' => false]);
         }
         $g = json_lire($d['gabarit']);
+
+        /**
+         * Le format demandé, s'il en existe une déclinaison.
+         *
+         * `f` désigne une VUE du même décor, pas une autre page : l'adresse
+         * canonique reste celle du décor, les statistiques comptent une
+         * seule campagne, et le QR mène au même endroit. C'est la
+         * différence avec trois décors séparés — un seul lien circule.
+         */
+        $_format = (string) ($_GET['f'] ?? '');
+        $g = gabarit_pour_format($g, $_format);
+
         // Le gabarit doit rester valide : sinon le Studio dessinerait faux.
         try {
             valider_gabarit($g);
@@ -380,6 +392,8 @@ switch ($page) {
             ],
             'd' => $d,
             'g' => $g,
+            'formats' => formats_du_decor(json_lire($d['gabarit'])),
+            'format_courant' => (string) $g['canvas']['ratio'],
         ]);
 
     /* ---- comptes ---- */

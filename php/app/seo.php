@@ -31,7 +31,7 @@ declare(strict_types=1);
  * d'un moteur, et de chaque partage un lien qui ne compte pas avec le
  * précédent.
  */
-const SEO_BRUIT = ['ok', 'err', 'j', 'jeton', 'csrf', 'v', 'cle', 'retour', 'ouvert'];
+const SEO_BRUIT = ['ok', 'err', 'j', 'jeton', 'csrf', 'v', 'cle', 'retour', 'ouvert', 'f'];
 
 /** Les réglages, et ce qu'ils valent tant que personne n'y a touché. */
 const SEO_DEFAUTS = [

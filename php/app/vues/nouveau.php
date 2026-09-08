@@ -237,6 +237,31 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
                        'Celui du cadre, sans quoi il serait étiré.'); ?>
         </div>
 
+        <?php
+        /**
+         * Les déclinaisons vivent AVEC le cadre, et non près de l’aperçu.
+         *
+         * C’est leur place : ce qu’un autre format oblige à changer, c’est
+         * précisément le cadre — un fichier carré posé dans un 9:16
+         * s’étirerait. Les textes, eux, sont en fractions du canevas et se
+         * replacent seuls.
+         *
+         * Les mettre dans le bandeau collant coûtait aussi de la hauteur
+         * d’écran sur un téléphone, au moment précis où l’on veut voir ses
+         * réglages sous l’aperçu.
+         *
+         * Le quota ne compte QU’UNE campagne : c’est tout l’intérêt.
+         */
+        ?>
+        <div class="champ sd-formats">
+          <span class="champ-titre">Autres formats <span style="font-weight:400">(facultatif)</span></span>
+          <div class="fmt-rangee" id="fmt-rangee"></div>
+          <input type="hidden" name="variantes" id="champ-variantes"
+                 value="<?= e($valeurs['variantes']) ?>">
+          <input id="fmt-fichier" type="file" accept="image/png,image/webp" hidden>
+          <p class="aide" id="fmt-aide" style="margin:6px 0 10px"></p>
+        </div>
+
         <div class="reglages si-vierge"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
           <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond'],
                        'Il apparaît partout où la photo ne va pas.'); ?>
@@ -495,6 +520,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
     <!-- ═══════════ l'aperçu, qui ne bouge pas ═══════════ -->
     <aside class="sd-apercu">
       <div class="carte sd-carte-apercu">
+
         <div class="apercu-boite">
           <canvas id="apercu" width="560" height="560" aria-label="Aperçu du décor"></canvas>
           <p class="aide" id="apercu-etat">Aperçu en cours…</p>
@@ -883,8 +909,12 @@ window.WAKABI_APERCU = {
     if (cs.length >= MAX) { return; }
     /* Le nom part ÉGAL au texte : c'est ce qui fait qu'il le suit ensuite
        (voir la règle de comparaison plus bas). */
+    /* Chaque nouveau calque se décale un peu : posés au même endroit, deux
+       textes se recouvrent exactement et l'on croit n'en avoir ajouté
+       qu'un. Le décalage s'arrête avant le bord. */
+    var d = Math.min(cs.length, 6) * 0.05;
     cs.push({ sorte: 'texte', nom: 'Votre texte', valeur: 'Votre texte',
-              x: 0.1, y: 0.1, w: 0.5, h: 0.07, taille: 0.04,
+              x: 0.1 + d, y: 0.1 + d, w: 0.5, h: 0.07, taille: 0.04,
               couleur: 'brand.paper', align: 'left', police: 'display',
               majuscules: false, visible: true });
     ecrire(cs); selectionner(cs.length - 1);
@@ -917,8 +947,9 @@ window.WAKABI_APERCU = {
         fichier.value = '';
         if (!d.url) { aide.textContent = d.erreur || 'Image refusée.'; return; }
         var cs = lire();
+        var dec = Math.min(cs.length, 6) * 0.04;
         cs.push({ sorte: 'image', nom: f.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40),
-                  src: d.url, x: 0.68, y: 0.05, w: 0.26, h: 0.14,
+                  src: d.url, x: 0.68 - dec, y: 0.05 + dec, w: 0.26, h: 0.14,
                   opacite: 1, visible: true });
         ecrire(cs); selectionner(cs.length - 1);
       })
@@ -945,6 +976,116 @@ window.WAKABI_APERCU = {
   });
 
   dessinerListe();
+})();
+</script>
+
+<script>
+/**
+ * Les déclinaisons : un décor, plusieurs formats.
+ *
+ * Le format d'origine vient du gabarit choisi et n'est pas une déclinaison
+ * — c'est le décor lui-même. Les autres se déclarent ici, chacune avec son
+ * cadre : c'est la seule chose qu'un autre format oblige vraiment à
+ * changer, puisque tout le reste est en fractions du canevas.
+ *
+ * On n'affiche PAS d'aperçu par format : il faudrait trois canevas et trois
+ * jeux de réglages, pour un écran qui vient déjà d'être simplifié. On
+ * bascule, on regarde, on revient — le même aperçu, une déclinaison à la
+ * fois.
+ */
+(function () {
+  var champ = document.getElementById('champ-variantes');
+  var rangee = document.getElementById('fmt-rangee');
+  var fichier = document.getElementById('fmt-fichier');
+  var aide = document.getElementById('fmt-aide');
+  var dispo = document.getElementById('disposition');
+  var form = document.getElementById('form-decor');
+  if (!champ || !rangee || !form) { return; }
+
+  var LIBELLES = { '1:1': 'Carré', '4:5': 'Portrait', '9:16': 'Story', '16:9': 'Paysage' };
+  var enCours = '';   // le format qu'on est en train d'ajouter
+
+  var lire = function () {
+    try { var v = JSON.parse(champ.value || '{}'); return (v && typeof v === 'object') ? v : {}; }
+    catch (e) { return {}; }
+  };
+  var ecrire = function (v) {
+    champ.value = JSON.stringify(v);
+    champ.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  /** Le format du décor lui-même : celui du champ « Format du décor ». */
+  var natif = function () {
+    var f = form.elements.namedItem('format');
+    return f ? f.value : '1:1';
+  };
+
+  function dessiner() {
+    var v = lire(), n = natif();
+    rangee.textContent = '';
+
+    Object.keys(LIBELLES).forEach(function (r) {
+      var declinee = r === n || Object.prototype.hasOwnProperty.call(v, r);
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fmt-pas' + (r === n ? ' natif' : (declinee ? ' declinee' : ''));
+      b.textContent = LIBELLES[r] + ' ' + r;
+      b.title = r === n
+        ? 'Le format du décor'
+        : (declinee ? 'Retirer cette déclinaison' : 'Ajouter ce format');
+      b.addEventListener('click', function () {
+        if (r === n) { return; }
+        if (declinee) {
+          delete v[r];
+          ecrire(v); dessiner();
+          aide.textContent = LIBELLES[r] + ' retiré.';
+          return;
+        }
+        // Un autre format demande son propre cadre, sinon il s'étirerait.
+        enCours = r;
+        fichier.click();
+      });
+      rangee.appendChild(b);
+    });
+
+    var n2 = Object.keys(v).length;
+    if (!aide.textContent || n2 === 0) {
+      aide.textContent = n2
+        ? n2 + ' déclinaison' + (n2 > 1 ? 's' : '') + ' — une seule place de quota.'
+        : 'Ajoutez un format pour couvrir la story sans créer un second décor.';
+    }
+  }
+
+  fichier.addEventListener('change', function () {
+    var f = fichier.files && fichier.files[0];
+    if (!f || !enCours) { return; }
+    aide.textContent = 'Envoi du cadre ' + enCours + '…';
+    var corps = new FormData();
+    var jeton = form.elements.namedItem('csrf');
+    corps.append('csrf', jeton ? jeton.value : '');
+    corps.append('image', f);
+    fetch((window.WAKABI_APERCU || {}).base + '?p=api-calque-image', { method: 'POST', body: corps })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        fichier.value = '';
+        if (!d.url) { aide.textContent = d.erreur || 'Cadre refusé.'; return; }
+        var v = lire();
+        v[enCours] = { cadreUrl: d.url };
+        ecrire(v);
+        aide.textContent = LIBELLES[enCours] + ' ajouté. Le décor se prend maintenant dans '
+          + (Object.keys(v).length + 1) + ' formats, pour une seule place de quota.';
+        enCours = '';
+        dessiner();
+      })
+      .catch(function () { fichier.value = ''; aide.textContent = 'Le cadre n’a pas pu être envoyé.'; });
+  });
+
+  /* Changer de gabarit change le format d'origine : la rangée le suit. */
+  if (dispo) { dispo.addEventListener('change', function () { setTimeout(dessiner, 400); }); }
+  var champFormat = form.elements.namedItem('format');
+  if (champFormat) { champFormat.addEventListener('change', dessiner); }
+
+  dessiner();
 })();
 </script>
 

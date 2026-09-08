@@ -4674,6 +4674,32 @@ const run = async () => {
      && /recouvre|opaque|n’apparaîtra/.test(sante),
      sante.replace(/\s+/g, ' ').slice(0, 80));
 
+  /**
+   * Les déclinaisons : un décor, plusieurs formats, UNE place de quota.
+   *
+   * Couvrir le fil et la story demandait deux décors — deux fois les mêmes
+   * réglages, deux liens, deux places. On éprouve le trajet entier :
+   * déclarer, enregistrer, puis basculer d'un format à l'autre sur la page
+   * publique.
+   */
+  ok('les quatre formats sont proposés', (await pAT.locator('.fmt-pas').count()) === 4);
+  ok('celui du décor est marqué et non retirable',
+     (await pAT.locator('.fmt-pas.natif').innerText()).includes('1:1'));
+
+  const [choixCadre] = await Promise.all([
+    pAT.waitForEvent('filechooser'),
+    pAT.locator('.fmt-pas:has-text("Story")').click(),
+  ]);
+  await choixCadre.setFiles('php/public/cadres/story.png');
+  await pAT.waitForFunction(
+    () => (document.getElementById('champ-variantes') as HTMLInputElement).value !== '{}',
+    null, { timeout: 20_000 }).catch(() => {});
+  const declinees = JSON.parse(await pAT.inputValue('#champ-variantes'));
+  ok('ajouter un format lui demande SON cadre — sans quoi il s’étirerait',
+     !!declinees['9:16']?.cadreUrl, Object.keys(declinees).join(' '));
+  ok('et l’écran rappelle que le quota n’en compte qu’une',
+     /une seule place de quota/.test(await pAT.locator('#fmt-aide').innerText()));
+
   /* --- créer pour de bon, en passant par les trois étapes --- */
   const DECOR_AT = `Atelier ${marque}`;
   await pAT.locator('.sd-etape[data-etape=cadre]').click();
@@ -4694,6 +4720,39 @@ const run = async () => {
                  { waitUntil: 'domcontentloaded' });
   ok('le décor est bien né de ce parcours',
      (await pAT.locator(`.carte:has-text("${DECOR_AT}")`).count()) === 1);
+
+  /* --- et la déclinaison se retrouve sur la page publique --- */
+  await pAT.locator(`.carte:has-text("${DECOR_AT}") form[action*="p=statut"] button:has-text("Publier")`)
+    .first().click().catch(() => {});
+  await pAT.waitForLoadState('domcontentloaded');
+  const slugAT = `atelier-${marque}`;
+  await pAT.goto(`${BASE}/index.php?p=decor&slug=${slugAT}`, { waitUntil: 'domcontentloaded' });
+  ok('le décor publié propose ses deux formats',
+     (await pAT.locator('.format-choix').count()) === 2,
+     `${await pAT.locator('.format-choix').count()} format(s)`);
+  await pAT.waitForSelector('#toile', { timeout: 15_000 });
+  const carre = (await pAT.locator('#toile').boundingBox())!;
+  await pAT.locator('.format-choix:has-text("Story")').click();
+  await pAT.waitForLoadState('domcontentloaded');
+  await pAT.waitForSelector('#toile', { timeout: 15_000 });
+  await pAT.waitForTimeout(1500);
+  const story = (await pAT.locator('#toile').boundingBox())!;
+  ok('basculer de format change VRAIMENT la toile',
+     Math.abs(carre.height / carre.width - 1) < 0.05
+     && Math.abs(story.height / story.width - 16 / 9) < 0.08,
+     `${(carre.height / carre.width).toFixed(2)} puis ${(story.height / story.width).toFixed(2)}`);
+  /**
+   * Un format est une VUE du même décor, pas une autre page : une adresse
+   * canonique par format découperait la campagne en trois aux yeux des
+   * moteurs, et diviserait par trois ce que chaque partage lui rapporte.
+   */
+  ok('mais l’adresse canonique reste celle du décor',
+     !((await pAT.locator('link[rel=canonical]').getAttribute('href')) ?? '').includes('f='),
+     (await pAT.locator('link[rel=canonical]').getAttribute('href')) ?? '');
+
+  // On revient au catalogue : la suite y cherche la carte du décor.
+  await pAT.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_AT)}`,
+                 { waitUntil: 'domcontentloaded' });
 
   /* --- la modification rouvre le même atelier --- */
   const idAT = await pAT.locator(`.carte:has-text("${DECOR_AT}") input[name=id]`).first().inputValue();

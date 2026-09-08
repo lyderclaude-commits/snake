@@ -1544,3 +1544,28 @@ tr.pale td a{color:inherit}
    il n'a plus à occuper la place d'un champ principal. */
 .sd-champ-disposition{margin-top:10px}
 .sd-champ-disposition label{font-size:.8rem;color:var(--text2)}
+
+/* ---- les formats d'un même décor ---- */
+.formats-decor{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.format-choix{display:inline-flex;align-items:baseline;gap:6px;padding:6px 13px;
+  border:1px solid var(--border);border-radius:999px;background:var(--paper);
+  color:var(--text2);text-decoration:none;font-size:.86rem;font-weight:600;
+  transition:border-color .15s,background .15s,color .15s}
+.format-choix span{font-size:.72rem;font-weight:400;color:var(--text3)}
+.format-choix:hover{border-color:var(--primary);color:var(--ink)}
+.format-choix.actif{background:var(--primary);border-color:var(--primary);color:#fff}
+.format-choix.actif span{color:rgba(255,255,255,.72)}
+
+/* ---- les déclinaisons, dans l'atelier ---- */
+.sd-formats{margin-bottom:14px}
+.fmt-rangee{display:flex;gap:6px;flex-wrap:wrap}
+.fmt-pas{padding:4px 10px;border-radius:999px;border:1px dashed var(--border);
+  background:var(--paper);color:var(--text3);font:inherit;font-size:.73rem;cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s}
+.fmt-pas:hover{border-color:var(--primary);color:var(--primary)}
+.fmt-pas:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+/* Le format du décor lui-même : plein, et non retirable. */
+.fmt-pas.natif{background:var(--primary);border:1px solid var(--primary);color:#fff;
+  font-weight:700;cursor:default}
+.fmt-pas.declinee{border-style:solid;border-color:var(--primary);
+  background:var(--primary-wash);color:var(--primary-d);font-weight:600}

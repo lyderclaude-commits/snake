@@ -570,6 +570,101 @@ function rectangles_textes(array $a): array
     ];
 }
 
+/* ---------------- les déclinaisons ---------------- */
+
+/**
+ * Nettoie les déclinaisons venues du formulaire.
+ *
+ * Une déclinaison ne porte que ce qu'un autre format oblige à changer : son
+ * cadre, et la fenêtre photo qui dépend de l'ouverture de ce cadre. Le
+ * format d'origine n'y figure jamais — il est déjà le décor lui-même.
+ */
+function variantes_propres(mixed $saisie, string $format_natif): array
+{
+    if (is_string($saisie)) {
+        $saisie = json_decode($saisie, true);
+    }
+    if (!is_array($saisie)) {
+        return [];
+    }
+
+    $sortie = [];
+    foreach ($saisie as $ratio => $v) {
+        if (!isset(FORMATS[$ratio]) || $ratio === $format_natif || !is_array($v)) {
+            continue;
+        }
+        $d = [];
+        $src = (string) ($v['cadreUrl'] ?? '');
+        // Même règle que pour un calque image : le fichier vient de chez nous.
+        if ($src !== '' && image_de_calque_permise($src)) {
+            $d['cadreUrl'] = $src;
+        }
+        if (isset($v['photo']) && is_array($v['photo'])) {
+            $p = $v['photo'];
+            $borne = static fn(string $c, float $min, float $max, float $def): float
+                => is_numeric($p[$c] ?? null) ? max($min, min($max, (float) $p[$c])) : $def;
+            $x = $borne('x', 0, 0.9, 0);
+            $y = $borne('y', 0, 0.9, 0);
+            $d['photo'] = ['x' => $x, 'y' => $y,
+                           'w' => min($borne('w', 0.08, 1, 1), 1 - $x),
+                           'h' => min($borne('h', 0.08, 1, 1), 1 - $y)];
+        }
+        // Une déclinaison sans cadre ni fenêtre ne déclinerait rien.
+        if ($d) {
+            $sortie[$ratio] = $d;
+        }
+    }
+    return $sortie;
+}
+
+/**
+ * Le même décor, vu dans un autre format.
+ *
+ * Le canevas change de dimensions, le cadre est remplacé par celui de la
+ * déclinaison, et la fenêtre photo prend la sienne. TOUT LE RESTE est laissé
+ * tel quel : textes, QR et filigrane sont exprimés en fractions du canevas,
+ * donc se replacent d'eux-mêmes. C'est là toute la raison pour laquelle le
+ * modèle est normalisé depuis le début.
+ *
+ * Un format inconnu, ou non décliné, rend le décor inchangé : mieux vaut
+ * servir le format d'origine qu'une page vide.
+ */
+function gabarit_pour_format(array $g, string $ratio): array
+{
+    $natif = (string) ($g['canvas']['ratio'] ?? '1:1');
+    if ($ratio === $natif || !isset(FORMATS[$ratio]) || !isset($g['variantes'][$ratio])) {
+        return $g;
+    }
+    $v = $g['variantes'][$ratio];
+    [$rw, $rh] = array_map('intval', explode(':', $ratio));
+    $base = 1080;
+    $g['canvas']['ratio'] = $ratio;
+    $g['canvas']['width'] = $rw >= $rh ? $base : (int) round($base * $rw / $rh);
+    $g['canvas']['height'] = $rw >= $rh ? (int) round($base * $rh / $rw) : $base;
+
+    foreach ($g['layers'] as $i => $l) {
+        if (($l['id'] ?? '') === 'frame' && isset($v['cadreUrl'])) {
+            $g['layers'][$i]['src'] = $v['cadreUrl'];
+        }
+        if (($l['type'] ?? '') === 'photoSlot' && isset($v['photo'])) {
+            $g['layers'][$i]['rect'] = $v['photo'];
+        }
+    }
+    return $g;
+}
+
+/** Les formats qu'un décor sait produire : le sien, et ses déclinaisons. */
+function formats_du_decor(array $g): array
+{
+    $formats = [(string) ($g['canvas']['ratio'] ?? '1:1')];
+    foreach (array_keys($g['variantes'] ?? []) as $r) {
+        if (isset(FORMATS[$r]) && !in_array($r, $formats, true)) {
+            $formats[] = (string) $r;
+        }
+    }
+    return $formats;
+}
+
 /* ---------------- la palette du cadre ---------------- */
 
 /** Combien de teintes on propose : au-delà, on choisit moins bien. */
@@ -888,6 +983,7 @@ function construire_gabarit(array $i): array
     $c = canevas($i['disposition'], $a['format']);
     $t = rectangles_textes($a);
     $libres = calques_propres($i['calques'] ?? []);
+    $variantes = variantes_propres($i['variantes'] ?? [], $c['ratio']);
 
     /**
      * La zone photo ne sort pas du canevas, et le masque suit la forme
@@ -992,7 +1088,12 @@ function construire_gabarit(array $i): array
         // les deux informations qui font la différence avec une image.
         'watermark' => ['enabled' => true, 'position' => $a['filigrane_position'], 'opacity' => 0.9, 'variant' => 'wordmark'],
         'qr' => ['enabled' => true, 'position' => $a['qr_position'], 'size' => $a['qr_taille']],
-        'export' => ['formats' => [$c['ratio']], 'maxPx' => 2048, 'quality' => 0.92, 'mimeType' => 'image/jpeg'],
+        'variantes' => $variantes,
+        // `export.formats` annonce ce que le décor sait produire : son
+        // format et ses déclinaisons. Il était figé sur un seul depuis
+        // toujours, et personne ne le lisait.
+        'export' => ['formats' => array_values(array_unique([$c['ratio'], ...array_keys($variantes)])),
+                     'maxPx' => 2048, 'quality' => 0.92, 'mimeType' => 'image/jpeg'],
         'filters' => ['none', 'wakabi-blue'],
         'share' => [
             'defaultCaption' => $i['legende'] ?? '',
@@ -1001,6 +1102,18 @@ function construire_gabarit(array $i): array
             'redirectLabel' => $i['redirection_libelle'] ?: 'Découvrir sur Wakabi',
         ],
     ];
+
+    /**
+     * Pas de déclinaison, pas de clé.
+     *
+     * Le schéma la déclare facultative, ce qui veut dire ABSENTE — pas
+     * « présente et vide ». Écrire un tableau vide passerait la validation
+     * PHP et se ferait retirer par zod, et le vérifieur de gabarit signale
+     * précisément ces écarts entre les deux.
+     */
+    if (!$gabarit['variantes']) {
+        unset($gabarit['variantes']);
+    }
 
     valider_gabarit($gabarit);
     return $gabarit;

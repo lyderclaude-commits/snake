@@ -3,6 +3,31 @@
   <section class="entete" style="padding-bottom:14px">
     <h1><?= e($d['titre']) ?></h1>
     <?php if ($d['sous_titre']): ?><p><?= e($d['sous_titre']) ?></p><?php endif; ?>
+
+    <?php
+    /**
+     * Les formats du décor, quand il en a plusieurs.
+     *
+     * Une seule campagne, un seul lien, un seul QR — mais le badge se
+     * prend au carré pour le fil et en 9:16 pour la story. On ne montre
+     * rien quand il n'y a qu'un format : une rangée d'un seul bouton ne
+     * pose qu'une question sans réponse.
+     */
+    $formats = $formats ?? [];
+    if (count($formats) > 1):
+      $libelles = ['1:1' => 'Carré', '4:5' => 'Portrait', '9:16' => 'Story', '16:9' => 'Paysage'];
+    ?>
+      <div class="formats-decor" role="group" aria-label="Format du badge">
+        <?php foreach ($formats as $r): $ici = $r === ($format_courant ?? ''); ?>
+          <a class="format-choix<?= $ici ? ' actif' : '' ?>"
+             href="<?= e(url('?p=decor&slug=' . urlencode((string) $d['slug'])
+                            . ($r === $formats[0] ? '' : '&f=' . urlencode($r)))) ?>"
+             <?= $ici ? 'aria-current="true"' : '' ?>>
+            <?= e($libelles[$r] ?? $r) ?> <span><?= e($r) ?></span>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </section>
 
   <div class="studio">
