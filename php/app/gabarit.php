@@ -921,7 +921,10 @@ function calques_depuis_gabarit(array $g): array
             'nom' => (string) ($l['name'] ?? ''),
             'x' => (float) ($r['x'] ?? 0), 'y' => (float) ($r['y'] ?? 0),
             'w' => (float) ($r['w'] ?? 0.4), 'h' => (float) ($r['h'] ?? 0.08),
-            'visible' => true,
+            // Il revient dans l'état où on l'a laissé : un calque qu'on
+            // avait éteint et qui se rallume tout seul à l'ouverture
+            // suivante ferait douter du bouton.
+            'visible' => !($l['hidden'] ?? false),
         ];
         if (($l['type'] ?? '') === 'text') {
             $sortie[] = $commun + [
@@ -950,9 +953,19 @@ function calque_en_couche(array $c, int $rang): array
     $rect = ['x' => $c['x'], 'y' => $c['y'], 'w' => $c['w'], 'h' => $c['h']];
     // `name` porte le nom que l'auteur a donné à l'objet. Le moteur de
     // rendu l'ignore ; le panneau de calques en vit.
+    /**
+     * `hidden` : éteint, mais toujours là.
+     *
+     * Écarter le calque de la liste aurait été plus court, et faux : le
+     * gabarit est le SEUL endroit où l'objet est gardé, et rouvrir le
+     * décor le ferait disparaître. « Masquer » serait devenu « supprimer »
+     * à la première sauvegarde, sans que rien ne le dise.
+     */
+    $eteint = ($c['visible'] ?? true) === false;
     if ($c['sorte'] === 'texte') {
         return [
             'type' => 'text', 'id' => 'libre-' . $rang, 'name' => $c['nom'],
+            'hidden' => $eteint,
             'value' => $c['valeur'], 'editable' => false, 'placeholder' => '',
             'maxLength' => 80, 'uppercase' => $c['majuscules'], 'rect' => $rect,
             'size' => $c['taille'], 'align' => $c['align'], 'color' => $c['couleur'],
@@ -961,6 +974,7 @@ function calque_en_couche(array $c, int $rang): array
     }
     return [
         'type' => 'image', 'id' => 'libre-' . $rang, 'name' => $c['nom'],
+        'hidden' => $eteint,
         'src' => $c['src'], 'rect' => $rect,
         'opacity' => $c['opacite'], 'blendMode' => 'normal',
     ];
@@ -1013,6 +1027,11 @@ function construire_gabarit(array $i): array
     $textes = [];
     if (trim((string) ($i['accroche'] ?? '')) !== '') {
         $textes[] = ['type' => 'text', 'id' => 'claim', 'value' => $i['accroche'],
+             // Les objets du décor ne s'éteignent pas : on les retire en
+             // vidant leur texte. `hidden` est écrit quand même, parce que
+             // le schéma le donne à TOUTE couche et que le vérifieur compare
+             // champ par champ.
+             'hidden' => false,
              'editable' => false, 'placeholder' => '', 'maxLength' => 40,
              'uppercase' => in_array($i['disposition'], ['bandeau', 'facebook'], true),
              'rect' => $t['accroche'],
@@ -1021,6 +1040,7 @@ function construire_gabarit(array $i): array
     }
     if (trim((string) ($i['champ_libelle'] ?? '')) !== '') {
         $textes[] = ['type' => 'text', 'id' => 'field', 'editable' => true,
+             'hidden' => false,
              'placeholder' => $i['champ_libelle'], 'value' => $i['champ_valeur'],
              'maxLength' => 42, 'uppercase' => false,
              'rect' => $t['champ'],
@@ -1046,6 +1066,7 @@ function construire_gabarit(array $i): array
     ];
     if (($i['cadre_url'] ?? '') !== '') {
         $calques[] = ['type' => 'image', 'id' => 'frame', 'src' => $i['cadre_url'],
+                      'hidden' => false,
                       'rect' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
                       'opacity' => 1, 'blendMode' => 'normal'];
     }

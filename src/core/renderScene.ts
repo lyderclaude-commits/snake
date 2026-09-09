@@ -448,6 +448,10 @@ export function renderScene(
   ctx.fillRect(0, 0, W, H);
 
   for (const layer of tpl.layers) {
+    /* Un calque éteint reste dans le gabarit — il garde son nom et ses
+       réglages, et revient tel quel à la prochaine ouverture. Ce qu'il ne
+       fait pas, c'est se dessiner. */
+    if (layer.type !== 'photoSlot' && layer.hidden) continue;
     if (layer.type === 'photoSlot') drawPhotoSlot(ctx, layer, spec, W, H);
     else if (layer.type === 'image') drawImageLayer(ctx, layer, assets, W, H);
     else drawTextLayer(ctx, layer, spec, W, H);

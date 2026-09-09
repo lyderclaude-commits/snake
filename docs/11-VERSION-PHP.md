@@ -5,7 +5,8 @@ campagne est partie, **lesquels de ses messages ont échoué et pourquoi**, et
 sait les relancer — sauf sur une adresse morte, jamais. Les adresses non
 confirmées sont écartées des campagnes, le carnet excepté. L'écran d'écriture
 devient un atelier à deux colonnes, avec l'aperçu de ce que chaque plateforme
-affichera. Et **un défaut de la v1.1 est corrigé** : cinq colonnes n'existaient
+affichera. Dans le studio, **l'œil du panneau de calques** éteint et rallume un
+objet pour de vrai. Et **un défaut de la v1.1 est corrigé** : cinq colonnes n'existaient
 que dans les migrations, donc pas dans une installation neuve — le premier décor
 enregistré sur un site fraîchement installé échouait.
 
@@ -39,7 +40,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **746 scénarios, 746 réussis**
+Les deux ont été vérifiés de bout en bout : **751 scénarios, 751 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -125,7 +126,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 746 scénarios, dans un vrai navigateur
+npm run php:e2e          # 751 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement
 ```
@@ -145,7 +146,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 746 scénarios
+### Les 751 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1008,6 +1009,22 @@ serveur le renvoie dessiné. Jamais deux vérités à réconcilier.
 Prendre un calque en main remplace les réglages du décor par les siens :
 **quatre réglages au lieu de dix-sept**, dont quinze ne concernaient pas
 l'objet qu'on regarde.
+
+À gauche de chaque ligne, **un œil** : ouvert quand le calque se dessine,
+barré quand il est éteint — et la ligne entière pâlit avec lui. C'est le geste
+de tout logiciel de composition, et il se lit sans mode d'emploi : on éteint
+un texte pour voir le badge sans lui, puis on le rallume.
+
+Un calque éteint **reste dans le gabarit** (`hidden: true`), il ne s'en va
+pas. Le retirer de la liste aurait été plus court, et faux : le gabarit est le
+seul endroit où l'objet est gardé, et rouvrir le décor l'aurait fait
+disparaître — « masquer » serait devenu « supprimer » à la première
+sauvegarde, sans que rien ne le dise. Le moteur de rendu, lui, saute la
+couche : c'est la seule ligne qui change de son côté.
+
+> Les trois objets fixes — QR, filigrane, fenêtre photo — portent le même
+> dessin, pâle et sans bouton. Ils se voient toujours, et proposer de les
+> éteindre serait promettre un geste qui n'existe pas.
 
 ### Prendre les objets à la main
 

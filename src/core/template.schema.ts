@@ -129,6 +129,15 @@ export const ImageLayer = z.object({
    */
   name: z.string().max(40).optional(),
   /** PNG ou WebP avec canal alpha, servi par le CDN. */
+  /**
+   * Calque éteint : gardé dans le gabarit, mais pas dessiné.
+   *
+   * Le retirer de la liste aurait été plus simple, et faux : rouvrir le
+   * décor pour le modifier ne rendrait alors plus le calque, et « masquer »
+   * serait devenu « supprimer » à la première sauvegarde. Un objet éteint
+   * garde donc sa place, son nom et ses réglages — seul le rendu le saute.
+   */
+  hidden: z.boolean().default(false),
   src: z.string().url(),
   rect: NormRect.default({ x: 0, y: 0, w: 1, h: 1 }),
   opacity: z.number().min(0).max(1).default(1),
@@ -150,6 +159,15 @@ export const TextLayer = z.object({
    * ses objets doivent garder leurs noms.
    */
   name: z.string().max(40).optional(),
+  /**
+   * Calque éteint : gardé dans le gabarit, mais pas dessiné.
+   *
+   * Le retirer de la liste aurait été plus simple, et faux : rouvrir le
+   * décor pour le modifier ne rendrait alors plus le calque, et « masquer »
+   * serait devenu « supprimer » à la première sauvegarde. Un objet éteint
+   * garde donc sa place, son nom et ses réglages — seul le rendu le saute.
+   */
+  hidden: z.boolean().default(false),
   rect: NormRect,
   /** true → l'utilisateur peut saisir ce champ (prénom, ville…). */
   editable: z.boolean().default(false),

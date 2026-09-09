@@ -764,9 +764,55 @@ window.WAKABI_APERCU = {
         : cs.length + ' calque' + (cs.length > 1 ? 's' : '') + ' sur ' + MAX + '.');
   }
 
+  /**
+   * L'œil : ouvert quand le calque se voit, barré quand il est masqué.
+   *
+   * Un rond plein et un rond creux disaient la même chose, mais il fallait
+   * l'apprendre — et sur une ligne de liste, les deux se ressemblent assez
+   * pour qu'on ne remarque pas qu'un calque est éteint. L'œil barré, lui,
+   * se lit sans mode d'emploi : c'est le geste de tous les logiciels de
+   * composition, et le dessin dit ce qu'il fait.
+   *
+   * Un SVG plutôt qu'un caractère : « 👁 » n'existe pas partout, et « 👁️‍🗨️ »
+   * change de forme selon le téléphone. Le trait, lui, est le même chez
+   * tout le monde.
+   */
+  function dessinOeil(ouvert) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.9');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    var chemins = ouvert
+      ? ['M1.8 12S5.5 5 12 5s10.2 7 10.2 7-3.7 7-10.2 7S1.8 12 1.8 12Z', 'M12 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z']
+      /* Masqué : le même œil, mais l'iris s'efface et la barre le traverse.
+         Garder la paupière fait le lien entre les deux états — on voit que
+         c'est le MÊME bouton, dans l'autre position. */
+      : ['M4 5.5C2.6 6.9 1.8 12 1.8 12S5.5 19 12 19c1.9 0 3.5-.6 4.9-1.5',
+         'M19.4 15.6c1.7-1.6 2.8-3.6 2.8-3.6S18.5 5 12 5c-.8 0-1.6.1-2.3.3',
+         'M9.9 9.9a2.6 2.6 0 0 0 3.7 3.7',
+         'M3.5 3.5l17 17'];
+    chemins.forEach(function (d) {
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
   function ligneLibre(c, i) {
     var li = document.createElement('li');
-    li.className = 'sd-calque' + (i === choisi ? ' sel' : '');
+    /* La ligne entière pâlit avec le calque qu'elle décrit : l'œil dit
+       l'état, le nom estompé le rend visible sans avoir à le chercher. */
+    li.className = 'sd-calque' + (i === choisi ? ' sel' : '')
+                 + (c.visible === false ? ' masque' : '');
     li.dataset.rang = String(i);
 
     var oeil = document.createElement('button');
@@ -774,7 +820,7 @@ window.WAKABI_APERCU = {
     oeil.className = 'sd-cal-oeil';
     oeil.setAttribute('aria-label', c.visible === false ? 'Montrer ce calque' : 'Masquer ce calque');
     oeil.setAttribute('aria-pressed', c.visible === false ? 'true' : 'false');
-    oeil.textContent = c.visible === false ? '◌' : '●';
+    oeil.appendChild(dessinOeil(c.visible !== false));
     oeil.addEventListener('click', function (e) {
       e.stopPropagation();
       var cs = lire();
@@ -798,8 +844,12 @@ window.WAKABI_APERCU = {
   function ligneFixe(f) {
     var li = document.createElement('li');
     li.className = 'sd-calque fixe';
-    li.innerHTML = '<span class="sd-cal-oeil" aria-hidden="true">●</span>'
+    /* Un œil ouvert, mais pâle et sans bouton : ces trois-là se voient
+       toujours, et proposer de les éteindre serait promettre un geste qui
+       n'existe pas. */
+    li.innerHTML = '<span class="sd-cal-oeil muet" aria-hidden="true"></span>'
       + '<span class="sd-cal-nom"></span><span class="sd-cal-eti">🔒 ' + f.eti + '</span>';
+    li.querySelector('.sd-cal-oeil').appendChild(dessinOeil(true));
     li.querySelector('.sd-cal-nom').textContent = f.nom;
     /* Cliquer un objet fixe ramène aux réglages du décor, où il se règle. */
     li.addEventListener('click', function () { selectionner(-1); });

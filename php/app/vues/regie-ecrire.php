@@ -280,7 +280,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
         </div>
 
         <div class="carte" style="padding:14px">
-          <p class="aide" style="margin:0 0 8px"><b style="color:var(--text)">Et sur un téléphone
+          <p class="aide" style="margin:0 0 8px"><b style="color:var(--ink)">Et sur un téléphone
           verrouillé :</b></p>
           <div class="notif">
             <div class="notif-c">

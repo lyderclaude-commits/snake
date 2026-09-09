@@ -1229,7 +1229,7 @@ input[type=file].fichier-natif{
   padding:28px;box-shadow:var(--ombre);
 }
 .facture-tete{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  padding-bottom:18px;border-bottom:2px solid var(--text);margin-bottom:20px}
+  padding-bottom:18px;border-bottom:2px solid var(--ink);margin-bottom:20px}
 .facture-marque{font-family:var(--display);font-weight:800;font-size:1.25rem;margin:0}
 .facture-numero{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:1.05rem;font-weight:700;margin:0}
@@ -1237,7 +1237,7 @@ input[type=file].fichier-natif{
   gap:18px;margin-bottom:22px}
 .facture-etiquette{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;
   color:var(--text3);margin:0 0 4px;font-weight:700}
-.facture tfoot th{font-size:1rem;border-top:2px solid var(--text)}
+.facture tfoot th{font-size:1rem;border-top:2px solid var(--ink)}
 .lien-bouton{background:none;border:0;padding:0;font:inherit;color:var(--primary);
   cursor:pointer;text-decoration:underline}
 
@@ -1254,7 +1254,7 @@ input[type=file].fichier-natif{
   margin:0;padding:12px 14px;border-radius:var(--r10);overflow-x:auto;
   background:var(--bg2);border:1px solid var(--border);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
-  line-height:1.65;white-space:pre;color:var(--text);
+  line-height:1.65;white-space:pre;color:var(--ink);
 }
 
 /* ---- ce que l'éditeur a à dire ---- */
@@ -1510,14 +1510,31 @@ tr.pale td a{color:inherit}
 .sd-calque:last-child{border-bottom:0}
 .sd-calque:hover{background:var(--bg2)}
 .sd-calque.sel{background:var(--primary-wash);box-shadow:inset 3px 0 0 var(--primary);font-weight:700}
+/* Un calque éteint : le nom s'estompe, comme il s'estompe sur l'aperçu.
+   L'œil barré seul se remarque quand on le cherche ; la ligne pâle se
+   remarque quand on ne le cherche pas. */
+.sd-calque.masque .sd-cal-nom,.sd-calque.masque .sd-cal-eti{opacity:.45;
+  text-decoration:line-through;text-decoration-color:var(--text3)}
+
 /* Les trois objets qu'on ne peut ni ajouter ni retirer : hachurés, pour que
    leur nature se voie sans avoir à lire l'étiquette. */
 .sd-calque.fixe{color:var(--text2);cursor:default;
   background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(148,163,184,.06) 6px 12px)}
 .sd-calque.fixe:hover{background:repeating-linear-gradient(45deg,var(--bg2) 0 6px,rgba(148,163,184,.1) 6px 12px)}
-.sd-cal-oeil{border:0;background:none;padding:0;width:16px;font-size:.7rem;cursor:pointer;
-  color:var(--text3);line-height:1}
-.sd-cal-oeil[aria-pressed=true]{color:var(--border)}
+/* L'œil du calque : ouvert quand il se voit, barré quand il est masqué.
+   Une cible de 22 px pour un dessin de 16 : sous le pouce, un bouton de la
+   taille exacte de son icône se manque une fois sur trois. */
+.sd-cal-oeil{border:0;background:none;padding:0;width:22px;height:22px;flex:0 0 auto;
+  display:grid;place-items:center;cursor:pointer;color:var(--text3);
+  border-radius:6px;transition:color .12s,background .12s}
+.sd-cal-oeil:hover{color:var(--ink);background:var(--bg2)}
+.sd-cal-oeil:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+/* Masqué : l'œil pâlit avec le calque qu'il éteint. */
+.sd-cal-oeil[aria-pressed=true]{color:var(--text3);opacity:.45}
+.sd-cal-oeil[aria-pressed=true]:hover{opacity:1}
+/* Les trois objets fixes : le même dessin, mais rien à cliquer. */
+.sd-cal-oeil.muet{cursor:default;opacity:.35}
+.sd-cal-oeil.muet:hover{background:none;color:var(--text3)}
 .sd-cal-nom{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sd-cal-eti{font-size:.7rem;color:var(--text3);flex:none}
 .sd-libre{border-top:1px solid var(--border);padding-top:14px}

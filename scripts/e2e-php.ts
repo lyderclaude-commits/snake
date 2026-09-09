@@ -4822,6 +4822,39 @@ const run = async () => {
      && (await pAT.locator('#panneau-apparence .sd-natif').first().isVisible()));
 
   /**
+   * L'œil : éteindre un calque, et le voir s'éteindre.
+   *
+   * Le bouton porte un dessin — œil ouvert, œil barré — et non un mot :
+   * ce qu'on vérifie ici, c'est donc l'ÉTAT qu'il annonce aux lecteurs
+   * d'écran, et le fait que le badge change vraiment. Un bouton qui a
+   * l'air d'agir sans agir est pire que pas de bouton du tout.
+   */
+  await pAT.locator('.sd-calque:not(.fixe)').first().click();
+  const oeil = pAT.locator('.sd-calque:not(.fixe) .sd-cal-oeil').first();
+  ok('chaque calque porte un œil, et non une puce',
+     (await oeil.locator('svg').count()) === 1
+     && (await oeil.getAttribute('aria-label')) === 'Masquer ce calque');
+  ok('les objets fixes en portent un aussi, mais sans bouton',
+     (await pAT.locator('.sd-calque.fixe .sd-cal-oeil.muet svg').count()) === 3
+     && (await pAT.locator('.sd-calque.fixe button').count()) === 0);
+
+  const avantOeil = await dessin();
+  await oeil.click();
+  await pAT.waitForTimeout(1400);
+  ok('l’œil barré éteint vraiment le calque sur le badge',
+     (await dessin()) !== avantOeil
+     && JSON.parse(await pAT.inputValue('#champ-calques'))[0].visible === false);
+  ok('et il le dit : la ligne est barrée, l’œil propose de le remontrer',
+     (await pAT.locator('.sd-calque.masque').count()) === 1
+     && (await pAT.locator('.sd-calque:not(.fixe) .sd-cal-oeil').first()
+           .getAttribute('aria-label')) === 'Montrer ce calque');
+
+  await pAT.locator('.sd-calque:not(.fixe) .sd-cal-oeil').first().click();
+  await pAT.waitForTimeout(1400);
+  ok('rallumer le ramène', (await dessin()) === avantOeil
+     && (await pAT.locator('.sd-calque.masque').count()) === 0);
+
+  /**
    * L'état ne vit QU'À UN endroit : le champ caché. La liste à l'écran ne
    * peut donc pas diverger de ce qui sera enregistré — c'est la même chaîne.
    */
