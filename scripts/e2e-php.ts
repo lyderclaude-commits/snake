@@ -5029,6 +5029,117 @@ const run = async () => {
                     { waitUntil: 'domcontentloaded' });
   ok('un décor au cadre présent n’est pas signalé à tort',
      (await pPerdu.locator(`.carte:has-text("${DECOR_PERDU}") .msg.err`).count()) === 0);
+
+  console.log('\n━━ 46. Les canaux, et les rappels d’un événement ━━');
+
+  /**
+   * Ce que la recette peut éprouver ici, c'est le PRODUIT autour des
+   * plateformes : les écrans, les gardes, les quotas, la programmation.
+   * Ce qui part réellement sur le fil — l'adresse appelée, la charge, un
+   * refus qui se reprend contre un refus définitif — est éprouvé par
+   * `verifier-canaux.ts`, contre un faux Telegram et un faux Meta.
+   */
+  await pPerdu.goto(`${BASE}/index.php?p=canaux`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran des canaux s’ouvre', (await pPerdu.locator('h1').innerText()).includes('Canaux'));
+  ok('les deux canaux déjà en service y figurent',
+     (await pPerdu.locator('.cx-carte').count()) >= 2,
+     `${await pPerdu.locator('.cx-carte').count()} carte(s)`);
+
+  /**
+   * Le tableau qui dit ce que chaque plateforme sait faire.
+   *
+   * Il n'est pas décoratif : « diffuser dans un groupe WhatsApp » est ce
+   * qu'on croit acheter et ce qui n'existe pas. L'écrire noir sur blanc
+   * évite qu'on le promette à un client.
+   */
+  const capacites = await pPerdu.locator('.tableau').innerText();
+  ok('l’écran dit que WhatsApp n’a ni chaîne ni groupe',
+     /Non\s*—\s*8 membres/.test(capacites), capacites.replace(/\s+/g, ' ').slice(0, 90));
+  ok('et que Telegram, lui, publie sans limite',
+     /Oui, sans limite/.test(capacites));
+
+  ok('le menu mène aux canaux',
+     (await pPerdu.locator('header nav a[href*="p=canaux"]').count()) >= 1);
+
+  /* --- un jeton inventé est REFUSÉ, pas enregistré --- */
+  const avantCanaux = await pPerdu.locator('.cx-carte').count();
+  await pPerdu.fill('#jeton-tg', '000000:JETON-QUI-N-EXISTE-PAS');
+  await pPerdu.locator('form:has(#jeton-tg) button[type=submit]').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  ok('un jeton refusé ne laisse pas un canal fantôme derrière lui',
+     (await pPerdu.locator('.cx-carte').count()) === avantCanaux
+     && (await pPerdu.locator('.msg.err').count()) >= 1);
+
+  /* --- le composeur propose les canaux --- */
+  await pPerdu.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  ok('le composeur demande d’abord OÙ envoyer',
+     (await pPerdu.locator('input[name="canaux[]"]').count()) >= 1,
+     `${await pPerdu.locator('input[name="canaux[]"]').count()} canal/canaux`);
+  ok('et il propose une date d’envoi',
+     (await pPerdu.locator('input[name=planifie_le]').count()) === 1);
+
+  /* --- les rappels d'un événement --- */
+  await pPerdu.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_PERDU)}`,
+                    { waitUntil: 'domcontentloaded' });
+  await pPerdu.locator(`.carte:has-text("${DECOR_PERDU}") a:has-text("Rappels")`).first().click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  ok('la carte d’un décor mène à ses rappels',
+     (await pPerdu.locator('h1').innerText()).startsWith('Rappels'));
+
+  /**
+   * Sans date d'événement, poser des rappels n'a aucun sens : il n'y a
+   * rien d'où les déduire. On le DIT, au lieu d'en poser cinq à des dates
+   * inventées.
+   */
+  await pPerdu.locator('button:has-text("Poser les cinq rappels")').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  ok('sans date d’événement, on refuse en disant pourquoi',
+     /date d’événement/.test(await pPerdu.locator('.msg').first().innerText()),
+     (await pPerdu.locator('.msg').first().innerText()).slice(0, 60));
+  ok('et aucun rappel n’a été posé', (await pPerdu.locator('.fr-e').count()) === 0);
+
+  /* --- on donne la date, et les cinq se posent --- */
+  const idPerdu = await pPerdu.evaluate(() => new URL(location.href).searchParams.get('id') ?? '');
+  await pPerdu.goto(`${BASE}/index.php?p=modifier&id=${idPerdu}`, { waitUntil: 'domcontentloaded' });
+  await pPerdu.waitForTimeout(400);
+  await etapeDecor(pPerdu, 'campagne');
+  const dans10 = new Date(Date.now() + 10 * 86400_000).toISOString().slice(0, 10);
+  await pPerdu.fill('#evenement_le', dans10);
+  await pPerdu.locator('.sd-enregistrer').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+
+  await pPerdu.goto(`${BASE}/index.php?p=rappels&id=${idPerdu}`, { waitUntil: 'domcontentloaded' });
+  ok('la date de l’événement est retenue',
+     /J − \d+/.test(await pPerdu.locator('.entete').innerText()),
+     (await pPerdu.locator('.entete p').innerText()).slice(0, 60));
+  await pPerdu.locator('button:has-text("Poser les cinq rappels")').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  ok('les cinq rappels se posent d’un clic',
+     (await pPerdu.locator('.fr-e').count()) === 5,
+     `${await pPerdu.locator('.fr-e').count()} rappel(s)`);
+  ok('chacun porte sa date et ses canaux',
+     (await pPerdu.locator('.fr-e .puce').count()) >= 5);
+
+  /**
+   * Et reposer ne double pas.
+   *
+   * Un bouton qu'on clique deux fois est un bouton qu'on CLIQUERA deux
+   * fois : dix rappels au lieu de cinq, et l'invité reçoit tout en double.
+   */
+  await pPerdu.locator('button:has-text("Poser les cinq rappels")').click();
+  await pPerdu.waitForLoadState('domcontentloaded');
+  ok('les reposer ne les double pas',
+     (await pPerdu.locator('.fr-e').count()) === 5,
+     `${await pPerdu.locator('.fr-e').count()} rappel(s)`);
+
+  /* --- le diagnostic du domaine expéditeur --- */
+  await pPerdu.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  const diag = await pPerdu.locator('.sd-sante-liste').last().innerText();
+  ok('les réglages disent ce que les fournisseurs verront',
+     /SPF|DMARC|adresse d’expédition/.test(diag), diag.replace(/\s+/g, ' ').slice(0, 80));
+  ok('et le rythme d’envoi se règle',
+     (await pPerdu.locator('#smtp_rythme_ms').count()) === 1);
+
   await pPerdu.close();
 
   /**

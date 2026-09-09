@@ -8,9 +8,9 @@ $attente = array_filter($liste, fn(array $c) => $c['statut'] === 'en_relecture')
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
       <div>
-        <h1>Régie e-mail</h1>
+        <h1>Régie</h1>
         <p><?= $equipe
-          ? 'Ce qui part sous le nom du guide — le vôtre, et celui des organisateurs.'
+          ? 'Ce qui part sous le nom du guide — le vôtre, et celui des organisateurs, sur tous les canaux.'
           : 'Écrivez à vos invités. Chaque campagne est relue par l’équipe avant de partir.' ?></p>
       </div>
       <div class="rangee" style="gap:8px">

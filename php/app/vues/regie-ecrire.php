@@ -16,6 +16,89 @@ $erreur = $erreur ?? null;
   <form method="post" action="<?= e(url('?p=regie-ecrire' . ($existante ? '&id=' . urlencode((string) $existante['id']) : ''))) ?>">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
 
+    <?php
+    /**
+     * Par où le message sort.
+     *
+     * En tête du formulaire, avant « à qui » : le canal décide de ce qu'on
+     * peut écrire — un modèle WhatsApp n'est pas un courriel — et le
+     * choisir après avoir rédigé fait recommencer.
+     */
+    $coches = $canaux_coches ?? ['email'];
+    $a_whatsapp = false;
+    foreach ($choix_canaux ?? [] as $ch) {
+        if ($ch['genre'] === 'whatsapp' && in_array($ch['cle'], $coches, true)) {
+            $a_whatsapp = true;
+        }
+    }
+    ?>
+    <div class="carte" style="margin-bottom:16px">
+      <h3 style="margin:0 0 4px">Où l’envoyer</h3>
+      <p class="aide" style="margin:0 0 14px">Le même texte part sur chaque canal coché, mis en forme
+      selon ce que le canal sait afficher. <a href="<?= e(url('?p=canaux')) ?>">Brancher un canal</a>.</p>
+
+      <ul class="cx-liste">
+        <?php foreach ($choix_canaux ?? [] as $ch):
+          $ici = in_array($ch['cle'], $coches, true); ?>
+          <li<?= $ici ? ' style="background:var(--paper);border:1px solid var(--primary)"' : '' ?>>
+            <input type="checkbox" name="canaux[]" value="<?= e($ch['cle']) ?>"
+                   id="cx-<?= e($ch['cle']) ?>" <?= $ici ? 'checked' : '' ?>
+                   style="width:17px;height:17px;accent-color:var(--primary);flex:0 0 auto">
+            <label for="cx-<?= e($ch['cle']) ?>" style="flex:1;font-weight:400;margin:0;cursor:pointer">
+              <b style="font-weight:600"><?= e($ch['libelle']) ?></b><br>
+              <span class="aide"><?= e($ch['aide']) ?></span>
+            </label>
+            <?php if (isset($ch['n'])): ?><b><?= (int) $ch['n'] ?></b><?php endif; ?>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+
+      <?php if ($a_whatsapp): ?>
+        <div class="champ" style="margin-top:14px">
+          <label for="modele-wa">Modèle WhatsApp approuvé</label>
+          <input id="modele-wa" name="modele_whatsapp" type="text"
+                 value="<?= e($modele_whatsapp ?? '') ?>" placeholder="rappel_evenement_fr">
+          <p class="aide">Le nom exact du modèle, tel qu’il figure dans votre compte Meta. Hors des
+          vingt-quatre heures qui suivent un message du destinataire — c’est-à-dire toujours, pour un
+          rappel — Meta refuse le texte libre : votre titre, votre message et votre lien remplissent
+          les variables du modèle, dans cet ordre.</p>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <?php
+    /**
+     * Quand. Vide = tout de suite, dès que l'équipe l'aura relue.
+     *
+     * L'heure est saisie dans le fuseau de celui qui écrit, et le
+     * navigateur nous donne son décalage : c'est la seule façon qu'un
+     * « 19 h » saisi à Lomé parte à 19 h à Lomé.
+     */
+    $_quand = '';
+    if (!empty($valeurs['planifie_le'])) {
+        $_t = strtotime((string) $valeurs['planifie_le']);
+        $_quand = $_t !== false ? gmdate('Y-m-d\TH:i', $_t) : '';
+    }
+    ?>
+    <div class="carte" style="margin-bottom:16px">
+      <h3 style="margin:0 0 4px">Quand</h3>
+      <p class="aide" style="margin:0 0 14px">Laissé vide, le message part dès qu’il est prêt.
+      Avec une date, il attend son heure — le cron l’ouvre tout seul.</p>
+      <div class="champ" style="margin:0">
+        <label for="r-quand">Date et heure d’envoi <span style="font-weight:400">(facultatif)</span></label>
+        <input id="r-quand" name="planifie_le" type="datetime-local" value="<?= e($_quand) ?>">
+        <input type="hidden" name="decalage" id="r-decalage" value="0">
+      </div>
+    </div>
+    <script>
+      /* Le décalage du navigateur, pour que l'heure saisie soit l'heure vécue.
+         `getTimezoneOffset` rend l'inverse de ce qu'on attend : d'où le signe. */
+      (function () {
+        var d = document.getElementById('r-decalage');
+        if (d) { d.value = String(new Date().getTimezoneOffset()); }
+      })();
+    </script>
+
     <div class="carte">
       <h3 style="margin:0 0 4px">À qui</h3>
       <p class="aide" style="margin:0 0 16px">Le nombre exact de personnes touchées s’affiche

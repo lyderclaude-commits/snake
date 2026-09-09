@@ -167,7 +167,7 @@ $valeurs = [
     'titre' => '', 'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
     'disposition' => 'bandeau', 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom',
     'champ_valeur' => 'Kossi', 'redirection' => 'https://wakabileguide.com/',
-    'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'cadre_url' => '',
+    'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'evenement_le' => '', 'cadre_url' => '',
     'cadre_fourni' => '',
     /**
      * Les calques libres voyagent en JSON dans un champ caché.
@@ -241,6 +241,7 @@ if ($modifie && !$post) {
         'redirection_libelle' => (string) ($g['share']['redirectLabel'] ?? ''),
         'legende' => (string) ($g['share']['defaultCaption'] ?? ''),
         'expire_le' => substr((string) $modifie['expire_le'], 0, 10),
+        'evenement_le' => substr((string) ($modifie['evenement_le'] ?? ''), 0, 10),
         'cadre_url' => (string) $modifie['cadre_url'],
     ];
 }
@@ -354,6 +355,7 @@ if ($post) {
                     'gabarit' => $gabarit,
                     'cadre_url' => $valeurs['cadre_url'],
                     'expire_le' => $valeurs['expire_le'],
+                    'evenement_le' => $valeurs['evenement_le'],
                 ]);
                 rediriger((droit($u, 'decors_tous') ? '?p=catalogue' : '?p=partenaire')
                     . '&ok=' . urlencode('« ' . $valeurs['titre'] . ' » mis à jour.' . $allege));
@@ -373,6 +375,7 @@ if ($post) {
                 'gabarit' => $gabarit,
                 'cadre_url' => $valeurs['cadre_url'],
                 'expire_le' => $valeurs['expire_le'],
+                'evenement_le' => $valeurs['evenement_le'],
             ]);
             rediriger(droit($u, 'decors_tous')
                 ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.' . $allege)

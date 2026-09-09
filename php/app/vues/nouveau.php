@@ -320,6 +320,10 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
               arrive avec l’offre Croissance.</p>
             <?php endif; ?>
           </div>
+          <div class="champ"><label for="evenement_le">Date de l’événement <span style="font-weight:400">(facultatif)</span></label>
+            <input id="evenement_le" name="evenement_le" type="date" value="<?= e($valeurs['evenement_le']) ?>">
+            <p class="aide">C’est d’elle que se déduisent les rappels : J−7, la veille, deux heures avant.</p>
+          </div>
           <div class="champ"><label for="expire_le">Expiration <span style="font-weight:400">(facultatif)</span></label>
             <input id="expire_le" name="expire_le" type="date" value="<?= e($valeurs['expire_le']) ?>">
             <p class="aide">Passée cette date, le décor cesse de produire des badges.</p></div>

@@ -22,6 +22,7 @@ require __DIR__ . '/app/sauvegarde.php';
 require __DIR__ . '/app/texte.php';
 require __DIR__ . '/app/regie.php';
 require __DIR__ . '/app/carnet.php';
+require __DIR__ . '/app/canaux.php';
 require __DIR__ . '/app/seo.php';
 require __DIR__ . '/app/images.php';
 require __DIR__ . '/app/push.php';
@@ -617,6 +618,12 @@ switch ($page) {
         }
         json_repondre(['ok' => true]);
 
+    case 'canaux':
+        require RACINE . '/app/actions/canaux.php';
+
+    case 'rappels':
+        require RACINE . '/app/actions/rappels.php';
+
     case 'diffusion':
         require RACINE . '/app/actions/diffusion.php';
 
@@ -645,6 +652,32 @@ switch ($page) {
         $jeton = (string) ($_GET['j'] ?? '');
         $envoi = $jeton !== '' ? envoi_par_jeton($jeton) : null;
         $fait = false;
+
+        /**
+         * Le désabonnement en un clic, celui que Gmail exige (RFC 8058).
+         *
+         * Le client de messagerie POSTe lui-même à cette adresse, depuis
+         * SES serveurs : pas de session, pas de cookie, donc pas de jeton
+         * anti-CSRF à présenter. Exiger le nôtre revenait à refuser le
+         * bouton « Se désabonner » de Gmail — et à échouer au contrôle qui
+         * décide si nos messages entrent.
+         *
+         * Ce n'est pas un trou : le jeton de l'URL est le secret, et il ne
+         * vaut que pour UN destinataire. Qui l'a, a déjà reçu le message.
+         * On exige tout de même les deux marques de la norme — `clic=1` et
+         * le corps `List-Unsubscribe=One-Click` — pour que cette porte ne
+         * s'ouvre qu'à ce qu'elle est censée servir.
+         */
+        $_un_clic = $post && $envoi
+            && ($_GET['clic'] ?? '') === '1'
+            && str_contains((string) file_get_contents('php://input'), 'List-Unsubscribe=One-Click');
+
+        if ($_un_clic) {
+            desabonner((string) $envoi['email'], 'un-clic');
+            header('Content-Type: text/plain; charset=utf-8');
+            exit("Désabonné.\n");
+        }
+
         if ($post && $envoi) {
             verifier_csrf();
             desabonner((string) $envoi['email'], trim((string) ($_POST['motif'] ?? '')));
@@ -671,13 +704,49 @@ switch ($page) {
             http_response_code(403);
             exit("Clé invalide.\n");
         }
+        /**
+         * Avant de vider la file : ouvrir ce dont l'heure est venue.
+         *
+         * Un rappel programmé pour 19 h est une campagne « prête » dont la
+         * date est passée. Le cron la fait basculer en « envoi », et le
+         * même passage commence à la remettre. Sans cela, la
+         * programmation ne serait qu'une note dans un coin d'écran.
+         */
+        $dues = db()->prepare("SELECT id FROM campagnes_email
+                               WHERE statut = 'prete' AND planifie_le IS NOT NULL AND planifie_le <= ?");
+        $dues->execute([maintenant()]);
+        $ouvertes = 0;
+        foreach ($dues->fetchAll() as $d) {
+            $ouvertes += campagne_ouvrir_planifiee((string) $d['id']) ? 1 : 0;
+        }
+
+        /**
+         * Et relever les abonnés Telegram au passage.
+         *
+         * Telegram ne garde les messages reçus par un bot que 24 h : sans
+         * un relevé régulier, quelqu'un qui écrit /start le lundi ne serait
+         * jamais joignable. C'est le cron qui doit le faire, pas un bouton
+         * qu'on pense à cliquer.
+         */
+        $releves = 0;
+        try {
+            foreach (db()->query("SELECT * FROM canaux WHERE genre = 'telegram' AND statut = 'branche'")
+                     as $canal) {
+                $r = telegram_relever_abonnes($canal);
+                $releves += $r['ok'] ? $r['nouveaux'] : 0;
+            }
+        } catch (PDOException) {
+            // Une installation d'avant les canaux n'a pas la table.
+        }
+
         $encours = db()->query("SELECT id FROM campagnes_email WHERE statut = 'envoi'
                                 ORDER BY maj_le LIMIT 1")->fetchColumn();
         if (!$encours) {
-            exit("Rien à envoyer.\n");
+            printf("Rien à envoyer. %d ouverte(s), %d abonné(s) relevé(s).\n", $ouvertes, $releves);
+            exit;
         }
         $r = regie_envoyer_lot((string) $encours);
-        echo $r['message'], "\n";
+        printf("%s %d ouverte(s), %d abonné(s) relevé(s).\n", $r['message'], $ouvertes, $releves);
         exit;
 
     /* ---- partenaire ---- */

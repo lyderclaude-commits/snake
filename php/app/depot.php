@@ -84,13 +84,13 @@ function decor_creer(array $d): string
 
     db()->prepare('INSERT INTO decors
         (id, slug, titre, sous_titre, ville, rubrique, statut, cree_par, auteur_id,
-         gabarit, cadre_url, expire_le, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,\'brouillon\',?,?,?,?,?,?,?)')
+         gabarit, cadre_url, expire_le, evenement_le, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,\'brouillon\',?,?,?,?,?,?,?,?)')
       ->execute([
           $id, $d['slug'], $d['titre'], $d['sous_titre'] ?: null, $d['ville'], $d['rubrique'],
           $d['cree_par'], $d['auteur_id'],
           json_encode($g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-          $d['cadre_url'], $d['expire_le'] ?: null, $now, $now,
+          $d['cadre_url'], $d['expire_le'] ?: null, $d['evenement_le'] ?? null, $now, $now,
       ]);
     return $id;
 }
@@ -1234,11 +1234,11 @@ function decor_modifier(string $id, array $d): void
     valider_gabarit($g);
 
     db()->prepare('UPDATE decors SET titre = ?, sous_titre = ?, ville = ?, rubrique = ?,
-                   gabarit = ?, cadre_url = ?, expire_le = ?, maj_le = ? WHERE id = ?')
+                   gabarit = ?, cadre_url = ?, expire_le = ?, evenement_le = ?, maj_le = ? WHERE id = ?')
         ->execute([
             $d['titre'], $d['sous_titre'] ?: null, $d['ville'], $d['rubrique'],
             json_encode($g, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            $d['cadre_url'], $d['expire_le'] ?: null, maintenant(), $id,
+            $d['cadre_url'], $d['expire_le'] ?: null, $d['evenement_le'] ?? null, maintenant(), $id,
         ]);
 }
 

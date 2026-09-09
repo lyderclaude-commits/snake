@@ -110,6 +110,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
 
       <div class="rangee" style="margin-top:14px;gap:8px">
         <a class="bouton fant petit" href="<?= e(url('?p=modifier&id=' . urlencode($d['id']))) ?>">Modifier</a>
+        <a class="bouton fant petit" href="<?= e(url('?p=rappels&id=' . urlencode($d['id']))) ?>">Rappels</a>
 
         <?php if ($d['statut'] === 'publie'): ?>
           <a class="bouton fant petit" href="<?= e(url('?p=decor&slug=' . urlencode($d['slug']))) ?>">Voir en ligne</a>

@@ -109,6 +109,48 @@ $branche = courriel_branche();
                  placeholder="contact@wakabileguide.com" value="<?= e($valeurs['courriel_repondre_a']) ?>">
           <p class="aide">Là où arrive une réponse, si quelqu’un répond quand même.</p>
         </div>
+        <div class="champ" style="grid-column:1/-1">
+          <label for="smtp_rythme_ms">Rythme d’envoi</label>
+          <input id="smtp_rythme_ms" name="smtp_rythme_ms" type="number" min="0" max="5000" step="50"
+                 value="<?= e($valeurs['smtp_rythme_ms']) ?>">
+          <p class="aide">Millisecondes d’attente entre deux messages d’un même lot. Un relais qui en
+          reçoit vingt-cinq en une seconde répond « trop vite » ; les mêmes, étalés, passent.</p>
+        </div>
+      </div>
+    </div>
+
+    <?php
+    /**
+     * Ce que Gmail, Yahoo et Outlook regardent AVANT de laisser entrer.
+     *
+     * Rien de tout cela ne se règle ici — ce sont des lignes dans la zone
+     * DNS du domaine. Mais c'est le seul écran où l'on peut l'apprendre
+     * avant d'envoyer mille messages, alors il le dit.
+     */
+    $_d = $diagnostic ?? ['controles' => [], 'domaine' => '', 'passe' => false];
+    ?>
+    <div class="carte" style="margin-top:16px">
+      <h3 style="margin:0 0 4px">Ce que les fournisseurs verront</h3>
+      <p class="aide" style="margin:0 0 14px">
+        <?php if ($_d['domaine'] !== ''): ?>
+          Relevé à l’instant sur <code><?= e($_d['domaine']) ?></code>.
+          Depuis 2024 chez Gmail et Yahoo, 2025 chez Outlook, un message mal authentifié
+          n’est plus rangé en indésirables : il est <strong>refusé</strong>.
+        <?php else: ?>
+          Renseignez une adresse d’expédition pour lancer le relevé.
+        <?php endif; ?>
+      </p>
+      <div class="sd-sante-liste">
+        <?php foreach ($_d['controles'] as $_c): ?>
+          <div class="sd-ct <?= e($_c['etat']) ?>" style="align-items:flex-start">
+            <span>
+              <b style="font-weight:600"><?= e($_c['titre']) ?></b>
+              <?php if ($_c['aide'] !== ''): ?>
+                <span style="display:block;opacity:.85;margin-top:2px"><?= e($_c['aide']) ?></span>
+              <?php endif; ?>
+            </span>
+          </div>
+        <?php endforeach; ?>
       </div>
     </div>
 

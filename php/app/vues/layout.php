@@ -146,8 +146,8 @@ $_graphe = array_values(array_filter([
             ]],
             ['groupe', 'Audience', [
                 ['?p=comptes',   'Comptes',            'comptes'],
-                ['?p=regie',     'Régie e-mail',       'regie'],
-                ['?p=diffusion', 'Notifications push', 'push'],
+                ['?p=regie',     'Régie',              'regie'],
+                ['?p=canaux',    'Canaux',             'push'],
                 ['?p=liens',     'Liens courts',       'liens'],
             ]],
             ['?p=scan', 'Entrée', 'scan'],
@@ -161,9 +161,9 @@ $_graphe = array_values(array_filter([
         droit($me, 'decors_siens') => [
             ['?p=partenaire', 'Tableau de bord', 'decors_siens'],
             ['groupe', 'Promotion', [
-                ['?p=liens',      'Liens courts',       'liens'],
-                ['?p=diffusion',  'Notifications push', 'push'],
-                ['?p=regie',      'Régie e-mail',       'regie'],
+                ['?p=liens',      'Liens courts', 'liens'],
+                ['?p=canaux',     'Canaux',       'push'],
+                ['?p=regie',      'Régie',        'regie'],
                 ['?p=blog-admin', 'Mes articles',       'articles'],
             ]],
             ['?p=scan',   'Entrée',        'scan'],

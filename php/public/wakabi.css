@@ -1572,3 +1572,60 @@ tr.pale td a{color:inherit}
   font-weight:700;cursor:default}
 .fmt-pas.declinee{border-style:solid;border-color:var(--primary);
   background:var(--primary-wash);color:var(--primary-d);font-weight:600}
+
+/* ============ les canaux de diffusion ============
+   Une carte par canal : ce qu'il est, où il écrit, et combien de
+   personnes s'y trouvent. Le reste — brancher, vérifier — tient dans des
+   formulaires ordinaires, parce que ce sont des formulaires ordinaires. */
+.cx{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.cx-carte{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
+  padding:18px;box-shadow:var(--ombre);display:flex;flex-direction:column;gap:12px}
+.cx-tete{display:flex;align-items:center;gap:11px}
+.cx-rond{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;
+  color:#fff;font-weight:800;font-size:.9rem}
+.cx-telegram{background:#229ED9}
+.cx-whatsapp{background:#25D366}
+.cx-web{background:var(--primary)}
+.cx-ml{background:var(--ink,#0F172A)}
+.cx-nom{font-weight:700;line-height:1.25}
+.cx-nom span{display:block;font-weight:400;font-size:.82rem;color:var(--text2)}
+.cx-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.cx-liste li{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--bg2);
+  border-radius:var(--r10);font-size:.88rem}
+.cx-liste b{margin-left:auto;font-variant-numeric:tabular-nums}
+.cx-liste form{display:flex}
+.cx-genre{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);
+  border:1px solid var(--border);background:var(--paper);border-radius:99px;padding:1px 8px;flex:0 0 auto}
+.etat{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  border-radius:99px;padding:3px 10px;margin-left:auto;flex:0 0 auto}
+.etat.on{background:#DCFCE7;color:#166534}
+.etat.att{background:#FEF3C7;color:#92400E}
+.etat.off{background:var(--bg2);color:var(--text2)}
+
+/* Le tableau des capacités : ce que chaque canal sait faire, sans détour. */
+.tableau{width:100%;border-collapse:collapse;font-size:.88rem}
+.tableau th{text-align:left;font-weight:600;color:var(--text2);padding:7px 10px}
+.tableau td{padding:9px 10px;border-top:1px solid var(--border)}
+.tableau td.oui{color:#166534}
+.tableau td.non{color:#B91C1C}
+
+/* ============ la frise des rappels ============
+   Le temps se lit de haut en bas, et l'on voit d'un coup ce qui est
+   passé, ce qui vient, et ce qui attend son heure. */
+.fr{position:relative;padding-left:30px}
+.fr:before{content:'';position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--border)}
+.fr-e{position:relative;padding:13px 15px;background:var(--paper);border:1px solid var(--border);
+  border-radius:var(--r10);margin-bottom:11px}
+.fr-e:before{content:'';position:absolute;left:-25px;top:20px;width:11px;height:11px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--border)}
+.fr-e.fait:before{background:var(--teal,#0D9488);border-color:var(--teal,#0D9488)}
+.fr-e.suiv:before{background:var(--primary);border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(37,99,235,.16)}
+.fr-q{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);font-weight:700}
+.fr-t{font-weight:700;margin:2px 0 3px}
+.puces{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:7px}
+.puce{font-size:.72rem;font-weight:600;border-radius:99px;padding:2px 9px;color:#fff}
+.puce.telegram{background:#229ED9}
+.puce.whatsapp{background:#25D366}
+.puce.mail{background:var(--ink,#0F172A)}
+.puce.web{background:var(--primary)}

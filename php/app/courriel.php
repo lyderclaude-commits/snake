@@ -33,6 +33,10 @@ const COURRIEL_DEFAUTS = [
     'courriel_expediteur' => '',
     'courriel_nom' => 'Wakabi Boost',
     'courriel_repondre_a' => '',
+    // Le temps d'attente entre deux messages d'un même lot, en millisecondes.
+    // Un relais qui reçoit vingt-cinq messages en une seconde répond 421 ; le
+    // même relais accepte les mêmes vingt-cinq étalés sur dix secondes.
+    'smtp_rythme_ms' => '250',
 ];
 
 const COURRIEL_SECURITES = [
@@ -80,7 +84,7 @@ function courriel_branche(): bool
  *
  * @return array{ok: bool, message: string}
  */
-function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string $texte, ?string $html = null): array
+function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string $texte, ?string $html = null, array $sup = []): array
 {
     if (!filter_var($vers, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'message' => 'Adresse destinataire invalide.'];
@@ -103,7 +107,7 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
             return ['ok' => false, 'message' => $muet];
         }
         try {
-            smtp_envoyer($r, $vers, $nom_vers, $sujet, $texte, $html);
+            smtp_envoyer($r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
             return ['ok' => true, 'message' => 'Message remis au serveur SMTP.'];
         } catch (RuntimeException $e) {
             $muet = $e->getMessage();
@@ -115,7 +119,7 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
         return ['ok' => false, 'message' => 'Aucun SMTP réglé, et la fonction mail() est désactivée sur cet hébergement.'];
     }
     $de = $de ?: 'no-reply@' . (parse_url(base_url(), PHP_URL_HOST) ?: 'localhost');
-    $entetes = entetes_courriel($r, $de, $vers, $nom_vers, $sujet, $html !== null);
+    $entetes = entetes_courriel($r, $de, $vers, $nom_vers, $sujet, $html !== null, $sup);
     // `mail()` écrit elle-même To: et Subject: — on les retire de la liste.
     unset($entetes['To'], $entetes['Subject']);
     $lignes = [];
@@ -139,7 +143,30 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
  * @throws RuntimeException avec un message que l'équipe puisse lire : le
  *         but de l'écran de test est de dire CE QUI cloche, pas « échec ».
  */
-function smtp_envoyer(array $r, string $vers, string $nom_vers, string $sujet, string $texte, ?string $html): void
+function smtp_envoyer(array $r, string $vers, string $nom_vers, string $sujet, string $texte, ?string $html, array $sup = []): void
+{
+    $flux = smtp_ouvrir($r);
+    try {
+        smtp_remettre($flux, $r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
+        @smtp_ecrire($flux, 'QUIT');
+    } finally {
+        @fclose($flux);
+    }
+}
+
+/**
+ * Ouvre la conversation : connexion, chiffrement, authentification.
+ *
+ * Séparée de l'envoi parce qu'une campagne de mille messages ouvrait mille
+ * connexions — mille poignées de main TLS et mille AUTH pour mille lignes
+ * de texte. Plusieurs relais limitent d'ailleurs les CONNEXIONS par heure,
+ * pas les messages : c'était donc aussi une limite qu'on frôlait sans le
+ * savoir.
+ *
+ * @return resource
+ * @throws RuntimeException avec un message que l'équipe puisse lire.
+ */
+function smtp_ouvrir(array $r)
 {
     $port = (int) $r['smtp_port'] ?: 587;
     $hote = $r['smtp_hote'];
@@ -181,24 +208,42 @@ function smtp_envoyer(array $r, string $vers, string $nom_vers, string $sujet, s
         if ($r['smtp_utilisateur'] !== '') {
             smtp_authentifier($flux, $capacites, $r['smtp_utilisateur'], $r['smtp_motdepasse']);
         }
-
-        smtp_commande($flux, 'MAIL FROM:<' . $r['courriel_expediteur'] . '>', 250);
-        smtp_commande($flux, 'RCPT TO:<' . $vers . '>', [250, 251]);
-        smtp_commande($flux, 'DATA', 354);
-
-        $entetes = entetes_courriel($r, $r['courriel_expediteur'], $vers, $nom_vers, $sujet, $html !== null);
-        $message = '';
-        foreach ($entetes as $c => $v) {
-            $message .= $c . ': ' . $v . "\r\n";
-        }
-        $message .= "\r\n" . corps_courriel($texte, $html);
-
-        smtp_ecrire($flux, smtp_proteger_points($message) . "\r\n.");
-        smtp_lire($flux, 250);
-        smtp_ecrire($flux, 'QUIT');
-    } finally {
+    } catch (RuntimeException $e) {
         @fclose($flux);
+        throw $e;
     }
+    return $flux;
+}
+
+/**
+ * Remet UN message dans une conversation déjà ouverte.
+ *
+ * @param resource $flux
+ * @throws RuntimeException si le serveur refuse ce message-là.
+ */
+function smtp_remettre(
+    $flux,
+    array $r,
+    string $vers,
+    string $nom_vers,
+    string $sujet,
+    string $texte,
+    ?string $html,
+    array $sup = []
+): void {
+    smtp_commande($flux, 'MAIL FROM:<' . $r['courriel_expediteur'] . '>', 250);
+    smtp_commande($flux, 'RCPT TO:<' . $vers . '>', [250, 251]);
+    smtp_commande($flux, 'DATA', 354);
+
+    $entetes = entetes_courriel($r, $r['courriel_expediteur'], $vers, $nom_vers, $sujet, $html !== null, $sup);
+    $message = '';
+    foreach ($entetes as $c => $v) {
+        $message .= $c . ': ' . $v . "\r\n";
+    }
+    $message .= "\r\n" . corps_courriel($texte, $html);
+
+    smtp_ecrire($flux, smtp_proteger_points($message) . "\r\n.");
+    smtp_lire($flux, 250);
 }
 
 /** EHLO, avec repli HELO pour les serveurs d'un autre âge. */
@@ -317,8 +362,15 @@ function adresse_affichee(string $nom, string $adresse): string
     return $nom === '' ? $adresse : '"' . encoder_entete($nom) . '" <' . $adresse . '>';
 }
 
-function entetes_courriel(array $r, string $de, string $vers, string $nom_vers, string $sujet, bool $html): array
-{
+function entetes_courriel(
+    array $r,
+    string $de,
+    string $vers,
+    string $nom_vers,
+    string $sujet,
+    bool $html,
+    array $sup = []
+): array {
     $limite = frontiere_courriel();
     $entetes = [
         'Date' => gmdate('D, d M Y H:i:s') . ' +0000',
@@ -342,6 +394,21 @@ function entetes_courriel(array $r, string $de, string $vers, string $nom_vers, 
     // automatique : le « absent du bureau » du destinataire reviendrait sur
     // une boîte que personne ne lit.
     $entetes['Auto-Submitted'] = 'auto-generated';
+
+    /**
+     * Les en-têtes propres au message — `List-Unsubscribe` en tête.
+     *
+     * Ils arrivent en dernier pour pouvoir CORRIGER ce qui précède : un
+     * message de la régie n'est pas « auto-generated » mais une lettre
+     * d'information, et il porte son propre `List-Id`.
+     */
+    foreach ($sup as $cle => $valeur) {
+        if ($valeur === null || $valeur === '') {
+            unset($entetes[$cle]);
+            continue;
+        }
+        $entetes[$cle] = $valeur;
+    }
     return $entetes;
 }
 
@@ -422,13 +489,250 @@ function courriel_mis_en_page(
     string $titre,
     string $corps,
     string $lien = '',
-    string $libelle = ''
+    string $libelle = '',
+    array $sup = [],
+    ?SessionCourriel $session = null
 ): array {
-    return envoyer_courriel(
-        $vers,
-        $nom_vers,
-        $sujet,
-        texte_courriel($titre, $corps, $lien),
-        gabarit_courriel($titre, $corps, $lien, $libelle)
-    );
+    $texte = texte_courriel($titre, $corps, $lien);
+    $html = gabarit_courriel($titre, $corps, $lien, $libelle);
+    return $session
+        ? $session->envoyer($vers, $nom_vers, $sujet, $texte, $html, $sup)
+        : envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup);
+}
+
+/**
+ * Une conversation SMTP tenue ouverte, le temps d'un lot.
+ *
+ * Ouvrir, écrire vingt-cinq fois, fermer — au lieu d'ouvrir et fermer
+ * vingt-cinq fois. Et surtout : un message refusé ne condamne plus les
+ * suivants. Le court-circuit d'avant marquait tout le reste du lot en
+ * échec définitif dès la première erreur, y compris quand elle ne
+ * concernait qu'une adresse — une boîte pleine, un domaine mort.
+ *
+ * On distingue donc deux natures d'échec :
+ *   — la conversation est morte (connexion coupée, authentification
+ *     refusée) : on ferme, et tout ce qui suit sera REPRIS plus tard ;
+ *   — ce destinataire-là est refusé : on note, et on continue.
+ */
+final class SessionCourriel
+{
+    /** @var resource|null */
+    private $flux = null;
+    private array $r;
+    /** Non nul dès que la conversation elle-même est perdue. */
+    private ?string $panne = null;
+    private int $pause_us;
+    private bool $smtp;
+
+    public function __construct()
+    {
+        $this->r = reglages_courriel();
+        $this->smtp = $this->r['smtp_hote'] !== '' && $this->r['courriel_expediteur'] !== '';
+        $this->pause_us = max(0, min(5000, (int) $this->r['smtp_rythme_ms'])) * 1000;
+    }
+
+    /** Vrai quand le transport lui-même est tombé : inutile d'insister. */
+    public function rompue(): bool
+    {
+        return $this->panne !== null;
+    }
+
+    public function panne(): ?string
+    {
+        return $this->panne;
+    }
+
+    /**
+     * @return array{ok: bool, message: string, reprendre: bool}
+     *         `reprendre` distingue « à retenter » de « refusé pour de bon ».
+     */
+    public function envoyer(
+        string $vers,
+        string $nom_vers,
+        string $sujet,
+        string $texte,
+        ?string $html = null,
+        array $sup = []
+    ): array {
+        if (!filter_var($vers, FILTER_VALIDATE_EMAIL)) {
+            return ['ok' => false, 'message' => 'Adresse destinataire invalide.', 'reprendre' => false];
+        }
+        if ($this->panne !== null) {
+            return ['ok' => false, 'message' => $this->panne, 'reprendre' => true];
+        }
+        if (!$this->smtp) {
+            // Sans SMTP réglé, on retombe sur le transport unitaire : mail()
+            // n'a pas de conversation à tenir ouverte.
+            $u = envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup);
+            return $u + ['reprendre' => !$u['ok']];
+        }
+
+        try {
+            if ($this->flux === null) {
+                $this->flux = smtp_ouvrir($this->r);
+            }
+        } catch (RuntimeException $e) {
+            $this->panne = $e->getMessage();
+            return ['ok' => false, 'message' => $this->panne, 'reprendre' => true];
+        }
+
+        if ($this->pause_us > 0) {
+            usleep($this->pause_us);
+        }
+
+        try {
+            smtp_remettre($this->flux, $this->r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
+            return ['ok' => true, 'message' => 'Message remis au serveur SMTP.', 'reprendre' => false];
+        } catch (RuntimeException $e) {
+            /**
+             * Un refus 5xx vise CE destinataire ; tout le reste vise la
+             * conversation. Confondre les deux, c'est soit s'acharner sur
+             * une adresse morte, soit jeter des messages qui seraient
+             * partis à l'essai suivant.
+             */
+            $m = $e->getMessage();
+            if (preg_match('/\b5\d\d\b/', $m)) {
+                // La conversation reste debout après un refus de
+                // destinataire : on peut enchaîner sur le suivant.
+                return ['ok' => false, 'message' => $m, 'reprendre' => false];
+            }
+            $this->fermer();
+            $this->panne = $m;
+            return ['ok' => false, 'message' => $m, 'reprendre' => true];
+        }
+    }
+
+    public function fermer(): void
+    {
+        if ($this->flux !== null) {
+            @smtp_ecrire($this->flux, 'QUIT');
+            @fclose($this->flux);
+            $this->flux = null;
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Le diagnostic du domaine expéditeur                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ce que les fournisseurs regardent avant de laisser entrer un message.
+ *
+ * Depuis 2024 chez Google et Yahoo, depuis 2025 chez Microsoft, un
+ * expéditeur de masse doit être authentifié par SPF, DKIM et DMARC, et
+ * l'adresse VISIBLE doit appartenir au domaine authentifié. Un message qui
+ * échoue là-dessus n'est plus classé en indésirables : il est refusé.
+ *
+ * Rien de tout cela ne se règle dans l'application — ce sont trois lignes
+ * dans la zone DNS. Mais l'application est le seul endroit où l'on saura
+ * que ça ne va pas AVANT d'envoyer mille messages, alors elle regarde.
+ *
+ * `dns_get_record` peut être désactivée sur un mutualisé : on le dit au
+ * lieu de conclure à tort que le domaine est mal réglé.
+ */
+function diagnostic_expediteur(): array
+{
+    $r = reglages_courriel();
+    $adresse = trim((string) $r['courriel_expediteur']);
+    $controles = [];
+    $ajouter = function (string $id, string $etat, string $titre, string $aide = '') use (&$controles): void {
+        $controles[] = ['id' => $id, 'etat' => $etat, 'titre' => $titre, 'aide' => $aide];
+    };
+
+    if ($adresse === '' || !filter_var($adresse, FILTER_VALIDATE_EMAIL)) {
+        $ajouter('adresse', 'echec', 'Aucune adresse d’expédition valide',
+                 'C’est elle qui figure dans « De : ». Renseignez-la ci-dessus.');
+        return ['domaine' => '', 'controles' => $controles, 'passe' => false];
+    }
+
+    $domaine = strtolower(substr(strrchr($adresse, '@') ?: '', 1));
+    $site = strtolower((string) (parse_url(base_url(), PHP_URL_HOST) ?: ''));
+
+    /**
+     * L'alignement : le domaine de l'adresse visible et celui du site.
+     *
+     * Ce n'est pas une obligation technique — on peut écrire depuis un
+     * autre domaine — mais c'est celle qui se trompe le plus souvent : une
+     * adresse en @gmail.com dans « De : » ne sera jamais alignée avec la
+     * signature du relais, et DMARC la refuse.
+     */
+    $racine = static fn(string $h): string => implode('.', array_slice(explode('.', $h), -2));
+    if ($site !== '' && $racine($domaine) !== $racine($site)) {
+        $ajouter('alignement', 'alerte',
+                 'L’adresse d’expédition n’est pas du domaine du site',
+                 sprintf('« De : » est en @%s alors que le site est sur %s. DMARC exige que le domaine '
+                       . 'visible corresponde à celui qui signe. Écrivez depuis @%s, ou publiez SPF, '
+                       . 'DKIM et DMARC sur %s.', $domaine, $site, $racine($site), $domaine));
+    } else {
+        $ajouter('alignement', 'ok', 'L’adresse d’expédition est du domaine du site',
+                 'C’est ce que DMARC appelle l’alignement, et c’est la condition la plus souvent manquée.');
+    }
+
+    if (!function_exists('dns_get_record')) {
+        $ajouter('dns', 'alerte', 'Les enregistrements DNS n’ont pas pu être lus',
+                 'L’hébergeur a désactivé `dns_get_record`. Vérifiez SPF, DKIM et DMARC à la main, '
+               . 'ou depuis un autre poste.');
+        return ['domaine' => $domaine, 'controles' => $controles, 'passe' => false];
+    }
+
+    $txt = static function (string $nom): array {
+        $lus = @dns_get_record($nom, DNS_TXT) ?: [];
+        $out = [];
+        foreach ($lus as $l) {
+            $v = (string) ($l['txt'] ?? '');
+            if ($v !== '') {
+                $out[] = $v;
+            }
+        }
+        return $out;
+    };
+
+    /* SPF — qui a le droit d'envoyer pour ce domaine. */
+    $spf = array_values(array_filter($txt($domaine), fn($v) => stripos($v, 'v=spf1') === 0));
+    if (!$spf) {
+        $ajouter('spf', 'echec', 'Aucun enregistrement SPF sur ' . $domaine,
+                 'Publiez un TXT à la racine : v=spf1 include:<votre relais> ~all');
+    } elseif (count($spf) > 1) {
+        $ajouter('spf', 'echec', 'Deux enregistrements SPF sur ' . $domaine,
+                 'Un seul est autorisé : les deux s’annulent. Fusionnez-les en une ligne.');
+    } else {
+        $ajouter('spf', 'ok', 'SPF publié', $spf[0]);
+    }
+
+    /* DMARC — ce qu'il faut faire d'un message qui échoue. */
+    $dmarc = array_values(array_filter($txt('_dmarc.' . $domaine), fn($v) => stripos($v, 'v=DMARC1') === 0));
+    if (!$dmarc) {
+        $ajouter('dmarc', 'echec', 'Aucun enregistrement DMARC',
+                 'Publiez un TXT sur _dmarc.' . $domaine . ' : v=DMARC1; p=none; rua=mailto:vous@'
+               . $domaine . ' — commencez par p=none, il n’écarte rien et vous renseigne.');
+    } else {
+        $politique = preg_match('/\bp\s*=\s*(none|quarantine|reject)/i', $dmarc[0], $m) ? strtolower($m[1]) : '?';
+        $ajouter('dmarc', 'ok', 'DMARC publié — politique « ' . $politique . ' »', $dmarc[0]);
+    }
+
+    /**
+     * DKIM — la signature. On ne peut pas la deviner : le sélecteur est
+     * choisi par le relais. On essaie donc les plus répandus, et l'on
+     * s'abstient de conclure si aucun ne répond.
+     */
+    $selecteurs = ['default', 'mail', 'dkim', 'k1', 's1', 's2', 'google', 'brevo', 'mailjet', 'sendgrid', 'zoho'];
+    $trouve = null;
+    foreach ($selecteurs as $sel) {
+        if ($txt($sel . '._domainkey.' . $domaine)) {
+            $trouve = $sel;
+            break;
+        }
+    }
+    if ($trouve !== null) {
+        $ajouter('dkim', 'ok', 'DKIM publié — sélecteur « ' . $trouve . ' »',
+                 'La signature est posée par votre relais ; l’application ne signe rien elle-même.');
+    } else {
+        $ajouter('dkim', 'alerte', 'Aucune clé DKIM trouvée aux sélecteurs courants',
+                 'Ce n’est pas une preuve d’absence : le sélecteur est choisi par votre relais et peut '
+               . 'être quelconque. Vérifiez dans son tableau de bord que le domaine y est « authentifié ».');
+    }
+
+    $passe = !array_filter($controles, fn($c) => $c['etat'] === 'echec');
+    return ['domaine' => $domaine, 'controles' => $controles, 'passe' => $passe];
 }

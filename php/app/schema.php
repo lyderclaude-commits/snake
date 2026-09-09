@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 function assurer_schema(): void
 {
@@ -98,6 +98,22 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         "ALTER TABLE campagnes_email ADD COLUMN liste_id $id NULL",
         // v15 — un article peut renvoyer vers le décor dont il parle.
         "ALTER TABLE articles ADD COLUMN decor_id $id NULL",
+
+        /* v16 — la régie devient multi-canal, et reprend ses échecs.
+           `tentatives` était le trou : un échec était définitif, et une
+           coupure de trois secondes chez le relais sortait vingt-cinq
+           personnes de la campagne sans que rien ne le signale. */
+        'ALTER TABLE envois_email ADD COLUMN tentatives INT NOT NULL DEFAULT 0',
+        "ALTER TABLE envois_email ADD COLUMN canal $court NOT NULL DEFAULT 'email'",
+        "ALTER TABLE envois_email ADD COLUMN cible $court NULL",
+        // v16 — un message part sur plusieurs canaux, et peut attendre son heure.
+        "ALTER TABLE campagnes_email ADD COLUMN canaux $txt NULL",
+        "ALTER TABLE campagnes_email ADD COLUMN planifie_le $court NULL",
+        "ALTER TABLE campagnes_email ADD COLUMN decor_id $id NULL",
+        "ALTER TABLE campagnes_email ADD COLUMN rappel $court NULL",
+        // v16 — un décor porte la date de son événement : c'est d'elle que
+        // se déduisent J−7, J−1 et H−2.
+        "ALTER TABLE decors ADD COLUMN evenement_le $court NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -663,6 +679,9 @@ function creer_schema(PDO $pdo, bool $mysql): void
             jeton      $court NOT NULL UNIQUE,
             statut     $court NOT NULL DEFAULT 'attente',
             message    $txt NULL,
+            tentatives INT NOT NULL DEFAULT 0,
+            canal      $court NOT NULL DEFAULT 'email',
+            cible      $court NULL,
             ouvert_le  $court NULL,
             envoye_le  $court NULL,
             cree_le    $court NOT NULL
@@ -724,6 +743,68 @@ function creer_schema(PDO $pdo, bool $mysql): void
             cree_le         $court NOT NULL,
             maj_le          $court NOT NULL,
             UNIQUE (proprietaire_id, email)
+        )$moteur",
+
+        /**
+         * Un canal de diffusion : par où les messages sortent.
+         *
+         * Le jeton d'un bot ou d'un accès Meta vaut un mot de passe : il
+         * ouvre l'envoi au nom de l'organisateur. Il vit donc ici et nulle
+         * part ailleurs — jamais dans une URL, jamais dans un formulaire
+         * qui le réaffiche.
+         */
+        "CREATE TABLE IF NOT EXISTS canaux (
+            id              $id PRIMARY KEY,
+            proprietaire_id $id NOT NULL,
+            genre           $court NOT NULL,
+            nom             $court NOT NULL,
+            jeton           $txt NOT NULL,
+            reference       $court NULL,
+            statut          $court NOT NULL DEFAULT 'a_verifier',
+            message         $txt NULL,
+            verifie_le      $court NULL,
+            cree_le         $court NOT NULL,
+            maj_le          $court NOT NULL
+        )$moteur",
+
+        /**
+         * Où un canal écrit : une chaîne, un groupe, ou ses abonnés.
+         *
+         * `cible` est l'identifiant côté plateforme — un `chat_id` Telegram,
+         * un numéro WhatsApp. Il est opaque et on ne le fabrique jamais :
+         * c'est la plateforme qui le donne, et le recopier à la main est le
+         * moyen le plus sûr d'écrire à quelqu'un d'autre.
+         */
+        "CREATE TABLE IF NOT EXISTS destinations (
+            id       $id PRIMARY KEY,
+            canal_id $id NOT NULL,
+            genre    $court NOT NULL,
+            nom      $court NOT NULL,
+            cible    $court NOT NULL,
+            abonnes  INT NOT NULL DEFAULT 0,
+            actif    INT NOT NULL DEFAULT 1,
+            cree_le  $court NOT NULL,
+            maj_le   $court NOT NULL
+        )$moteur",
+
+        /**
+         * Les personnes joignables en tête-à-tête sur un canal.
+         *
+         * Telegram : celles qui ont écrit au bot — c'est ce geste, et lui
+         * seul, qui autorise à leur répondre. WhatsApp : celles qui ont
+         * coché la case dans le Studio, avec la DATE de leur accord, parce
+         * que Meta la demande et qu'une liste importée n'en est pas un.
+         */
+        "CREATE TABLE IF NOT EXISTS abonnes_canal (
+            id         $id PRIMARY KEY,
+            canal_id   $id NOT NULL,
+            cible      $court NOT NULL,
+            nom        $court NULL,
+            source     $court NOT NULL DEFAULT 'direct',
+            accord_le  $court NULL,
+            actif      INT NOT NULL DEFAULT 1,
+            cree_le    $court NOT NULL,
+            UNIQUE (canal_id, cible)
         )$moteur",
 
         "CREATE TABLE IF NOT EXISTS contacts_listes (

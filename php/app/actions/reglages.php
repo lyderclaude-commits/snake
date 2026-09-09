@@ -164,4 +164,12 @@ vue('reglages', [
     'message' => $message,
     'erreur' => $erreur,
     'essai_vers' => $_POST['essai_vers'] ?? $u['email'],
+    /**
+     * Ce que les fournisseurs verront de notre domaine.
+     *
+     * Relevé à l'affichage, et non à l'envoi : c'est ici qu'on peut encore
+     * corriger, et une campagne de mille messages n'est pas le moment
+     * d'apprendre que DMARC manque.
+     */
+    'diagnostic' => diagnostic_expediteur(),
 ]);

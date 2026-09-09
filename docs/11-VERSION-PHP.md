@@ -1,7 +1,7 @@
 # Wakabi Boost v1 — décompresser, ouvrir une page, c'est en ligne
 
 **Première version officielle.** Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.zip`) et s'affiche en pied de page :
+nomme l'archive livrée (`wakabi-boost-v1.1.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -14,7 +14,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.1.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -30,7 +30,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **699 scénarios, 699 réussis**
+Les deux ont été vérifiés de bout en bout : **716 scénarios, 716 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,9 +116,9 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 699 scénarios, dans un vrai navigateur
+npm run php:e2e          # 716 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
-                         # éditeur, TOTP, carnet, référencement
+                         # éditeur, TOTP, carnet, canaux, référencement
 ```
 
 Contre une base MySQL :
@@ -127,7 +127,7 @@ Contre une base MySQL :
 BASE_URL=http://127.0.0.1:3700 npm run php:e2e
 ```
 
-### Les 699 scénarios
+### Les 716 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1107,6 +1107,133 @@ zip, précisément pour qu'ils survivent.
 « 2 · Votre texte » ne s'affiche que si le décor a un champ à remplir. Sur un
 décor qui n'en a pas, l'invité lisait « 1 » puis « 3 » et cherchait l'étape
 manquante. Les numéros sont maintenant comptés à l'affichage.
+
+---
+
+## Les canaux de diffusion
+
+Un organisateur de Lomé parle à ses invités là où ils sont, et ce n'est pas
+leur boîte aux lettres. La régie sait désormais écrire par plusieurs
+chemins — sans que la file d'envoi ait été recopiée : lots, reprises, quota
+et désabonnement restent **partagés**, et seul le dernier mètre change.
+
+### Ce que chaque plateforme sait vraiment faire
+
+| | Chaîne / groupe | Tête-à-tête | Coût | Délai |
+|---|---|---|---|---|
+| **Telegram** | Oui, sans limite | Oui, après un `/start` | Gratuit | Immédiat |
+| **WhatsApp** | **Non — 8 membres au plus** | Oui, avec accord et modèle | Par message | Vérification Meta |
+| **Navigateur** | — | Oui | Gratuit | Immédiat |
+| **E-mail** | — | Oui | Relais | Minutes |
+
+Cette ligne est la plus importante du produit, et l'écran l'affiche telle
+quelle : **« diffuser dans un groupe ou une chaîne WhatsApp » n'existe pas.**
+L'API Cloud a bien ouvert une *Groups API* en 2026, mais plafonnée à huit
+participants ; les Chaînes n'ont aucune API. Ce qui reste possible, c'est le
+tête-à-tête avec des numéros qui ont donné leur accord, via un modèle
+approuvé par Meta, facturé au message. Le promettre autrement serait mentir
+à un client.
+
+Telegram, lui, fait exactement ce qu'on attend : un bot administrateur
+publie dans une chaîne ou un groupe, sans limite d'abonnés, gratuitement, et
+écrit à qui lui a parlé une fois.
+
+### Une file, plusieurs canaux
+
+`envois_email` porte maintenant un `canal` et une `cible`. Une chaîne de
+4 210 abonnés y occupe **une seule ligne** — le message part une fois, et
+c'est une place de quota, pas 4 210. Le tête-à-tête en occupe une par
+personne.
+
+L'écran d'écriture annonce donc deux nombres différents, et il faut les
+deux : les **destinations** (ce qu'on envoie) et les **personnes distinctes**
+(ce qu'on touche). Quelqu'un qui est à la fois sur la chaîne et abonné au bot
+recevra deux fois le même message ; additionner les abonnés flatterait la
+portée d'un tiers.
+
+### Le jeton, et l'accord
+
+Le jeton d'un bot ou d'un accès Meta vaut un mot de passe : il vit en base,
+n'est jamais réaffiché, jamais dans une adresse. Il voyage là où la
+plateforme l'attend — dans le chemin pour Telegram, dans un en-tête
+`Authorization` pour Meta — et le vérifieur s'assure qu'il ne fuit pas
+ailleurs.
+
+`abonnes_canal.accord_le` date l'accord de chaque personne. Ce n'est pas
+décoratif : Meta le demande, et **une liste de numéros importée d'un tableur
+n'est pas un accord**.
+
+### Les rappels d'un événement
+
+Un décor porte une date ; les rappels s'en déduisent. « J−7 » n'est pas un
+réglage de plus à saisir, c'est un calcul.
+
+| Quand | Ce qu'on dit | Pourquoi |
+|---|---|---|
+| J − 14 | L'annonce | Le lien circule, les badges se créent |
+| J − 7 | La relance | Pendant qu'il reste le temps de s'organiser |
+| La veille | Le badge et son code | Le seul rappel qu'on relit à la porte |
+| H − 2 | L'heure d'ouverture | Court, sans lien : personne ne clique |
+| J + 1 | Le merci | Aux **présents scannés** seulement |
+
+Ce ne sont pas de nouveaux objets : ce sont des campagnes de la régie, avec
+une date d'envoi et le décor auquel elles se rattachent. Même relecture, même
+file, même quota. Le cron ouvre celles dont l'heure est venue, et relève au
+passage les abonnés Telegram — la plateforme ne garde ces messages que 24 h,
+et un bouton qu'il faut penser à cliquer les perdrait.
+
+Poser les cinq est **idempotent** : un bouton qu'on clique deux fois est un
+bouton qu'on cliquera deux fois, et l'invité recevrait tout en double.
+
+---
+
+## La fiabilité des envois e-mail
+
+Quatre choses qui décident si un message arrive, et une qui décidait si on
+le perdait.
+
+**Un échec n'est plus définitif.** `envois_email` compte ses tentatives, et
+un refus qui vise la conversation — le relais qui tousse trois secondes —
+remet en attente au lieu de condamner. C'était le seul endroit où l'on
+perdait des messages déjà écrits et déjà payés sur le quota : vingt-cinq
+personnes par lot, en silence.
+
+**Une seule conversation SMTP par lot.** Vingt-cinq connexions, vingt-cinq
+poignées de main TLS et vingt-cinq `AUTH` pour vingt-cinq lignes de texte —
+et plusieurs relais limitent les *connexions* par heure, pas les messages.
+La session distingue en plus un refus qui vise UN destinataire (une boîte
+pleine : on note, on enchaîne) d'un refus qui vise la conversation (on ferme,
+et le reste du lot repartira intact).
+
+**Le désabonnement en un clic.** `List-Unsubscribe` et
+`List-Unsubscribe-Post` (RFC 8058), et une adresse qui accepte un `POST`
+**sans jeton anti-CSRF** — le client de messagerie POSTe depuis ses propres
+serveurs, sans session. Ce n'est pas un trou : le jeton de l'URL est le
+secret, il ne vaut que pour un destinataire, et la porte n'accepte que la
+marque `clic=1` avec le corps exact de la norme. Sans cet en-tête, au-delà de
+cinq mille messages par jour, Gmail, Yahoo et Outlook **refusent** — ils ne
+classent plus en indésirables.
+
+**Le diagnostic du domaine.** L'écran des réglages relève SPF, DMARC et DKIM
+sur le domaine de l'adresse d'expédition, et vérifie l'alignement — le
+domaine visible doit être celui qui signe. Rien de tout cela ne se règle dans
+l'application : ce sont des lignes de DNS. Mais c'est le seul écran où on
+peut l'apprendre **avant** d'envoyer mille messages.
+
+Et un **rythme d'envoi** réglable, parce qu'un relais qui reçoit vingt-cinq
+messages en une seconde répond « trop vite », et que les mêmes, étalés,
+passent.
+
+### Ce qui n'est pas là
+
+Deux choses de la même liste attendent une décision qui n'est pas technique :
+
+- **Les rebonds.** Une adresse morte reste dans le carnet et repart à chaque
+  campagne. Les relever demande soit une boîte de retour dédiée, soit les
+  webhooks d'un relais — donc de choisir ce relais.
+- **La mesure de la remise.** L'écran affiche « messages partis », ce qui
+  veut dire *acceptés par le relais* — pas *arrivés*. La différence se lit
+  chez le relais, pas ici.
 
 ---
 

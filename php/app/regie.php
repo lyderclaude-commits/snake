@@ -34,6 +34,40 @@ declare(strict_types=1);
 const REGIE_LOT = 25;
 
 /**
+ * Combien de fois on retente un envoi avant de le déclarer perdu.
+ *
+ * Un échec était DÉFINITIF : le relais tousse trois secondes, et vingt-cinq
+ * personnes sortaient de la campagne sans que personne ne le sache. Trois
+ * essais couvrent la coupure passagère ; au-delà, ce n'est plus un accident,
+ * et s'acharner sur une adresse morte abîme la réputation du domaine.
+ */
+const REGIE_TENTATIVES = 3;
+
+/**
+ * L'en-tête qui décide de la remise chez Gmail, Yahoo et Microsoft.
+ *
+ * Le lien de désabonnement existait déjà dans le pied du message ; il ne
+ * suffit plus. Depuis 2024 les trois demandent le désabonnement EN UN CLIC
+ * (RFC 8058) : deux en-têtes, et une adresse qui accepte un POST sans
+ * demander à personne de se connecter. Sans eux, au-delà de cinq mille
+ * messages par jour, c'est un refus SMTP — pas un classement en
+ * indésirables.
+ */
+function entetes_desabonnement(string $jeton): array
+{
+    $url = url_desabonnement($jeton);
+    return [
+        'List-Unsubscribe' => '<' . $url . '&clic=1>',
+        'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+        // Une lettre d'information n'est pas une réponse automatique : le
+        // dire évite d'être rangé avec les accusés de réception.
+        'Auto-Submitted' => null,
+        'Precedence' => 'bulk',
+        'List-Id' => 'Wakabi Boost <regie.' . (parse_url(base_url(), PHP_URL_HOST) ?: 'localhost') . '>',
+    ];
+}
+
+/**
  * Les cibles, et qui a le droit de les viser.
  *
  * `equipe` : la base du guide, segmentée. `partenaire` : ses propres
@@ -106,6 +140,52 @@ function campagnes_email_toutes(?string $statut = null): array
                         ORDER BY c.cree_le DESC')->fetchAll();
 }
 
+/**
+ * Les cinq moments d'un événement.
+ *
+ * Le décalage est en heures avant l'événement — négatif pour l'après. Les
+ * textes sont des points de départ : ce sont des campagnes ordinaires, et
+ * tout s'y modifie ensuite.
+ */
+const RAPPELS_MODELE = [
+    ['cle' => 'annonce', 'heures' => 24 * 14, 'titre' => 'Votre badge vous attend',
+     'corps' => "C’est ouvert : créez votre badge en trente secondes, et montrez que vous y serez.",
+     'libelle' => 'Créer mon badge'],
+    ['cle' => 'semaine', 'heures' => 24 * 7, 'titre' => 'Plus qu’une semaine',
+     'corps' => "Rendez-vous dans une semaine. Si ce n’est pas fait, votre badge vous attend toujours.",
+     'libelle' => 'Voir mon badge'],
+    ['cle' => 'veille', 'heures' => 26, 'titre' => 'C’est demain, voici votre badge',
+     'corps' => "Présentez votre badge à l’accueil : on le scanne, et vous entrez.",
+     'libelle' => 'Ouvrir mon badge'],
+    ['cle' => 'portes', 'heures' => 2, 'titre' => 'On ouvre bientôt',
+     'corps' => "Les portes ouvrent dans deux heures. Pensez à arriver tôt : après, c’est la file.",
+     'libelle' => ''],
+    ['cle' => 'merci', 'heures' => -15, 'titre' => 'Merci d’être venu',
+     'corps' => "C’était une belle soirée. À très vite pour la prochaine.",
+     'libelle' => 'Revoir le décor'],
+];
+
+/** L'heure d'un rappel, calculée depuis la date de l'événement. */
+function rappel_quand(?string $evenement_le, int $heures): ?string
+{
+    if (!$evenement_le) {
+        return null;
+    }
+    // Sans heure dans la colonne, on vise 20 h : un événement se tient le
+    // soir, et un rappel « la veille à minuit » n'est pas un rappel.
+    $base = strtotime(strlen($evenement_le) <= 10 ? $evenement_le . 'T20:00:00Z' : $evenement_le);
+    return $base === false ? null : gmdate('Y-m-d\TH:i:s\Z', $base - $heures * 3600);
+}
+
+/** Les campagnes rattachées à un décor, dans l'ordre où elles partiront. */
+function campagnes_du_decor(string $decor_id): array
+{
+    $s = db()->prepare('SELECT * FROM campagnes_email WHERE decor_id = ?
+                        ORDER BY COALESCE(planifie_le, cree_le)');
+    $s->execute([$decor_id]);
+    return $s->fetchAll();
+}
+
 function campagnes_email_en_attente(): int
 {
     return (int) db()->query("SELECT COUNT(*) FROM campagnes_email WHERE statut = 'en_relecture'")
@@ -117,12 +197,16 @@ function campagne_email_creer(array $c): string
     $id = nouvel_id();
     $now = maintenant();
     db()->prepare('INSERT INTO campagnes_email
-        (id, auteur_id, sujet, titre, corps, lien, lien_libelle, cible, liste, liste_id, statut, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        (id, auteur_id, sujet, titre, corps, lien, lien_libelle, cible, liste, liste_id,
+         canaux, planifie_le, decor_id, rappel, statut, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
       ->execute([
           $id, $c['auteur_id'], $c['sujet'], $c['titre'], $c['corps'],
           $c['lien'] ?: null, $c['lien_libelle'] ?: null,
-          $c['cible'], $c['liste'] ?: null, $c['liste_id'] ?: null, 'brouillon', $now, $now,
+          $c['cible'], $c['liste'] ?: null, $c['liste_id'] ?: null,
+          $c['canaux'] ?? null, $c['planifie_le'] ?? null,
+          $c['decor_id'] ?? null, $c['rappel'] ?? null,
+          'brouillon', $now, $now,
       ]);
     return $id;
 }
@@ -130,12 +214,30 @@ function campagne_email_creer(array $c): string
 function campagne_email_maj(string $id, array $c): void
 {
     db()->prepare('UPDATE campagnes_email SET sujet = ?, titre = ?, corps = ?, lien = ?,
-                   lien_libelle = ?, cible = ?, liste = ?, liste_id = ?, maj_le = ? WHERE id = ?')
+                   lien_libelle = ?, cible = ?, liste = ?, liste_id = ?, canaux = ?,
+                   planifie_le = ?, decor_id = ?, rappel = ?, maj_le = ? WHERE id = ?')
         ->execute([
             $c['sujet'], $c['titre'], $c['corps'], $c['lien'] ?: null,
             $c['lien_libelle'] ?: null, $c['cible'], $c['liste'] ?: null,
-            $c['liste_id'] ?: null, maintenant(), $id,
+            $c['liste_id'] ?: null, $c['canaux'] ?? null, $c['planifie_le'] ?? null,
+            $c['decor_id'] ?? null, $c['rappel'] ?? null, maintenant(), $id,
         ]);
+}
+
+/**
+ * Ouvre une campagne dont l'heure programmée est venue.
+ *
+ * Pas de passage par `campagne_email_transition` : celle-ci vérifie un
+ * RÔLE, et le cron n'en a pas. Il n'en a pas besoin non plus — la
+ * relecture a déjà eu lieu, c'est ce que « prête » veut dire, et la seule
+ * décision qui reste est celle de l'horloge.
+ */
+function campagne_ouvrir_planifiee(string $id): bool
+{
+    $s = db()->prepare("UPDATE campagnes_email SET statut = 'envoi', maj_le = ?
+                        WHERE id = ? AND statut = 'prete'");
+    $s->execute([maintenant(), $id]);
+    return $s->rowCount() > 0;
 }
 
 function campagne_email_supprimer(string $id): void
@@ -301,6 +403,129 @@ function regie_compter(array $campagne, array $auteur): int
     return count(regie_destinataires($campagne, $auteur));
 }
 
+/* ------------------------------------------------------------------ */
+/* Les canaux d'un message                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Les canaux cochés, tels qu'ils sont enregistrés.
+ *
+ * Une liste de cibles, chacune décrivant OÙ écrire — pas comment. Le
+ * « comment » est le seul point qui change d'une plateforme à l'autre, et
+ * il vit dans `canaux.php`.
+ *
+ * @return list<array{canal:string, canal_id?:string, destination_id?:string, direct?:bool, modele?:string}>
+ */
+function regie_canaux(array $campagne): array
+{
+    $lu = json_decode((string) ($campagne['canaux'] ?? ''), true);
+    if (!is_array($lu)) {
+        // Une campagne d'avant les canaux est une campagne e-mail : c'est
+        // le seul chemin qui existait, et sa liste est déjà figée.
+        return [['canal' => 'email']];
+    }
+    $out = [];
+    foreach ($lu as $c) {
+        if (is_array($c) && isset($c['canal']) && is_string($c['canal'])) {
+            $out[] = $c;
+        }
+    }
+    return $out ?: [['canal' => 'email']];
+}
+
+/** Le libellé d'une cible, pour l'écran et pour l'historique. */
+function regie_canal_libelle(array $cible): string
+{
+    $genre = (string) ($cible['canal'] ?? '');
+    if ($genre === 'email') {
+        return 'E-mail';
+    }
+    if ($genre === 'push') {
+        return 'Notifications navigateur';
+    }
+    $nom = CANAUX_GENRES[$genre]['nom'] ?? $genre;
+    if (!empty($cible['destination_id']) && ($d = destination_par_id((string) $cible['destination_id']))) {
+        return $nom . ' — ' . $d['nom'];
+    }
+    return $nom . ' — tête-à-tête';
+}
+
+/**
+ * Ce qu'une cible touche : une ligne par envoi à préparer.
+ *
+ * @return list<array{cible:string, nom:string}>
+ */
+function regie_cibles_du_canal(array $cible, array $campagne, array $auteur): array
+{
+    $genre = (string) ($cible['canal'] ?? '');
+
+    if ($genre === 'email') {
+        $out = [];
+        foreach (regie_destinataires($campagne, $auteur) as $email => $nom) {
+            $out[] = ['cible' => (string) $email, 'nom' => (string) $nom];
+        }
+        return $out;
+    }
+
+    if ($genre === 'push') {
+        /**
+         * Une seule ligne, et non une par appareil.
+         *
+         * La diffusion push a sa propre mécanique — chiffrement par
+         * abonnement, nettoyage des abonnements morts — et la recopier
+         * ici la ferait diverger. La ligne déclenche `push_diffuser` ;
+         * le segment visé est la cible de la campagne.
+         */
+        return [['cible' => (string) $campagne['cible'], 'nom' => 'Notifications navigateur']];
+    }
+
+    /* Une chaîne ou un groupe : une seule ligne, quel que soit le monde
+       qui la lit. C'est ce qui fait qu'une publication ne coûte qu'un
+       message de quota, et c'est exact — le message part une fois. */
+    if (!empty($cible['destination_id'])) {
+        $d = destination_par_id((string) $cible['destination_id']);
+        return $d ? [['cible' => (string) $d['cible'], 'nom' => (string) $d['nom']]] : [];
+    }
+
+    /* Le tête-à-tête : une ligne par personne joignable. */
+    $canal_id = (string) ($cible['canal_id'] ?? '');
+    if ($canal_id === '') {
+        return [];
+    }
+    $out = [];
+    foreach (abonnes_canal($canal_id) as $a) {
+        $out[] = ['cible' => (string) $a['cible'], 'nom' => (string) ($a['nom'] ?? '')];
+    }
+    return $out;
+}
+
+/**
+ * La portée d'un message : par canal, en destinations et en personnes.
+ *
+ * Les deux nombres diffèrent et il faut les deux. Une chaîne de 4 210
+ * abonnés est UNE destination ; quelqu'un qui est à la fois sur la chaîne
+ * et abonné au bot recevra deux fois le même message. Annoncer la somme
+ * des abonnés flatterait la portée d'un tiers.
+ *
+ * @return array{lignes: list<array{libelle:string, genre:string, n:int}>, destinations:int, payant:int}
+ */
+function regie_portee(array $campagne, array $auteur): array
+{
+    $lignes = [];
+    $total = 0;
+    $payant = 0;
+    foreach (regie_canaux($campagne) as $cible) {
+        $genre = (string) $cible['canal'];
+        $n = count(regie_cibles_du_canal($cible, $campagne, $auteur));
+        $lignes[] = ['libelle' => regie_canal_libelle($cible), 'genre' => $genre, 'n' => $n];
+        $total += $n;
+        if (!empty(CANAUX_GENRES[$genre]['payant'])) {
+            $payant += $n;
+        }
+    }
+    return ['lignes' => $lignes, 'destinations' => $total, 'payant' => $payant];
+}
+
 /**
  * Fige la liste : une ligne par destinataire, en attente.
  *
@@ -317,13 +542,38 @@ function regie_figer(string $campagne_id, array $auteur): int
     }
     db()->prepare('DELETE FROM envois_email WHERE campagne_id = ?')->execute([$campagne_id]);
 
-    $ins = db()->prepare('INSERT INTO envois_email (id, campagne_id, email, nom, jeton, statut, cree_le)
-                          VALUES (?,?,?,?,?,?,?)');
+    $ins = db()->prepare('INSERT INTO envois_email
+                          (id, campagne_id, email, nom, jeton, statut, canal, cible, cree_le)
+                          VALUES (?,?,?,?,?,?,?,?,?)');
     $n = 0;
     $now = maintenant();
-    foreach (regie_destinataires($c, $auteur) as $email => $nom) {
-        $ins->execute([nouvel_id(), $campagne_id, $email, $nom ?: null, bin2hex(random_bytes(16)), 'attente', $now]);
-        $n++;
+
+    /**
+     * Une ligne par envoi, tous canaux confondus.
+     *
+     * La file ne sait pas ce qu'est Telegram : elle porte un canal, une
+     * cible, un état et un compteur de tentatives. C'est ce qui permet
+     * d'ajouter une plateforme sans toucher aux lots, aux reprises ni au
+     * quota — et de tout suivre sur un seul écran.
+     */
+    foreach (regie_canaux($c) as $cible_canal) {
+        $genre = (string) $cible_canal['canal'];
+        $canal_id = (string) ($cible_canal['canal_id'] ?? '');
+        foreach (regie_cibles_du_canal($cible_canal, $c, $auteur) as $ligne) {
+            $ins->execute([
+                nouvel_id(), $campagne_id,
+                // `email` reste la colonne du destinataire e-mail : le
+                // désabonnement, lui, se juge sur une adresse et sur rien
+                // d'autre. Une cible Telegram n'y met rien.
+                $genre === 'email' ? $ligne['cible'] : '',
+                $ligne['nom'] ?: null,
+                bin2hex(random_bytes(16)), 'attente',
+                $genre,
+                $genre === 'email' ? null : ($canal_id . '|' . $ligne['cible']),
+                $now,
+            ]);
+            $n++;
+        }
     }
     db()->prepare('UPDATE campagnes_email SET destinataires = ?, envoyes = 0, echecs = 0, maj_le = ? WHERE id = ?')
         ->execute([$n, $now, $campagne_id]);
@@ -346,44 +596,71 @@ function regie_envoyer_lot(string $campagne_id, int $lot = REGIE_LOT): array
         return ['envoyes' => 0, 'echecs' => 0, 'restants' => 0, 'fini' => true,
                 'message' => 'Campagne introuvable.'];
     }
-    if (!courriel_branche()) {
-        return ['envoyes' => 0, 'echecs' => 0, 'restants' => 0, 'fini' => false,
-                'message' => 'Le transport e-mail est éteint : réglez-le avant d’envoyer.'];
-    }
+    /**
+     * Le transport e-mail ne bloque plus que les lignes e-mail.
+     *
+     * Un message qui part sur Telegram n'a que faire du serveur SMTP, et
+     * refuser tout le lot pour cette raison bloquait un canal qui marche
+     * à cause d'un autre qu'on n'utilise pas.
+     */
+    $courriel_ok = courriel_branche();
 
-    $s = db()->prepare("SELECT * FROM envois_email WHERE campagne_id = ? AND statut = 'attente'
+    $s = db()->prepare("SELECT * FROM envois_email
+                        WHERE campagne_id = ? AND statut = 'attente' AND tentatives < ?
                         ORDER BY cree_le LIMIT " . max(1, min(200, $lot)));
-    $s->execute([$campagne_id]);
+    $s->execute([$campagne_id, REGIE_TENTATIVES]);
     $paquet = $s->fetchAll();
 
-    $maj = db()->prepare('UPDATE envois_email SET statut = ?, message = ?, envoye_le = ? WHERE id = ?');
-    $envoyes = $echecs = 0;
+    $maj = db()->prepare('UPDATE envois_email SET statut = ?, message = ?, tentatives = ?, envoye_le = ? WHERE id = ?');
+    $envoyes = $echecs = $repris = 0;
+
+    /**
+     * Une seule conversation SMTP pour tout le lot.
+     *
+     * Et surtout : elle sait dire si un refus vise CE destinataire ou toute
+     * la conversation. Le premier cas se note et on enchaîne ; le second
+     * remet en attente ce qui reste, plutôt que de le perdre.
+     */
+    $session = new SessionCourriel();
 
     foreach ($paquet as $e) {
+        $genre = (string) ($e['canal'] ?: 'email');
         // Quelqu'un a pu se désabonner depuis que la liste a été figée.
-        if (desabonne((string) $e['email'])) {
-            $maj->execute(['desabonne', null, maintenant(), $e['id']]);
+        // Le désabonnement porte sur une ADRESSE : il ne dit rien d'un
+        // abonné Telegram, qui se retire, lui, par /stop.
+        if ($genre === 'email' && desabonne((string) $e['email'])) {
+            $maj->execute(['desabonne', null, (int) $e['tentatives'], maintenant(), $e['id']]);
             continue;
         }
-        $r = courriel_mis_en_page(
-            (string) $e['email'],
-            (string) ($e['nom'] ?: ''),
-            (string) $c['sujet'],
-            (string) $c['titre'],
-            regie_corps_pour($c, $e),
-            (string) ($c['lien'] ?: ''),
-            (string) ($c['lien_libelle'] ?: 'En savoir plus')
-        );
-        $maj->execute([$r['ok'] ? 'envoye' : 'echec', $r['ok'] ? null : $r['message'], maintenant(), $e['id']]);
-        $r['ok'] ? $envoyes++ : $echecs++;
+        if ($genre === 'email' && $session->rompue()) {
+            // Le transport est tombé : on ne touche pas au reste du lot,
+            // il repartira au passage suivant, intact.
+            break;
+        }
+
+        $tentatives = (int) $e['tentatives'] + 1;
+        $r = regie_remettre($c, $e, $session, $courriel_ok);
+
+        if ($r['ok']) {
+            $maj->execute(['envoye', null, $tentatives, maintenant(), $e['id']]);
+            $envoyes++;
+            continue;
+        }
+        // À reprendre tant qu'il reste des essais ; sinon c'est un échec.
+        $reprendre = !empty($r['reprendre']) && $tentatives < REGIE_TENTATIVES;
+        $maj->execute([$reprendre ? 'attente' : 'echec', $r['message'], $tentatives, maintenant(), $e['id']]);
+        $reprendre ? $repris++ : $echecs++;
     }
+
+    $session->fermer();
 
     db()->prepare('UPDATE campagnes_email SET envoyes = envoyes + ?, echecs = echecs + ?, maj_le = ? WHERE id = ?')
         ->execute([$envoyes, $echecs, maintenant(), $campagne_id]);
 
     $restants = (int) (function () use ($campagne_id) {
-        $q = db()->prepare("SELECT COUNT(*) FROM envois_email WHERE campagne_id = ? AND statut = 'attente'");
-        $q->execute([$campagne_id]);
+        $q = db()->prepare("SELECT COUNT(*) FROM envois_email
+                            WHERE campagne_id = ? AND statut = 'attente' AND tentatives < ?");
+        $q->execute([$campagne_id, REGIE_TENTATIVES]);
         return $q->fetchColumn();
     })();
 
@@ -395,8 +672,97 @@ function regie_envoyer_lot(string $campagne_id, int $lot = REGIE_LOT): array
     return [
         'envoyes' => $envoyes, 'echecs' => $echecs, 'restants' => $restants,
         'fini' => $restants === 0,
-        'message' => sprintf('%d parti(s), %d échec(s), %d restant(s).', $envoyes, $echecs, $restants),
+        'repris' => $repris,
+        'message' => sprintf(
+            '%d parti(s), %d échec(s), %s%d restant(s).',
+            $envoyes, $echecs, $repris ? $repris . ' à reprendre, ' : '', $restants
+        ),
     ];
+}
+
+/**
+ * Remet UNE ligne de la file, par le canal qu'elle porte.
+ *
+ * Le seul endroit où le produit sait qu'il existe plusieurs plateformes.
+ * Tout ce qui précède — figer, lotir, reprendre, compter — les ignore.
+ *
+ * @return array{ok: bool, message: string, reprendre: bool}
+ */
+function regie_remettre(array $c, array $e, SessionCourriel $session, bool $courriel_ok): array
+{
+    $genre = (string) ($e['canal'] ?: 'email');
+
+    if ($genre === 'email') {
+        if (!$courriel_ok) {
+            return ['ok' => false, 'reprendre' => true,
+                    'message' => 'Le transport e-mail est éteint : réglez-le avant d’envoyer.'];
+        }
+        return courriel_mis_en_page(
+            (string) $e['email'],
+            (string) ($e['nom'] ?: ''),
+            (string) $c['sujet'],
+            (string) $c['titre'],
+            regie_corps_pour($c, $e),
+            (string) ($c['lien'] ?: ''),
+            (string) ($c['lien_libelle'] ?: 'En savoir plus'),
+            entetes_desabonnement((string) $e['jeton']),
+            $session
+        ) + ['reprendre' => false];
+    }
+
+    if ($genre === 'push') {
+        /**
+         * La diffusion push garde sa mécanique : une ligne de file, mais
+         * un envoi à tous les appareils du segment. Recopier ici son
+         * chiffrement et son nettoyage les ferait diverger.
+         */
+        $segment = (string) ($e['cible'] ?: 'mes-invites');
+        $segment = str_contains($segment, '|') ? explode('|', $segment, 2)[1] : $segment;
+        $abonnements = push_destinataires($segment, (string) ($c['auteur_id'] ?? ''));
+        if (!$abonnements) {
+            return ['ok' => false, 'reprendre' => false, 'message' => 'Aucun appareil abonné.'];
+        }
+        $r = push_diffuser($abonnements, [
+            'titre' => (string) $c['titre'],
+            'corps' => (string) $c['corps'],
+            'lien' => (string) ($c['lien'] ?: ''),
+        ]);
+        return ['ok' => ($r['envoyes'] ?? 0) > 0, 'reprendre' => false,
+                'message' => sprintf('%d appareil(s), %d échec(s).', $r['envoyes'] ?? 0, $r['echecs'] ?? 0)];
+    }
+
+    /* Telegram, WhatsApp : la cible porte « canal_id|cible ». */
+    [$canal_id, $cible] = array_pad(explode('|', (string) $e['cible'], 2), 2, '');
+    $canal = $canal_id !== '' ? canal_par_id($canal_id) : null;
+    if (!$canal) {
+        return ['ok' => false, 'reprendre' => false, 'message' => 'Ce canal a été débranché.'];
+    }
+
+    // Le rythme propre à la plateforme : Telegram compte en messages par
+    // seconde, et refuse tout le reste du lot quand on le dépasse.
+    $pause = CANAUX_RYTHME[$genre] ?? 0;
+    if ($pause > 0) {
+        usleep($pause);
+    }
+
+    return canal_remettre($canal, $cible, [
+        'titre' => (string) $c['titre'],
+        'corps' => (string) $c['corps'],
+        'lien' => (string) ($c['lien'] ?: ''),
+        'libelle' => (string) ($c['lien_libelle'] ?: 'Ouvrir'),
+        'modele' => regie_modele_whatsapp($c),
+    ]);
+}
+
+/** Le modèle WhatsApp choisi pour cette campagne, s'il y en a un. */
+function regie_modele_whatsapp(array $campagne): string
+{
+    foreach (regie_canaux($campagne) as $cible) {
+        if (($cible['canal'] ?? '') === 'whatsapp' && !empty($cible['modele'])) {
+            return (string) $cible['modele'];
+        }
+    }
+    return '';
 }
 
 /**

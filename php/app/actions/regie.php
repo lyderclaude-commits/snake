@@ -153,7 +153,52 @@ if ($page === 'regie-ecrire') {
         'cible' => $c['cible'] ?? array_key_first($cibles),
         'liste' => $c['liste'] ?? '',
         'liste_id' => $c['liste_id'] ?? '',
+        'canaux' => $c['canaux'] ?? '',
+        'planifie_le' => $c['planifie_le'] ?? '',
+        'decor_id' => $c['decor_id'] ?? '',
+        'rappel' => $c['rappel'] ?? '',
     ];
+
+    /**
+     * Les canaux qu'on peut cocher : ceux de ce compte, et les deux qui
+     * sont déjà en service.
+     *
+     * Construits ici et pas dans la vue : c'est le seul endroit qui sait à
+     * qui appartient quoi, et une vue qui interroge la base finit par le
+     * faire trente fois.
+     */
+    $mes_canaux = canaux_de($proprio);
+    $choix_canaux = [['cle' => 'email', 'genre' => 'email', 'libelle' => 'E-mail',
+                      'aide' => 'Relu par l’équipe avant de partir.', 'payant' => false]];
+    if (push_disponible()) {
+        $choix_canaux[] = ['cle' => 'push', 'genre' => 'push', 'libelle' => 'Notifications navigateur',
+                           'aide' => 'Les invités de vos campagnes, sur leur navigateur.', 'payant' => false];
+    }
+    foreach ($mes_canaux as $mc) {
+        if ($mc['statut'] !== 'branche') {
+            continue;
+        }
+        foreach ($mc['destinations'] as $d) {
+            $choix_canaux[] = [
+                'cle' => 'd:' . $d['id'],
+                'genre' => (string) $mc['genre'],
+                'libelle' => (CANAUX_DESTINATIONS[$d['genre']] ?? '') . ' « ' . $d['nom'] . ' »',
+                'aide' => 'Une publication, quel que soit le nombre de lecteurs.',
+                'payant' => !empty(CANAUX_GENRES[$mc['genre']]['payant']),
+                'n' => (int) $d['abonnes'],
+            ];
+        }
+        $choix_canaux[] = [
+            'cle' => 'c:' . $mc['id'],
+            'genre' => (string) $mc['genre'],
+            'libelle' => (CANAUX_GENRES[$mc['genre']]['nom'] ?? $mc['genre']) . ' — tête-à-tête',
+            'aide' => $mc['genre'] === 'telegram'
+                ? 'Les personnes qui ont écrit au bot.'
+                : 'Les numéros qui ont donné leur accord. Facturé par Meta, au message.',
+            'payant' => !empty(CANAUX_GENRES[$mc['genre']]['payant']),
+            'n' => (int) $mc['abonnes'],
+        ];
+    }
 
     // Arrivé du carnet par « Écrire à cette liste » : la cible est déjà
     // choisie. La redemander ferait recommencer un geste déjà fait.
@@ -244,6 +289,79 @@ if ($page === 'regie-ecrire') {
             }
         }
 
+        /**
+         * Les canaux cochés, traduits en cibles.
+         *
+         * On ne garde que ce qui existe ENCORE et qui appartient à ce
+         * compte : une case cochée est une saisie, et une saisie se
+         * vérifie. Sans e-mail ni aucun canal, on retombe sur l'e-mail —
+         * c'est ce que faisait la régie depuis toujours.
+         */
+        $coches = (array) ($_POST['canaux'] ?? []);
+        $connus = array_column($choix_canaux, 'cle');
+        $cibles_canal = [];
+        foreach ($coches as $cle) {
+            $cle = (string) $cle;
+            if (!in_array($cle, $connus, true)) {
+                continue;
+            }
+            if ($cle === 'email' || $cle === 'push') {
+                $cibles_canal[] = ['canal' => $cle];
+            } elseif (str_starts_with($cle, 'd:') && ($d = destination_par_id(substr($cle, 2)))) {
+                $canal = canal_par_id((string) $d['canal_id']);
+                if ($canal && (string) $canal['proprietaire_id'] === $proprio) {
+                    $cibles_canal[] = ['canal' => (string) $canal['genre'],
+                                       'canal_id' => (string) $canal['id'],
+                                       'destination_id' => (string) $d['id']];
+                }
+            } elseif (str_starts_with($cle, 'c:') && ($canal = canal_par_id(substr($cle, 2)))) {
+                if ((string) $canal['proprietaire_id'] === $proprio) {
+                    $entree = ['canal' => (string) $canal['genre'], 'canal_id' => (string) $canal['id']];
+                    if ($canal['genre'] === 'whatsapp') {
+                        $entree['modele'] = trim((string) ($_POST['modele_whatsapp'] ?? ''));
+                    }
+                    $cibles_canal[] = $entree;
+                }
+            }
+        }
+        if (!$cibles_canal) {
+            $cibles_canal[] = ['canal' => 'email'];
+        }
+        $valeurs['canaux'] = json_encode($cibles_canal, JSON_UNESCAPED_UNICODE);
+
+        /**
+         * L'heure d'envoi, si on en veut une.
+         *
+         * Saisie dans le fuseau du navigateur, rangée en UTC comme tout le
+         * reste de la base : sans cela un rappel « 19 h » partirait à 19 h
+         * du serveur, qui n'est pas celui de Lomé.
+         */
+        $quand = trim((string) ($_POST['planifie_le'] ?? ''));
+        if ($quand !== '' && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $quand)) {
+            $decalage = (int) ($_POST['decalage'] ?? 0);   // minutes, comme le donne le navigateur
+            $t = strtotime($quand . ':00 UTC');
+            $valeurs['planifie_le'] = $t !== false
+                ? gmdate('Y-m-d\TH:i:s\Z', $t + $decalage * 60)
+                : null;
+        } else {
+            $valeurs['planifie_le'] = null;
+        }
+
+        /**
+         * WhatsApp sans modèle ne partira pas : autant le dire ici.
+         *
+         * Meta refuse le texte libre hors des vingt-quatre heures qui
+         * suivent un message du destinataire, c'est-à-dire toujours pour un
+         * rappel. Laisser enregistrer donnerait une campagne qui échoue
+         * ligne par ligne, le soir de l'événement.
+         */
+        foreach ($cibles_canal as $cc) {
+            if (($cc['canal'] ?? '') === 'whatsapp' && ($cc['modele'] ?? '') === '') {
+                $erreur = 'WhatsApp demande le nom d’un modèle approuvé par Meta : sans lui, '
+                        . 'aucun message ne peut partir hors de la fenêtre de vingt-quatre heures.';
+            }
+        }
+
         if ($erreur === null) {
             if ($c) {
                 campagne_email_maj((string) $c['id'], $valeurs);
@@ -263,6 +381,32 @@ if ($page === 'regie-ecrire') {
         'cibles' => $cibles,
         'equipe' => $equipe,
         'listes' => $mes_listes,
+        'choix_canaux' => $choix_canaux,
+        /**
+         * Les cases à recocher : on refait le chemin inverse, de la cible
+         * enregistrée vers la clé du formulaire. Sans quoi rouvrir une
+         * campagne décocherait tout ce qu'on avait choisi.
+         */
+        'canaux_coches' => array_map(
+            static function (array $cc): string {
+                if (!empty($cc['destination_id'])) {
+                    return 'd:' . $cc['destination_id'];
+                }
+                if (!empty($cc['canal_id'])) {
+                    return 'c:' . $cc['canal_id'];
+                }
+                return (string) ($cc['canal'] ?? '');
+            },
+            json_decode((string) $valeurs['canaux'], true) ?: [['canal' => 'email']]
+        ),
+        'modele_whatsapp' => (function (string $json): string {
+            foreach (json_decode($json, true) ?: [] as $cc) {
+                if (($cc['canal'] ?? '') === 'whatsapp' && !empty($cc['modele'])) {
+                    return (string) $cc['modele'];
+                }
+            }
+            return '';
+        })((string) $valeurs['canaux']),
         'erreur' => $erreur,
     ]);
 }
