@@ -443,6 +443,22 @@ function push_destinataires(string $segment, ?string $auteur_id = null): array
     return $s->fetchAll();
 }
 
+/**
+ * Ce qu'un écran verrouillé montre avant de couper.
+ *
+ * Ce n'est pas une limite du protocole — le corps peut être plus long —
+ * mais c'est la seule qui compte : au-delà, personne ne lit. L'écran
+ * d'écriture s'en sert pour prévenir AVANT l'envoi plutôt que de laisser
+ * découvrir la coupure sur son propre téléphone.
+ */
+const PUSH_APERCU = 120;
+
+/** Combien d'abonnements ce segment touche, sans en rapporter la liste. */
+function push_combien(string $segment, ?string $auteur_id = null): int
+{
+    return count(push_destinataires($segment, $auteur_id));
+}
+
 const PUSH_SEGMENTS = [
     'tous' => 'Tout le monde',
     'organisateurs' => 'Les organisateurs',

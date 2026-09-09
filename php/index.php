@@ -631,6 +631,7 @@ switch ($page) {
     case 'regie-ecrire':
     case 'regie-campagne':
     case 'regie-action':
+    case 'regie-echecs-export':
         require RACINE . '/app/actions/regie.php';
 
     case 'regie-carnet':

@@ -246,7 +246,7 @@ function est_mysql(): bool
  * version ? », et personne ne sait y répondre si le produit ne le dit pas
  * lui-même.
  */
-const VERSION = '1.1';
+const VERSION = '1.2';
 
 /** Une date lisible ici : `12/03/2026`. Vide si l'on ne sait pas la lire. */
 function date_fr(?string $iso): string

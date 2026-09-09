@@ -1,8 +1,48 @@
 <?php
-/** La régie : mes campagnes e-mail, ou toutes pour l'équipe. */
+/** La régie : mes campagnes, ou toutes pour l'équipe, sur tous les canaux. */
 $erreur = $erreur ?? null;
 $message = $message ?? null;
 $attente = array_filter($liste, fn(array $c) => $c['statut'] === 'en_relecture');
+
+/**
+ * L'état d'une campagne, dit sans arrondir.
+ *
+ * Une campagne dont cinq messages sur six ont échoué n'est pas
+ * « Envoyée » : elle est finie, ce qui n'est pas la même chose, et un
+ * badge vert le ferait croire. Une campagne qui attend son heure, elle,
+ * dit laquelle — sinon « Prête à partir » ne se distingue pas de
+ * « partira dans trois semaines ».
+ */
+$etat = static function (array $c): array {
+    $echecs = (int) $c['echecs'];
+    if ($echecs > 0 && $c['statut'] === 'envoye') {
+        return ['echec', $echecs . ' échec' . ($echecs > 1 ? 's' : '')];
+    }
+    if ($c['statut'] === 'prete' && !empty($c['planifie_le'])) {
+        $t = strtotime((string) $c['planifie_le']);
+        if ($t !== false) {
+            return ['prete', 'Programmée · ' . gmdate('d/m à H\hi', $t)];
+        }
+    }
+    return [(string) $c['statut'], REGIE_STATUTS[$c['statut']] ?? (string) $c['statut']];
+};
+
+/** Supprimer, mais en le demandant deux fois. */
+$supprimer = static function (array $c): string {
+    ob_start(); ?>
+    <details class="sup">
+      <summary class="bouton fant petit">Supprimer…</summary>
+      <div class="sup-p">
+        <form method="post" action="<?= e(url('?p=regie-action')) ?>">
+          <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+          <input type="hidden" name="id" value="<?= e((string) $c['id']) ?>">
+          <input type="hidden" name="quoi" value="supprimer">
+          <button class="bouton danger petit" type="submit">Confirmer</button>
+        </form>
+      </div>
+    </details>
+    <?php return ob_get_clean();
+};
 ?>
 <div class="contenu">
   <section class="entete">
@@ -10,12 +50,12 @@ $attente = array_filter($liste, fn(array $c) => $c['statut'] === 'en_relecture')
       <div>
         <h1>Régie</h1>
         <p><?= $equipe
-          ? 'Ce qui part sous le nom du guide — le vôtre, et celui des organisateurs, sur tous les canaux.'
+          ? 'Ce qui part sous le nom du guide : le vôtre, et celui des organisateurs, sur tous les canaux.'
           : 'Écrivez à vos invités. Chaque campagne est relue par l’équipe avant de partir.' ?></p>
       </div>
       <div class="rangee" style="gap:8px">
         <a class="bouton fant" href="<?= e(url('?p=regie-carnet')) ?>">Carnet d’adresses</a>
-        <a class="bouton" href="<?= e(url('?p=regie-ecrire')) ?>">Nouvelle campagne</a>
+        <a class="bouton" href="<?= e(url('?p=regie-ecrire')) ?>">Nouveau message</a>
       </div>
     </div>
   </section>
@@ -73,22 +113,44 @@ $attente = array_filter($liste, fn(array $c) => $c['statut'] === 'en_relecture')
     <div class="tableau" id="file">
       <table>
         <thead>
-          <tr><th>Campagne</th><?= $equipe ? '<th>Auteur</th>' : '' ?><th>Cible</th><th>État</th>
-          <th class="chiffre">Partis</th><th></th></tr>
+          <tr><th>Campagne</th><th>Canaux</th><?= $equipe ? '<th>Auteur</th>' : '' ?><th>Cible</th>
+          <th>État</th><th class="chiffre">Partis</th><th></th></tr>
         </thead>
         <tbody>
-          <?php foreach ($liste as $c): ?>
+          <?php foreach ($liste as $c):
+            [$classe_etat, $libelle_etat] = $etat($c);
+            $rate = (int) $c['echecs'] > 0; ?>
             <tr>
               <td>
                 <a href="<?= e(url('?p=regie-campagne&id=' . urlencode($c['id']))) ?>"><strong><?= e($c['sujet']) ?></strong></a>
-                <span class="aide" style="display:block"><?= e(gmdate('d/m/Y', strtotime((string) $c['cree_le']))) ?></span>
+                <span class="aide" style="display:block">
+                  <?= e(gmdate('d/m/Y', strtotime((string) $c['cree_le']))) ?><?=
+                    $c['rappel'] ? ' · rappel ' . e(rappel_libelle((string) $c['rappel'])) : '' ?>
+                </span>
+              </td>
+              <td>
+                <!-- Sur une ligne : deux pastilles empilées doublent la hauteur
+                     de chaque ligne, et une liste de trente campagnes devient
+                     une page de défilement. Le cadre du tableau défile déjà
+                     de côté quand il le faut. -->
+                <div class="puces" style="margin:0;flex-wrap:nowrap">
+                  <?php foreach (regie_pastilles($c) as $p): ?>
+                    <span class="puce <?= e($p['classe']) ?>"><?= e($p['texte']) ?></span>
+                  <?php endforeach; ?>
+                </div>
               </td>
               <?php if ($equipe): ?><td class="aide"><?= e($c['auteur_nom'] ?? '—') ?></td><?php endif; ?>
               <td class="aide"><?= e(REGIE_CIBLES[$c['cible']][0] ?? $c['cible']) ?></td>
-              <td><span class="pastille <?= e($c['statut']) ?>"><?= e(REGIE_STATUTS[$c['statut']] ?? $c['statut']) ?></span></td>
-              <td class="chiffre"><?= (int) $c['envoyes'] ?><?= $c['destinataires'] ? ' / ' . (int) $c['destinataires'] : '' ?></td>
+              <td>
+                <span class="pastille <?= e($classe_etat) ?>"><?= e($libelle_etat) ?></span>
+                <?php if ($rate && $classe_etat !== 'echec'): ?>
+                  <span class="pastille echec"><?= (int) $c['echecs'] ?> échec<?= $c['echecs'] > 1 ? 's' : '' ?></span>
+                <?php endif; ?>
+              </td>
+              <td class="chiffre"<?= $rate ? ' style="color:#B91C1C"' : '' ?>><?= (int) $c['envoyes'] ?><?= $c['destinataires'] ? ' / ' . (int) $c['destinataires'] : '' ?></td>
               <td style="text-align:right;white-space:nowrap">
                 <a class="bouton fant petit" href="<?= e(url('?p=regie-campagne&id=' . urlencode($c['id']))) ?>">Ouvrir</a>
+                <?php if ($c['statut'] !== 'envoi'): ?><?= $supprimer($c) ?><?php endif; ?>
               </td>
             </tr>
           <?php endforeach; ?>

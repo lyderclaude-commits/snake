@@ -52,15 +52,37 @@ if ($page === 'regie-action') {
                  * cible sans avoir dérangé personne. L'opposer à l'envoi
                  * ferait découvrir la limite après la relecture de
                  * l'équipe — donc après avoir fait travailler quelqu'un.
+                 *
+                 * La portée se compte sur TOUS les canaux, le quota sur le
+                 * seul e-mail. Confondre les deux refuserait une campagne
+                 * Telegram faute de destinataire e-mail, ou imputerait une
+                 * publication de chaîne au quota mensuel d'un client
+                 * qu'elle ne coûte rien.
                  */
-                $n = regie_compter($c, $auteur);
+                $portee = regie_portee($c, $auteur);
+                $n = (int) $portee['destinations'];
                 if ($n === 0) {
-                    throw new RuntimeException(
-                        'Cette campagne ne toucherait personne. Vérifiez la cible : peut-être '
-                        . 'qu’aucun de vos invités n’a encore de compte, ou que la liste est vide.'
-                    );
+                    /**
+                     * Dire la VRAIE raison, pas la plus probable.
+                     *
+                     * « Personne n'a de compte » et « personne n'a confirmé
+                     * son adresse » demandent deux gestes opposés : chercher
+                     * une autre cible, ou relancer les confirmations. Un
+                     * message qui se trompe de cause fait perdre l'après-midi.
+                     */
+                    $ecartes = 0;
+                    regie_destinataires($c, $auteur, $ecartes);
+                    throw new RuntimeException($ecartes > 0
+                        ? sprintf(
+                            'Cette campagne ne toucherait personne : les %d adresse(s) de cette cible '
+                            . 'n’ont jamais été confirmées, et une adresse non confirmée ne reçoit pas '
+                            . 'de campagne — c’est ce qui protège la délivrabilité de tous vos envois. '
+                            . 'Une liste de votre carnet, elle, n’est pas soumise à cette règle.',
+                            $ecartes)
+                        : 'Cette campagne ne toucherait personne. Vérifiez la cible : peut-être '
+                          . 'qu’aucun de vos invités n’a encore de compte, ou que la liste est vide.');
                 }
-                $q = quota_emails($auteur, $n);
+                $q = quota_emails($auteur, (int) $portee['email']);
                 if (!$q['ok']) {
                     throw new RuntimeException($q['message']);
                 }
@@ -80,7 +102,7 @@ if ($page === 'regie-action') {
 
             case 'approuver':
                 exiger_droit('valider');
-                $q = quota_emails($auteur, regie_compter($c, $auteur));
+                $q = quota_emails($auteur, (int) regie_portee($c, $auteur)['email']);
                 if (!$q['ok']) {
                     throw new RuntimeException('Refusé par le quota de l’auteur : ' . $q['message']);
                 }
@@ -114,7 +136,37 @@ if ($page === 'regie-action') {
                 rediriger('?p=regie-campagne&id=' . rawurlencode((string) $c['id'])
                     . ($r['envoyes'] || $r['fini'] ? '&ok=' : '&err=') . rawurlencode($r['message']));
 
+            /**
+             * Relancer, archiver : deux gestes, et un seul interdit.
+             *
+             * Ils restent ouverts à l'auteur de la campagne, et non à la
+             * seule équipe : le message a DÉJÀ été relu et approuvé, une
+             * relance ne fait que remettre en file ce qui était prévu. En
+             * revanche, une destination morte ne se relance jamais — c'est
+             * la réputation du domaine de tout le monde qui est en jeu, et
+             * ce n'est pas un arbitrage qu'on laisse à un bouton.
+             */
+            case 'relancer':
+                $n = regie_relancer((string) $c['id']);
+                rediriger('?p=regie-campagne&id=' . rawurlencode((string) $c['id'])
+                    . ($n ? '&ok=' . rawurlencode($n . ' ligne(s) remise(s) en file. L’envoi reprend au prochain lot.')
+                          : '&err=' . rawurlencode('Aucun de ces échecs ne se reprend : ce sont des refus définitifs.')));
+
+            case 'relancer-un':
+                $n = regie_relancer((string) $c['id'], [(string) ($_POST['envoi'] ?? '')]);
+                rediriger('?p=regie-campagne&id=' . rawurlencode((string) $c['id'])
+                    . ($n ? '&ok=' . rawurlencode('Remise en file. Elle repartira au prochain lot.')
+                          : '&err=' . rawurlencode('Cette ligne ne se relance pas : la destination est morte.')));
+
+            case 'archiver':
+                $ok = regie_archiver((string) $c['id'], (string) ($_POST['envoi'] ?? ''));
+                rediriger('?p=regie-campagne&id=' . rawurlencode((string) $c['id'])
+                    . ($ok ? '&ok=' . rawurlencode('Archivée. Cette destination ne sera plus servie, ici ni ailleurs.')
+                           : '&err=' . rawurlencode('Ligne introuvable, ou déjà traitée.')));
+
             case 'supprimer':
+                journal_ecrire($u, 'campagne.supprimee', 'campagne', (string) $c['id'],
+                    (string) $c['sujet'], (int) $c['envoyes'] . ' message(s) déjà partis');
                 campagne_email_supprimer((string) $c['id']);
                 rediriger('?p=regie&ok=' . rawurlencode('Campagne supprimée.'));
 
@@ -168,35 +220,95 @@ if ($page === 'regie-ecrire') {
      * faire trente fois.
      */
     $mes_canaux = canaux_de($proprio);
+
+    /**
+     * Chaque carte porte trois chiffres différents, et il faut les trois.
+     *
+     * `n` : ce que le canal touche — des personnes. `envois` : ce que cela
+     * coûte en messages, et ce n'est pas le même nombre. Une chaîne de
+     * 4 210 lecteurs, c'est UN envoi ; annoncer 4 210 envois flatterait la
+     * portée d'un facteur mille et ferait croire à un quota consommé.
+     * `ecartes` : ce qu'on laisse volontairement de côté, parce qu'un
+     * chiffre qui baisse sans explication passe pour une panne.
+     */
+    /**
+     * La portée de chaque cible, calculée d'avance pour toutes.
+     *
+     * L'e-mail et les notifications suivent la cible choisie plus bas dans
+     * la page : leur nombre change quand on change de cible. Le calculer
+     * au chargement, pour toutes les cibles à la fois, permet à l'écran de
+     * le mettre à jour sans aller-retour — et surtout d'afficher la portée
+     * AVANT de cocher, plutôt qu'après avoir envoyé.
+     */
+    $portees = [];
+    foreach ($cibles as $cle => $_lib) {
+        if ($cle === 'liste') {
+            continue;   // une liste se compte par liste, juste après
+        }
+        $p = regie_compte_cible($cle, ['id' => $proprio]);
+        $portees[$cle] = ['n' => $p['n'], 'ecartes' => $p['ecartes'],
+                          'push' => push_disponible() ? push_combien($cle, $proprio) : 0];
+    }
+    foreach ($mes_listes as $li) {
+        $p = regie_compte_cible('liste', ['id' => $proprio], (string) $li['id']);
+        $portees['liste:' . $li['id']] = ['n' => $p['n'], 'ecartes' => 0,
+                                          'push' => push_disponible() ? push_combien('liste', $proprio) : 0];
+    }
+
+    $portee_ici = $portees[$valeurs['cible'] === 'liste'
+        ? 'liste:' . $valeurs['liste_id'] : $valeurs['cible']] ?? ['n' => 0, 'ecartes' => 0, 'push' => 0];
+
     $choix_canaux = [['cle' => 'email', 'genre' => 'email', 'libelle' => 'E-mail',
-                      'aide' => 'Relu par l’équipe avant de partir.', 'payant' => false]];
+                      'sous' => 'Selon la cible choisie', 'unite' => 'adresses confirmées',
+                      'aide' => 'Relu par l’équipe avant de partir.', 'payant' => false,
+                      'n' => $portee_ici['n'], 'envois' => $portee_ici['n'],
+                      'ecartes' => $portee_ici['ecartes'], 'suit' => 'n']];
     if (push_disponible()) {
-        $choix_canaux[] = ['cle' => 'push', 'genre' => 'push', 'libelle' => 'Notifications navigateur',
-                           'aide' => 'Les invités de vos campagnes, sur leur navigateur.', 'payant' => false];
+        $choix_canaux[] = ['cle' => 'push', 'genre' => 'push', 'libelle' => 'Notifications',
+                           'sous' => 'Navigateur', 'unite' => 'appareils',
+                           'aide' => 'Les invités de vos campagnes, sur leur navigateur.',
+                           'payant' => false, 'n' => $portee_ici['push'],
+                           'envois' => 1, 'ecartes' => 0, 'suit' => 'push',
+                           'note' => 'Votre texte sera coupé à ' . PUSH_APERCU . ' caractères.',
+                           'ton' => 'attention'];
     }
     foreach ($mes_canaux as $mc) {
         if ($mc['statut'] !== 'branche') {
             continue;
         }
+        $payant = !empty(CANAUX_GENRES[$mc['genre']]['payant']);
         foreach ($mc['destinations'] as $d) {
             $choix_canaux[] = [
                 'cle' => 'd:' . $d['id'],
                 'genre' => (string) $mc['genre'],
-                'libelle' => (CANAUX_DESTINATIONS[$d['genre']] ?? '') . ' « ' . $d['nom'] . ' »',
+                'libelle' => (string) $d['nom'],
+                'sous' => CANAUX_DESTINATIONS[$d['genre']] ?? '',
+                'unite' => 'lecteurs · 1 envoi',
                 'aide' => 'Une publication, quel que soit le nombre de lecteurs.',
-                'payant' => !empty(CANAUX_GENRES[$mc['genre']]['payant']),
+                'note' => 'Une publication, quel que soit le nombre d’abonnés. Une place de quota.',
+                'payant' => $payant,
                 'n' => (int) $d['abonnes'],
+                'envois' => 1,
+                'ecartes' => 0,
             ];
         }
         $choix_canaux[] = [
             'cle' => 'c:' . $mc['id'],
             'genre' => (string) $mc['genre'],
-            'libelle' => (CANAUX_GENRES[$mc['genre']]['nom'] ?? $mc['genre']) . ' — tête-à-tête',
+            'libelle' => (string) $mc['nom'],
+            'sous' => 'Tête-à-tête',
+            'unite' => $mc['genre'] === 'telegram' ? 'personnes' : 'numéros avec accord',
             'aide' => $mc['genre'] === 'telegram'
                 ? 'Les personnes qui ont écrit au bot.'
                 : 'Les numéros qui ont donné leur accord. Facturé par Meta, au message.',
-            'payant' => !empty(CANAUX_GENRES[$mc['genre']]['payant']),
+            'note' => $mc['genre'] === 'telegram'
+                ? 'Celles qui ont écrit au bot au moins une fois.'
+                : 'Demande un modèle approuvé par Meta, et se facture au message.',
+            'ton' => $mc['genre'] === 'whatsapp' ? 'stop' : '',
+            'payant' => $payant,
             'n' => (int) $mc['abonnes'],
+            'envois' => (int) $mc['abonnes'],
+            'ecartes' => 0,
         ];
     }
 
@@ -375,13 +487,15 @@ if ($page === 'regie-ecrire') {
     }
 
     vue('regie-ecrire', [
-        'titre' => $c ? 'Modifier la campagne' : 'Nouvelle campagne e-mail',
+        'titre' => $c ? 'Modifier le message' : 'Nouveau message',
         'valeurs' => $valeurs,
         'existante' => $c,
         'cibles' => $cibles,
         'equipe' => $equipe,
         'listes' => $mes_listes,
         'choix_canaux' => $choix_canaux,
+        'portees' => $portees,
+        'apercu_push' => PUSH_APERCU,
         /**
          * Les cases à recocher : on refait le chemin inverse, de la cible
          * enregistrée vers la clé du formulaire. Sans quoi rouvrir une
@@ -429,9 +543,47 @@ if ($page === 'regie-campagne') {
             ? regie_compter($c, $auteur ?? $u)
             : (int) $c['destinataires'],
         'quota' => quota_emails($auteur ?? $u),
+        // Les canaux et les échecs : deux questions qu'on se pose sur cet
+        // écran et nulle part ailleurs, donc résolues ici plutôt que dans
+        // la vue, qui n'a pas à interroger la base.
+        'canaux' => regie_canaux($c),
+        'echecs' => in_array($c['statut'], ['envoi', 'envoye'], true)
+            ? regie_echecs((string) $c['id'])
+            : [],
         'message' => $message,
         'erreur' => $alerte,
     ]);
+}
+
+/* ---------------- les échecs, en tableur ---------------- */
+
+if ($page === 'regie-echecs-export') {
+    $c = $mienne(campagne_email((string) ($_GET['id'] ?? '')));
+
+    $nom = 'echecs-' . preg_replace('/[^a-z0-9]+/i', '-', mb_strtolower((string) $c['sujet']))
+         . '-' . gmdate('Y-m-d') . '.csv';
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $nom . '"');
+    $sortie = fopen('php://output', 'w');
+    // Le BOM, pour qu'Excel ne massacre pas les accents.
+    fwrite($sortie, "\xEF\xBB\xBF");
+    fputcsv($sortie, ['Destinataire', 'Nom', 'Canal', 'État', 'Code', 'Essais',
+                      'Ce que le serveur a répondu', 'Se relance']);
+    foreach (regie_echecs((string) $c['id']) as $e) {
+        fputcsv($sortie, [
+            $e['qui'], $e['nom'] ?? '', $e['genre_canal'],
+            REGIE_ENVOIS_STATUTS[$e['statut']] ?? $e['statut'],
+            $e['code'], (int) $e['tentatives'], (string) ($e['message'] ?? ''),
+            match (true) {
+                $e['statut'] !== 'echec' => '—',
+                (bool) $e['reprenable'] => 'oui',
+                (bool) $e['mortel'] => 'non — destination morte',
+                default => 'à la main',
+            },
+        ]);
+    }
+    fclose($sortie);
+    exit;
 }
 
 /* ---------------- la liste ---------------- */

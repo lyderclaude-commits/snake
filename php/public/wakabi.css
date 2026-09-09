@@ -1602,12 +1602,15 @@ tr.pale td a{color:inherit}
 .etat.att{background:#FEF3C7;color:#92400E}
 .etat.off{background:var(--bg2);color:var(--text2)}
 
-/* Le tableau des capacités : ce que chaque canal sait faire, sans détour. */
-.tableau{width:100%;border-collapse:collapse;font-size:.88rem}
-.tableau th{text-align:left;font-weight:600;color:var(--text2);padding:7px 10px}
-.tableau td{padding:9px 10px;border-top:1px solid var(--border)}
-.tableau td.oui{color:#166534}
-.tableau td.non{color:#B91C1C}
+/* Le tableau des capacités : ce que chaque canal sait faire, sans détour.
+   `.tab` et non `.tableau` : celle-là désigne depuis toujours le CADRE
+   qui fait défiler un tableau trop large, et lui donner en plus les
+   règles d'un tableau rapetissait le texte de tous les autres écrans. */
+.tab{width:100%;border-collapse:collapse;font-size:.88rem}
+.tab th{text-align:left;font-weight:600;color:var(--text2);padding:7px 10px}
+.tab td{padding:9px 10px;border-top:1px solid var(--border)}
+.tab td.oui{color:#166534}
+.tab td.non{color:#B91C1C}
 
 /* ============ la frise des rappels ============
    Le temps se lit de haut en bas, et l'on voit d'un coup ce qui est
@@ -1629,3 +1632,133 @@ tr.pale td a{color:inherit}
 .puce.whatsapp{background:#25D366}
 .puce.mail{background:var(--ink,#0F172A)}
 .puce.web{background:var(--primary)}
+
+/* ============ la régie, écran par écran ============
+   Trois besoins qui ne se ressemblent pas : reconnaître une campagne dans
+   une liste, comprendre un échec, et écrire pour plusieurs canaux à la
+   fois. Chacun a sa poignée de classes, et aucune n'en réinvente une
+   existante — les pastilles de canal, par exemple, sont les `.puce` de la
+   frise des rappels. */
+
+/* Au-delà de trois canaux, on compte plutôt que d'empiler. */
+.puce.plus{background:var(--bg2);color:var(--text2);border:1px solid var(--border)}
+
+/* Un envoi qui n'a pas abouti se voit, même de loin. */
+.pastille.echec{background:#FEF2F2;color:#B91C1C}
+.pastille.attente{background:#FEF3C7;color:#92400E}
+.pastille.desabonne,.pastille.archive{background:var(--bg2);color:var(--text2)}
+
+/* Supprimer, mais pas d'un seul clic : le repli demande de confirmer.
+   Un panneau flottant plutôt qu'un dépliage, parce qu'une ligne de
+   tableau qui grandit décale tout ce qui est en dessous. */
+.sup{display:inline-block;position:relative}
+.sup>summary{list-style:none;cursor:pointer}
+.sup>summary::-webkit-details-marker{display:none}
+/* Dans une liste, le repli n'offre qu'un bouton : il reste à côté de
+   « Ouvrir » au lieu de le repousser sur une autre ligne. La phrase qui
+   explique ce qu'on perd tient sur la fiche, où il y a la place. */
+.sup-p{margin-top:6px;text-align:right}
+.sup-p.mot{width:225px;margin-left:auto;text-align:left;white-space:normal;background:var(--bg2);
+  border:1px solid var(--border);border-radius:var(--r10);padding:11px}
+.sup-p.mot p{margin:0 0 10px;font-size:.8rem;line-height:1.45;color:var(--text2)}
+
+/* La liste des échecs : le motif compte autant que le nombre. */
+.ech{width:100%;border-collapse:collapse;font-size:.86rem}
+.ech th{text-align:left;font-weight:600;color:var(--text2);padding:7px 10px;font-size:.8rem}
+.ech td{padding:10px;border-top:1px solid var(--border);vertical-align:top}
+.ech .motif{color:#B91C1C;font-size:.82rem;line-height:1.45}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem}
+
+/* ============ l'atelier d'écriture ============
+   Réglages à gauche, aperçu collé à droite : on écrit en voyant ce que
+   la personne recevra, plutôt qu'en imaginant. */
+.ec{display:grid;grid-template-columns:1fr 400px;gap:18px;align-items:start}
+.ec-etapes{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.ec-etape{flex:1;min-width:150px;display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--r10);
+  font-size:.88rem;text-decoration:none;color:inherit}
+.ec-etape.actif{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ec-etape i{width:24px;height:24px;border-radius:50%;background:var(--bg2);color:var(--text2);
+  display:grid;place-items:center;font-style:normal;font-weight:700;font-size:.78rem;flex:0 0 auto}
+.ec-etape.actif i{background:var(--primary);color:#fff}
+.ec-etape b{display:block;font-weight:600}
+.ec-etape span{display:block;font-size:.76rem;color:var(--text2)}
+
+/* Une carte par canal : on voit la portée AVANT de cocher. */
+.ec-canaux{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.ec-cn{position:relative;display:flex;flex-direction:column;gap:7px;padding:13px;margin:0;
+  border:1px solid var(--border);border-radius:var(--r10);background:var(--paper);cursor:pointer;
+  font-weight:400}
+/* `.on` est posée par le script, `:has()` par la feuille : les vieux
+   navigateurs d'Android n'ont pas le second, et une case cochée qui n'a
+   pas l'air cochée fait recommencer tout le formulaire. */
+.ec-cn.on,.ec-cn:has(input:checked){border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ec-cn:has(input:focus-visible){outline:2px solid var(--primary);outline-offset:2px}
+.ec-cn input{position:absolute;opacity:0;width:0;height:0}
+.ec-cn-h{display:flex;align-items:center;gap:9px}
+.ec-cn-h b{font-weight:600;font-size:.9rem;line-height:1.2}
+.ec-cn-h b span{display:block;font-weight:400;font-size:.76rem;color:var(--text2)}
+.ec-rond{width:30px;height:30px;border-radius:9px;font-size:.68rem}
+.ec-coche{margin-left:auto;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border);
+  display:grid;place-items:center;color:transparent;font-size:.7rem;flex:0 0 auto;line-height:1}
+.ec-cn.on .ec-coche,.ec-cn:has(input:checked) .ec-coche{background:var(--primary);
+  border-color:var(--primary);color:#fff}
+.ec-cn-n{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums}
+.ec-cn-n small{font-weight:400;font-size:.76rem;color:var(--text2);margin-left:4px}
+.ec-cn-note{font-size:.76rem;line-height:1.4;color:var(--text2)}
+.ec-cn-note.attention{color:#C2410C}
+.ec-cn-note.stop{color:#B91C1C}
+
+/* L'aperçu : ce que la personne recevra, pas une approximation. */
+.ap-onglets{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.ap-o{border:1px solid var(--border);background:var(--paper);border-radius:99px;
+  padding:4px 11px;font-size:.79rem;font-weight:600;color:var(--text2);cursor:pointer}
+.ap-o.actif{background:var(--primary);border-color:var(--primary);color:#fff}
+.tel{background:#17212B;border-radius:18px;padding:13px 11px;min-height:190px}
+.bulle{background:#182533;border:1px solid #253544;border-radius:12px;padding:10px 12px;
+  font-size:.84rem;line-height:1.5;color:#E9EDEF;overflow-wrap:anywhere}
+.bulle b{color:#fff}
+.bulle .bt{display:block;text-align:center;margin:9px -12px -10px;padding:9px;
+  border-top:1px solid rgba(255,255,255,.14);color:#53BDEB;font-weight:600}
+.bulle .h{opacity:.5;font-size:.7rem;text-align:right;margin-top:5px}
+.notif{background:#F1F5F9;border-radius:14px;padding:12px;min-height:150px;display:grid;place-items:center}
+.notif-c{background:#fff;border-radius:12px;padding:11px 13px;width:100%;
+  box-shadow:0 4px 14px rgba(15,23,42,.13);font-size:.82rem;line-height:1.4;color:#0F172A;
+  overflow-wrap:anywhere}
+.notif-c .src{display:flex;align-items:center;gap:6px;color:#64748B;font-size:.72rem;margin-bottom:5px}
+.notif-c .src i{width:14px;height:14px;border-radius:4px;background:var(--primary);font-style:normal}
+.notif-c b{display:block;margin-bottom:2px}
+.notif-c .coupe{color:#94A3B8}
+.ml-p{background:#F1F5F9;border-radius:14px;padding:11px;min-height:190px}
+.ml-c{background:#fff;border:1px solid #E2E8F0;border-radius:11px;overflow:hidden;font-size:.8rem;
+  color:#0F172A}
+.ml-t{background:#0F172A;color:#fff;padding:10px 13px;font-weight:800;font-size:.72rem;letter-spacing:.02em}
+.ml-b{padding:13px;line-height:1.5;overflow-wrap:anywhere}
+.ml-b h4{margin:0 0 8px;font-size:.92rem}
+.ml-b p{margin:0 0 8px}
+.ml-bt{display:inline-block;background:var(--primary);color:#fff;border-radius:8px;padding:8px 15px;
+  font-weight:700;margin-top:6px;font-size:.78rem}
+.ml-f{border-top:1px solid #E2E8F0;padding:9px 13px;color:#64748B;font-size:.66rem;line-height:1.4}
+.wa-p{background:#ECE5DD;border-radius:14px;padding:13px;min-height:190px}
+.wa-c{background:#fff;border-radius:10px;padding:10px 12px;font-size:.84rem;line-height:1.5;
+  color:#111B21;box-shadow:0 1px 1px rgba(11,20,26,.13);overflow-wrap:anywhere}
+.wa-c .h{opacity:.45;font-size:.7rem;text-align:right;margin-top:5px}
+
+/* Tant que rien n'est saisi, l'aperçu montre l'exemple — en plus pâle,
+   pour qu'on ne le prenne pas pour son propre texte. */
+.ec-apercu.exemple .bulle,.ec-apercu.exemple .notif-c,.ec-apercu.exemple .ml-b,
+.ec-apercu.exemple .wa-c{opacity:.55}
+
+/* La portée, canal par canal, avant d'envoyer. */
+.pt{display:flex;flex-direction:column;gap:7px;font-size:.86rem}
+.pt-l{display:flex;align-items:center;gap:9px}
+.pt-l i{width:8px;height:8px;border-radius:50%;flex:0 0 auto;font-style:normal}
+.pt-l b{margin-left:auto;font-variant-numeric:tabular-nums}
+.pt-tot{border-top:1px dashed var(--border);padding-top:8px;margin-top:2px;font-weight:700}
+
+/* Sous 980 px l'aperçu passe dessous : coller une colonne qui occupe
+   toute la largeur ne colle rien du tout. */
+@media (max-width:980px){
+  .ec{grid-template-columns:1fr}
+  .ec-apercu{position:static!important}
+}

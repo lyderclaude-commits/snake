@@ -216,7 +216,7 @@ $genres_places = array_column($canaux, 'genre');
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Ce que chaque canal sait faire</h3>
     <div style="overflow-x:auto">
-      <table class="tableau" style="min-width:560px">
+      <table class="tab" style="min-width:560px">
         <tr>
           <th>Canal</th><th>Chaîne / groupe</th><th>Tête-à-tête</th><th>Coût</th><th>Délai</th>
         </tr>

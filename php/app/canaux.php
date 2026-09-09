@@ -601,17 +601,27 @@ function telegram_remettre(array $canal, string $cible, array $message): array
     if ($r['ok']) {
         return ['ok' => true, 'message' => 'Remis à Telegram.', 'reprendre' => false];
     }
-    /**
-     * Ce qui se retente, et ce qui ne se retente pas.
-     *
-     * Un bot bloqué ou une chaîne introuvable ne s'arrangeront pas tout
-     * seuls ; une limite de débit, si. S'acharner sur le premier cas fait
-     * perdre trois essais et n'apporte rien.
-     */
-    $definitif = str_contains($r['message'], 'bloqué')
-        || str_contains($r['message'], 'introuvable')
-        || str_contains($r['message'], 'administrateur');
-    return ['ok' => false, 'message' => $r['message'], 'reprendre' => !$definitif];
+    return ['ok' => false, 'message' => $r['message'],
+            'reprendre' => !telegram_definitif((string) $r['message'])];
+}
+
+/**
+ * Ce qui se retente, et ce qui ne se retente pas.
+ *
+ * Un bot bloqué ou une chaîne introuvable ne s'arrangeront pas tout
+ * seuls ; une limite de débit, si. S'acharner sur le premier cas fait
+ * perdre trois essais et n'apporte rien.
+ *
+ * Une fonction plutôt qu'un test en ligne : l'écran des échecs pose la
+ * même question, des jours plus tard, à partir du message conservé. Deux
+ * listes de mots-clés finiraient par diverger, et l'écran proposerait de
+ * relancer ce que la file, elle, refuserait de reprendre.
+ */
+function telegram_definitif(string $message): bool
+{
+    return str_contains($message, 'bloqué')
+        || str_contains($message, 'introuvable')
+        || str_contains($message, 'administrateur');
 }
 
 /**
@@ -657,8 +667,14 @@ function whatsapp_remettre(array $canal, string $cible, array $message): array
     if ($r['ok']) {
         return ['ok' => true, 'message' => 'Remis à WhatsApp.', 'reprendre' => false];
     }
-    $definitif = str_contains($r['message'], 'modèle') || str_contains($r['message'], 'Jeton refusé');
-    return ['ok' => false, 'message' => $r['message'], 'reprendre' => !$definitif];
+    return ['ok' => false, 'message' => $r['message'],
+            'reprendre' => !whatsapp_definitif((string) $r['message'])];
+}
+
+/** Le pendant WhatsApp : un modèle refusé ou un jeton mort ne s'arrangent pas. */
+function whatsapp_definitif(string $message): bool
+{
+    return str_contains($message, 'modèle') || str_contains($message, 'Jeton refusé');
 }
 
 /* ------------------------------------------------------------------ */

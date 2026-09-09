@@ -328,6 +328,139 @@ const main = async () => {
      v.mdp?.premier === true && v.mdp?.second === false,
      `${v.mdp?.premier} puis ${v.mdp?.second}`);
 
+  /* ------------------------------------------------------------------ */
+  /* Les échecs : ce qui se retente, et ce qui ne se retente jamais      */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * La distinction 4xx / 5xx ne se voit nulle part à l'écran.
+   *
+   * Elle décide pourtant du seul geste qui compte après une campagne
+   * ratée : relancer, ou ranger. S'acharner sur une adresse qui n'existe
+   * pas est exactement ce que les fournisseurs comptent contre le
+   * domaine — et une régression ici serait invisible jusqu'au jour où
+   * Gmail commence à classer tout le courrier du guide en indésirable.
+   */
+  writeFileSync(fichier, PREAMBULE + `
+    require RACINE . '/app/carnet.php';
+    require RACINE . '/app/push.php';
+    require RACINE . '/app/canaux.php';
+    require RACINE . '/app/regie.php';
+
+    $cas = [
+      ['email', 'Le serveur SMTP a répondu : 421 4.7.0 Too many connections'],
+      ['email', 'Le serveur SMTP a coupé la connexion.'],
+      ['email', 'Le serveur SMTP a répondu : 450 4.2.0 Mailbox busy'],
+      ['email', 'Le serveur SMTP a répondu : 550 5.1.1 No such user here'],
+      ['email', 'Le serveur SMTP a répondu : 553 5.1.3 Bad recipient address'],
+      ['email', 'Le serveur SMTP a répondu : 552 5.2.2 Mailbox full'],
+      ['email', 'Adresse destinataire invalide.'],
+      ['telegram', 'Le bot a été bloqué par cette personne.'],
+      ['telegram', 'Trop de messages : Telegram demande d’attendre.'],
+      ['whatsapp', 'Le modèle n’existe pas ou n’est pas approuvé.'],
+    ];
+    $out = [];
+    foreach ($cas as [$canal, $m]) {
+      $out[] = ['canal' => $canal, 'code' => echec_code($m),
+                'reprend' => echec_reprenable($canal, $m),
+                'mort' => echec_mortel($canal, $m)];
+    }
+    echo json_encode($out), "\n";
+  `);
+  const verdicts = JSON.parse(
+    (await lancerPhp('php', [fichier], { env })).stdout.trim().split('\n').pop() ?? '[]',
+  ) as { canal: string; code: string; reprend: boolean; mort: boolean }[];
+
+  const [c421, coupure, c450, c550, c553, c552, invalide, bloque, debit, modele] = verdicts;
+  ok('un 421 se retente : le relais était occupé, il ne le sera plus',
+     c421?.reprend === true && c421?.mort === false && c421?.code === '421');
+  ok('une connexion coupée sans code se retente aussi',
+     coupure?.reprend === true && coupure?.code === '');
+  ok('un 450 se retente', c450?.reprend === true);
+  ok('un 550 est un verdict : l’adresse n’existe pas',
+     c550?.mort === true && c550?.reprend === false, `code ${c550?.code}`);
+  ok('un 553 aussi', c553?.mort === true && c553?.reprend === false);
+  ok('une boîte pleine (552) n’est PAS une adresse morte : elle se vide',
+     c552?.mort === false, `reprend ? ${c552?.reprend}`);
+  ok('une adresse manifestement invalide est morte', invalide?.mort === true);
+  ok('un bot bloqué ne se retente pas', bloque?.mort === true && bloque?.reprend === false);
+  ok('une limite de débit Telegram, si', debit?.reprend === true && debit?.mort === false);
+  ok('un modèle WhatsApp refusé est définitif', modele?.mort === true);
+
+  /* ------------------------------------------------------------------ */
+  /* Les adresses non confirmées, écartées — sauf celles du carnet       */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Le carnet est l'exception, et elle est voulue.
+   *
+   * Ces adresses n'ont pas été laissées sur un formulaire : elles ont été
+   * APPORTÉES par l'organisateur, souvent depuis sa billetterie. Lui
+   * demander de faire confirmer sept cents adresses qu'il possède déjà
+   * reviendrait à lui interdire sa propre base — et il repartirait
+   * l'envoyer ailleurs, sans aucune des règles qu'on tient ici.
+   */
+  writeFileSync(fichier, PREAMBULE + `
+    require RACINE . '/app/carnet.php';
+    require RACINE . '/app/push.php';
+    require RACINE . '/app/canaux.php';
+    require RACINE . '/app/regie.php';
+
+    $orga = ['id' => nouvel_id(), 'nom' => 'Organisateur', 'email' => 'orga@exemple.tg'];
+    $now = maintenant();
+    $poser = static function (string $email, ?string $confirme) use ($now) {
+      db()->prepare('INSERT INTO utilisateurs (id, nom, email, mot_de_passe, role, formule, ville,
+                     email_verifie_le, suspendu, cree_le) VALUES (?,?,?,?,?,?,?,?,0,?)')
+        ->execute([nouvel_id(), 'Qui', $email, 'x', 'participant', 'decouverte', 'lome', $confirme, $now]);
+    };
+    $poser('confirme@exemple.tg', $now);
+    $poser('jamais@exemple.tg', null);
+    $poser('vide@exemple.tg', '');
+
+    $liste = carnet_liste_poser($orga['id'], 'Clients de la billetterie');
+    carnet_importer($orga['id'], $liste, "apportee@exemple.tg\nautre@exemple.tg");
+
+    $mesure = static function (array $c, array $u): array {
+      $ecartes = 0;
+      $n = count(regie_destinataires($c, $u, $ecartes));
+      return ['n' => $n, 'ecartes' => $ecartes];
+    };
+    $out = [];
+
+    // 1. sans transport, on ne peut pas exiger ce qu'on ne sait pas envoyer
+    reglages_bdd_poser(['smtp_hote' => '']);
+    $out['sans_transport'] = $mesure(['cible' => 'participants'], $orga);
+
+    // 2. avec transport, la confirmation devient exigible
+    reglages_bdd_poser(['smtp_hote' => '127.0.0.1', 'smtp_port' => '${PORT}',
+                        'courriel_expediteur' => 'boost@wakabileguide.com']);
+    $out['avec_transport'] = $mesure(['cible' => 'participants'], $orga);
+
+    // 3. le carnet, lui, passe entier
+    $out['carnet'] = $mesure(['cible' => 'liste', 'liste_id' => $liste, 'liste' => ''], $orga);
+
+    // 4. et le compteur rapide dit la même chose que la liste complète
+    $out['compte'] = regie_compte_cible('participants', $orga);
+    echo json_encode($out), "\n";
+  `);
+  const tri = JSON.parse(
+    (await lancerPhp('php', [fichier], { env })).stdout.trim().split('\n').pop() ?? '{}',
+  ) as Record<string, { n: number; ecartes: number }>;
+
+  ok('sans transport réglé, personne n’est écarté — on ne punit pas l’absence d’un lien qu’on ne sait pas envoyer',
+     tri.sans_transport?.n === 3 && tri.sans_transport?.ecartes === 0,
+     JSON.stringify(tri.sans_transport));
+  ok('avec transport, seules les adresses confirmées reçoivent',
+     tri.avec_transport?.n === 1, JSON.stringify(tri.avec_transport));
+  ok('et l’écran peut dire combien sont écartées', tri.avec_transport?.ecartes === 2);
+  ok('une adresse confirmée à la chaîne vide compte comme non confirmée',
+     tri.avec_transport?.n === 1);
+  ok('le carnet reste exempt : ces adresses ont été apportées, pas ramassées',
+     tri.carnet?.n === 2 && tri.carnet?.ecartes === 0, JSON.stringify(tri.carnet));
+  ok('le compteur rapide rend exactement ce que rend la liste complète',
+     tri.compte?.n === tri.avec_transport?.n && tri.compte?.ecartes === tri.avec_transport?.ecartes,
+     `${JSON.stringify(tri.compte)} vs ${JSON.stringify(tri.avec_transport)}`);
+
   await faux.fermer();
   rmSync(dossier, { recursive: true, force: true });
 

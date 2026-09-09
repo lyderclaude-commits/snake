@@ -165,6 +165,26 @@ const RAPPELS_MODELE = [
      'libelle' => 'Revoir le décor'],
 ];
 
+/**
+ * Le moment d'un rappel, dit comme on le dit à l'oral.
+ *
+ * « J − 7 » plutôt que « semaine » : c'est ce que l'organisateur écrit
+ * sur son propre rétroplanning, et cela se lit sans avoir à ouvrir la
+ * campagne pour comprendre de laquelle il s'agit.
+ */
+function rappel_libelle(string $cle): string
+{
+    foreach (RAPPELS_MODELE as $m) {
+        if ($m['cle'] !== $cle) {
+            continue;
+        }
+        $h = (int) $m['heures'];
+        return $h >= 24 ? 'J − ' . intdiv($h, 24)
+             : ($h >= 0 ? 'H − ' . $h : 'J + ' . intdiv(abs($h) + 23, 24));
+    }
+    return $cle;
+}
+
 /** L'heure d'un rappel, calculée depuis la date de l'événement. */
 function rappel_quand(?string $evenement_le, int $heures): ?string
 {
@@ -335,12 +355,32 @@ function desabonner(string $email, string $motif = ''): void
 /**
  * Résout une cible en adresses, sans doublon et sans désabonné.
  *
+ * @param int|null $ecartes  reçoit le nombre d'adresses laissées de côté
+ *                           faute d'avoir été confirmées : c'est un chiffre
+ *                           qui s'affiche, pas un détail interne.
  * @return array<string, string> adresse => nom
  */
-function regie_destinataires(array $campagne, array $auteur): array
+function regie_destinataires(array $campagne, array $auteur, ?int &$ecartes = null): array
 {
     $cible = (string) $campagne['cible'];
     $lignes = [];
+    $ecartes = 0;
+
+    /**
+     * Une adresse jamais confirmée ne reçoit pas de campagne.
+     *
+     * Écrire à une adresse que personne n'a validée, c'est écrire à une
+     * faute de frappe : le message rebondit, et vingt rebonds suffisent à
+     * faire classer le domaine chez Google. Le tri ne coûte rien ici et
+     * évite d'abîmer la délivrabilité de tous les autres envois — y
+     * compris les liens de confirmation eux-mêmes.
+     *
+     * Mais seulement quand on est CAPABLE d'envoyer le lien de
+     * confirmation. Sans transport e-mail réglé, personne ne peut avoir
+     * confirmé : opposer la règle viderait toutes les cibles d'un coup,
+     * et transformerait un réglage manquant en régie muette.
+     */
+    $exige = verification_exigee();
 
     if ($cible === 'liste') {
         /**
@@ -352,6 +392,16 @@ function regie_destinataires(array $campagne, array $auteur): array
          * reste pour une campagne dont la liste a été supprimée entre-temps
          * — mieux vaut écrire aux adresses qu'on a que refuser sèchement.
          */
+        /**
+         * Le carnet ne passe PAS par la confirmation d'adresse.
+         *
+         * Ces adresses n'ont pas été laissées sur un formulaire : elles ont
+         * été apportées par l'organisateur, souvent depuis sa billetterie
+         * ou son tableur de clients. Lui demander de faire confirmer sept
+         * cents adresses qu'il possède déjà reviendrait à lui interdire sa
+         * propre base — et il repartirait l'envoyer ailleurs, sans aucune
+         * des règles qu'on tient ici.
+         */
         $liste_id = (string) ($campagne['liste_id'] ?? '');
         $liste = $liste_id !== '' ? carnet_liste($liste_id) : null;
         if ($liste && $liste['proprietaire_id'] === $auteur['id']) {
@@ -360,17 +410,22 @@ function regie_destinataires(array $campagne, array $auteur): array
             $lignes = adresses_du_texte((string) ($campagne['liste'] ?? ''));
         }
     } elseif ($cible === 'mes-invites') {
-        $s = db()->prepare("SELECT DISTINCT u.email, u.nom
+        $s = db()->prepare("SELECT DISTINCT u.email, u.nom, u.email_verifie_le
                             FROM badges b
                             JOIN decors d ON d.id = b.decor_id
                             JOIN utilisateurs u ON u.id = b.utilisateur_id
                             WHERE d.auteur_id = ? AND u.email <> '' AND u.suspendu = 0");
         $s->execute([$auteur['id']]);
         foreach ($s->fetchAll() as $r) {
+            if ($exige && !email_verifie($r)) {
+                $ecartes++;
+                continue;
+            }
             $lignes[mb_strtolower((string) $r['email'])] = (string) $r['nom'];
         }
     } else {
-        $sql = "SELECT email, nom FROM utilisateurs WHERE suspendu = 0 AND email <> ''";
+        $sql = "SELECT email, nom, email_verifie_le FROM utilisateurs
+                WHERE suspendu = 0 AND email <> ''";
         $args = [];
         if ($cible === 'organisateurs') {
             $sql .= " AND role = 'partenaire'";
@@ -383,15 +438,29 @@ function regie_destinataires(array $campagne, array $auteur): array
         $s = db()->prepare($sql);
         $s->execute($args);
         foreach ($s->fetchAll() as $r) {
+            if ($exige && !email_verifie($r)) {
+                $ecartes++;
+                continue;
+            }
             $lignes[mb_strtolower((string) $r['email'])] = (string) $r['nom'];
         }
     }
 
-    // Les désabonnés sortent EN DERNIER, une fois la liste constituée :
-    // ainsi le compte affiché est bien celui des gens qu'on écrira.
-    foreach (array_keys($lignes) as $email) {
-        if (desabonne($email)) {
-            unset($lignes[$email]);
+    /**
+     * Les désabonnés sortent EN DERNIER, une fois la liste constituée :
+     * ainsi le compte affiché est bien celui des gens qu'on écrira.
+     *
+     * Par paquets, et non une requête par adresse : une liste de sept
+     * cents contacts faisait sept cents allers-retours, et l'écran qui
+     * annonce la portée en affiche plusieurs à la fois. Cinq cents par
+     * paquet, parce que SQLite refuse au-delà de mille paramètres liés.
+     */
+    foreach (array_chunk(array_keys($lignes), 500) as $paquet) {
+        $trous = implode(',', array_fill(0, count($paquet), '?'));
+        $s = db()->prepare("SELECT email FROM desabonnements WHERE email IN ($trous)");
+        $s->execute($paquet);
+        foreach ($s->fetchAll(PDO::FETCH_COLUMN) as $parti) {
+            unset($lignes[(string) $parti]);
         }
     }
     return $lignes;
@@ -401,6 +470,69 @@ function regie_destinataires(array $campagne, array $auteur): array
 function regie_compter(array $campagne, array $auteur): int
 {
     return count(regie_destinataires($campagne, $auteur));
+}
+
+/**
+ * Ce qu'une cible pèse, sans en rapporter la liste.
+ *
+ * L'écran d'écriture montre huit cibles à la fois, chacune avec son
+ * nombre : ramener huit fois quelques milliers de lignes pour n'en garder
+ * qu'un total ferait payer une seconde à chaque ouverture. Un COUNT
+ * répond à la même question pour le prix d'un aller-retour.
+ *
+ * @return array{n: int, ecartes: int}  joignables, et écartés faute
+ *                                      d'adresse confirmée
+ */
+function regie_compte_cible(string $cible, array $auteur, string $liste_id = ''): array
+{
+    if ($cible === 'liste') {
+        // Une liste du carnet tient en quelques centaines de lignes, et
+        // elle est exempte de la confirmation : la compter pour de vrai
+        // coûte moins cher que de réécrire la requête.
+        $n = count(regie_destinataires(
+            ['cible' => 'liste', 'liste_id' => $liste_id, 'liste' => ''],
+            $auteur
+        ));
+        return ['n' => $n, 'ecartes' => 0];
+    }
+
+    $args = [];
+    if ($cible === 'mes-invites') {
+        $de = 'FROM badges b
+               JOIN decors d ON d.id = b.decor_id
+               JOIN utilisateurs u ON u.id = b.utilisateur_id';
+        $ou = "u.email <> '' AND u.suspendu = 0 AND d.auteur_id = ?";
+        $args[] = (string) $auteur['id'];
+    } else {
+        $de = 'FROM utilisateurs u';
+        $ou = "u.email <> '' AND u.suspendu = 0";
+        if ($cible === 'organisateurs') {
+            $ou .= " AND u.role = 'partenaire'";
+        } elseif ($cible === 'participants') {
+            $ou .= " AND u.role = 'participant'";
+        } elseif (in_array($cible, ['lome', 'cotonou', 'abidjan'], true)) {
+            $ou .= ' AND u.ville = ?';
+            $args[] = $cible;
+        } elseif ($cible !== 'tous') {
+            return ['n' => 0, 'ecartes' => 0];
+        }
+    }
+    // Le désabonnement se juge sur l'adresse en minuscules : c'est ainsi
+    // qu'elle est rangée, et « Ama@… » ne doit pas rouvrir une porte fermée.
+    $ou .= ' AND NOT EXISTS (SELECT 1 FROM desabonnements x WHERE x.email = LOWER(u.email))';
+
+    $compter = static function (string $sup) use ($de, $ou, $args): int {
+        $s = db()->prepare('SELECT COUNT(DISTINCT LOWER(u.email)) ' . $de . ' WHERE ' . $ou . $sup);
+        $s->execute($args);
+        return (int) $s->fetchColumn();
+    };
+
+    $total = $compter('');
+    if (!verification_exigee()) {
+        return ['n' => $total, 'ecartes' => 0];
+    }
+    $confirmes = $compter(" AND u.email_verifie_le IS NOT NULL AND u.email_verifie_le <> ''");
+    return ['n' => $confirmes, 'ecartes' => max(0, $total - $confirmes)];
 }
 
 /* ------------------------------------------------------------------ */
@@ -431,6 +563,42 @@ function regie_canaux(array $campagne): array
         }
     }
     return $out ?: [['canal' => 'email']];
+}
+
+/**
+ * Les canaux d'une campagne, résumés en pastilles.
+ *
+ * Une liste de campagnes ne se lit plus à son titre seul : le même
+ * message part sur trois canaux, et trois lignes qui se ressemblent
+ * obligent à ouvrir les trois pour trouver la bonne. On regroupe par
+ * PLATEFORME — « Telegram ×3 » plutôt que trois pastilles Telegram —
+ * parce que la question posée est « lequel », pas « combien de fois ».
+ *
+ * @return list<array{classe:string, texte:string}>
+ */
+function regie_pastilles(array $campagne, int $max = 3): array
+{
+    $genres = [];
+    foreach (regie_canaux($campagne) as $cc) {
+        $g = (string) ($cc['canal'] ?? '');
+        $genres[$g] = ($genres[$g] ?? 0) + 1;
+    }
+    $noms = ['email' => 'E-mail', 'push' => 'Push',
+             'telegram' => 'Telegram', 'whatsapp' => 'WhatsApp'];
+    $classes = ['email' => 'mail', 'push' => 'web',
+                'telegram' => 'telegram', 'whatsapp' => 'whatsapp'];
+
+    $out = [];
+    foreach ($genres as $g => $n) {
+        $out[] = ['classe' => $classes[$g] ?? '',
+                  'texte' => ($noms[$g] ?? $g) . ($n > 1 ? ' ×' . $n : '')];
+    }
+    if (count($out) > $max) {
+        $reste = count($out) - $max;
+        $out = array_slice($out, 0, $max);
+        $out[] = ['classe' => 'plus', 'texte' => '+' . $reste];
+    }
+    return $out;
 }
 
 /** Le libellé d'une cible, pour l'écran et pour l'historique. */
@@ -507,23 +675,31 @@ function regie_cibles_du_canal(array $cible, array $campagne, array $auteur): ar
  * et abonné au bot recevra deux fois le même message. Annoncer la somme
  * des abonnés flatterait la portée d'un tiers.
  *
- * @return array{lignes: list<array{libelle:string, genre:string, n:int}>, destinations:int, payant:int}
+ * @return array{lignes: list<array{libelle:string, genre:string, n:int}>,
+ *               destinations:int, payant:int, email:int}
  */
 function regie_portee(array $campagne, array $auteur): array
 {
     $lignes = [];
     $total = 0;
     $payant = 0;
+    $email = 0;
     foreach (regie_canaux($campagne) as $cible) {
         $genre = (string) $cible['canal'];
         $n = count(regie_cibles_du_canal($cible, $campagne, $auteur));
         $lignes[] = ['libelle' => regie_canal_libelle($cible), 'genre' => $genre, 'n' => $n];
         $total += $n;
+        if ($genre === 'email') {
+            // Le quota mensuel est celui des E-MAILS : une publication
+            // Telegram ne s'y impute pas, et l'y compter ferait payer au
+            // client un envoi qui ne lui coûte rien.
+            $email += $n;
+        }
         if (!empty(CANAUX_GENRES[$genre]['payant'])) {
             $payant += $n;
         }
     }
-    return ['lignes' => $lignes, 'destinations' => $total, 'payant' => $payant];
+    return ['lignes' => $lignes, 'destinations' => $total, 'payant' => $payant, 'email' => $email];
 }
 
 /**
@@ -678,6 +854,186 @@ function regie_envoyer_lot(string $campagne_id, int $lot = REGIE_LOT): array
             $envoyes, $echecs, $repris ? $repris . ' à reprendre, ' : '', $restants
         ),
     ];
+}
+
+/* ------------------------------------------------------------------ */
+/* Les échecs : lesquels, pourquoi, et lesquels se relancent            */
+/* ------------------------------------------------------------------ */
+
+/** Les états d'une ligne de la file, en français. */
+const REGIE_ENVOIS_STATUTS = [
+    'attente'   => 'En attente',
+    'envoye'    => 'Parti',
+    'echec'     => 'Échec',
+    'desabonne' => 'Désabonné',
+    'archive'   => 'Archivé',
+];
+
+/**
+ * Le code que le serveur a renvoyé, s'il en a renvoyé un.
+ *
+ * Les messages conservés sont ceux qu'on montre à l'équipe — « Le serveur
+ * SMTP a répondu : 550 5.1.1 No such user here. » Le premier nombre à
+ * trois chiffres est le verdict ; le reste est du commentaire.
+ */
+function echec_code(?string $message): string
+{
+    return preg_match('/\b([2-5]\d\d)\b/', (string) $message, $x) ? $x[1] : '';
+}
+
+/**
+ * Cet échec se retente-t-il ?
+ *
+ * La même question que se pose la file au moment de l'envoi, posée des
+ * jours plus tard à partir du message conservé. Un 4xx est un incident :
+ * le relais était occupé, il ne le sera plus. Un 5xx est un verdict.
+ * Aucun code du tout, c'est la connexion elle-même qui a lâché — et cela,
+ * ça se retente.
+ */
+function echec_reprenable(string $canal, ?string $message): bool
+{
+    if ($canal !== '' && $canal !== 'email') {
+        return !echec_mortel($canal, $message);
+    }
+    $code = echec_code($message);
+    return $code === '' || $code[0] === '4';
+}
+
+/**
+ * Cette destination est-elle morte pour de bon ?
+ *
+ * La distinction qui compte vraiment, et la seule que le produit refuse
+ * de laisser à l'appréciation de l'utilisateur : relancer trois fois une
+ * adresse qui n'existe pas, c'est exactement ce que les fournisseurs
+ * comptent contre le domaine expéditeur. On propose donc « Archiver »
+ * là où l'on proposerait « Relancer » ailleurs, et « Relancer » n'est
+ * jamais offert ici.
+ */
+function echec_mortel(string $canal, ?string $message): bool
+{
+    $m = (string) $message;
+    if ($canal === 'telegram') {
+        return telegram_definitif($m);
+    }
+    if ($canal === 'whatsapp') {
+        return whatsapp_definitif($m);
+    }
+    if ($canal !== '' && $canal !== 'email') {
+        return false;
+    }
+    // 550 boîte inconnue, 551 pas ici, 553 adresse refusée : l'adresse est
+    // fausse. 552 « boîte pleine » et 554 « refusé » ne le disent pas :
+    // une boîte se vide, une politique change.
+    return in_array(echec_code($m), ['550', '551', '553'], true)
+        || str_contains(mb_strtolower($m), 'adresse destinataire invalide');
+}
+
+/**
+ * Les lignes qui n'ont pas abouti, avec de quoi décider.
+ *
+ * Le nombre seul — « 6 échecs » — ne dit pas s'il faut agir. Lesquels,
+ * pourquoi, et lesquels se relancent : voilà ce qui transforme un
+ * compteur en tâche à faire.
+ *
+ * @return list<array<string, mixed>>
+ */
+function regie_echecs(string $campagne_id): array
+{
+    $s = db()->prepare("SELECT * FROM envois_email
+                        WHERE campagne_id = ? AND statut IN ('echec', 'desabonne', 'archive')
+                        ORDER BY statut, message, email");
+    $s->execute([$campagne_id]);
+
+    $out = [];
+    foreach ($s->fetchAll() as $e) {
+        $canal = (string) ($e['canal'] ?: 'email');
+        $mortel = $e['statut'] === 'echec' && echec_mortel($canal, $e['message']);
+        $e['genre_canal'] = $canal;
+        $e['mortel'] = $mortel;
+        $e['reprenable'] = $e['statut'] === 'echec' && !$mortel
+                        && echec_reprenable($canal, $e['message']);
+        $e['code'] = echec_code($e['message']);
+        // Qui : une adresse pour l'e-mail, la cible du canal sinon — la
+        // colonne `cible` porte « id du canal | destination ».
+        $e['qui'] = $canal === 'email'
+            ? (string) $e['email']
+            : (string) (explode('|', (string) ($e['cible'] ?? ''), 2)[1] ?? '');
+        $out[] = $e;
+    }
+    return $out;
+}
+
+/**
+ * Remet en file des lignes en échec.
+ *
+ * Le compteur d'essais repart de zéro : c'est une décision humaine, prise
+ * après coup, et non la quatrième tentative automatique d'une boucle qui
+ * s'acharne. Le compteur d'échecs de la campagne est décrémenté d'autant,
+ * sans quoi la même ligne serait comptée deux fois au passage suivant.
+ *
+ * @param list<string> $ids  vide = toutes celles qui se reprennent
+ */
+function regie_relancer(string $campagne_id, array $ids = []): int
+{
+    $choisis = [];
+    foreach (regie_echecs($campagne_id) as $e) {
+        if ($e['statut'] !== 'echec' || $e['mortel']) {
+            continue;
+        }
+        if ($ids === [] ? !$e['reprenable'] : !in_array((string) $e['id'], $ids, true)) {
+            continue;
+        }
+        $choisis[] = (string) $e['id'];
+    }
+    if (!$choisis) {
+        return 0;
+    }
+
+    $trous = implode(',', array_fill(0, count($choisis), '?'));
+    db()->prepare("UPDATE envois_email SET statut = 'attente', tentatives = 0
+                   WHERE id IN ($trous)")->execute($choisis);
+
+    $n = count($choisis);
+    $c = campagne_email($campagne_id);
+    // `MAX(a, b)` n'a pas la même forme d'un moteur à l'autre : le calcul
+    // se fait ici, où les deux se comportent pareil.
+    $echecs = max(0, (int) ($c['echecs'] ?? 0) - $n);
+    $statut = ($c && $c['statut'] === 'envoye') ? 'envoi' : (string) ($c['statut'] ?? 'envoi');
+    db()->prepare('UPDATE campagnes_email SET echecs = ?, statut = ?, maj_le = ? WHERE id = ?')
+        ->execute([$echecs, $statut, maintenant(), $campagne_id]);
+    return $n;
+}
+
+/**
+ * Range une destination morte, pour de bon.
+ *
+ * Une adresse qui n'existe pas ne doit pas revenir dans la campagne
+ * suivante : c'est ce qu'on appelle ailleurs une liste de suppression, et
+ * c'est la seule protection réelle contre l'accumulation de rebonds. Sur
+ * un canal, l'équivalent exact est de retirer l'abonné : le bot a été
+ * bloqué, insister est sans objet.
+ */
+function regie_archiver(string $campagne_id, string $envoi_id): bool
+{
+    $s = db()->prepare("SELECT * FROM envois_email
+                        WHERE id = ? AND campagne_id = ? AND statut = 'echec'");
+    $s->execute([$envoi_id, $campagne_id]);
+    $e = $s->fetch();
+    if (!$e) {
+        return false;
+    }
+
+    $canal = (string) ($e['canal'] ?: 'email');
+    if ($canal === 'email') {
+        desabonner((string) $e['email'], 'adresse morte' . ($e['message'] ? ' — ' . echec_code($e['message']) : ''));
+    } else {
+        [$canal_id, $cible] = array_pad(explode('|', (string) ($e['cible'] ?? ''), 2), 2, '');
+        if ($canal_id !== '' && $cible !== '') {
+            abonne_canal_retirer($canal_id, $cible);
+        }
+    }
+    db()->prepare("UPDATE envois_email SET statut = 'archive' WHERE id = ?")->execute([$envoi_id]);
+    return true;
 }
 
 /**

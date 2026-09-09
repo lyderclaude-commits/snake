@@ -104,7 +104,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Les cinq moments</h3>
     <div style="overflow-x:auto">
-      <table class="tableau" style="min-width:520px">
+      <table class="tab" style="min-width:520px">
         <tr><th>Quand</th><th>Ce qu’on dit</th><th>Pourquoi</th></tr>
         <?php
         $pourquoi = [

@@ -142,6 +142,11 @@ function ouvrirSmtp(): Promise<{ fermer: () => void }> {
         if (h.startsWith('EHLO')) c.write('250-recette\r\n250 SIZE 10240000\r\n');
         else if (h === 'DATA') { data = true; recus.push(''); c.write('354 go\r\n'); }
         else if (h === 'QUIT') { c.write('221 bye\r\n'); c.end(); }
+        // Une boîte qui n'existe pas, comme en vrai : un 5xx sur RCPT TO,
+        // et la conversation continue pour les destinataires suivants.
+        // Sans ce cas, rien dans la recette ne distingue jamais un
+        // incident passager d'un verdict définitif.
+        else if (h.startsWith('RCPT TO') && /morte-/i.test(l)) c.write('550 5.1.1 No such user here\r\n');
         else c.write('250 ok\r\n');
       }
     });
@@ -1867,6 +1872,17 @@ const run = async () => {
   await pe2.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
   ok('l’équipe atteint la régie', pe2.url().includes('p=regie'));
 
+  /**
+   * La liste doit se lire d'un coup d'œil.
+   *
+   * Depuis que le même message part sur quatre plateformes, deux lignes
+   * qui portent le même titre ne se distinguent plus : sans la colonne
+   * « Canaux », on ouvre les deux pour trouver la bonne.
+   */
+  const chapeau = await pe2.locator('.entete p').first().innerText();
+  ok('la phrase d’accueil ne porte plus de tiret cadratin', !chapeau.includes('—'),
+     chapeau.replace(/\s+/g, ' ').slice(0, 72));
+
   // PART est en Croissance depuis la section 12 : il y a droit.
   await pw.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
   ok('un organisateur en Croissance atteint la régie', pw.url().includes('p=regie'));
@@ -1924,6 +1940,38 @@ const run = async () => {
   await pe2.click('button[value=enregistrer]');
   await pe2.waitForLoadState('domcontentloaded');
 
+  /**
+   * Un participant qui CONFIRME son adresse — et un autre qui ne le fait pas.
+   *
+   * Depuis la v1.2, une adresse jamais confirmée ne reçoit pas de
+   * campagne : écrire à une adresse que personne n'a validée, c'est
+   * écrire à une faute de frappe, et vingt rebonds suffisent à faire
+   * classer le domaine. La preuve de la règle demande donc les deux cas,
+   * créés par le vrai chemin — inscription, message reçu, lien cliqué.
+   */
+  const CONF = `confirme-${marque}@exemple.tg`;
+  const SANS = `jamais-${marque}@exemple.tg`;
+  for (const [adresse, confirmer] of [[CONF, true], [SANS, false]] as [string, boolean][]) {
+    const ctxI = await browser.newContext();
+    const pI = await ctxI.newPage();
+    await pI.goto(`${BASE}/index.php?p=inscription`, { waitUntil: 'domcontentloaded' });
+    await pI.selectOption('select[name=role]', 'participant');
+    await pI.fill('input[name=nom]', confirmer ? 'Qui confirme' : 'Qui ne confirme pas');
+    await pI.fill('input[name=email]', adresse);
+    await pI.fill('input[name=mot_de_passe]', 'participant-2026-solide');
+    await pI.click('main button[type=submit]');
+    await pI.waitForLoadState('domcontentloaded');
+    if (confirmer) {
+      const lien = (recus[recus.length - 1] ?? '')
+        .match(/https?:\/\/\S*p=verifier[^\s"<]*/)?.[0]?.replace(/&amp;/g, '&') ?? '';
+      ok('le lien de confirmation part à l’inscription', lien !== '', lien.slice(0, 46));
+      await pI.goto(lien, { waitUntil: 'domcontentloaded' });
+      ok('et il confirme l’adresse',
+         /Adresse confirmée/.test(await pI.locator('h1').first().innerText().catch(() => '')));
+    }
+    await ctxI.close();
+  }
+
   // Une campagne de l'équipe, vers un segment réel, envoyée pour de vrai.
   await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
   await pe2.selectOption('#r-cible', 'participants');
@@ -1945,6 +1993,18 @@ const run = async () => {
   ok('le premier lot part vraiment', /parti\(s\)/.test(rapport), rapport.replace(/\s+/g, ' ').slice(0, 60));
   ok('un vrai serveur SMTP a reçu les messages', recus.length > avantRegie,
      `${recus.length - avantRegie} message(s)`);
+
+  /* Le partage, mesuré sur ce qui est VRAIMENT sorti par le fil SMTP. */
+  const partis = recus.slice(avantRegie).join('\n');
+  ok('l’adresse confirmée est servie', partis.includes(CONF), CONF);
+  ok('l’adresse jamais confirmée est écartée, sans qu’on ait rien à cocher',
+     !partis.includes(SANS), SANS);
+
+  await pe2.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  ok('la liste annonce une colonne « Canaux »',
+     /canaux/i.test(await pe2.locator('table thead').first().innerText().catch(() => '')));
+  ok('et chaque ligne porte la sienne',
+     (await pe2.locator('table tbody tr .puce').count()) >= 1);
 
   /**
    * Le scénario le plus important de la section : le désabonnement.
@@ -1990,7 +2050,213 @@ const run = async () => {
        adresse || 'adresse introuvable');
   }
 
+  /**
+   * Un rebond DUR, et ce qu'on en fait.
+   *
+   * Le faux serveur refuse « morte-… » d'un 550, comme le ferait Gmail
+   * pour une faute de frappe. C'est le seul cas où le produit refuse de
+   * proposer une relance : trois envois à une boîte qui n'existe pas,
+   * c'est exactement ce que les fournisseurs comptent contre le domaine.
+   *
+   * Les deux adresses sont marquées AUTREMENT que le reste du passage.
+   * Marquées, parce qu'une adresse archivée ne rebondirait plus au
+   * passage suivant et que la recette doit pouvoir se rejouer sans
+   * remettre la base à zéro. Autrement, parce que ces deux fiches
+   * atterrissent dans le carnet du même compte que la section 34, qui y
+   * compte les siennes : la marque à l'envers est unique au passage sans
+   * répondre à la recherche « tout ce qui vient de ce passage ».
+   */
+  const rebond = marque.split('').reverse().join('');
+  const MORTE = `morte-${rebond}@exemple.tg`;
+
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pe2.selectOption('#r-cible', 'liste');
+  await pe2.fill('#r-sujet', `Deux adresses ${rebond}`);
+  await pe2.fill('#r-titre', 'L’une existe, l’autre non');
+  await pe2.fill('#r-corps', 'Une adresse vivante et une adresse morte : le serveur d’en face fera la différence.');
+  await pe2.fill('#r-liste-nom', `Rebonds ${rebond}`);
+  await pe2.fill('#r-liste', `vivante-${rebond}@exemple.tg\n${MORTE}`);
+  await pe2.click('main button[type=submit]');
+  await pe2.waitForLoadState('domcontentloaded');
+  const urlDure = pe2.url();
+  await pe2.locator('form:has(input[value=soumettre]) button').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  for (let i = 0; i < 3 && (await pe2.locator('form:has(input[value=envoyer]) button').count()); i++) {
+    await pe2.locator('form:has(input[value=envoyer]) button').first().click();
+    await pe2.waitForLoadState('domcontentloaded');
+  }
+  await pe2.goto(urlDure, { waitUntil: 'domcontentloaded' });
+  const ligneMorte = pe2.locator(`table.ech tr:has-text("${MORTE}")`);
+  ok('un refus 550 est enregistré comme échec, avec son code',
+     (await ligneMorte.count()) === 1
+     && /550/.test(await ligneMorte.locator('.mono').innerText().catch(() => '')));
+  ok('le produit dit que c’est définitif, et pourquoi',
+     /Définitif/.test(await ligneMorte.innerText().catch(() => '')));
+  ok('une destination morte n’offre QUE « Archiver »',
+     (await ligneMorte.locator('button:has-text("Archiver")').count()) === 1
+     && (await ligneMorte.locator('button:has-text("Relancer")').count()) === 0);
+  ok('l’adresse vivante, elle, est bien partie',
+     (await pe2.locator(`table.ech tr:has-text("vivante-${rebond}")`).count()) === 0);
+
+  await ligneMorte.locator('button:has-text("Archiver")').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  ok('archiver range la destination pour de bon',
+     /ne sera plus servie/.test(await pe2.locator('.msg.ok').first().innerText().catch(() => '')));
+
+  /* Et la campagne suivante, sur la MÊME liste, ne la vise plus. */
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pe2.selectOption('#r-cible', 'liste');
+  const idRebonds = await pe2.locator(`#r-liste-id option:has-text("Rebonds ${rebond}")`)
+    .first().getAttribute('value');
+  ok('la liste créée au vol est retrouvée dans le carnet', !!idRebonds, idRebonds ?? 'aucune');
+  if (idRebonds) {
+    await pe2.selectOption('#r-liste-id', idRebonds);
+  }
+  await pe2.fill('#r-sujet', `Après le rebond ${rebond}`);
+  await pe2.fill('#r-titre', 'Sans l’adresse morte');
+  await pe2.fill('#r-corps', 'Cette campagne ne doit plus viser l’adresse que le serveur a refusée.');
+  await pe2.click('main button[type=submit]');
+  await pe2.waitForLoadState('domcontentloaded');
+  const avantDur = recus.length;
+  await pe2.locator('form:has(input[value=soumettre]) button').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  for (let i = 0; i < 2 && (await pe2.locator('form:has(input[value=envoyer]) button').count()); i++) {
+    await pe2.locator('form:has(input[value=envoyer]) button').first().click();
+    await pe2.waitForLoadState('domcontentloaded');
+  }
+  ok('une adresse archivée sort des campagnes suivantes',
+     !recus.slice(avantDur).join('\n').includes(MORTE));
+
+  /**
+   * Les échecs : lesquels, pourquoi, et lesquels se relancent.
+   *
+   * On coupe le faux serveur SMTP en gardant le réglage : la campagne
+   * suivante échouera donc pour de vrai, ligne par ligne, avec un motif
+   * qu'on peut lire. C'est le seul moyen d'éprouver l'écran des relances
+   * sans inventer des lignes en base.
+   */
   smtpRegie.fermer();
+
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  /* Une liste du carnet, et non un segment de comptes : après le
+     désabonnement qui précède, un segment peut être vide sur une base
+     neuve — et une campagne sans destinataire ne produit aucun échec à
+     regarder. La liste, elle, tient quoi qu'il arrive. */
+  await pe2.selectOption('#r-cible', 'liste');
+  await pe2.fill('#r-liste-nom', `Casse ${rebond}`);
+  await pe2.fill('#r-liste', `casse-${rebond}@exemple.tg`);
+  await pe2.fill('#r-sujet', `Celle qui échoue ${marque}`);
+  await pe2.fill('#r-titre', 'Un message qui ne partira pas');
+  await pe2.fill('#r-corps', 'Le relais est tombé : cette campagne doit finir en échec, proprement.');
+  await pe2.click('main button[type=submit]');
+  await pe2.waitForLoadState('domcontentloaded');
+  const urlRate = pe2.url();
+  await pe2.locator('form:has(input[value=soumettre]) button').click();
+  await pe2.waitForLoadState('domcontentloaded');
+  // Trois passages : le compteur de tentatives doit s'épuiser pour que la
+  // ligne bascule d'« à reprendre » à « en échec ».
+  for (let i = 0; i < 5 && (await pe2.locator('form:has(input[value=envoyer]) button').count()); i++) {
+    await pe2.locator('form:has(input[value=envoyer]) button').first().click();
+    await pe2.waitForLoadState('domcontentloaded');
+  }
+
+  await pe2.goto(urlRate, { waitUntil: 'domcontentloaded' });
+  const tableEchecs = await pe2.locator('table.ech').count();
+  ok('les échecs sont listés un par un, et non comptés en bloc', tableEchecs === 1);
+
+  if (tableEchecs === 1) {
+    const lignes = await pe2.locator('table.ech tr').count();
+    ok('chaque destinataire manqué a sa ligne', lignes >= 2, `${lignes - 1} ligne(s)`);
+    ok('le motif du serveur est conservé et affiché',
+       /SMTP|connexion|relais|refus/i.test(await pe2.locator('table.ech .motif').first().innerText().catch(() => '')));
+
+    /* Le partage entre ce qui se retente et ce qui ne se retente pas. */
+    const relance = pe2.locator('button:has-text("Relancer")').first();
+    ok('une coupure de transport se relance', (await relance.count()) === 1);
+    if (await relance.count()) {
+      const avantEtat = await pe2.locator('.pastille').first().innerText();
+      await relance.click();
+      await pe2.waitForLoadState('domcontentloaded');
+      ok('la relance remet les lignes en file',
+         /remise|file/i.test(await pe2.locator('.msg.ok').first().innerText().catch(() => '')),
+         avantEtat);
+      ok('et la campagne repasse en cours d’envoi',
+         /envoi/i.test(await pe2.locator('.pastille').first().innerText()));
+    }
+
+    /* Le tableur : l'équipe travaille souvent la liste ailleurs. */
+    const csvE = await pe2.request.get(`${BASE}/index.php?p=regie-echecs-export&id=${
+      new URL(urlRate).searchParams.get('id')}`);
+    const texteCsv = await csvE.text();
+    ok('les échecs s’exportent en CSV',
+       csvE.status() === 200 && /text\/csv/.test(csvE.headers()['content-type'] ?? '')
+       && /Destinataire/.test(texteCsv), texteCsv.split('\n')[0]?.slice(0, 60));
+  }
+
+  /**
+   * Supprimer une campagne : depuis la liste, derrière une confirmation.
+   *
+   * Sur un brouillon, et non sur celle qui vient de repartir : une
+   * campagne EN COURS d'envoi ne s'efface pas, et son absence de bouton
+   * fait partie de ce qu'on vérifie.
+   */
+  const ASUP = `À supprimer ${marque}`;
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pe2.fill('#r-sujet', ASUP);
+  await pe2.fill('#r-titre', 'Un brouillon de passage');
+  await pe2.fill('#r-corps', 'Écrit pour être effacé : la suppression doit être atteignable depuis la liste.');
+  await pe2.click('main button[type=submit]');
+  await pe2.waitForLoadState('domcontentloaded');
+
+  await pe2.goto(`${BASE}/index.php?p=regie`, { waitUntil: 'domcontentloaded' });
+  const ligneSup = pe2.locator(`tr:has-text("${ASUP}")`).first();
+  ok('la ligne porte ses pastilles de canal',
+     (await ligneSup.locator('.puce').count()) >= 1);
+  ok('supprimer demande confirmation avant d’effacer',
+     (await ligneSup.locator('details.sup summary').count()) === 1
+     && !(await ligneSup.locator('details.sup form button').first().isVisible()));
+  ok('une campagne en cours d’envoi, elle, ne s’efface pas',
+     (await pe2.locator(`tr:has-text("Celle qui échoue ${marque}") details.sup`).count()) === 0);
+  await ligneSup.locator('details.sup summary').click();
+  await ligneSup.locator('details.sup form button').first().click();
+  await pe2.waitForLoadState('domcontentloaded');
+  ok('la campagne disparaît de la liste',
+     /supprimée/i.test(await pe2.locator('.msg.ok').first().innerText().catch(() => ''))
+     && (await pe2.locator(`tr:has-text("${ASUP}")`).count()) === 0);
+
+  /**
+   * Les adresses non confirmées sont écartées des campagnes.
+   *
+   * Le transport est encore réglé : la confirmation est donc exigible, et
+   * l'écran d'écriture doit le dire AVANT d'envoyer — un chiffre qui
+   * baisse sans explication passe pour une panne.
+   */
+  await pe2.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  await pe2.selectOption('#r-cible', 'tous');
+  await pe2.waitForTimeout(120);
+  const carteMail = pe2.locator('.ec-cn[data-suit="n"]').first();
+  ok('la carte e-mail annonce sa portée avant qu’on coche',
+     (await carteMail.count()) === 1
+     && /\d/.test(await carteMail.locator('.ec-cn-n').innerText()));
+  ok('et dit combien d’adresses non confirmées sont écartées',
+     /non confirmée/.test(await carteMail.innerText()),
+     (await carteMail.innerText()).replace(/\s+/g, ' ').slice(0, 80));
+
+  /* L'atelier : aperçu vivant, compteurs, portée. */
+  await pe2.fill('#r-titre', 'Les portes ouvrent à 21 h');
+  await pe2.fill('#r-corps', 'x'.repeat(200));
+  await pe2.waitForTimeout(120);
+  ok('l’aperçu Telegram suit la frappe',
+     (await pe2.locator('#ap-tg-titre').innerText()) === 'Les portes ouvrent à 21 h');
+  ok('l’écran verrouillé montre la coupure à 120 caractères',
+     (await pe2.locator('#ap-web-corps').innerText()).length === 120
+     && !(await pe2.locator('#ap-web-coupe').isHidden()));
+  ok('le compteur prévient avant l’envoi, pas après',
+     /coupera à 120/.test(await pe2.locator('#c-corps').innerText()));
+  ok('la carte de portée annonce envois, personnes et coût',
+     /Envois/.test(await pe2.locator('#pt-lignes').innerText())
+     && /Coût/.test(await pe2.locator('#pt-lignes').innerText()));
+
   await pe2.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pe2.fill('#smtp_hote', '');
   await pe2.click('button[value=enregistrer]');
@@ -5052,7 +5318,7 @@ const run = async () => {
    * qu'on croit acheter et ce qui n'existe pas. L'écrire noir sur blanc
    * évite qu'on le promette à un client.
    */
-  const capacites = await pPerdu.locator('.tableau').innerText();
+  const capacites = await pPerdu.locator('table.tab').innerText();
   ok('l’écran dit que WhatsApp n’a ni chaîne ni groupe',
      /Non\s*—\s*8 membres/.test(capacites), capacites.replace(/\s+/g, ' ').slice(0, 90));
   ok('et que Telegram, lui, publie sans limite',

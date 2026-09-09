@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 function assurer_schema(): void
 {
@@ -125,6 +125,50 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     promouvoir_fondateur($pdo);
     sauver_listes_collees($pdo);
     delester_offres_sans_objet($pdo);
+    creancer_adresses_eprouvees($pdo);
+}
+
+/**
+ * v17 — les adresses déjà servies comptent pour confirmées.
+ *
+ * À partir de cette version, la régie n'écrit plus à une adresse que
+ * personne n'a validée : une adresse jamais confirmée est le plus souvent
+ * une faute de frappe, et vingt rebonds suffisent à faire classer le
+ * domaine chez Google.
+ *
+ * Appliquée telle quelle à une installation en service, la règle viderait
+ * l'audience du jour au lendemain — des milliers de comptes créés avant
+ * qu'une confirmation existe, et qui reçoivent du courrier depuis des
+ * mois. Or une adresse qui a DÉJÀ reçu un message sans rebondir est
+ * prouvée bonne : c'est exactement ce que la confirmation cherche à
+ * établir. On la crédite donc de sa preuve, une fois, au passage en v17.
+ *
+ * Celles qui n'ont jamais rien reçu et n'ont jamais confirmé sortent — et
+ * c'est le but.
+ */
+function creancer_adresses_eprouvees(PDO $pdo): void
+{
+    try {
+        $lignes = $pdo->query(
+            "SELECT DISTINCT LOWER(e.email) AS email
+             FROM envois_email e
+             WHERE e.statut = 'envoye' AND e.canal = 'email' AND e.email <> ''"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException) {
+        return;   // pas encore de table : rien à créditer
+    }
+    if (!$lignes) {
+        return;
+    }
+    $maj = $pdo->prepare("UPDATE utilisateurs SET email_verifie_le = ?
+                          WHERE LOWER(email) = ? AND (email_verifie_le IS NULL OR email_verifie_le = '')");
+    $quand = gmdate('Y-m-d\TH:i:s\Z');
+    foreach ($lignes as $email) {
+        try {
+            $maj->execute([$quand, (string) $email]);
+        } catch (PDOException) {
+        }
+    }
 }
 
 /**
@@ -514,6 +558,11 @@ function creer_schema(PDO $pdo, bool $mysql): void
             relu_le       $court NULL,
             relu_par      $id NULL,
             motif         $txt NULL,
+            /* v16 — la date de l'événement : c'est d'elle que se déduisent
+               J−7, J−1 et H−2. Absente de cette création jusqu'en v1.2, elle
+               n'existait que chez les installations MIGRÉES : une base neuve
+               partait sans elle, et le premier décor enregistré échouait. */
+            evenement_le  $court NULL,
             cree_le       $court NOT NULL,
             maj_le        $court NOT NULL
         )$moteur",
@@ -644,6 +693,13 @@ function creer_schema(PDO $pdo, bool $mysql): void
             cible         $court NOT NULL DEFAULT 'mes-invites',
             liste         $txt NULL,
             liste_id      $id NULL,
+            /* v16 — un message part sur plusieurs canaux, peut attendre son
+               heure, et peut être le rappel d'un décor. Même oubli, même
+               conséquence : une base neuve n'enregistrait aucune campagne. */
+            canaux        $txt NULL,
+            planifie_le   $court NULL,
+            decor_id      $id NULL,
+            rappel        $court NULL,
             statut        $court NOT NULL DEFAULT 'brouillon',
             motif         $txt NULL,
             destinataires INT NOT NULL DEFAULT 0,

@@ -1,7 +1,16 @@
-# Wakabi Boost v1 — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1.2 — décompresser, ouvrir une page, c'est en ligne
 
-**Première version officielle.** Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.1.zip`) et s'affiche en pied de page :
+**Ce que la v1.2 ajoute à la v1.1** : la régie dit **par quels canaux** chaque
+campagne est partie, **lesquels de ses messages ont échoué et pourquoi**, et
+sait les relancer — sauf sur une adresse morte, jamais. Les adresses non
+confirmées sont écartées des campagnes, le carnet excepté. L'écran d'écriture
+devient un atelier à deux colonnes, avec l'aperçu de ce que chaque plateforme
+affichera. Et **un défaut de la v1.1 est corrigé** : cinq colonnes n'existaient
+que dans les migrations, donc pas dans une installation neuve — le premier décor
+enregistré sur un site fraîchement installé échouait.
+
+Le numéro vit dans `php/app/bootstrap.php`,
+nomme l'archive livrée (`wakabi-boost-v1.2.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -14,7 +23,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.1.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.2.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -30,7 +39,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **716 scénarios, 716 réussis**
+Les deux ont été vérifiés de bout en bout : **746 scénarios, 746 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -116,18 +125,27 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 716 scénarios, dans un vrai navigateur
+npm run php:e2e          # 746 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement
 ```
 
-Contre une base MySQL :
+Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
+sur un autre port — et contre une base MySQL :
 
 ```bash
-BASE_URL=http://127.0.0.1:3700 npm run php:e2e
+BASE_URL=http://127.0.0.1:3700 npm run php:e2e   # le zip, en SQLite
+BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 ```
 
-### Les 716 scénarios
+> Les deux comptent : une installation NEUVE ne passe jamais par les
+> migrations, et une colonne ajoutée aux seules migrations donne une base qui
+> marche chez tous les anciens et casse chez le client qui découvre le produit.
+> `verifier-restauration` referme ce piège en comparant, sur une base vierge,
+> les colonnes que crée l'installateur et celles qu'ajouteraient les
+> migrations : la liste doit être vide.
+
+### Les 746 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1923,11 +1941,122 @@ connecté**, parce que le lien est cliqué depuis une boîte mail, souvent sur u
 autre appareil — et parce que quelqu'un qui n'arrive pas à se désabonner clique
 sur « signaler comme indésirable », le seul geste dont on ne se relève pas.
 
+### La liste se lit d'un coup d'œil
+
+Depuis que le même message part sur quatre plateformes, deux lignes qui portent
+le même titre ne se distinguent plus : sans pastille de canal, on ouvre les deux
+pour trouver la bonne. La colonne **Canaux** les nomme — `E-mail`, `Telegram ×3`,
+`Push`, `WhatsApp` — regroupées par plateforme, parce que la question posée est
+« lequel », pas « combien de fois ».
+
+L'état, lui, ne s'arrondit pas. Une campagne dont cinq messages sur six ont
+échoué n'est **pas** « Envoyée » : la pastille dit `5 échecs`, en rouge, et le
+compteur « Partis » passe au rouge avec elle. Une campagne qui attend son heure
+dit laquelle — `Programmée · 18/09 à 18 h` — sinon « Prête à partir » ne se
+distingue pas de « partira dans trois semaines ».
+
+**Supprimer** est sur la ligne, derrière un repli qui demande de confirmer. Une
+campagne **en cours d'envoi** n'a pas ce bouton : on n'efface pas un envoi qui
+est en train de partir.
+
+### Les échecs : lesquels, pourquoi, et lesquels se relancent
+
+Un compteur qui dit « 6 échecs » et rien d'autre ne permet ni de corriger ni
+même de savoir s'il faut s'inquiéter. La fiche d'une campagne partie liste donc
+**chaque destinataire manqué** : l'adresse, l'état, le nombre d'essais, et ce que
+le serveur d'en face a répondu, code compris.
+
+Le partage qui compte est celui-ci :
+
+| Réponse | Ce que c'est | Ce qu'on propose |
+|---|---|---|
+| `4xx`, ou aucune réponse du tout | Un **incident** : le relais était occupé, la connexion a lâché. Il ne le sera plus. | **Relancer** — et le bouton groupé ne touche que celles-là. |
+| `550`, `551`, `553` | Un **verdict** : cette adresse n'existe pas. | **Archiver**, et rien d'autre. |
+| `552` boîte pleine, `554` refusé | Ni l'un ni l'autre : une boîte se vide, une politique change. | **Relancer**, mais à la main, une par une. |
+
+« Relancer » n'est **jamais** proposé sur une destination morte, et ce n'est pas
+un oubli : envoyer trois fois un message à une boîte qui n'existe pas est
+exactement ce que les fournisseurs comptent contre le domaine expéditeur. Sur un
+canal, la même règle s'applique — un bot bloqué ou une chaîne introuvable ne
+s'arrangeront pas tout seuls, une limite de débit si.
+
+**Archiver** ne se contente pas de masquer la ligne : l'adresse entre dans la
+liste de suppression, avec son motif, et ne sera plus servie par **aucune**
+campagne — c'est ce qu'on appelle ailleurs une *suppression list*, et c'est la
+seule protection réelle contre l'accumulation de rebonds. Sur Telegram ou
+WhatsApp, l'équivalent exact est de retirer l'abonné.
+
+Une relance remet la ligne en attente, remet son compteur d'essais à zéro et
+décrémente le compteur d'échecs de la campagne : sans quoi la même ligne serait
+comptée deux fois au passage suivant. La liste s'exporte en CSV, parce que
+l'équipe travaille souvent ses adresses ailleurs.
+
+### Les adresses non confirmées sont écartées
+
+Écrire à une adresse que personne n'a validée, c'est écrire à une faute de
+frappe : le message rebondit, et vingt rebonds suffisent à faire classer le
+domaine chez Google. Les cibles fondées sur les **comptes** — mes invités, tout
+le monde, les organisateurs, les participants, une ville — ne retiennent donc
+que les adresses confirmées, et l'écran d'écriture dit combien sont écartées.
+
+Deux exceptions, toutes deux voulues :
+
+- **Sans transport e-mail réglé**, la règle ne s'applique pas. Personne ne peut
+  avoir confirmé si l'on est incapable d'envoyer le lien : opposer la règle
+  viderait toutes les cibles d'un coup, et transformerait un réglage manquant en
+  régie muette.
+- **Le carnet d'adresses passe entier.** Ces adresses n'ont pas été laissées sur
+  un formulaire : elles ont été **apportées** par l'organisateur, souvent depuis
+  sa billetterie ou son tableur de clients. Lui demander de faire confirmer sept
+  cents adresses qu'il possède déjà reviendrait à lui interdire sa propre base —
+  et il repartirait l'envoyer ailleurs, sans aucune des règles qu'on tient ici.
+
+> **À la montée en v1.2**, les adresses qui ont **déjà reçu un message sans
+> rebondir** sont créditées de leur preuve, une fois : c'est exactement ce que la
+> confirmation cherche à établir. Sans cela, une installation en service verrait
+> son audience disparaître du jour au lendemain — des milliers de comptes créés
+> avant qu'une confirmation existe. Celles qui n'ont jamais rien reçu et n'ont
+> jamais confirmé sortent, et c'est le but.
+
+### Écrire — `?p=regie-ecrire`
+
+L'écran d'écriture est un atelier à deux colonnes : les réglages à gauche,
+l'aperçu **collé** à droite. Trois cartes en tête résument où l'on en est — le
+message, les canaux, qui et quand — et mènent à leur section ; la page reste une
+seule page, et un seul enregistrement.
+
+**La portée s'affiche avant de cocher.** Une carte par canal, avec le nombre de
+personnes qu'elle touche : `4 210 lecteurs · 1 envoi` pour une chaîne, `1 247
+personnes` pour le tête-à-tête, `2 140 adresses confirmées` pour l'e-mail.
+Découvrir après l'envoi qu'une case cochée valait quatre mille messages n'est
+pas une information : c'est une facture. Les nombres de l'e-mail et des
+notifications suivent la cible choisie plus bas — calculés d'avance pour toutes
+les cibles, ils changent sans aller-retour ni écran d'attente.
+
+**L'aperçu suit la frappe**, sur quatre formes qui ne se ressemblent pas :
+
+| Onglet | Ce qu'il montre |
+|---|---|
+| **Telegram** | La bulle, avec le lien devenu un bouton — plus grand sous le pouce. |
+| **E-mail** | Le message mis en page, son pied de désabonnement, et l'objet qui se lit avant l'ouverture. |
+| **WhatsApp** | Le texte tel que Meta le recevra : sur une seule ligne, les retours à la ligne étant interdits dans une variable de modèle. |
+| *(carte à part)* | **L'écran verrouillé d'un téléphone** — toujours visible, parce que c'est là que la coupure à 120 caractères se voit. |
+
+Le compteur du message nomme la limite de chaque canal plutôt qu'un nombre nu :
+« 183 caractères · la notification coupera à 120 · Telegram en accepte 4 096, un
+modèle WhatsApp 1 024 ». Et la carte **« Ce que ce message touche »** dit, avant
+d'enregistrer, le nombre d'envois, le nombre de personnes — au plus, quelqu'un
+présent sur une chaîne *et* abonné au bot y figure deux fois — et le coût :
+gratuit, ou le nombre de messages que Meta facturera.
+
 ### Le quota
 
 `emails_par_mois` est une ligne d'offre comme les autres, opposée **au moment de
 soumettre** — le dernier instant où l'on peut encore réduire la cible sans avoir
-dérangé personne.
+dérangé personne. La **portée** se compte sur tous les canaux, le **quota** sur
+le seul e-mail : confondre les deux refuserait une campagne Telegram faute de
+destinataire e-mail, ou imputerait une publication de chaîne au quota mensuel
+d'un client qu'elle ne coûte rien.
 
 | Offre | E-mails par mois |
 |---|---|
