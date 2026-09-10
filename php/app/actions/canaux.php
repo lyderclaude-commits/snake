@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = canal_creer((string) $u['id'], 'telegram', $v['nom'], $jeton, $v['nom']);
                 canal_maj($id, ['statut' => 'branche', 'message' => null, 'verifie_le' => maintenant()]);
                 $message = 'Telegram branché : ' . $v['nom']
-                    . '. Ajoutez maintenant une chaîne ou un groupe — le bot doit y être administrateur.';
+                    . '. Ajoutez maintenant une chaîne ou un groupe : le bot doit y être administrateur.';
             }
         } else {
             $numero = trim((string) ($_POST['reference'] ?? ''));
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $erreur = $d['message'];
                 } else {
                     destination_poser((string) $c['id'], $d['genre'], $d['nom'], $cible, $d['abonnes']);
-                    $message = sprintf('%s « %s » ajouté%s — %d abonné(s).',
+                    $message = sprintf('%s « %s » ajouté%s : %d abonné(s).',
                         CANAUX_DESTINATIONS[$d['genre']] ?? 'Destination', $d['nom'],
                         $d['genre'] === 'chaine' ? 'e' : '', $d['abonnes']);
                 }

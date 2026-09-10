@@ -52,7 +52,7 @@ if ($slug !== '') {
             . ', pour remplir vos salles à Lomé, Cotonou et Abidjan.'
     );
     vue('article', [
-        'titre' => $a['titre'] . ' — Le blog ' . seo_reglage('seo_nom_site'),
+        'titre' => $a['titre'] . ' · Le blog ' . seo_reglage('seo_nom_site'),
         'description' => $_desc,
         'og_titre' => $a['titre'],
         'og_type' => 'article',
@@ -108,10 +108,10 @@ $total = compter_articles_publies_cherches($cherche);
 
 vue('blog', [
     'titre' => $cherche !== ''
-        ? 'Recherche « ' . $cherche . ' » — Le blog'
+        ? 'Recherche « ' . $cherche . ' » · Le blog'
         : ($page_n > 1
-            ? 'Le blog, page ' . $page_n . ' — ' . seo_reglage('seo_nom_site')
-            : 'Le blog — ' . seo_reglage('seo_nom_site')),
+            ? 'Le blog, page ' . $page_n . ' · ' . seo_reglage('seo_nom_site')
+            : 'Le blog · ' . seo_reglage('seo_nom_site')),
     /**
      * Une page 2 porte SON titre et SON adresse.
      *

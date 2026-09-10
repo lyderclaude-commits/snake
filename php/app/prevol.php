@@ -261,7 +261,7 @@ function prevol(array $gabarit, ?string $cadre_url): array
                 (int) round(POIDS_MAX / 1024)
             ));
         } else {
-            $ajouter('poids', 'ok', sprintf('%d Ko — soutenable en 3G.', (int) round($poids / 1024)));
+            $ajouter('poids', 'ok', sprintf('%d Ko, soutenable en 3G.', (int) round($poids / 1024)));
         }
 
         /* 4 — la photo doit se voir */

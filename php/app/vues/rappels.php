@@ -21,12 +21,12 @@ $ev = $decor['evenement_le'] ? strtotime((string) $decor['evenement_le']) : null
 $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
 ?>
 <div class="contenu">
-  <p class="fil"><a href="<?= e(url('?p=regie')) ?>">← La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
 
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
       <div>
-        <h1>Rappels — <?= e($decor['titre']) ?></h1>
+        <h1>Rappels · <?= e($decor['titre']) ?></h1>
         <p>
           <?php if ($ev): ?>
             <?= e(gmdate('d/m/Y', $ev)) ?><?= $decor['ville'] ? ' · ' . e(ucfirst((string) $decor['ville'])) : '' ?>
@@ -57,7 +57,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
       <h3 style="margin:0 0 6px">Aucun rappel pour l’instant</h3>
       <p class="aide" style="margin:0 0 14px">Cinq moments couvrent un événement : l’annonce, la
       semaine d’avant, la veille, deux heures avant, et le lendemain. Ils se posent d’un clic, avec
-      leurs dates calculées depuis celle de l’événement — et tout reste modifiable ensuite.</p>
+      leurs dates calculées depuis celle de l’événement, et tout reste modifiable ensuite.</p>
       <?php if (!$decor['evenement_le']): ?>
         <p class="aide" style="margin:0">Ajoutez d’abord la <strong>date de l’événement</strong> au
         décor : c’est d’elle que tout se déduit.</p>
@@ -110,7 +110,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
         $pourquoi = [
           'annonce' => 'Le lien circule, les badges se créent : c’est ce qui remplit la salle.',
           'semaine' => 'La relance des indécis, pendant qu’il reste le temps de s’organiser.',
-          'veille'  => 'Avec le badge et le code d’entrée — le seul rappel qu’on relit à la porte.',
+          'veille'  => 'Avec le badge et le code d’entrée : le seul rappel qu’on relit à la porte.',
           'portes'  => 'Court, sans lien : à deux heures, personne ne clique.',
           'merci'   => 'Aux présents scannés seulement : remercier un absent, c’est lui rappeler qu’il a manqué.',
         ];

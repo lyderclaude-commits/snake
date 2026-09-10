@@ -15,7 +15,7 @@ $total = (int) $f['montant'];
 ?>
 <div class="contenu etroit-large">
   <p class="fil sans-impression">
-    <a href="<?= e(url($retour)) ?>">← Retour</a>
+    <a class="retour" href="<?= e(url($retour)) ?>"><i>←</i>Retour</a>
     · <button type="button" class="lien-bouton" onclick="window.print()">Imprimer</button>
   </p>
 

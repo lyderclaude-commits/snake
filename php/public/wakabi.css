@@ -364,6 +364,25 @@ input[type=range]{width:100%;accent-color:var(--primary)}
 .bouton.danger{background:var(--rouge)}
 .bouton.petit{padding:7px 12px;font-size:.85rem}
 
+/* ---- le retour en arrière ----
+   Un vrai bouton, et non un lien souligné : c'est le geste le plus
+   fréquent de tout l'espace de travail, et il tombait au même rang
+   visuel qu'un mot cliquable au milieu d'une phrase. La flèche vit dans
+   une pastille : elle donne la direction avant qu'on ait lu le mot, et
+   elle recule d'un cheveu au survol. */
+.retour{display:inline-flex;align-items:center;gap:9px;padding:7px 15px 7px 7px;
+  background:var(--paper);border:1px solid var(--border);border-radius:99px;
+  color:var(--ink);font-size:.86rem;font-weight:600;text-decoration:none;
+  box-shadow:var(--ombre);cursor:pointer;
+  transition:border-color .14s,color .14s,transform .14s}
+.retour i{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--bg2);
+  display:grid;place-items:center;font-style:normal;font-size:.9rem;line-height:1;
+  transition:background .14s,color .14s}
+.retour:hover{border-color:var(--primary);color:var(--primary-d);transform:translateX(-2px)}
+.retour:hover i{background:var(--primary);color:#fff}
+.retour:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.fil{margin:0 0 16px}
+
 /* messages */
 .msg{border-radius:var(--r10);padding:13px 16px;font-size:.92rem;margin-bottom:16px;border:1px solid}
 .msg.err{background:#FEF2F2;border-color:#FCA5A5;color:#991B1B}
@@ -1007,9 +1026,7 @@ input[type=file].fichier-natif{
    ici, on ne remplit pas un formulaire. */
 
 .lecture{max-width:780px}
-.lecture .fil{margin:0 0 18px;font-size:.86rem}
-.lecture .fil a{color:var(--text2);text-decoration:none;font-weight:600}
-.lecture .fil a:hover{color:var(--primary)}
+.lecture .fil{margin:0 0 18px}
 
 .lecture h1{
   font-family:var(--display);font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.12;

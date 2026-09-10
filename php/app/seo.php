@@ -177,7 +177,7 @@ function seo_description(string ...$morceaux): string
         } else {
             // Deux phrases se recollent avec une ponctuation, jamais nue.
             $fin = mb_substr($phrase, -1);
-            $phrase .= (strpos('.!?…:', $fin) === false ? ' — ' : ' ') . $morceau;
+            $phrase .= (strpos('.!?…:', $fin) === false ? '. ' : ' ') . $morceau;
         }
         if (mb_strlen($phrase) >= SEO_DESC_MIN) {
             break;

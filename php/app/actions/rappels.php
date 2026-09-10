@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $quand = rappel_quand((string) $decor['evenement_le'], (int) $m['heures']);
                 campagne_email_creer([
                     'auteur_id' => $proprio,
-                    'sujet' => $m['titre'] . ' — ' . $decor['titre'],
+                    'sujet' => $m['titre'] . ' · ' . $decor['titre'],
                     'titre' => $m['titre'],
                     'corps' => $m['corps'],
                     'lien' => $m['libelle'] !== '' ? url('?p=decor&slug=' . rawurlencode((string) $decor['slug'])) : '',
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 vue('rappels', [
-    'titre' => 'Rappels — ' . $decor['titre'],
+    'titre' => 'Rappels · ' . $decor['titre'],
     'decor' => $decor,
     'rappels' => campagnes_du_decor((string) $decor['id']),
     'modele' => RAPPELS_MODELE,

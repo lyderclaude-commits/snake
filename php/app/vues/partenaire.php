@@ -34,7 +34,7 @@
     <div class="msg err" style="margin-bottom:16px">
       <strong>Confirmez votre adresse pour pouvoir soumettre</strong>
       <p style="margin:.35em 0 .7em">Un lien est parti vers <?= e($me['email']) ?>. C’est par là que
-      vous arrivera la décision de relecture — nous devons donc savoir que l’adresse existe.</p>
+      vous arrivera la décision de relecture : nous devons donc savoir que l’adresse existe.</p>
       <form method="post" action="<?= e(url('?p=renvoyer-verification')) ?>" style="margin:0">
         <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
         <button class="bouton petit" type="submit">M’envoyer un nouveau lien</button>
@@ -64,7 +64,7 @@
     <?php else: ?>
       <div class="stat verrou">
         <b aria-hidden="true">✕</b>
-        <span>présences scannées — offre <?= e(formule_libelle(offre_qui_debloque('stats'))) ?></span>
+        <span>présences scannées · offre <?= e(formule_libelle(offre_qui_debloque('stats'))) ?></span>
       </div>
     <?php endif; ?>
   </div>
@@ -100,7 +100,7 @@
     <div class="rangee" style="justify-content:space-between;align-items:baseline">
       <?php if (interne($me)): ?>
         <h3 style="margin:0"><?= e(role_libelle($me['role'] ?? null)) ?></h3>
-        <span class="aide">Compte de l’équipe — aucun quota</span>
+        <span class="aide">Compte de l’équipe · aucun quota</span>
       <?php else: ?>
         <h3 style="margin:0">Offre <?= e($offre['nom']) ?></h3>
         <a class="aide" href="<?= e(url('#tarifs')) ?>">Comparer les offres</a>

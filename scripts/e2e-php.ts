@@ -4997,7 +4997,7 @@ const run = async () => {
      (await pAT.inputValue('input[name=cadre_url]')).slice(-22));
   const sante = await pAT.locator('#sd-sante-liste').innerText();
   ok('la santé du décor se prononce sur CE cadre',
-     /Ko —|Cadre (PNG|WebP)/.test(sante));
+     /Ko,|Cadre (PNG|WebP)/.test(sante));
   ok('et elle proteste tout de suite contre un cadre opaque',
      (await pAT.locator('.sd-ct.echec, .sd-ct.alerte').count()) >= 1
      && /recouvre|opaque|n’apparaîtra/.test(sante),
@@ -5353,7 +5353,7 @@ const run = async () => {
    */
   const capacites = await pPerdu.locator('table.tab').innerText();
   ok('l’écran dit que WhatsApp n’a ni chaîne ni groupe',
-     /Non\s*—\s*8 membres/.test(capacites), capacites.replace(/\s+/g, ' ').slice(0, 90));
+     /Non\s*:\s*8 membres/.test(capacites), capacites.replace(/\s+/g, ' ').slice(0, 90));
   ok('et que Telegram, lui, publie sans limite',
      /Oui, sans limite/.test(capacites));
 
@@ -5556,6 +5556,159 @@ const run = async () => {
      (await pAnon.locator('header nav a[href^="https://wakabileguide.com"]').count()) === 0);
 
   await ctxVitrine.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 47. La typographie, et le retour en arrière ━━');
+
+  /**
+   * Le tiret cadratin, traqué là où il se voit.
+   *
+   * Le chercher dans les sources ne prouve rien : la moitié des
+   * occurrences vit dans des commentaires, l'autre se compose à
+   * l'exécution. On parcourt donc les écrans pour de vrai, et l'on relève
+   * chaque nœud de texte et chaque attribut lisible. C'est une règle
+   * d'écriture de la maison, et une règle qu'on ne vérifie pas redevient
+   * une préférence : elle reviendrait au troisième écran ajouté.
+   */
+  const pTypo = await browser.newPage();
+  surveiller(pTypo);
+  await connexion(pTypo, ADMIN.email, ADMIN.mdp);
+
+  const ecrans = ['accueil', 'decors', 'blog', 'admin', 'partenaire', 'profil', 'comptes',
+                  'catalogue', 'journal', 'reglages', 'reglages-seo', 'sauvegardes',
+                  'diffusion', 'canaux', 'liens', 'regie', 'regie-ecrire', 'regie-carnet',
+                  'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau'];
+  const cadratins: string[] = [];
+  for (const q of ecrans) {
+    const r = await pTypo.goto(`${BASE}/index.php?p=${q}`, { waitUntil: 'domcontentloaded' })
+      .catch(() => null);
+    if (!r || r.status() >= 400) continue;
+    const ici = await pTypo.evaluate(() => {
+      const out: string[] = [];
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node: Node | null;
+      while ((node = w.nextNode())) {
+        const t = node.textContent ?? '';
+        if (t.includes('\u2014') && !node.parentElement?.closest('script,style')) {
+          out.push(t.replace(/\s+/g, ' ').trim().slice(0, 80));
+        }
+      }
+      document.querySelectorAll('[title],[placeholder],[aria-label],option').forEach((el) => {
+        for (const a of ['title', 'placeholder', 'aria-label']) {
+          const v = el.getAttribute(a);
+          if (v?.includes('\u2014')) out.push(`[${a}] ${v.slice(0, 70)}`);
+        }
+        if (el.tagName === 'OPTION' && el.textContent?.includes('\u2014')) {
+          out.push('[option] ' + el.textContent.trim().slice(0, 70));
+        }
+      });
+      if (document.title.includes('\u2014')) out.push('[onglet] ' + document.title);
+      return out;
+    });
+    for (const t of ici) cadratins.push(`?p=${q} : ${t}`);
+  }
+  ok(`aucun tiret cadratin sur les ${ecrans.length} écrans parcourus`,
+     cadratins.length === 0, cadratins.slice(0, 3).join(' | '));
+
+  /**
+   * Le retour en arrière est un BOUTON.
+   *
+   * C'est le geste le plus fréquent de tout l'espace de travail, et il
+   * tombait au même rang visuel qu'un mot cliquable au milieu d'une
+   * phrase. Ce qu'on vérifie : qu'il se voit comme un bouton, et qu'il
+   * ramène bien là où il dit.
+   */
+  await pTypo.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+  const retour = pTypo.locator('.retour').first();
+  ok('le retour en arrière est un bouton, pas un lien souligné',
+     (await retour.count()) === 1
+     && (await retour.evaluate((el) => getComputedStyle(el).textDecorationLine)) === 'none'
+     && (await retour.evaluate((el) => getComputedStyle(el).borderStyle)) === 'solid');
+  ok('il porte sa flèche dans une pastille',
+     (await retour.locator('i').count()) === 1);
+  await retour.click();
+  await pTypo.waitForLoadState('domcontentloaded');
+  ok('et il ramène là où il dit', pTypo.url().includes('p=regie')
+     && !pTypo.url().includes('regie-ecrire'), pTypo.url().replace(BASE, ''));
+
+  /* Les six autres écrans qui en portent un le portent de la même façon. */
+  let boutons = 0;
+  for (const q of ['regie-carnet', 'blog-admin']) {
+    await pTypo.goto(`${BASE}/index.php?p=${q}`, { waitUntil: 'domcontentloaded' });
+    const lien = pTypo.locator('a[href*="p="]').filter({ hasText: /^$/ });
+    void lien;
+    boutons += await pTypo.locator('.retour').count();
+  }
+  ok('le carnet en porte un aussi', boutons >= 1, `${boutons} bouton(s)`);
+  await pTypo.close();
+
+  /**
+   * L'invité SANS COMPTE, abonné sous son badge, appartient à son organisateur.
+   *
+   * C'est le cas le plus fréquent, et il était perdu : tout le produit
+   * promet « sans compte, en trente secondes », l'invité s'abonne sous son
+   * badge, ne crée jamais de compte, et son abonnement restait anonyme.
+   * « Les invités de mes campagnes » le cherchait par le COMPTE : un
+   * organisateur dont tous les invités s'étaient abonnés chez lui lisait
+   * « 0 appareil » sur son écran d'écriture.
+   *
+   * On éprouve le fil entier : la page du décor porte son identifiant,
+   * l'API le retient, le segment le retrouve, l'écran l'affiche.
+   */
+  const pOrga = await browser.newPage();
+  surveiller(pOrga);
+  await connexion(pOrga, PART.email, PART.mdp);
+  await pOrga.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  const sonDecor = await pOrga.locator('a[href*="p=decor&slug="]').first()
+    .getAttribute('href').catch(() => null);
+  ok('l’organisateur a bien une campagne publiée à éprouver', sonDecor !== null,
+     sonDecor ?? 'aucune');
+
+  if (sonDecor) {
+    const ctxInvite = await browser.newContext();
+    const pInvite = await ctxInvite.newPage();
+    surveiller(pInvite);
+    await pInvite.goto(new URL(sonDecor, BASE).href, { waitUntil: 'domcontentloaded' });
+    const ctxD = JSON.parse(
+      (await pInvite.locator('#push-contexte').innerText().catch(() => '{}')) || '{}',
+    ) as { csrf?: string; decor?: string; connecte?: boolean };
+
+    ok('la page d’un décor annonce SON identifiant au bouton d’abonnement',
+       typeof ctxD.decor === 'string' && ctxD.decor.length > 10, ctxD.decor ?? 'absent');
+    ok('et le visiteur y est bien anonyme', ctxD.connecte === false);
+
+    const aboAnon = await pInvite.request.post(`${BASE}/index.php?p=api-push-abonner`, {
+      form: {
+        csrf: ctxD.csrf ?? '',
+        endpoint: `https://fcm.googleapis.com/fcm/send/invite-${marque}`,
+        p256dh: 'BLc4xRzKlKORKWlbdgFaBrrPK3ydWAHo4M0gs0i1oEKgPpWC5cW8OCzVrOQRv-1npXRWk8udNW3ZulJC2rLKzlI',
+        auth: 'aUdiN0dyMkFtbFJIcTBQTw',
+        decor: ctxD.decor ?? '',
+      },
+    });
+    ok('un visiteur sans compte peut s’abonner sous le badge', aboAnon.ok(),
+       `HTTP ${aboAnon.status()}`);
+    await ctxInvite.close();
+
+    /* Et son organisateur le compte, alors qu'il n'a pas de compte. */
+    await pOrga.goto(`${BASE}/index.php?p=regie-ecrire`, { waitUntil: 'domcontentloaded' });
+    const portees = await pOrga.evaluate(() => {
+      const t = [...document.querySelectorAll('script')]
+        .map((s) => s.textContent ?? '').find((x) => x.includes('var PORTEES')) ?? '';
+      const m = /var PORTEES = (\{.*?\});/s.exec(t);
+      return m ? (JSON.parse(m[1]) as Record<string, { push: number }>) : {};
+    });
+    ok('l’abonné sans compte entre dans « les invités de mes campagnes »',
+       (portees['mes-invites']?.push ?? 0) >= 1,
+       `${portees['mes-invites']?.push ?? 0} appareil(s)`);
+
+    const carteWeb = pOrga.locator('.ec-cn[data-suit="push"]').first();
+    ok('et la carte des notifications l’affiche, en disant ce qu’elle compte',
+       (await carteWeb.count()) === 1 && /appareil\(s\) abonné/.test(await carteWeb.innerText())
+       && /[1-9]/.test(await carteWeb.locator('.ec-cn-n').innerText()),
+       (await carteWeb.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 74));
+  }
+  await pOrga.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

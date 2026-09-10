@@ -17,7 +17,7 @@ $etats = [
           <?= count($publies) ?> article(s) en ligne sur <?= count($liste) ?>.
           C’est la seule partie du site qu’un moteur de recherche sait lire.
         <?php else: ?>
-          Racontez une campagne qui a marché. La rédaction relit, puis publie sur le blog du guide —
+          Racontez une campagne qui a marché. La rédaction relit, puis publie sur le blog du guide,
           lu par tous les visiteurs.
         <?php endif; ?></p>
       </div>
@@ -58,9 +58,9 @@ $etats = [
                   <span class="aide" style="display:block;color:var(--rouge)"><?= e($a['motif']) ?></span>
                 <?php endif; ?>
               </td>
-              <?php if ($equipe): ?><td class="aide"><?= e($a['auteur_nom'] ?: '—') ?></td><?php endif; ?>
+              <?php if ($equipe): ?><td class="aide"><?= e($a['auteur_nom'] ?: 'Inconnu') ?></td><?php endif; ?>
               <td><span class="pastille <?= e($a['statut']) ?>"><?= e($etats[$a['statut']] ?? $a['statut']) ?></span></td>
-              <td class="aide"><?= $a['publie_le'] ? e(gmdate('d/m/Y', strtotime((string) $a['publie_le']))) : '—' ?></td>
+              <td class="aide"><?= $a['publie_le'] ? e(gmdate('d/m/Y', strtotime((string) $a['publie_le']))) : 'Pas encore' ?></td>
               <td class="chiffre"><?= (int) $a['vues'] ?></td>
               <td style="text-align:right;white-space:nowrap">
                 <?php if ($a['statut'] === 'publie'): ?>

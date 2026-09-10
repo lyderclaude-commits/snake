@@ -76,7 +76,7 @@ if ($post && ($_POST['action'] ?? '') === 'essai') {
             ]);
             $lignes[] = [
                 'agent' => (string) ($a['agent'] ?: 'navigateur inconnu'),
-                'hote' => (string) (parse_url((string) $a['endpoint'], PHP_URL_HOST) ?: '—'),
+                'hote' => (string) (parse_url((string) $a['endpoint'], PHP_URL_HOST) ?: 'hôte inconnu'),
                 'ok' => $r['ok'],
                 'code' => $r['code'],
                 'message' => $r['message'],
@@ -89,7 +89,7 @@ if ($post && ($_POST['action'] ?? '') === 'essai') {
         $essai = $lignes;
         $reussis = count(array_filter($lignes, fn(array $l) => $l['ok']));
         $message = $reussis > 0
-            ? $reussis . ' notification(s) remise(s) au service de push. Regardez votre écran — '
+            ? $reussis . ' notification(s) remise(s) au service de push. Regardez votre écran : '
               . 'si rien n’apparaît, le problème est côté navigateur, pas côté serveur.'
             : null;
         $erreur ??= $reussis === 0 ? 'Aucune notification n’a pu partir. Le détail est ci-dessous.' : null;

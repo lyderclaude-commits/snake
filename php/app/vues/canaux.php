@@ -68,7 +68,7 @@ $genres_places = array_column($canaux, 'genre');
         <?php if ($c['genre'] === 'whatsapp'): ?>
           <div class="msg err" style="margin:0;font-size:.84rem;line-height:1.5">
             <b>Ni groupe, ni chaîne WhatsApp.</b> L’API n’écrit qu’en tête-à-tête, à des numéros
-            qui ont donné leur accord, avec un modèle approuvé par Meta — et chaque message est facturé.
+            qui ont donné leur accord, avec un modèle approuvé par Meta. Chaque message est facturé.
           </div>
         <?php else: ?>
           <form method="post" action="<?= e(url('?p=canaux')) ?>" class="champ" style="margin:0">
@@ -81,7 +81,7 @@ $genres_places = array_column($canaux, 'genre');
                      placeholder="@ma_chaine ou t.me/ma_chaine" style="flex:1">
               <button class="bouton fant petit" type="submit">Ajouter</button>
             </div>
-            <p class="aide">Le bot doit y être <strong>administrateur</strong> — sinon Telegram
+            <p class="aide">Le bot doit y être <strong>administrateur</strong> : sinon Telegram
             répond « chaîne introuvable », même si elle existe.</p>
           </form>
         <?php endif; ?>
@@ -155,7 +155,7 @@ $genres_places = array_column($canaux, 'genre');
         <span class="etat <?= $courriel ? 'on' : 'off' ?>"><?= $courriel ? 'Branché' : 'Éteint' ?></span>
       </div>
       <p class="aide" style="margin:0">Le seul canal où l’adresse de l’expéditeur doit être
-      authentifiée par SPF, DKIM et DMARC — sans quoi les messages sont refusés, pas classés
+      authentifiée par SPF, DKIM et DMARC, sans quoi les messages sont refusés, pas classés
       en indésirables.</p>
       <div class="rangee" style="gap:8px">
         <a class="bouton fant petit" href="<?= e(url('?p=regie')) ?>">La régie</a>
@@ -228,17 +228,17 @@ $genres_places = array_column($canaux, 'genre');
         </tr>
         <tr>
           <td><b>WhatsApp</b></td>
-          <td class="non">Non — 8 membres au plus</td>
+          <td class="non">Non : 8 membres au plus</td>
           <td>Oui, avec accord et modèle</td>
           <td>Par message</td><td>Vérification Meta</td>
         </tr>
         <tr>
           <td><b>Navigateur</b></td>
-          <td>—</td><td class="oui">Oui</td><td>Gratuit</td><td>Immédiat</td>
+          <td class="non">Non</td><td class="oui">Oui</td><td>Gratuit</td><td>Immédiat</td>
         </tr>
         <tr>
           <td><b>E-mail</b></td>
-          <td>—</td><td class="oui">Oui</td><td>Relais</td><td>Minutes</td>
+          <td class="non">Non</td><td class="oui">Oui</td><td>Relais</td><td>Minutes</td>
         </tr>
       </table>
     </div>

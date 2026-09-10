@@ -85,7 +85,7 @@ switch ($page) {
 
     case 'accueil':
         vue('accueil', [
-            'titre' => seo_reglage('seo_nom_site') . ' — le badge qui remplit la salle',
+            'titre' => seo_reglage('seo_nom_site') . ' · le badge qui remplit la salle',
             'description' => seo_reglage('seo_description'),
             /**
              * `WebSite` sur la seule page d'accueil, et nulle part ailleurs.
@@ -168,9 +168,9 @@ switch ($page) {
     case 'decors':
         $_liste = decors_publies();
         vue('decors', [
-            'titre' => 'Les décors — ' . seo_reglage('seo_nom_site'),
+            'titre' => 'Les décors · ' . seo_reglage('seo_nom_site'),
             'description' => 'Choisissez un décor, ajoutez votre photo, partagez votre badge. '
-                . 'Sans compte, en trente secondes — Lomé, Cotonou, Abidjan.',
+                . 'Sans compte, en trente secondes. Lomé, Cotonou, Abidjan.',
             'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
                       ['Les décors', url_canonique(['p' => 'decors'])]],
             // Une liste ordonnée plutôt qu'un `Product` par décor : on ne
@@ -313,7 +313,7 @@ switch ($page) {
         if ($d && in_array($d['statut'], ['archive', 'expire'], true)) {
             $_fcan = url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]);
             vue('decor-termine', [
-                'titre' => $d['titre'] . ' — campagne terminée',
+                'titre' => $d['titre'] . ' · campagne terminée',
                 'description' => seo_description(
                     (string) $d['sous_titre'],
                     (string) $d['titre'],
@@ -421,7 +421,7 @@ switch ($page) {
             'Créez votre badge personnalisé en 30 secondes, et partagez-le sur vos réseaux.'
         );
         vue('studio', [
-            'titre' => $d['titre'] . ' — ' . seo_reglage('seo_nom_site'),
+            'titre' => $d['titre'] . ' · ' . seo_reglage('seo_nom_site'),
             // Ce que WhatsApp montrera du lien : le nom de la campagne, ce
             // qu'on y fait, et le badge lui-même.
             'description' => $_ddesc,
@@ -504,7 +504,7 @@ switch ($page) {
             rediriger(accueil_de($u));
         }
         vue('compte', [
-            'titre' => 'Mon compte — Wakabi Boost',
+            'titre' => 'Mon compte · Wakabi Boost',
             'creations' => creations_de($u['id']),
             'solde' => koris_solde($u['id']),
             'historique' => koris_historique($u['id']),
@@ -524,7 +524,7 @@ switch ($page) {
      */
     case 'api-doc':
         $u = exiger_droit('api');
-        vue('api-doc', ['titre' => 'L’API — Wakabi Boost']);
+        vue('api-doc', ['titre' => 'L’API · Wakabi Boost']);
 
     case 'api-cle':
         $u = exiger_droit('api');
@@ -544,7 +544,7 @@ switch ($page) {
         // La clé n'est lisible qu'ICI, une fois. Elle vaut mot de passe :
         // la réafficher à chaque visite du profil en ferait une donnée qui
         // traîne sur un écran resté ouvert.
-        vue('api-doc', ['titre' => 'L’API — Wakabi Boost', 'cle_neuve' => api_cle_creer((string) $u['id'])]);
+        vue('api-doc', ['titre' => 'L’API · Wakabi Boost', 'cle_neuve' => api_cle_creer((string) $u['id'])]);
 
     case 'notifications':
         $u = exiger_role(...ROLES);
@@ -572,12 +572,21 @@ switch ($page) {
         if (!preg_match('~^https://~i', $endpoint) || $p256dh === '' || $auth_cle === '') {
             json_repondre(['ok' => false, 'message' => 'Abonnement incomplet.'], 400);
         }
+        /**
+         * Le décor d'où vient l'abonnement, s'il en vient d'un.
+         *
+         * Vérifié plutôt que cru : l'identifiant arrive du navigateur, et
+         * un décor inventé rattacherait un abonné à l'audience de
+         * quelqu'un d'autre.
+         */
+        $_pd = trim((string) ($_POST['decor'] ?? ''));
         push_abonner(
             $me['id'] ?? null,
             $endpoint,
             $p256dh,
             $auth_cle,
-            substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180)
+            substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180),
+            $_pd !== '' && decor_par_id($_pd) ? $_pd : null
         );
         json_repondre(['ok' => true]);
 
@@ -611,7 +620,11 @@ switch ($page) {
             $neuf,
             $p256dh,
             $auth_cle,
-            (string) ($precedent['agent'] ?? substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180))
+            (string) ($precedent['agent'] ?? substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 180)),
+            // Le navigateur renouvelle son adresse : c'est le MÊME abonné.
+            // Perdre son décor d'origine ici le retirerait de l'audience de
+            // son organisateur, sans que personne n'ait rien demandé.
+            $precedent['decor_id'] ?? null
         );
         if ($ancien !== '' && $ancien !== $neuf) {
             push_desabonner($ancien);
@@ -685,7 +698,7 @@ switch ($page) {
             $fait = true;
         }
         vue('desabonnement', [
-            'titre' => 'Désabonnement — Wakabi Boost',
+            'titre' => 'Désabonnement · Wakabi Boost',
             'envoi' => $envoi,
             'jeton' => $jeton,
             'adresse' => (string) ($envoi['email'] ?? ''),
@@ -1003,7 +1016,7 @@ switch ($page) {
                 'Cette adresse e-mail n’est pas valide.',
             debit_depasse('verif|' . cle_debit($adresse)) =>
                 'Un lien vient déjà de partir vers cette adresse. Réessayez dans '
-                . FENETRE_MINUTES . ' minutes — et regardez vos indésirables.',
+                . FENETRE_MINUTES . ' minutes, et regardez vos indésirables.',
             default => null,
         };
 
@@ -1046,7 +1059,7 @@ switch ($page) {
         $cle_renvoi = 'verif|' . $moi['id'];
         if (debit_depasse($cle_renvoi)) {
             rediriger(($moi['role'] === 'partenaire' ? '?p=partenaire' : '?p=compte') . '&err=' . rawurlencode(
-                'Trop de demandes. Réessayez dans ' . FENETRE_MINUTES . ' minutes — et regardez vos indésirables.'
+                'Trop de demandes. Réessayez dans ' . FENETRE_MINUTES . ' minutes, et regardez vos indésirables.'
             ));
         }
         debit_noter($cle_renvoi);

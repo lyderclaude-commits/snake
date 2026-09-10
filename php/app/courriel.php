@@ -462,7 +462,7 @@ function gabarit_courriel(string $titre, string $corps, string $lien = '', strin
         . '<table role="presentation" cellpadding="0" cellspacing="0"><tr><td>' . $paragraphes . '</td></tr>' . $bouton . '</table>'
         . '</td></tr>'
         . '<tr><td style="padding:14px 24px;border-top:1px solid #E2E8F0;color:#64748B;font-size:12px;line-height:1.5">'
-        . 'Wakabi Boost — le guide des bons plans.<br>'
+        . 'Wakabi Boost, le guide des bons plans.<br>'
         . 'Ce message est automatique : inutile d’y répondre.'
         . '</td></tr></table></td></tr></table></body></html>';
 }
@@ -474,7 +474,7 @@ function texte_courriel(string $titre, string $corps, string $lien = ''): string
     if ($lien !== '') {
         $t .= "\n\n" . $lien;
     }
-    return $t . "\n\n--\nWakabi Boost — le guide des bons plans.\nMessage automatique, inutile d’y répondre.\n";
+    return $t . "\n\n--\nWakabi Boost, le guide des bons plans.\nMessage automatique, inutile d’y répondre.\n";
 }
 
 /**
@@ -705,10 +705,10 @@ function diagnostic_expediteur(): array
     if (!$dmarc) {
         $ajouter('dmarc', 'echec', 'Aucun enregistrement DMARC',
                  'Publiez un TXT sur _dmarc.' . $domaine . ' : v=DMARC1; p=none; rua=mailto:vous@'
-               . $domaine . ' — commencez par p=none, il n’écarte rien et vous renseigne.');
+               . $domaine . ' ; commencez par p=none, il n’écarte rien et vous renseigne.');
     } else {
         $politique = preg_match('/\bp\s*=\s*(none|quarantine|reject)/i', $dmarc[0], $m) ? strtolower($m[1]) : '?';
-        $ajouter('dmarc', 'ok', 'DMARC publié — politique « ' . $politique . ' »', $dmarc[0]);
+        $ajouter('dmarc', 'ok', 'DMARC publié · politique « ' . $politique . ' »', $dmarc[0]);
     }
 
     /**
@@ -725,7 +725,7 @@ function diagnostic_expediteur(): array
         }
     }
     if ($trouve !== null) {
-        $ajouter('dkim', 'ok', 'DKIM publié — sélecteur « ' . $trouve . ' »',
+        $ajouter('dkim', 'ok', 'DKIM publié · sélecteur « ' . $trouve . ' »',
                  'La signature est posée par votre relais ; l’application ne signe rien elle-même.');
     } else {
         $ajouter('dkim', 'alerte', 'Aucune clé DKIM trouvée aux sélecteurs courants',

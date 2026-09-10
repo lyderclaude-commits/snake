@@ -329,6 +329,82 @@ const main = async () => {
      longueur === attendu, `${longueur} caractères sur ${attendu}`);
   ok('le désabonnement efface bien la ligne', apres === '0');
 
+  /* ---- l'invité sans compte appartient quand même à son organisateur ---- */
+
+  /**
+   * Le défaut que ce contrôle referme.
+   *
+   * Tout le produit promet « sans compte, en trente secondes » : l'invité
+   * fait son badge, accepte les notifications sous ce badge, et ne crée
+   * jamais de compte. Son abonnement était alors ANONYME, et le segment
+   * « les invités de mes campagnes » le cherchait par le compte : il ne le
+   * trouvait jamais. Un organisateur dont tous les invités s'étaient
+   * abonnés chez lui lisait « 0 appareil ».
+   *
+   * Depuis, l'abonnement se souvient du décor sous lequel il a été pris.
+   */
+  writeFileSync(fichier, PREAMBULE + `
+    $now = maintenant();
+    $orga = nouvel_id(); $autre = nouvel_id();
+    $poserU = static function (string $id, string $email) use ($now) {
+      db()->prepare('INSERT INTO utilisateurs (id, nom, email, mot_de_passe, role, formule, suspendu, cree_le)
+                     VALUES (?,?,?,?,?,?,0,?)')
+        ->execute([$id, 'Qui', $email, 'x', 'partenaire', 'croissance', $now]);
+    };
+    $poserU($orga, 'orga@exemple.tg');
+    $poserU($autre, 'autre@exemple.tg');
+
+    $poserD = static function (string $auteur, string $slug) use ($now) {
+      $id = nouvel_id();
+      db()->prepare('INSERT INTO decors (id, slug, titre, ville, rubrique, statut, cree_par,
+                     auteur_id, gabarit, cree_le, maj_le) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+        ->execute([$id, $slug, 'Décor', 'lome', 'campagne', 'publie', 'partenaire',
+                   $auteur, '{}', $now, $now]);
+      return $id;
+    };
+    $chez_moi = $poserD($orga, 'chez-moi');
+    $chez_lui = $poserD($autre, 'chez-lui');
+
+    // Trois abonnés : un invité sans compte chez moi, un invité sans compte
+    // chez le voisin, et quelqu'un qui a un compte et un badge chez moi.
+    push_abonner(null, 'https://push.example/a', 'P', 'A', 'Chrome', $chez_moi);
+    push_abonner(null, 'https://push.example/b', 'P', 'A', 'Chrome', $chez_lui);
+    $avec_compte = nouvel_id();
+    $poserU($avec_compte, 'invite@exemple.tg');
+    db()->prepare('INSERT INTO badges (jeton, decor_id, utilisateur_id, cree_le) VALUES (?,?,?,?)')
+      ->execute([bin2hex(random_bytes(16)), $chez_moi, $avec_compte, $now]);
+    push_abonner($avec_compte, 'https://push.example/c', 'P', 'A', 'Chrome', null);
+
+    // Et un abonné qui n'est ni l'un ni l'autre.
+    push_abonner(null, 'https://push.example/d', 'P', 'A', 'Chrome', null);
+
+    // Le renouvellement d'adresse ne doit pas perdre le décor.
+    $vieux = push_abonnement_de('https://push.example/a');
+    push_abonner(null, 'https://push.example/a2', 'P', 'A', 'Chrome', $vieux['decor_id']);
+
+    // Se réabonner ailleurs ne vole pas l'abonné au premier organisateur.
+    push_abonner(null, 'https://push.example/b', 'P', 'A', 'Chrome', $chez_moi);
+
+    echo json_encode([
+      'moi' => count(push_destinataires('mes-invites', $orga)),
+      'lui' => count(push_destinataires('mes-invites', $autre)),
+      'tous' => count(push_destinataires('tous')),
+      'garde' => (string) (push_abonnement_de('https://push.example/a2')['decor_id'] ?? '') === $chez_moi,
+      'pas_vole' => (string) (push_abonnement_de('https://push.example/b')['decor_id'] ?? '') === $chez_lui,
+    ]), "\n";
+  `);
+  const seg = JSON.parse(
+    (await lancerPhp('php', [fichier], { env })).stdout.trim().split('\n').pop() ?? '{}',
+  ) as Record<string, number | boolean>;
+
+  ok('un invité SANS COMPTE abonné sous un badge appartient à cet organisateur',
+     seg.moi === 3, `${seg.moi} abonné(s) au lieu de 3`);
+  ok('et il n’appartient qu’à lui : le voisin ne compte que le sien',
+     seg.lui === 1, `${seg.lui} au lieu de 1`);
+  ok('« tout le monde » les voit tous', seg.tous === 5, `${seg.tous} au lieu de 5`);
+  ok('renouveler l’adresse du navigateur ne perd pas le décor d’origine', seg.garde === true);
+  ok('se réabonner ailleurs ne vole pas l’abonné au premier organisateur', seg.pas_vole === true);
+
   rmSync(dossier, { recursive: true, force: true });
   console.log(`\n━━ ${pass} réussis, ${fail} échoués ━━\n`);
   process.exit(fail ? 1 : 0);

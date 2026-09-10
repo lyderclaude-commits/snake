@@ -39,7 +39,7 @@ $pourquoi = static function (array $e): string {
     }
     if ($e['mortel']) {
         return 'Définitif : cette destination n’existe pas. La relancer abîmerait la '
-             . 'réputation du domaine — et c’est exactement ce que les fournisseurs comptent contre vous.';
+             . 'réputation du domaine, et c’est exactement ce que les fournisseurs comptent contre vous.';
     }
     if ($e['reprenable']) {
         return 'Passager : le relais était indisponible. Un nouvel essai a des chances d’aboutir.';
@@ -77,7 +77,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
 }
 ?>
 <div class="contenu etroit-large">
-  <p class="fil"><a href="<?= e(url('?p=regie')) ?>">← La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
 
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
@@ -178,7 +178,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
           <?php else: ?>
             Par lots de <?= REGIE_LOT ?>.
           <?php endif; ?>
-          « Parti » veut dire accepté par le relais — pas encore arrivé.
+          « Parti » veut dire accepté par le relais, pas encore arrivé.
         </span>
       </div>
     </div>
@@ -209,8 +209,8 @@ foreach ($mots as $k => [$un, $plusieurs]) {
           <?php foreach ($echecs as $e): ?>
             <tr>
               <td>
-                <b style="overflow-wrap:break-word"><?= e($e['qui'] ?: '—') ?></b>
-                <span class="aide" style="display:block"><?= e($e['nom'] ?: '—') ?><?php
+                <b style="overflow-wrap:break-word"><?= e($e['qui'] ?: 'Sans adresse') ?></b>
+                <span class="aide" style="display:block"><?= e($e['nom'] ?: 'Sans nom') ?><?php
                   if ($e['genre_canal'] !== 'email'): ?> · <?= e($e['genre_canal']) ?><?php endif; ?></span>
               </td>
               <td><span class="pastille <?= e((string) $e['statut']) ?>"><?php
@@ -228,7 +228,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
                 }
                 ?>
                 <?php if ($e['code']): ?><span class="mono"><?= e((string) $e['code']) ?></span> <?php endif; ?>
-                <?= e(trim((string) $dit) ?: '—') ?>
+                <?= e(trim((string) $dit) ?: 'Aucune réponse') ?>
                 <span class="aide" style="display:block;margin-top:2px"><?= e($pourquoi($e)) ?></span>
               </td>
               <td style="text-align:right;white-space:nowrap">
@@ -247,7 +247,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
         <strong>Pourquoi deux boutons différents.</strong> Un <span class="mono">4xx</span> est un
         incident : le relais était occupé, il ne le sera plus. Un <span class="mono">5xx</span> est un
         verdict : l’adresse n’existe pas, ou la boîte est fermée. Relancer un verdict, c’est envoyer
-        trois fois un message à une adresse morte — et c’est exactement ce que les fournisseurs
+        trois fois un message à une adresse morte, et c’est exactement ce que les fournisseurs
         comptent contre vous.
       </p>
     </div>
@@ -285,7 +285,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
         <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
         <input type="hidden" name="id" value="<?= e($c['id']) ?>">
         <div class="champ">
-          <label for="r-motif">Motif — obligatoire pour renvoyer ou refuser</label>
+          <label for="r-motif">Motif, obligatoire pour renvoyer ou refuser</label>
           <textarea id="r-motif" name="motif" rows="2"
                     placeholder="Le ton est trop insistant ; retirez la mention du prix."></textarea>
         </div>

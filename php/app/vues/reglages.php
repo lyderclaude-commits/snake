@@ -10,7 +10,7 @@ $branche = courriel_branche();
       <div>
         <h1>Réglages</h1>
         <p>Le transport e-mail. Sans lui, un partenaire ne sait qu’en revenant sur le site
-        que son décor a été relu — et une adresse ne peut pas être confirmée.</p>
+        que son décor a été relu, et une adresse ne peut pas être confirmée.</p>
       </div>
       <?php
       /* Le référencement est un réglage, et il vit ici plutôt que dans le
@@ -91,7 +91,7 @@ $branche = courriel_branche();
     <div class="carte" style="margin-top:16px">
       <h3 style="margin:0 0 4px">L’expéditeur</h3>
       <p class="aide" style="margin:0 0 16px">L’adresse doit appartenir au domaine du serveur d’envoi.
-      Une adresse d’un autre domaine — gmail, yahoo — part en indésirables ou se fait rejeter.</p>
+      Une adresse d’un autre domaine (gmail, yahoo) part en indésirables ou se fait rejeter.</p>
 
       <div class="grille g2">
         <div class="champ">
@@ -201,11 +201,11 @@ $branche = courriel_branche();
       <strong><?= $chemin_court ? 'La forme courte fonctionne.' : 'La forme courte n’a pas été vérifiée.' ?></strong>
       Le bouton demande à votre site de se répondre à lui-même : c’est la seule façon de savoir si
       votre hébergement lit bien le fichier <code>.htaccess</code>. Tant que la réponse n’est pas
-      venue, les liens gardent la forme longue — moins jolie, jamais cassée.
+      venue, les liens gardent la forme longue : moins jolie, jamais cassée.
     </p>
 
     <details style="margin-top:12px">
-      <summary class="aide" style="cursor:pointer">Brancher <code>wkb.link</code> — la marche à suivre</summary>
+      <summary class="aide" style="cursor:pointer">Brancher <code>wkb.link</code> : la marche à suivre</summary>
       <div class="aide" style="margin-top:10px;line-height:1.7">
         <p style="margin:0 0 8px"><strong>Le domaine ne s’invente pas côté logiciel :</strong> il faut
         le posséder et le faire pointer ici. Trois gestes, une fois pour toutes.</p>
@@ -213,8 +213,8 @@ $branche = courriel_branche();
           <li>Achetez <code>wkb.link</code> chez un registraire (le TLD <code>.link</code>
           coûte une dizaine d’euros par an).</li>
           <li>Chez LWS, dans cPanel → <strong>Domaines</strong>, ajoutez-le en
-          <em>domaine additionnel</em> et faites-le pointer vers <strong>ce même dossier</strong>
-          — celui qui contient <code>index.php</code>. Puis chez le registraire, réglez les
+          <em>domaine additionnel</em> et faites-le pointer vers <strong>ce même dossier</strong>,
+          celui qui contient <code>index.php</code>. Puis chez le registraire, réglez les
           serveurs DNS sur ceux de LWS.</li>
           <li>Revenez ici, saisissez <code>wkb.link</code> ci-dessus, et cliquez
           <em>Vérifier la forme courte</em>.</li>
@@ -229,8 +229,8 @@ $branche = courriel_branche();
     <h3 style="margin:0 0 4px">Les images</h3>
     <p class="aide" style="margin:0 0 12px">Les vignettes du catalogue et des articles sont
     fabriquées et mises en cache toutes seules : rien à faire pour elles. Le bouton ci-dessous
-    s’occupe des <strong>fichiers d’origine</strong> — les cadres que le Studio charge en entier,
-    et les images des articles, couvertures comprises — quand ils ont été téléversés avant que la
+    s’occupe des <strong>fichiers d’origine</strong> (les cadres que le Studio charge en entier,
+    et les images des articles, couvertures comprises) quand ils ont été téléversés avant que la
     compression n’existe.</p>
 
     <form method="post" action="<?= e(url('?p=reglages')) ?>">
@@ -251,7 +251,7 @@ $branche = courriel_branche();
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Ce que le transport change</h3>
     <ul style="margin:0;padding-left:1.1em;line-height:1.7">
-      <li>Un partenaire reçoit la décision sur son décor : approuvé, à corriger, refusé — avec le motif.</li>
+      <li>Un partenaire reçoit la décision sur son décor : approuvé, à corriger, refusé, avec le motif.</li>
       <li>L’équipe est prévenue qu’un décor attend sa relecture.</li>
       <li>Une nouvelle inscription reçoit un lien de confirmation, valable <?= VERIF_HEURES ?> heures.</li>
       <li><strong>Tant que le transport est éteint</strong>, la confirmation d’adresse n’est pas exigée :

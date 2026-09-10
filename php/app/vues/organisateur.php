@@ -147,7 +147,7 @@ $moi = $c['id'] === $me['id'];
       <p class="aide" style="margin:8px 0 14px">
         <?php if ($reste === null): ?>
           Offre <?= e(formule_libelle($c['formule'])) ?> sans date de fin. Enregistrez un
-          paiement pour lui en donner une — sinon rien ne relancera ce compte.
+          paiement pour lui en donner une : sinon rien ne relancera ce compte.
         <?php elseif ($reste < 0): ?>
           Échue le <?= e(date_fr((string) $c['echeance_le'])) ?>. Le compte repasse en
           Découverte <?= ABONNEMENT_GRACE ?> jours après l’échéance.
@@ -198,7 +198,7 @@ $moi = $c['id'] === $me['id'];
     <div class="carte" style="margin-bottom:16px">
       <h3 style="margin:0 0 4px">Double authentification</h3>
       <p class="aide" style="margin:0 0 12px">En service sur ce compte. Si la personne a perdu
-      son téléphone, la lever est la seule issue — elle la remettra ensuite depuis son profil.</p>
+      son téléphone, la lever est la seule issue ; elle la remettra ensuite depuis son profil.</p>
       <form method="post" action="<?= e(url('?p=otp-lever')) ?>">
         <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
         <input type="hidden" name="id" value="<?= e($c['id']) ?>">
@@ -233,7 +233,7 @@ $moi = $c['id'] === $me['id'];
           <select id="f-formule" name="formule" style="width:auto">
             <?php foreach (FORMULES as $cle => $f): ?>
               <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>>
-                <?= e($f['nom']) ?> — <?= $f['prix'] ? number_format($f['prix'], 0, ',', ' ') . ' FCFA' : 'gratuit' ?>
+                <?= e($f['nom']) ?> · <?= $f['prix'] ? number_format($f['prix'], 0, ',', ' ') . ' FCFA' : 'gratuit' ?>
               </option>
             <?php endforeach; ?>
           </select>

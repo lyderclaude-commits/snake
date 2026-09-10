@@ -8,7 +8,7 @@ $total = array_sum($compte);
   <section class="entete">
     <h1>Notifications push</h1>
     <p><?= $equipe
-      ? 'Un message sur l’écran des gens qui ont accepté d’en recevoir — même le site fermé.'
+      ? 'Un message sur l’écran des gens qui ont accepté d’en recevoir, même le site fermé.'
       : 'Un message aux invités de vos campagnes, sur leur navigateur, même le site fermé.' ?></p>
   </section>
 
@@ -19,10 +19,10 @@ $total = array_sum($compte);
     <div class="msg err">
       <strong>Cet hébergement ne peut pas envoyer de notifications.</strong>
       <p style="margin:.35em 0 6px">Ce sont des extensions PHP standard : votre hébergeur les
-      active sur demande. Voici ce qui manque, nommément — transmettez-lui cette liste.</p>
+      active sur demande. Voici ce qui manque, nommément : transmettez-lui cette liste.</p>
       <ul style="margin:0;padding-left:1.1em">
         <?php foreach ($prerequis as $quoi => $present): ?>
-          <li><?= $present ? '✓' : '✕' ?> <?= e($quoi) ?><?= $present ? '' : ' — absent' ?></li>
+          <li><?= $present ? '✓' : '✕' ?> <?= e($quoi) ?><?= $present ? '' : ' (absent)' ?></li>
         <?php endforeach; ?>
       </ul>
     </div>
@@ -41,7 +41,7 @@ $total = array_sum($compte);
           <?php else: ?>
             <strong>Ce compte n’a aucun navigateur abonné.</strong> Ouvrez
             <a href="<?= e(url('?p=profil')) ?>">Mon profil</a> et cliquez « Recevoir les
-            notifications » sur cet appareil — sinon il n’y a rien à qui écrire.
+            notifications » sur cet appareil : sinon il n’y a rien à qui écrire.
           <?php endif; ?>
         </p>
       </div>
@@ -82,7 +82,7 @@ $total = array_sum($compte);
         <strong>« Remise » veut dire que le service de push a accepté le message</strong>, pas
         qu’il s’est affiché. Si rien n’apparaît malgré une remise, le problème est côté
         navigateur : notifications coupées au niveau du système, mode « Ne pas déranger »,
-        ou un ancien service worker resté en place — dans ce dernier cas, rechargez la page
+        ou un ancien service worker resté en place. Dans ce dernier cas, rechargez la page
         en forçant le cache (Ctrl+Maj+R).
       </p>
     <?php endif; ?>
@@ -101,7 +101,7 @@ $total = array_sum($compte);
         <select id="d-segment" name="segment">
           <?php foreach ($segments as $cle => $lib): ?>
             <option value="<?= e($cle) ?>" <?= $saisie['segment'] === $cle ? 'selected' : '' ?>>
-              <?= e($lib) ?> — <?= (int) $compte[$cle] ?> abonné(s)
+              <?= e($lib) ?> · <?= (int) $compte[$cle] ?> abonné(s)
             </option>
           <?php endforeach; ?>
         </select>
@@ -226,7 +226,7 @@ $total = array_sum($compte);
       </div>
 
       <p class="aide" style="margin:12px 0 0">
-        <strong>Personnes</strong> compte les gens ; <strong>remises</strong> compte les navigateurs —
+        <strong>Personnes</strong> compte les gens ; <strong>remises</strong> compte les navigateurs :
         le même invité sur son téléphone et sur son poste en fait deux. Ni l’un ni l’autre ne dit que la
         notification a été <em>lue</em> : elle a été acceptée par le service du navigateur, qui la
         remettra quand l’appareil sera rallumé.
@@ -250,12 +250,12 @@ $total = array_sum($compte);
     <h3 style="margin:0 0 8px">Comment les gens s’abonnent</h3>
     <ul style="margin:0;padding-left:1.1em;line-height:1.7">
       <li>Le bouton se trouve dans <a href="<?= e(url('?p=profil')) ?>">Mon profil</a>, et sous
-      le badge que l’invité vient de télécharger — c’est là qu’on accepte le plus.</li>
+      le badge que l’invité vient de télécharger : c’est là qu’on accepte le plus.</li>
       <li>Il faut <strong>HTTPS</strong> : sans certificat, le navigateur refuse tout
       abonnement, sans message d’erreur visible.</li>
       <li>Un abonnement appartient à un <strong>navigateur</strong>, pas à une personne :
       le même invité sur son téléphone et sur son poste en fait deux.</li>
-      <li>Les abonnements périmés — navigateur vidé, notifications rouvertes puis refusées —
+      <li>Les abonnements périmés (navigateur vidé, notifications rouvertes puis refusées)
       sont effacés automatiquement à l’envoi suivant.</li>
     </ul>
   </div>

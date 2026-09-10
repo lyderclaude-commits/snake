@@ -14,7 +14,7 @@ $v = $valeurs;
   <section class="entete">
     <h1>Référencement</h1>
     <p>Ce que Google affiche dans ses résultats, et ce que WhatsApp montre quand
-    on colle un lien. Les deux se règlent ici — et se vérifient juste en dessous.</p>
+    on colle un lien. Les deux se règlent ici, et se vérifient juste en dessous.</p>
   </section>
 
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>
@@ -25,7 +25,7 @@ $v = $valeurs;
       <strong>L’indexation est coupée.</strong>
       <p style="margin:.35em 0 0">Chaque page demande aux moteurs de l’ignorer, et
       <code>robots.txt</code> interdit tout le site. C’est ce qu’il faut sur une installation
-      d’essai — mais sur le vrai site, rien ne remontera jamais dans Google.</p>
+      d’essai, mais sur le vrai site, rien ne remontera jamais dans Google.</p>
     </div>
   <?php endif; ?>
 
@@ -38,7 +38,7 @@ $v = $valeurs;
     <div class="apercu-partage">
       <img src="<?= e($apercu['url']) ?>" alt="">
       <div class="apercu-texte">
-        <b><?= e($v['seo_nom_site']) ?> — le badge qui remplit la salle</b>
+        <b><?= e($v['seo_nom_site']) ?> · le badge qui remplit la salle</b>
         <span><?= e(mb_strimwidth($v['seo_description'], 0, 150, '…')) ?></span>
         <span class="apercu-hote"><?= e(parse_url(base_url(), PHP_URL_HOST) ?: base_url()) ?></span>
       </div>
@@ -138,7 +138,7 @@ $v = $valeurs;
         <label for="s-desc">Description par défaut</label>
         <textarea id="s-desc" name="seo_description" rows="3" maxlength="300"><?= e($v['seo_description']) ?></textarea>
         <p class="aide">Deux phrases, 150 caractères environ. C’est le texte gris sous le titre
-        dans Google, et sous le titre dans WhatsApp — <strong>pour les pages qui n’ont pas la
+        dans Google, et sous le titre dans WhatsApp, <strong>pour les pages qui n’ont pas la
         leur</strong> : un article utilise son chapô, un décor son sous-titre.</p>
       </div>
 
@@ -309,7 +309,7 @@ $v = $valeurs;
        */
       if (rep.statut >= 400) {
         sortie.appendChild(ligne('mal', 'La page répond ' + rep.statut + '. Aucun aperçu ne '
-          + 's’affichera — ni image, ni titre, ni accroche. C’est le cas d’un décor jamais '
+          + 's’affichera : ni image, ni titre, ni accroche. C’est le cas d’un décor jamais '
           + 'publié, ou d’une adresse qui a changé.'));
         return;
       }
@@ -342,7 +342,7 @@ $v = $valeurs;
         }
         sortie.appendChild(ligne(d.l >= MIN ? 'bien' : 'moyen',
           'Image téléchargée, ' + d.l + ' × ' + d.h + ' px'
-          + (d.l >= MIN ? '.' : ' — en dessous de ' + MIN + ' px, la vignette est réduite '
+          + (d.l >= MIN ? '.' : ' : en dessous de ' + MIN + ' px, la vignette est réduite '
             + 'à un timbre-poste.')));
 
         var carte = document.createElement('div');

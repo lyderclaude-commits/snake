@@ -138,7 +138,7 @@ function demarrer(ctx: Contexte) {
       });
       d = await r.json();
     } catch {
-      etat.textContent = 'Aperçu indisponible — la saisie, elle, est bien prise en compte.';
+      etat.textContent = 'Aperçu indisponible : la saisie, elle, est bien prise en compte.';
       return;
     }
     // Une réponse arrivée après une plus récente ne doit pas la recouvrir.

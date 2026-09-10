@@ -133,7 +133,7 @@ Le patron du Maquis Akwaba nous a appelés un mardi. Sa soirée live du samedi
 ## Ce qu’on a fait
 
 Un décor, une accroche, et le lien envoyé sur son statut WhatsApp. Rien d’autre.
-Chaque personne qui faisait son badge le partageait — et le badge portait le nom
+Chaque personne qui faisait son badge le partageait, et le badge portait le nom
 du maquis, la date, et un QR unique.
 
 - **1 214 badges** créés en 9 jours
@@ -167,7 +167,7 @@ TXT,
             'auteur' => $admin, 'statut' => 'publie',
             'corps' => <<<'TXT'
 Un générateur de badges vous donne un chiffre : le nombre de téléchargements.
-C’est flatteur, et c’est à peu près inutile — il compte des intentions, pas des
+C’est flatteur, et c’est à peu près inutile : il compte des intentions, pas des
 présences.
 
 ## Deux chiffres, deux réalités
@@ -193,7 +193,7 @@ invités : la caméra reste ouverte, et le rythme tient une vraie file.
 
 Chaque présence scannée crédite des Koris à l’invité. Il repart avec quelque
 chose, et il a une raison de revenir à la soirée suivante. Ce n’est plus une
-soirée, c’est le début d’une habitude — et c’est là que se gagne la deuxième
+soirée, c’est le début d’une habitude, et c’est là que se gagne la deuxième
 salle comble.
 TXT,
         ],
@@ -210,7 +210,7 @@ Un maquis vit du vendredi et du samedi. Le reste de la semaine, la salle tourne
 ## L’idée
 
 Faire du mardi un rendez-vous **à part**, avec son propre nom et son propre
-visuel. Pas « venez aussi le mardi » — personne ne se déplace pour un jour de
+visuel. Pas « venez aussi le mardi » : personne ne se déplace pour un jour de
 seconde zone.
 
 ## Ce qu’on a mesuré
@@ -223,7 +223,7 @@ seconde zone.
 
 Nous avons lancé le premier mardi avec trois jours d’avance. C’était trop court :
 les gens organisent leur semaine le dimanche. À partir de la troisième semaine,
-nous avons publié le décor le vendredi précédent — et le nombre de badges créés
+nous avons publié le décor le vendredi précédent, et le nombre de badges créés
 avant le lundi a doublé.
 TXT,
         ],

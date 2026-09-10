@@ -134,7 +134,7 @@ $ouvert = $ouvert ?? '';
     <details class="carte creer" style="margin-top:12px"<?= $ouvert === 'equipe' ? ' open' : '' ?>>
       <summary>
         <span class="bouton petit fant">+ Nouveau compte de l’équipe</span>
-        <span class="aide">Quelqu’un qui travaille pour la maison. <strong>Pas d’offre, pas de quota</strong> —
+        <span class="aide">Quelqu’un qui travaille pour la maison. <strong>Pas d’offre, pas de quota</strong> :
         on ne se vend pas des fonctions à soi-même.</span>
       </summary>
 
@@ -219,7 +219,7 @@ $ouvert = $ouvert ?? '';
           ?>
           <td class="mono chiffre">
             <?php if ($c['role'] !== 'partenaire'): ?>
-              <span class="aide">—</span>
+              <span class="aide">Aucune</span>
             <?php elseif ($q < 0): ?>
               <?= $pris ?><br><span class="aide">sans limite</span>
             <?php else: ?>

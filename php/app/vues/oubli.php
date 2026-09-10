@@ -8,7 +8,7 @@ $fait = $fait ?? false;
   <?php if ($fait): ?>
     <div class="msg ok" role="status">
       <strong>Si un compte existe à cette adresse, le lien vient de partir.</strong>
-      <p style="margin:.4em 0 0">Regardez votre boîte — et les indésirables, où les messages
+      <p style="margin:.4em 0 0">Regardez votre boîte, et les indésirables, où les messages
       d’un domaine récent atterrissent souvent. Le lien vaut <?= OUBLI_HEURES ?> heures et ne
       sert qu’une fois.</p>
     </div>

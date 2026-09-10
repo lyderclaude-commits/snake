@@ -303,7 +303,7 @@ if ($page === 'verif-renvoyer') {
             'Le transport e-mail n’est pas réglé : aucun lien ne peut partir.',
         debit_depasse('verif|' . $id) =>
             'Un lien vient déjà de partir vers cette adresse. Réessayez dans '
-            . FENETRE_MINUTES . ' minutes — et faites-lui regarder ses indésirables.',
+            . FENETRE_MINUTES . ' minutes, et faites-lui regarder ses indésirables.',
         default => null,
     };
     if ($refus !== null) {
@@ -340,7 +340,7 @@ if ($page === 'otp-lever') {
     journal_ecrire($u, 'compte.role', 'compte', $id, (string) $vise['nom'],
         'Double authentification levée par un super-administrateur');
     notifier($id, 'compte', 'Votre double authentification a été retirée',
-        'Un super-administrateur l’a levée — sans doute à votre demande. Remettez-la en place '
+        'Un super-administrateur l’a levée, sans doute à votre demande. Remettez-la en place '
         . 'depuis votre profil dès que possible.', '?p=profil');
     rediriger('?p=organisateur&id=' . rawurlencode($id) . '&ok='
         . urlencode('Double authentification levée. Prévenez la personne de la remettre.'));

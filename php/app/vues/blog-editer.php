@@ -8,7 +8,7 @@ $etats = [
 ];
 ?>
 <div class="contenu etroit-large">
-  <p class="fil"><a href="<?= e(url('?p=blog-admin')) ?>">← <?= $equipe ? 'Le blog' : 'Mes articles' ?></a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=blog-admin')) ?>"><i>←</i><?= $equipe ? 'Le blog' : 'Mes articles' ?></a></p>
 
   <section class="entete">
     <h1><?= $existant ? 'Modifier l’article' : 'Écrire un article' ?></h1>
@@ -105,7 +105,7 @@ $etats = [
       <div class="champ">
         <label for="a-decor">Le décor</label>
         <select id="a-decor" name="decor_id">
-          <option value="">— Aucun —</option>
+          <option value="">Aucun</option>
           <?php foreach ($liables as $d): ?>
             <option value="<?= e((string) $d['id']) ?>" <?= $valeurs['decor_id'] === $d['id'] ? 'selected' : '' ?>>
               <?= e((string) $d['titre']) ?><?= $d['ville'] ? ' · ' . e(ucfirst((string) $d['ville'])) : '' ?><?=
@@ -179,7 +179,7 @@ Un paragraphe. Une ligne vide en sépare deux.
 
       <?php if (!$equipe && !$fige): ?>
         <p class="aide" style="margin:12px 0 0">Une fois proposé, l’article part chez la rédaction
-        et ne se modifie plus tant qu’elle n’a pas répondu — sinon quelqu’un approuverait un texte
+        et ne se modifie plus tant qu’elle n’a pas répondu, sinon quelqu’un approuverait un texte
         qui n’est déjà plus celui-là.</p>
       <?php endif; ?>
     </div>

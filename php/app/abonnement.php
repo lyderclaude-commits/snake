@@ -227,7 +227,7 @@ function rappeler_echeances(): array
                 $jours <= 1 ? 'Votre abonnement se termine demain' : 'Votre abonnement se termine dans une semaine',
                 'L’offre ' . formule_libelle($u['formule']) . ' court jusqu’au '
                 . date_fr((string) $u['echeance_le']) . '. Passé un délai de '
-                . ABONNEMENT_GRACE . ' jours, le compte repasse en Découverte — sans rien perdre, '
+                . ABONNEMENT_GRACE . ' jours, le compte repasse en Découverte, sans rien perdre, '
                 . 'mais avec les limites de l’offre gratuite.', '?p=partenaire');
             db()->prepare('UPDATE utilisateurs SET rappel_echeance = ? WHERE id = ?')
                 ->execute([(string) $seuil, $u['id']]);

@@ -68,7 +68,7 @@ $supprimer = static function (array $c): string {
       <strong>Le transport e-mail est éteint.</strong>
       <p style="margin:.35em 0 0">Vous pouvez écrire et faire relire une campagne, mais rien ne
       partira tant que le serveur d’envoi n’est pas réglé<?= $equipe
-        ? ' — <a href="' . e(url('?p=reglages')) . '">c’est ici</a>.'
+        ? ' : <a href="' . e(url('?p=reglages')) . '">c’est ici</a>.'
         : '. Prévenez l’équipe.' ?></p>
     </div>
   <?php endif; ?>
@@ -139,7 +139,7 @@ $supprimer = static function (array $c): string {
                   <?php endforeach; ?>
                 </div>
               </td>
-              <?php if ($equipe): ?><td class="aide"><?= e($c['auteur_nom'] ?? '—') ?></td><?php endif; ?>
+              <?php if ($equipe): ?><td class="aide"><?= e($c['auteur_nom'] ?? 'Inconnu') ?></td><?php endif; ?>
               <td class="aide"><?= e(REGIE_CIBLES[$c['cible']][0] ?? $c['cible']) ?></td>
               <td>
                 <span class="pastille <?= e($classe_etat) ?>"><?= e($libelle_etat) ?></span>
@@ -168,7 +168,7 @@ $supprimer = static function (array $c): string {
       <pre style="overflow-x:auto;background:var(--bg2);padding:12px;border-radius:10px;margin:0"><code>*/5 * * * * curl -s "<?= e($url_cron) ?>" &gt;/dev/null</code></pre>
       <p class="aide" style="margin:12px 0 0">La clé est la même que celle des sauvegardes,
       et elle remplace le mot de passe : ne la publiez pas. La tâche ne fait rien quand aucune
-      campagne n’est en cours d’envoi — la lancer toutes les cinq minutes ne coûte rien.</p>
+      campagne n’est en cours d’envoi : la lancer toutes les cinq minutes ne coûte rien.</p>
     </div>
   <?php endif; ?>
 
@@ -184,7 +184,7 @@ $supprimer = static function (array $c): string {
       ne reçoit deux fois, même si l’on reprend.</li>
       <?php if (!$equipe): ?>
         <li>L’équipe relit avant l’envoi. C’est le nom du guide qui part sur ces messages, et une
-        adresse signalée abîme la délivrabilité de tout le monde — y compris vos propres envois.</li>
+        adresse signalée abîme la délivrabilité de tout le monde, y compris vos propres envois.</li>
       <?php endif; ?>
     </ul>
   </div>

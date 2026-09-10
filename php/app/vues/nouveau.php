@@ -311,7 +311,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
                 <option value="<?= e($k) ?>"
                         <?= $valeurs['ville'] === $k ? 'selected' : '' ?>
                         <?= $k === 'all' && !$peut_cibler ? 'disabled' : '' ?>>
-                  <?= e($v) ?><?= $k === 'all' && !$peut_cibler ? ' — offre Croissance' : '' ?>
+                  <?= e($v) ?><?= $k === 'all' && !$peut_cibler ? ' (offre Croissance)' : '' ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -1105,7 +1105,7 @@ window.WAKABI_APERCU = {
     var n2 = Object.keys(v).length;
     if (!aide.textContent || n2 === 0) {
       aide.textContent = n2
-        ? n2 + ' déclinaison' + (n2 > 1 ? 's' : '') + ' — une seule place de quota.'
+        ? n2 + ' déclinaison' + (n2 > 1 ? 's' : '') + ', une seule place de quota.'
         : 'Ajoutez un format pour couvrir la story sans créer un second décor.';
     }
   }

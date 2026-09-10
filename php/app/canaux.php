@@ -505,7 +505,7 @@ function whatsapp_en_clair(string $dit): string
 {
     return match (true) {
         str_contains($dit, 'access token') || str_contains($dit, 'OAuth') =>
-            'Jeton refusé ou expiré. Reprenez-en un dans le tableau de bord Meta — '
+            'Jeton refusé ou expiré. Reprenez-en un dans le tableau de bord Meta : '
             . 'un jeton temporaire ne vit que vingt-quatre heures.',
         str_contains($dit, 'template') && str_contains($dit, 'not exist') =>
             'Ce modèle n’existe pas dans votre compte Meta, ou il n’est pas encore approuvé.',

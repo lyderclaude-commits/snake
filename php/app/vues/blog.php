@@ -34,7 +34,7 @@
           Aucun article ne parle de « <?= e($cherche) ?> ».
           <a href="<?= e(url('?p=blog')) ?>">Voir tout le blog</a>.
         <?php else: ?>
-          Rien de publié pour l’instant. Revenez bientôt —
+          Rien de publié pour l’instant. Revenez bientôt,
           ou <a href="<?= e(url('?p=decors')) ?>">allez voir les décors</a> en attendant.
         <?php endif; ?>
       </p>

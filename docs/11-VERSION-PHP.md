@@ -6,7 +6,10 @@ sait les relancer — sauf sur une adresse morte, jamais. Les adresses non
 confirmées sont écartées des campagnes, le carnet excepté. L'écran d'écriture
 devient un atelier à deux colonnes, avec l'aperçu de ce que chaque plateforme
 affichera. Dans le studio, **l'œil du panneau de calques** éteint et rallume un
-objet pour de vrai. Et **un défaut de la v1.1 est corrigé** : cinq colonnes n'existaient
+objet pour de vrai. Le **retour en arrière est un bouton** sur tous les écrans qui
+en portent un, et **le tiret cadratin a disparu de tous les textes**. Un invité
+qui s'abonne aux notifications **sans créer de compte** appartient enfin à
+l'organisateur chez qui il l'a fait. Et **un défaut de la v1.1 est corrigé** : cinq colonnes n'existaient
 que dans les migrations, donc pas dans une installation neuve — le premier décor
 enregistré sur un site fraîchement installé échouait.
 
@@ -40,7 +43,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **751 scénarios, 751 réussis**
+Les deux ont été vérifiés de bout en bout : **762 scénarios, 762 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -126,7 +129,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 751 scénarios, dans un vrai navigateur
+npm run php:e2e          # 762 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement
 ```
@@ -146,7 +149,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 751 scénarios
+### Les 762 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1413,6 +1416,28 @@ se répare que par la base de données.
 
 ---
 
+## L'écriture, et le retour en arrière
+
+**Aucun tiret cadratin dans les textes.** Ni dans les écrans, ni dans les
+messages, ni dans les courriels, ni dans les objets de page. La ponctuation
+d'une incise se fait avec deux-points, une virgule, un point ou une
+parenthèse : c'est la règle d'écriture de la maison. Une règle qu'on ne
+vérifie pas redevient une préférence, et elle reviendrait au troisième écran
+ajouté : la recette parcourt donc vingt-trois écrans, relève chaque nœud de
+texte et chaque attribut lisible, et échoue s'il en reste un.
+
+> Le seul tiret qui subsiste est dans la liste de caractères que `seo_couper()`
+> rogne en fin de titre. Ce n'est pas un texte, c'est un filet.
+
+**Le retour en arrière est un bouton.** `← La régie`, `← Le carnet`,
+`← Le blog` : c'est le geste le plus fréquent de tout l'espace de travail, et
+il tombait au même rang visuel qu'un mot cliquable au milieu d'une phrase. Une
+seule classe, `.retour`, sur les huit écrans qui en portent un : une pastille
+grise qui porte la flèche, un fond blanc, et au survol la pastille passe au
+bleu pendant que le bouton recule d'un cheveu.
+
+---
+
 ## Les notifications du navigateur
 
 Une notification qui arrive **quand le site est fermé** : c'est la seule
@@ -1457,6 +1482,22 @@ Un abonnement appartient à un **navigateur**, pas à une personne : le même
 invité sur son téléphone et sur son poste en a deux, et un poste sans compte
 peut en porter un. C'est précisément ce qui permet de reparler à un visiteur
 qui n'a jamais créé de compte.
+
+**Et il se souvient du décor sous lequel il a été pris** (v1.2). C'est la
+seule attache entre cet invité et l'organisateur qui l'a fait venir : tout le
+produit promet « sans compte, en trente secondes », l'invité s'abonne sous son
+badge et ne crée jamais de compte. Sans cette attache, le segment « les invités
+de mes campagnes » le cherchait par le COMPTE et ne le trouvait jamais : un
+organisateur dont **tous** les invités s'étaient abonnés chez lui lisait
+« 0 appareil » sur son écran d'écriture. Le nombre était juste au sens de la
+requête, et faux au sens de la question posée.
+
+Deux façons d'être un invité de ses campagnes, désormais : par le **compte**,
+quand la personne en a un et qu'elle a fait un badge chez vous ; par le
+**décor**, quand elle s'est abonnée sous son badge sans compte. Le premier
+décor gagne : se réabonner ailleurs le mois suivant ne vole pas l'abonné à
+l'organisateur qui l'a gagné, et renouveler l'adresse du navigateur ne le perd
+pas.
 
 ### Envoyer — `?p=diffusion`
 

@@ -373,7 +373,8 @@ function push_empreinte(string $endpoint): string
     return hash('sha256', $endpoint);
 }
 
-function push_abonner(?string $utilisateur_id, string $endpoint, string $p256dh, string $auth, string $agent): void
+function push_abonner(?string $utilisateur_id, string $endpoint, string $p256dh, string $auth,
+                     string $agent, ?string $decor_id = null): void
 {
     // L'adresse est unique : se réabonner depuis le même navigateur met à
     // jour, sinon la table doublerait à chaque visite.
@@ -382,13 +383,23 @@ function push_abonner(?string $utilisateur_id, string $endpoint, string $p256dh,
     $existe = $s->fetchColumn();
 
     if ($existe) {
-        db()->prepare('UPDATE push SET utilisateur_id = ?, p256dh = ?, auth = ?, agent = ?, vu_le = ? WHERE id = ?')
-            ->execute([$utilisateur_id, $p256dh, $auth, $agent, maintenant(), $existe]);
+        /**
+         * Le décor ne s'écrase pas : c'est le PREMIER qui compte.
+         *
+         * Quelqu'un s'abonne sous le badge d'un maquis, puis fait un badge
+         * ailleurs le mois suivant. Réattribuer l'abonnement au second
+         * volerait au premier organisateur un abonné qu'il a gagné, et
+         * ferait varier les portées sans que personne ne comprenne
+         * pourquoi.
+         */
+        db()->prepare('UPDATE push SET utilisateur_id = ?, p256dh = ?, auth = ?, agent = ?,
+                       decor_id = COALESCE(decor_id, ?), vu_le = ? WHERE id = ?')
+            ->execute([$utilisateur_id, $p256dh, $auth, $agent, $decor_id, maintenant(), $existe]);
         return;
     }
-    db()->prepare('INSERT INTO push (id, empreinte, utilisateur_id, endpoint, p256dh, auth, agent, cree_le, vu_le)
-                   VALUES (?,?,?,?,?,?,?,?,?)')
-        ->execute([nouvel_id(), push_empreinte($endpoint), $utilisateur_id, $endpoint,
+    db()->prepare('INSERT INTO push (id, empreinte, utilisateur_id, decor_id, endpoint, p256dh, auth, agent, cree_le, vu_le)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)')
+        ->execute([nouvel_id(), push_empreinte($endpoint), $utilisateur_id, $decor_id, $endpoint,
                    $p256dh, $auth, $agent, maintenant(), maintenant()]);
 }
 
@@ -420,11 +431,29 @@ function push_destinataires(string $segment, ?string $auteur_id = null): array
 
     switch ($segment) {
         case 'mes-invites':
+            /**
+             * Deux façons d'être « un invité de mes campagnes ».
+             *
+             * Par le COMPTE, quand la personne en a un et qu'elle a fait un
+             * badge sur l'une de vos campagnes. Et par le DÉCOR, quand elle
+             * s'est abonnée sous son badge sans jamais créer de compte —
+             * c'est le cas le plus fréquent, puisque tout le produit promet
+             * « sans compte, en trente secondes ».
+             *
+             * Ne garder que la première branche revenait à annoncer zéro
+             * abonné à un organisateur dont tous les invités s'étaient
+             * abonnés chez lui. Le nombre était juste au sens de la
+             * requête, et faux au sens de la question posée.
+             */
             $sql = "SELECT DISTINCT p.* FROM push p
-                    JOIN badges b ON b.utilisateur_id = p.utilisateur_id
-                    JOIN decors d ON d.id = b.decor_id
-                    WHERE d.auteur_id = ?";
-            $args = [$auteur_id];
+                    WHERE EXISTS (SELECT 1 FROM decors d
+                                  WHERE d.id = p.decor_id AND d.auteur_id = ?)
+                       OR EXISTS (SELECT 1 FROM badges b
+                                  JOIN decors d2 ON d2.id = b.decor_id
+                                  WHERE b.utilisateur_id = p.utilisateur_id
+                                    AND p.utilisateur_id IS NOT NULL
+                                    AND d2.auteur_id = ?)";
+            $args = [$auteur_id, $auteur_id];
             break;
         case 'organisateurs':
             $sql .= " AND u.role = 'partenaire'";
@@ -500,7 +529,7 @@ function push_diffuser(array $abonnements, array $message): array
             continue;
         }
         $echecs++;
-        $cle = ($r['code'] ? 'HTTP ' . $r['code'] . ' — ' : '')
+        $cle = ($r['code'] ? 'HTTP ' . $r['code'] . ' · ' : '')
              . trim(mb_substr((string) $r['message'], 0, 160));
         $motifs[$cle] = ($motifs[$cle] ?? 0) + 1;
         if ($r['mort']) {

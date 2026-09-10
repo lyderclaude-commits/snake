@@ -95,8 +95,8 @@ $verifie = email_verifie($me);
         <?php if ($reste === null): ?>
           Sans date de fin pour l’instant.
         <?php elseif ($reste < 0): ?>
-          Échue le <?= e(date_fr((string) $me['echeance_le'])) ?> —
-          écrivez-nous pour la reprendre, rien n’est perdu.
+          Échue le <?= e(date_fr((string) $me['echeance_le'])) ?>.
+          Écrivez-nous pour la reprendre, rien n’est perdu.
         <?php else: ?>
           Elle court jusqu’au <strong><?= e(date_fr((string) $me['echeance_le'])) ?></strong>,
           soit <?= (int) $reste ?> jour<?= $reste > 1 ? 's' : '' ?>.
@@ -153,7 +153,7 @@ $verifie = email_verifie($me);
 
       <?php elseif (($me['otp_secret'] ?? '') !== '' && !empty($_GET['otp'])): ?>
         <p class="aide" style="margin:8px 0 12px">Scannez ce code avec votre application
-        d’authentification — Google Authenticator, Aegis, FreeOTP, celle de votre gestionnaire
+        d’authentification : Google Authenticator, Aegis, FreeOTP, celle de votre gestionnaire
         de mots de passe. Puis recopiez le code affiché pour confirmer.</p>
         <div class="rangee" style="gap:18px;flex-wrap:wrap;align-items:flex-start">
           <img src="<?= e(Qr::dataUri(otp_uri($me, (string) $me['otp_secret']), 220)) ?>"
@@ -194,7 +194,7 @@ $verifie = email_verifie($me);
         <p class="aide" style="margin:8px 0 12px">Votre compte ouvre
         <?= e($ouvre ? implode(', ', array_slice($ouvre, 0, -1))
               . (count($ouvre) > 1 ? ' et ' : '') . end($ouvre) : 'des écrans internes') ?>.
-        Un second facteur rend inutile un mot de passe qui fuirait ailleurs — il coûte six
+        Un second facteur rend inutile un mot de passe qui fuirait ailleurs, et il ne coûte que six
         chiffres à la connexion.</p>
         <form method="post" action="<?= e(url('?p=profil-otp')) ?>">
           <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">

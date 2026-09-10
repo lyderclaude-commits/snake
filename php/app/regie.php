@@ -613,9 +613,9 @@ function regie_canal_libelle(array $cible): string
     }
     $nom = CANAUX_GENRES[$genre]['nom'] ?? $genre;
     if (!empty($cible['destination_id']) && ($d = destination_par_id((string) $cible['destination_id']))) {
-        return $nom . ' — ' . $d['nom'];
+        return $nom . ' · ' . $d['nom'];
     }
-    return $nom . ' — tête-à-tête';
+    return $nom . ' · tête-à-tête';
 }
 
 /**
@@ -1025,7 +1025,7 @@ function regie_archiver(string $campagne_id, string $envoi_id): bool
 
     $canal = (string) ($e['canal'] ?: 'email');
     if ($canal === 'email') {
-        desabonner((string) $e['email'], 'adresse morte' . ($e['message'] ? ' — ' . echec_code($e['message']) : ''));
+        desabonner((string) $e['email'], 'adresse morte' . ($e['message'] ? ' ' . echec_code($e['message']) : ''));
     } else {
         [$canal_id, $cible] = array_pad(explode('|', (string) ($e['cible'] ?? ''), 2), 2, '');
         if ($canal_id !== '' && $cible !== '') {

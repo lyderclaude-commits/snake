@@ -59,7 +59,7 @@ if ($page === 'equipier') {
     if (!$invite) {
         rediriger($retour . '&err=' . urlencode(
             'Aucun compte à cette adresse. La personne doit d’abord créer un compte '
-            . 'sur ' . base_url() . ' — c’est gratuit.'));
+            . 'sur ' . base_url() . ', c’est gratuit.'));
     }
     if ($invite['id'] === $d['auteur_id']) {
         rediriger($retour . '&err=' . urlencode('C’est déjà la campagne de cette personne.'));
@@ -67,7 +67,7 @@ if ($page === 'equipier') {
     equipier_inviter((string) $d['id'], (string) $invite['id'], (string) $u['id']);
     notifier((string) $invite['id'], 'compte', 'On vous confie une campagne',
         $u['nom'] . ' vous a donné accès à « ' . $d['titre'] . ' ». Vous pouvez la modifier '
-        . 'et la soumettre à la relecture — et rien d’autre sur son compte.',
+        . 'et la soumettre à la relecture, et rien d’autre sur son compte.',
         '?p=modifier&id=' . $d['id']);
     rediriger($retour . '&ok=' . urlencode(
         $invite['nom'] . ' peut maintenant travailler sur cette campagne, et sur elle seule.'));
@@ -100,7 +100,7 @@ if ($page === 'soumettre') {
     if ($u['role'] === 'partenaire' && verification_exigee() && !email_verifie($u)) {
         rediriger('?p=partenaire&err=' . urlencode(
             'Confirmez d’abord votre adresse e-mail : c’est par là que part la décision de '
-            . 'relecture. Le lien vous a été envoyé à ' . $u['email'] . ' — vous pouvez le '
+            . 'relecture. Le lien vous a été envoyé à ' . $u['email'] . ' ; vous pouvez le '
             . 'redemander depuis cette page.'
         ));
     }

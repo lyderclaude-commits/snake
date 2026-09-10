@@ -94,7 +94,7 @@ if ($post) {
             $r = courriel_mis_en_page(
                 $vers,
                 $u['nom'],
-                'Essai d’envoi — Wakabi Boost',
+                'Essai d’envoi · Wakabi Boost',
                 'Le transport fonctionne',
                 "Si vous lisez ce message, les réglages SMTP de Wakabi Boost sont bons.\n\n"
                 . 'Envoyé depuis ' . base_url() . ' le ' . gmdate('d/m/Y à H:i') . ' UTC.',
@@ -103,7 +103,7 @@ if ($post) {
             );
             if ($r['ok']) {
                 $message = 'Réglages enregistrés. ' . $r['message']
-                    . ' Regardez la boîte de ' . $vers . ' — indésirables compris.';
+                    . ' Regardez la boîte de ' . $vers . ', indésirables compris.';
             } else {
                 $erreur = 'Réglages enregistrés, mais l’essai a échoué. ' . $r['message'];
             }
@@ -141,7 +141,7 @@ if ($post) {
                     '%d image(s) traitée(s), %d allégée(s) : %s au lieu de %s.%s',
                     $b['traites'], $b['allegees'], poids($b['apres']), poids($b['avant']),
                     $b['restants'] > 0
-                        ? ' Il en reste ' . $b['restants'] . ' — relancez pour continuer.'
+                        ? ' Il en reste ' . $b['restants'] . ' : relancez pour continuer.'
                         : ' C’est terminé.'
                 );
         } else {

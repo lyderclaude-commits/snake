@@ -76,7 +76,7 @@ if ($page === 'regie-action') {
                         ? sprintf(
                             'Cette campagne ne toucherait personne : les %d adresse(s) de cette cible '
                             . 'n’ont jamais été confirmées, et une adresse non confirmée ne reçoit pas '
-                            . 'de campagne — c’est ce qui protège la délivrabilité de tous vos envois. '
+                            . 'de campagne : c’est ce qui protège la délivrabilité de tous vos envois. '
                             . 'Une liste de votre carnet, elle, n’est pas soumise à cette règle.',
                             $ecartes)
                         : 'Cette campagne ne toucherait personne. Vérifiez la cible : peut-être '
@@ -95,7 +95,7 @@ if ($page === 'regie-action') {
                         . rawurlencode('Campagne prête : ' . $n . ' destinataire(s).'));
                 }
                 notifier_equipe('regie', 'Une campagne e-mail attend la relecture',
-                    '« ' . $c['sujet'] .' » de ' . $auteur['nom'] . ' — ' . $n . ' destinataire(s).',
+                    '« ' . $c['sujet'] .' » de ' . $auteur['nom'] . ' · ' . $n . ' destinataire(s).',
                     '?p=regie-campagne&id=' . $c['id']);
                 rediriger('?p=regie&ok=' . rawurlencode(
                     'Soumise à la régie : ' . $n . ' destinataire(s). Réponse sous 24 h ouvrées.'));
@@ -265,11 +265,15 @@ if ($page === 'regie-ecrire') {
                       'ecartes' => $portee_ici['ecartes'], 'suit' => 'n']];
     if (push_disponible()) {
         $choix_canaux[] = ['cle' => 'push', 'genre' => 'push', 'libelle' => 'Notifications',
-                           'sous' => 'Navigateur', 'unite' => 'appareils',
+                           // Comme l'e-mail, ce nombre suit la cible : le dire
+                           // évite de lire un zéro comme une panne alors que
+                           // c'est la portée de CETTE cible-là.
+                           'sous' => 'Selon la cible choisie', 'unite' => 'appareil(s) abonné(s)',
                            'aide' => 'Les invités de vos campagnes, sur leur navigateur.',
                            'payant' => false, 'n' => $portee_ici['push'],
                            'envois' => 1, 'ecartes' => 0, 'suit' => 'push',
-                           'note' => 'Votre texte sera coupé à ' . PUSH_APERCU . ' caractères.',
+                           'note' => 'Ceux qui ont accepté les notifications sous leur badge. '
+                                   . 'Votre texte sera coupé à ' . PUSH_APERCU . ' caractères.',
                            'ton' => 'attention'];
     }
     foreach ($mes_canaux as $mc) {
@@ -575,9 +579,9 @@ if ($page === 'regie-echecs-export') {
             REGIE_ENVOIS_STATUTS[$e['statut']] ?? $e['statut'],
             $e['code'], (int) $e['tentatives'], (string) ($e['message'] ?? ''),
             match (true) {
-                $e['statut'] !== 'echec' => '—',
+                $e['statut'] !== 'echec' => 'sans objet',
                 (bool) $e['reprenable'] => 'oui',
-                (bool) $e['mortel'] => 'non — destination morte',
+                (bool) $e['mortel'] => 'non, destination morte',
                 default => 'à la main',
             },
         ]);

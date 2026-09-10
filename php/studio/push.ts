@@ -16,6 +16,16 @@ interface Contexte {
   csrf: string;
   cle: string;
   connecte: boolean;
+  /**
+   * Le décor sous lequel on s'abonne, quand il y en a un.
+   *
+   * C'est la seule attache entre un invité SANS COMPTE et l'organisateur
+   * qui l'a fait venir : il fait son badge, s'abonne, ne crée jamais de
+   * compte. Sans cet identifiant, « les invités de mes campagnes »
+   * annonçait zéro abonné à un organisateur dont tous les invités
+   * s'étaient abonnés chez lui.
+   */
+  decor?: string;
 }
 
 const lire = (): Contexte | null => {
@@ -127,6 +137,7 @@ function demarrer(): void {
       endpoint: abonnement.endpoint,
       p256dh: j.keys?.p256dh || b64(abonnement.getKey('p256dh')),
       auth: j.keys?.auth || b64(abonnement.getKey('auth')),
+      decor: ctx.decor ?? '',
     }).catch(() => { /* le bouton reste utilisable, c'est l'essentiel */ });
   };
 
@@ -163,6 +174,7 @@ function demarrer(): void {
         endpoint: abonnement.endpoint,
         p256dh: j.keys?.p256dh || b64(abonnement.getKey('p256dh')),
         auth: j.keys?.auth || b64(abonnement.getKey('auth')),
+        decor: ctx.decor ?? '',
       });
       peindre();
     } catch (e) {

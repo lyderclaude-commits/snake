@@ -37,6 +37,9 @@ $_push_titre = $_push_titre ?? 'Les notifications';
       // permet au script de le rattacher au compte, sans quoi « les
       // invités de mes campagnes » ne verrait jamais ces gens-là.
       'connecte' => (bool) utilisateur_courant(),
+      // Le décor sous lequel on s'abonne, quand il y en a un. C'est ce qui
+      // rattache un invité SANS COMPTE à l'organisateur qui l'a fait venir.
+      'decor' => (string) ($_push_decor ?? ''),
   ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
   <script src="<?= e(actif('public/push.js')) ?>" defer></script>
 </div>

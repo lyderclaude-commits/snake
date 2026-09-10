@@ -58,14 +58,14 @@ if ($page === 'oubli') {
                     (string) $u['nom'],
                     'Reprendre la main sur votre compte Wakabi Boost',
                     "Bonjour " . $u['nom'] . ",\n\n"
-                    . "Quelqu’un — vous, sans doute — a demandé un nouveau mot de passe pour "
+                    . "Quelqu’un, vous sans doute, a demandé un nouveau mot de passe pour "
                     . "le compte " . $u['email'] . ".\n\n"
                     . "Choisissez-en un ici, dans les " . OUBLI_HEURES . " heures :\n"
                     . lien_oubli($jeton) . "\n\n"
                     . "Si ce n’était pas vous, ignorez ce message : rien n’a changé, et "
                     . "votre mot de passe actuel fonctionne toujours. Le lien ne sert qu’une "
                     . "fois et expire tout seul.\n\n"
-                    . "— L’équipe Wakabi\n"
+                    . "L’équipe Wakabi\n"
                 );
             }
             $fait = true;

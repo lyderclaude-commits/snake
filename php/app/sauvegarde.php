@@ -167,7 +167,7 @@ function cle_sauvegarde(): string
  */
 function dump_mysql(PDO $pdo): string
 {
-    $out = "-- Sauvegarde Wakabi Boost — " . gmdate('Y-m-d H:i') . " UTC\n"
+    $out = "-- Sauvegarde Wakabi Boost, " . gmdate('Y-m-d H:i') . " UTC\n"
          . "-- À réimporter dans phpMyAdmin, dans une base VIDE.\n\n"
          . "SET NAMES utf8mb4;\n"
          . "SET FOREIGN_KEY_CHECKS = 0;\n"
@@ -237,14 +237,14 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         . "2. Remplacez donnees/wakabi.sqlite par le fichier wakabi.sqlite ci-joint.\n"
         . "3. Recopiez cadres/ et medias/ dans donnees/ du site.\n";
 
-    $restaurer = "LE PLUS SIMPLE — depuis le site lui-même\n"
+    $restaurer = "LE PLUS SIMPLE : depuis le site lui-même\n"
         . "  Administration > Sauvegardes. Chaque archive présente sur le\n"
         . "  serveur porte un bouton « Restaurer ». L'écran montre d'abord ce\n"
         . "  qu'elle contient, puis demande de recopier son nom. Une copie de\n"
         . "  l'état actuel est prise juste avant : se tromper reste rattrapable.\n"
         . "  Si cette archive n'est plus sur le serveur, reversez-la dans\n"
         . "  donnees/sauvegardes/ et elle réapparaîtra dans la liste.\n\n"
-        . "À LA MAIN — si le site ne répond plus du tout\n"
+        . "À LA MAIN : si le site ne répond plus du tout\n"
         . $manuel;
 
     return "SAUVEGARDE WAKABI BOOST\n"
@@ -255,7 +255,7 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         . "  cadres/         les $cadres fichiers de cadres téléversés\n"
         . "  medias/         les $medias couvertures d'articles\n\n"
         . "CE QU'ELLE NE CONTIENT PAS\n"
-        . "  config.php — il décrit VOTRE serveur (identifiants de base de\n"
+        . "  config.php : il décrit VOTRE serveur (identifiants de base de\n"
         . "  données, chemins) et n'a rien à faire dans une archive qui\n"
         . "  circule. Gardez-en une copie à part.\n\n"
         . "  Les vignettes de partage et les images redimensionnées : elles\n"
@@ -266,7 +266,7 @@ function notice_sauvegarde(bool $mysql, int $cadres, int $medias = 0): string
         . "IMPORTANT\n"
         . "  Une sauvegarde qui reste sur le serveur qu'elle sauvegarde ne\n"
         . "  sauvegarde rien. Téléchargez-la, et gardez-en une copie\n"
-        . "  ailleurs — un disque, un espace en ligne, peu importe, mais\n"
+        . "  ailleurs : un disque, un espace en ligne, peu importe, mais\n"
         . "  pas la même machine.\n";
 }
 
@@ -380,7 +380,7 @@ function restaurer_sauvegarde(string $archive): array
         db_fermer();
         if (!@rename($neuf, $cible)) {
             @unlink($neuf);
-            throw new RuntimeException('Impossible de remplacer donnees/wakabi.sqlite — '
+            throw new RuntimeException('Impossible de remplacer donnees/wakabi.sqlite : '
                 . 'le dossier est-il accessible en écriture ?');
         }
         $tables = (int) db()->query(

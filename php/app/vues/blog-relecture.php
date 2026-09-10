@@ -43,7 +43,7 @@ $message = $message ?? null;
           <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
           <input type="hidden" name="id" value="<?= e($a['id']) ?>">
           <div class="champ">
-            <label for="m-<?= e($a['id']) ?>">Motif — obligatoire pour renvoyer ou refuser</label>
+            <label for="m-<?= e($a['id']) ?>">Motif, obligatoire pour renvoyer ou refuser</label>
             <textarea id="m-<?= e($a['id']) ?>" name="motif" rows="2"
                       placeholder="Ajoutez les chiffres réels : sans eux, l’article ne prouve rien."></textarea>
           </div>

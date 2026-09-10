@@ -446,7 +446,7 @@ $_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
     </div>
 
     <div class="pg-bas">
-      <span class="pg-copy">© <?= date('Y') ?> Wakabileguide.com — Tous droits réservés.
+      <span class="pg-copy">© <?= date('Y') ?> Wakabileguide.com · Tous droits réservés.
       Fait avec amour.</span>
       <div class="pg-legal">
         <a href="<?= e(GUIDE_URL) ?>/confidentialite.html"<?= sortie_externe(GUIDE_URL) ?>>Politique de confidentialité</a>

@@ -35,7 +35,7 @@ $moi = utilisateur_courant();
         <?php if ($deja): ?>
           Un lien de confirmation peut être ouvert plusieurs fois : les filtres de certaines
           messageries le suivent avant vous pour vérifier où il mène. Que ce soit vous ou eux
-          qui l’ayez ouvert en premier ne change rien — <strong>l’adresse est confirmée</strong>.
+          qui l’ayez ouvert en premier ne change rien : <strong>l’adresse est confirmée</strong>.
         <?php else: ?>
           Vous pouvez maintenant soumettre vos décors à la relecture. L’équipe s’engage à
           répondre sous 24 heures ouvrées, et sa décision vous parviendra à cette adresse.
@@ -51,7 +51,7 @@ $moi = utilisateur_courant();
 
     <?php else: ?>
       <p style="margin:0 0 16px">Un lien de confirmation vaut <?= VERIF_HEURES ?> heures, et
-      demander un lien neuf annule les précédents — c’est <strong>le dernier reçu</strong> qui
+      demander un lien neuf annule les précédents : c’est <strong>le dernier reçu</strong> qui
       compte. Donnez votre adresse, il en repart un tout de suite.</p>
 
       <form method="post" action="<?= e(url('?p=verif-demander')) ?>">

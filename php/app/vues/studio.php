@@ -162,6 +162,9 @@ $pas = function () use (&$_pas) { return ++$_pas; };
    * bandeau au premier chargement de l'accueil se ferme sans être lu.
    */
   $_push_titre = 'Être prévenu des prochaines campagnes';
+  // L'abonnement se souvient d'où il vient : c'est la seule attache entre
+  // cet invité et l'organisateur, s'il ne crée jamais de compte.
+  $_push_decor = (string) $d['id'];
   require RACINE . '/app/vues/partiels/push-abonnement.php';
   ?>
 </div>

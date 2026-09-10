@@ -7,7 +7,7 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
 <div class="contenu">
   <section class="entete">
     <h1>Sauvegardes</h1>
-    <p>Les comptes, les campagnes, les badges émis, les présences scannées — et les
+    <p>Les comptes, les campagnes, les badges émis, les présences scannées, et les
     cadres, qui sont des fichiers et que personne ne pense à sauver avec la base.</p>
   </section>
 
@@ -129,7 +129,7 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
 
     <p class="aide" style="margin:16px 0 0">
       <strong>Une sauvegarde gardée sur le serveur qu’elle sauvegarde ne sauvegarde rien.</strong>
-      Téléchargez-la, et gardez-en une copie ailleurs — un disque, un espace en ligne,
+      Téléchargez-la, et gardez-en une copie ailleurs : un disque, un espace en ligne,
       peu importe, mais pas la même machine.
     </p>
   </div>
@@ -142,7 +142,7 @@ $vieille = $derniere && (time() - $derniere['date']) > 8 * 86400;
     <p class="aide" style="margin:12px 0 0">
       La clé de cette adresse remplace le mot de passe : elle seule autorise la tâche.
       Ne la publiez pas. Les <?= SAUVEGARDES_GARDEES ?> dernières archives sont gardées,
-      les plus anciennes s’effacent toutes seules — sinon le quota de l’hébergeur se
+      les plus anciennes s’effacent toutes seules, sinon le quota de l’hébergeur se
       remplit, et un disque plein empêche d’écrire la sauvegarde suivante.
     </p>
     <p class="aide" style="margin:10px 0 0">

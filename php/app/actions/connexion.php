@@ -42,7 +42,7 @@ if ($post && $en_attente && isset($_POST['code'])) {
         rediriger(accueil_de($en_attente));
     } else {
         debit_noter($cle);
-        $erreur = 'Ce code n’est pas le bon. Il change toutes les 30 secondes — '
+        $erreur = 'Ce code n’est pas le bon. Il change toutes les 30 secondes : '
             . 'attendez le suivant et ressaisissez-le.';
     }
 }

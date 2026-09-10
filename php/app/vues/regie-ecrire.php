@@ -49,7 +49,7 @@ $fonds  = ['email' => 'cx-ml', 'push' => 'cx-web', 'telegram' => 'cx-telegram', 
 $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', 'whatsapp' => '#25D366'];
 ?>
 <div class="contenu">
-  <p class="fil"><a href="<?= e(url('?p=regie')) ?>">← La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
 
   <section class="entete" style="padding-bottom:12px">
     <h1><?= $existante ? 'Modifier le message' : 'Nouveau message' ?></h1>
@@ -60,8 +60,8 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
 
   <div class="ec-etapes">
     <a class="ec-etape actif" href="#et-message"><i>1</i><b>Le message<span id="rs-message">Titre, texte, lien</span></b></a>
-    <a class="ec-etape" href="#et-canaux"><i>2</i><b>Les canaux<span id="rs-canaux">—</span></b></a>
-    <a class="ec-etape" href="#et-qui"><i>3</i><b>Qui et quand<span id="rs-qui">—</span></b></a>
+    <a class="ec-etape" href="#et-canaux"><i>2</i><b>Les canaux<span id="rs-canaux">À choisir</span></b></a>
+    <a class="ec-etape" href="#et-qui"><i>3</i><b>Qui et quand<span id="rs-qui">À choisir</span></b></a>
   </div>
 
   <form method="post" action="<?= e(url('?p=regie-ecrire' . ($existante ? '&id=' . urlencode((string) $existante['id']) : ''))) ?>">
@@ -80,14 +80,14 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
             <label for="r-titre">Titre</label>
             <input id="r-titre" name="titre" type="text" required maxlength="120"
                    placeholder="On remet ça samedi" value="<?= e($valeurs['titre']) ?>">
-            <p class="aide" id="c-titre">—</p>
+            <p class="aide" id="c-titre"></p>
           </div>
 
           <div class="champ">
             <label for="r-corps">Message</label>
             <textarea id="r-corps" name="corps" rows="8" required style="line-height:1.55"
                       placeholder="Rendez-vous ce samedi au Palais des Congrès. Votre badge suffit à l’entrée."><?= e($valeurs['corps']) ?></textarea>
-            <p class="aide" id="c-corps">—</p>
+            <p class="aide" id="c-corps"></p>
           </div>
 
           <div class="grille g2">
@@ -152,8 +152,8 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
             <input id="modele-wa" name="modele_whatsapp" type="text"
                    value="<?= e($modele_whatsapp ?? '') ?>" placeholder="rappel_evenement_fr">
             <p class="aide">Le nom exact du modèle, tel qu’il figure dans votre compte Meta. Hors des
-            vingt-quatre heures qui suivent un message du destinataire — c’est-à-dire toujours, pour un
-            rappel — Meta refuse le texte libre : votre titre, votre message et votre lien remplissent
+            vingt-quatre heures qui suivent un message du destinataire, c’est-à-dire toujours pour un
+            rappel, Meta refuse le texte libre : votre titre, votre message et votre lien remplissent
             les variables du modèle, dans cet ordre.</p>
           </div>
         </div>
@@ -186,7 +186,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
                     <?= e((string) $li['nom']) ?> (<?= (int) $li['actifs'] ?> adresse<?= $li['actifs'] > 1 ? 's' : '' ?>)
                   </option>
                 <?php endforeach; ?>
-                <option value="nouvelle" <?= $choisie === '' ? 'selected' : '' ?>>— Une nouvelle liste —</option>
+                <option value="nouvelle" <?= $choisie === '' ? 'selected' : '' ?>>+ Une nouvelle liste</option>
               </select>
               <?php if ($listes): ?>
                 <p class="aide">Vos listes se gèrent dans le
@@ -219,7 +219,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
             <input id="r-quand" name="planifie_le" type="datetime-local" value="<?= e($_quand) ?>">
             <input type="hidden" name="decalage" id="r-decalage" value="0">
             <p class="aide">Laissé vide, le message part dès qu’il est prêt. Avec une date, il attend
-            son heure — la tâche automatique l’ouvre toute seule, à l’heure de votre fuseau.</p>
+            son heure : la tâche automatique l’ouvre toute seule, à l’heure de votre fuseau.</p>
           </div>
         </div>
       </div>
@@ -237,7 +237,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
           <div data-vue="tg">
             <div class="tel">
               <div class="bulle">
-                <b id="ap-tg-titre">—</b><br>
+                <b id="ap-tg-titre"></b><br>
                 <span id="ap-tg-corps"></span>
                 <span class="bt" id="ap-tg-bt" hidden>Ouvrir</span>
                 <div class="h"><?= e(gmdate('H:i')) ?></div>
@@ -252,22 +252,22 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
               <div class="ml-c">
                 <div class="ml-t">WAKABI BOOST</div>
                 <div class="ml-b">
-                  <h4 id="ap-ml-titre">—</h4>
+                  <h4 id="ap-ml-titre"></h4>
                   <div id="ap-ml-corps"></div>
                   <span class="ml-bt" id="ap-ml-bt" hidden>Ouvrir</span>
                 </div>
                 <div class="ml-f">Vous recevez ce message parce que vous avez créé un badge.
-                Se désabonner — ajouté automatiquement, il ne se retire pas.</div>
+                Se désabonner : ajouté automatiquement, il ne se retire pas.</div>
               </div>
             </div>
             <p class="aide" style="margin:9px 0 0">L’objet, lui, se lit avant l’ouverture :
-            <b id="ap-ml-sujet">—</b></p>
+            <b id="ap-ml-sujet"></b></p>
           </div>
 
           <div data-vue="wa" hidden>
             <div class="wa-p">
               <div class="wa-c">
-                <b id="ap-wa-titre">—</b><br>
+                <b id="ap-wa-titre"></b><br>
                 <span id="ap-wa-corps"></span>
                 <div id="ap-wa-lien" style="margin-top:6px;color:#027EB5" hidden></div>
                 <div class="h"><?= e(gmdate('H:i')) ?> ✓✓</div>
@@ -285,7 +285,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
           <div class="notif">
             <div class="notif-c">
               <div class="src"><i></i> <?= e(parse_url(base_url(), PHP_URL_HOST) ?: 'wakabi') ?> · maintenant</div>
-              <b id="ap-web-titre">—</b>
+              <b id="ap-web-titre"></b>
               <span id="ap-web-corps"></span><span class="coupe" id="ap-web-coupe" hidden>…</span>
             </div>
           </div>
@@ -427,24 +427,24 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
         l = lien.value.trim(), lb = (libelle.value.trim() || 'Voir mon badge');
     document.querySelector('.ec-apercu').classList.toggle('exemple', vide);
 
-    $('ap-tg-titre').textContent = t || '—';
+    $('ap-tg-titre').textContent = t;
     $('ap-tg-corps').innerHTML = txt(c).replace(/\n/g, '<br>');
     $('ap-tg-bt').hidden = !l && !vide;
     $('ap-tg-bt').textContent = lb;
 
-    $('ap-web-titre').textContent = t || '—';
+    $('ap-web-titre').textContent = t;
     $('ap-web-corps').textContent = c.slice(0, COUPE);
     $('ap-web-coupe').hidden = c.length <= COUPE;
 
-    $('ap-ml-titre').textContent = t || '—';
+    $('ap-ml-titre').textContent = t;
     $('ap-ml-corps').innerHTML = c.split(/\n{2,}/).map(function (p) {
       return '<p>' + txt(p).replace(/\n/g, '<br>') + '</p>';
     }).join('');
     $('ap-ml-bt').hidden = !l && !vide;
     $('ap-ml-bt').textContent = lb;
-    $('ap-ml-sujet').textContent = vu(sujet) || '—';
+    $('ap-ml-sujet').textContent = vu(sujet);
 
-    $('ap-wa-titre').textContent = t || '—';
+    $('ap-wa-titre').textContent = t;
     $('ap-wa-corps').textContent = c.replace(/\s+/g, ' ');
     $('ap-wa-lien').hidden = !l;
     $('ap-wa-lien').textContent = l;
@@ -452,7 +452,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
 
     var nt = titre.value.trim().length, nc = corps.value.trim().length;
     $('c-titre').textContent = nt + ' caractères. Sur une notification, on ne voit '
-      + 'que les premiers — mettez l’essentiel devant.';
+      + 'que les premiers : mettez l’essentiel devant.';
     $('c-corps').innerHTML = nc + ' caractères · '
       + (nc > COUPE ? '<span style="color:#C2410C">la notification coupera à ' + COUPE + '</span>'
                     : 'tient entier sur une notification')

@@ -18,7 +18,7 @@ $vers = function (int $n) use ($acteur, $action): string {
   <section class="entete">
     <h1>Journal</h1>
     <p><?= (int) $combien ?> action<?= $combien > 1 ? 's' : '' ?> enregistrée<?= $combien > 1 ? 's' : '' ?>.
-    On y garde les <strong>décisions</strong> — publier, refuser, suspendre, supprimer — et
+    On y garde les <strong>décisions</strong> (publier, refuser, suspendre, supprimer) et
     non les lectures : un journal qui note chaque page vue devient illisible en une semaine.
     Il s’efface tout seul au bout d’un an.</p>
   </section>
@@ -50,7 +50,7 @@ $vers = function (int $n) use ($acteur, $action): string {
       <h3 style="margin:0">Rien à cet endroit</h3>
       <p class="aide" style="margin:.4em 0 0"><?= $acteur || $action
           ? 'Aucune action ne correspond à ce filtre.'
-          : 'Le journal se remplira à la première décision — une publication, un refus, un compte créé.' ?></p>
+          : 'Le journal se remplira à la première décision : une publication, un refus, un compte créé.' ?></p>
     </div>
   <?php else: ?>
     <div class="tableau">
@@ -71,7 +71,7 @@ $vers = function (int $n) use ($acteur, $action): string {
             </td>
             <td><?= e(ucfirst(journal_libelle((string) $l['action']))) ?></td>
             <td>
-              <?= e((string) ($l['objet_titre'] ?: '—')) ?>
+              <?= e((string) ($l['objet_titre'] ?: 'Sans titre')) ?>
               <?php if ($l['detail']): ?>
                 <br><span class="aide"><?= e((string) $l['detail']) ?></span>
               <?php endif; ?>

@@ -38,7 +38,7 @@ $exemple = $cle_neuve ?: 'VOTRE_CLE';
 
     <?php if ($cle_neuve): ?>
       <p class="aide" style="margin:0 0 10px"><strong>Notez-la maintenant.</strong> Elle vaut
-      mot de passe et ne sera plus jamais affichée en entier — si vous la perdez, il faudra
+      mot de passe et ne sera plus jamais affichée en entier : si vous la perdez, il faudra
       en fabriquer une autre.</p>
       <pre class="bloc-code" style="user-select:all"><?= e($cle_neuve) ?></pre>
     <?php elseif ($me['cle_api'] ?? null): ?>
@@ -139,7 +139,7 @@ $exemple = $cle_neuve ?: 'VOTRE_CLE';
         <thead><tr><th>Code</th><th>Genre</th><th>Ce qui s’est passé</th></tr></thead>
         <tbody>
           <?php foreach ([
-              ['401', 'cle_absente', 'Aucune clé dans la requête — ou l’hébergement a retiré l’en-tête.'],
+              ['401', 'cle_absente', 'Aucune clé dans la requête, ou l’hébergement a retiré l’en-tête.'],
               ['401', 'cle_inconnue', 'La clé ne correspond à aucun compte : elle a été révoquée ou remplacée.'],
               ['403', 'offre_insuffisante', 'La clé est bonne, mais l’offre du compte n’ouvre plus l’API.'],
               ['403', 'compte_suspendu', 'Le compte est suspendu.'],

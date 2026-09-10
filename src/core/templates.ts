@@ -16,7 +16,7 @@ const raw = [
   {
     id: '11111111-1111-4111-8111-111111111111',
     slug: 'jy-serai-lome',
-    title: "J'y serai — Lomé",
+    title: "J'y serai · Lomé",
     subtitle: 'Annonce ta présence à la prochaine sortie',
     city: 'lome',
     rubrique: 'evenements',
@@ -85,7 +85,7 @@ const raw = [
   {
     id: '33333333-3333-4333-8333-333333333333',
     slug: 'story-wakabi',
-    title: 'Story — statut WhatsApp',
+    title: 'Story · statut WhatsApp',
     subtitle: 'Le format vertical, pour ton statut',
     city: 'all',
     rubrique: 'campagne',

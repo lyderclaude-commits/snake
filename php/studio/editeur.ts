@@ -409,7 +409,7 @@ async function televerser(zone: HTMLElement): Promise<void> {
     if (!fichier) return;
 
     const legende = prompt(
-      'La légende de l’image — c’est aussi ce que lisent les gens qui ne la voient pas.',
+      'La légende de l’image : c’est aussi ce que lisent les gens qui ne la voient pas.',
       ''
     ) ?? '';
 
@@ -451,7 +451,7 @@ async function televerser(zone: HTMLElement): Promise<void> {
       // Le poids obtenu est ANNONCÉ : c'est la preuve que la compression a
       // eu lieu, et le seul moyen pour l'auteur de savoir ce que ses
       // lecteurs vont télécharger.
-      noter(zone, 'Image ajoutée' + (rep.poids ? ' — ' + rep.poids + ' après compression.' : '.')
+      noter(zone, 'Image ajoutée' + (rep.poids ? ', ' + rep.poids + ' après compression.' : '.')
         + ' Cliquez dessus pour la recadrer ou changer sa largeur.');
       zone.dispatchEvent(new Event('input'));
     } catch (e) {
@@ -713,7 +713,7 @@ function barreImage(zone: HTMLElement, apres: () => void): HTMLElement {
       recadrer(fig, apres);
     } else if (quoi === 'legende') {
       const cap = fig.querySelector('figcaption');
-      const texte = prompt('La légende de l’image — c’est aussi ce que lisent '
+      const texte = prompt('La légende de l’image : c’est aussi ce que lisent '
         + 'les gens qui ne la voient pas.', cap?.textContent ?? '');
       if (texte === null) return;
       const img = fig.querySelector('img');

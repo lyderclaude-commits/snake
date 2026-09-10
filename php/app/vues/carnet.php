@@ -27,7 +27,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
 };
 ?>
 <div class="contenu">
-  <p class="fil"><a href="<?= e(url('?p=regie')) ?>">← La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
 
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
@@ -129,7 +129,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
     <input type="hidden" name="quoi" value="importer">
     <h3 style="margin:0 0 4px">Importer des adresses</h3>
     <p class="aide" style="margin:0 0 14px">Collez-les depuis un tableur ou un e-mail. Elles sont
-    <strong>enregistrées dans le carnet</strong> — pas seulement utilisées une fois. Une adresse
+    <strong>enregistrées dans le carnet</strong>, pas seulement utilisées une fois. Une adresse
     déjà connue n’est pas dupliquée : elle rejoint simplement la liste.</p>
 
     <div class="champ">
@@ -141,7 +141,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
             <?= e((string) $li['nom']) ?> (<?= (int) $li['actifs'] ?>)
           </option>
         <?php endforeach; ?>
-        <option value="nouvelle" <?= $listes ? '' : 'selected' ?>>— Une nouvelle liste —</option>
+        <option value="nouvelle" <?= $listes ? '' : 'selected' ?>>+ Une nouvelle liste</option>
       </select>
     </div>
     <div class="champ" id="im-neuve" <?= $listes ? 'hidden' : '' ?>>
@@ -154,7 +154,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
                 style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace"
                 placeholder="ama@exemple.tg&#10;Kossi Mensah &lt;kossi@exemple.tg&gt;&#10;afi@exemple.tg ; yao@exemple.tg"></textarea>
       <p class="aide">Une par ligne, ou séparées par des virgules ou des points-virgules.
-      <code>Nom &lt;adresse&gt;</code> est reconnu. Une ligne illisible est ignorée, pas refusée —
+      <code>Nom &lt;adresse&gt;</code> est reconnu. Une ligne illisible est ignorée, pas refusée :
       une virgule oubliée ne doit pas faire recommencer deux cents lignes.</p>
     </div>
     <button class="bouton" type="submit">Importer</button>
@@ -169,7 +169,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
       <h3 style="margin:0 0 4px">Alimenter « <?= e((string) $liste['nom']) ?> » depuis une audience existante</h3>
       <p class="aide" style="margin:0 0 14px">Recopie une audience calculée dans cette liste, une fois.
       L’intérêt est justement de pouvoir ensuite en <strong>retirer</strong> quelqu’un, corriger un nom,
-      archiver une adresse morte — ce qu’une audience calculée ne permet pas.</p>
+      archiver une adresse morte, ce qu’une audience calculée ne permet pas.</p>
       <div class="champ">
         <label for="al-cible">La source</label>
         <select id="al-cible" name="cible">

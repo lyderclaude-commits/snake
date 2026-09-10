@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 function assurer_schema(): void
 {
@@ -114,6 +114,13 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         // v16 — un décor porte la date de son événement : c'est d'elle que
         // se déduisent J−7, J−1 et H−2.
         "ALTER TABLE decors ADD COLUMN evenement_le $court NULL",
+
+        /* v18 — un abonnement aux notifications se souvient du décor sur
+           lequel il a été pris. Sans cela, quelqu'un qui s'abonne sous son
+           badge SANS créer de compte reste anonyme pour toujours : il est
+           exactement la personne que l'organisateur veut prévenir, et
+           « les invités de mes campagnes » ne le voyait jamais. */
+        "ALTER TABLE push ADD COLUMN decor_id $id NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -636,6 +643,11 @@ function creer_schema(PDO $pdo, bool $mysql): void
             id             $id PRIMARY KEY,
             empreinte      $court NOT NULL UNIQUE,
             utilisateur_id $id NULL,
+            /* v18 — le décor sur lequel l'abonnement a été pris. C'est la
+               SEULE attache d'un invité sans compte : il s'abonne sous son
+               badge, ne crée jamais de compte, et sans cette colonne son
+               organisateur ne peut plus jamais le prévenir. */
+            decor_id       $id NULL,
             endpoint       $txt NOT NULL,
             p256dh         $court NOT NULL,
             auth           $court NOT NULL,

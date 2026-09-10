@@ -349,7 +349,7 @@ const OFFRE_LIGNES = [
     'diffusion' => ['Diffusion à la base Wakabi', 'service',
         'Votre campagne poussée à l’audience du guide. L’équipe s’en charge.'],
     'telegram_push' => ['Canaux Telegram et notifications push', 'capacite',
-        'Brancher votre bot Telegram, publier dans vos chaînes et vos groupes, écrire à vos abonnés — et les notifications sur le navigateur de vos invités, même site fermé.'],
+        'Brancher votre bot Telegram, publier dans vos chaînes et vos groupes, écrire à vos abonnés, et les notifications sur le navigateur de vos invités, même site fermé.'],
     'telegram_par_mois' => ['Messages Telegram', 'compteur',
         'Remis à zéro le 1er de chaque mois. Une publication dans une chaîne compte pour un, quel que soit le nombre d’abonnés qui la lisent.'],
     'whatsapp_par_mois' => ['Messages WhatsApp', 'compteur',
@@ -800,7 +800,7 @@ function envoyer_verification(array $u): array
     return courriel_mis_en_page(
         (string) $u['email'],
         (string) $u['nom'],
-        'Confirmez votre adresse — Wakabi Boost',
+        'Confirmez votre adresse · Wakabi Boost',
         'Bienvenue, ' . $u['nom'] . ' !',
         "Il reste une chose à faire : confirmer que cette adresse est bien la vôtre.\n\n"
         . 'Le lien ci-dessous est valable ' . VERIF_HEURES . " heures et ne sert qu'une fois.\n\n"

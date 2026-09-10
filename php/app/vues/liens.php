@@ -28,7 +28,7 @@ foreach ($liste as $l) {
       <h3 style="margin:0 0 6px">Les liens courts arrivent avec l’offre Impact</h3>
       <p class="aide" style="margin:0 0 14px">Votre offre
       <?= e(formule_libelle($me['formule'] ?? null)) ?> n’en comprend pas. Impact en donne 20,
-      Croissance 100, Mouvement sans limite — avec le compte des clics pour chacun.</p>
+      Croissance 100, Mouvement sans limite, avec le compte des clics pour chacun.</p>
       <a class="bouton" href="<?= e(url('#tarifs')) ?>">Voir les offres</a>
     </div>
   <?php else: ?>

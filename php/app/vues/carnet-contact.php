@@ -13,7 +13,7 @@ $erreur = $erreur ?? null;
 $message = $message ?? null;
 ?>
 <div class="contenu etroit-large">
-  <p class="fil"><a href="<?= e(url('?p=regie-carnet')) ?>">← Le carnet</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie-carnet')) ?>"><i>←</i>Le carnet</a></p>
 
   <section class="entete">
     <h1><?= e((string) ($c['nom'] ?: $c['email'])) ?></h1>
@@ -36,7 +36,7 @@ $message = $message ?? null;
     <div class="msg err" style="margin-bottom:16px">
       <strong>Cette personne s’est désabonnée.</strong>
       <p style="margin:.35em 0 0">Elle ne recevra plus aucune campagne, de vous ni de personne, et
-      ce choix ne se défait pas depuis cet écran — c’est le sien. Vous pouvez garder sa fiche
+      ce choix ne se défait pas depuis cet écran : c’est le sien. Vous pouvez garder sa fiche
       pour vos notes.</p>
     </div>
   <?php endif; ?>
@@ -75,8 +75,8 @@ $message = $message ?? null;
 
     <div class="carte" style="margin-top:16px">
       <h3 style="margin:0 0 4px">Ses listes</h3>
-      <p class="aide" style="margin:0 0 14px">Décocher une liste <strong>en sort</strong> la personne —
-      sa fiche reste au carnet, avec tout ce que vous y avez écrit.</p>
+      <p class="aide" style="margin:0 0 14px">Décocher une liste <strong>en sort</strong> la personne,
+      mais sa fiche reste au carnet, avec tout ce que vous y avez écrit.</p>
       <?php if (!$listes): ?>
         <p class="aide">Vous n’avez pas encore de liste. <a href="<?= e(url('?p=regie-carnet')) ?>">Créez-en une</a>.</p>
       <?php else: ?>
@@ -123,7 +123,7 @@ $message = $message ?? null;
     </div>
 
     <p class="aide" style="margin:14px 0 0">
-      <strong>Archiver</strong> garde la fiche et l’historique, et n’écrit plus jamais à cette adresse —
+      <strong>Archiver</strong> garde la fiche et l’historique, et n’écrit plus jamais à cette adresse :
       c’est ce qu’on fait quand un message rebondit ou qu’un client s’en va.
       <strong>Supprimer</strong> efface tout, sans retour.
     </p>
