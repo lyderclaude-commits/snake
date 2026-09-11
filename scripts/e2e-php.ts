@@ -5730,7 +5730,8 @@ const run = async () => {
   const ecrans = ['accueil', 'decors', 'blog', 'admin', 'partenaire', 'profil', 'comptes',
                   'catalogue', 'journal', 'reglages', 'reglages-seo', 'sauvegardes',
                   'diffusion', 'canaux', 'liens', 'regie', 'regie-ecrire', 'regie-carnet',
-                  'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau'];
+                  'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau',
+                  'facturation', 'reglages-facturation'];
   const cadratins: string[] = [];
   for (const q of ecrans) {
     const r = await pTypo.goto(`${BASE}/index.php?p=${q}`, { waitUntil: 'domcontentloaded' })
@@ -5862,6 +5863,178 @@ const run = async () => {
        (await carteWeb.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 74));
   }
   await pOrga.close();
+
+  /* ================================================================ */
+  console.log('\n━━ 48. La facturation, des deux côtés ━━');
+  /**
+   * L'argent : le seul écran où une erreur se paie en vrai.
+   *
+   * On suit le trajet entier — poser l'identité légale, facturer un
+   * client, lui envoyer le document, le relire en PDF par le fil HTTP,
+   * l'annuler par un avoir — puis on retourne le voir de l'autre côté,
+   * dans l'espace du client. Et l'on vérifie surtout ce qu'un organisateur
+   * ne doit PAS pouvoir faire.
+   */
+  const clientFact = { email: `facture-${marque}@exemple.tg`, mdp: 'facture-2026-solide' };
+  const ctxFac = await browser.newContext();
+  const pFac = await ctxFac.newPage();
+  surveiller(pFac);
+  await inscription(pFac, clientFact.email, clientFact.mdp, 'partenaire', `Cliente facturée ${marque}`);
+
+  /* --- l'équipe lui pose une offre payante --- */
+  await pe.goto(`${BASE}/index.php?p=comptes&q=${encodeURIComponent(clientFact.email)}`,
+                { waitUntil: 'domcontentloaded' });
+  /**
+   * La fiche de CE client, pas la première de la page.
+   *
+   * L'écran des comptes liste d'abord ceux de la maison : cliquer le
+   * premier lien tombait sur le compte de l'administrateur connecté, et
+   * une fiche qu'on regarde soi-même ne montre pas ses leviers.
+   */
+  await pe.locator(`tr:has-text("${clientFact.email}") a[href*="p=organisateur"]`)
+    .first().click();
+  await pe.waitForLoadState('domcontentloaded');
+  const idFact = new URL(pe.url()).searchParams.get('id') ?? '';
+  ok('la fiche du client s’ouvre', idFact !== ''
+     && (await pe.locator('main').innerText()).includes(clientFact.email),
+     pe.url().replace(BASE, '').slice(0, 60));
+  await pe.selectOption('#f-formule', 'croissance');
+  await pe.locator('form:has(#f-formule) button:has-text("Appliquer")').click();
+  await pe.waitForLoadState('domcontentloaded');
+  ok('l’équipe pose une offre payante sur le compte',
+     (await pe.locator('main').innerText()).includes('Croissance'),
+     (await pe.locator('.msg.ok').first().innerText().catch(() => '')).slice(0, 50));
+
+  /* --- l'identité légale, saisie une fois --- */
+  await pe.goto(`${BASE}/index.php?p=reglages-facturation`, { waitUntil: 'domcontentloaded' });
+  ok('l’identité de facturation a son écran', (await pe.locator('#fact_rccm').count()) === 1);
+  await pe.fill('#fact_rccm', 'TG-LOM-2024-B-1234');
+  await pe.fill('#fact_nif', '1000123456');
+  await pe.fill('#fact_tva', '18');
+  await pe.click('main button[type=submit]');
+  await pe.waitForLoadState('domcontentloaded');
+  ok('elle s’enregistre', /enregistrée/.test(await pe.locator('.msg.ok').first().innerText().catch(() => '')));
+  const exemple = await pe.request.get(`${BASE}/index.php?p=facture-exemple`);
+  ok('un exemple de facture se fabrique avec les réglages du moment',
+     exemple.status() === 200 && (await exemple.body()).subarray(0, 5).toString() === '%PDF-',
+     `HTTP ${exemple.status()}`);
+
+  /* --- l'écran de l'équipe --- */
+  await pe.goto(`${BASE}/index.php?p=facturation`, { waitUntil: 'domcontentloaded' });
+  ok('la facturation s’ouvre pour l’équipe',
+     (await pe.locator('h1').first().innerText()) === 'Facturation');
+  ok('elle annonce l’encaissé, le récurrent, les échéances proches et les retards',
+     (await pe.locator('.stat').count()) >= 4);
+  ok('et elle liste les comptes clients', (await pe.locator('table tbody tr').count()) >= 1);
+
+  /* --- facturer, en envoyant le document --- */
+  const avantFact = recus.length;
+  await pe.goto(`${BASE}/index.php?p=facturation&facturer=${encodeURIComponent(idFact)}`,
+                { waitUntil: 'domcontentloaded' });
+  ok('le formulaire d’émission s’ouvre sur le bon client',
+     (await pe.locator('h3').first().innerText()).includes('Cliente facturée'));
+  await pe.fill('#f-reference', 'MM-8841203');
+  await pe.click('button:has-text("Émettre la facture")');
+  await pe.waitForLoadState('domcontentloaded');
+  const direFact = await pe.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('la facture est émise et l’échéance repoussée', /émise, échéance au/.test(direFact),
+     direFact.replace(/\s+/g, ' ').slice(0, 78));
+  ok('et elle est partie par e-mail', /Envoyée par e-mail/.test(direFact) && recus.length > avantFact,
+     `${recus.length - avantFact} message(s)`);
+
+  /**
+   * Le PDF voyage EN PIÈCE JOINTE, pas en lien.
+   *
+   * Quelqu'un qui transmet sa facture à sa comptabilité ne transmet pas
+   * ses identifiants : un lien vers un écran protégé n'est donc pas une
+   * facture remise. On relit l'enveloppe telle qu'elle est sortie du fil.
+   */
+  const messageFact = recus.slice(avantFact).join('\n');
+  ok('le message est un multipart mixte, avec le PDF joint',
+     /Content-Type: multipart\/mixed/.test(messageFact)
+     && /Content-Type: application\/pdf/.test(messageFact)
+     && /Content-Disposition: attachment; filename="facture-wb-/.test(messageFact),
+     (/filename="([^"]+)"/.exec(messageFact) ?? [, ''])[1] ?? 'aucune pièce');
+  ok('la pièce jointe est bien un PDF une fois décodée',
+     (() => {
+       const part = messageFact.split('Content-Type: application/pdf')[1] ?? '';
+       const b64 = (part.split('\n\n')[1] ?? '').replace(/[^A-Za-z0-9+/=]/g, '');
+       return Buffer.from(b64, 'base64').subarray(0, 5).toString() === '%PDF-';
+     })());
+
+  /* --- le document, servi par le fil HTTP --- */
+  const lienPdf = await pe.locator('a.bouton:has-text("PDF")').first().getAttribute('href');
+  const repPdf = await pe.request.get(new URL(lienPdf ?? '', BASE).toString());
+  const octetsPdf = await repPdf.body();
+  ok('le PDF se télécharge depuis l’écran, avec le bon type',
+     repPdf.status() === 200 && (repPdf.headers()['content-type'] ?? '').includes('application/pdf')
+     && octetsPdf.subarray(0, 5).toString() === '%PDF-' && octetsPdf.length > 2000,
+     `${octetsPdf.length} octets`);
+
+  const repCsv = await pe.request.get(`${BASE}/index.php?p=facturation&export=csv`);
+  ok('l’export du comptable sort en CSV',
+     repCsv.status() === 200 && (await repCsv.text()).includes('Numero;Date;Statut'));
+
+  /* --- l'annulation par un avoir --- */
+  await pe.goto(`${BASE}/index.php?p=facturation`, { waitUntil: 'domcontentloaded' });
+  // Le tableau des DOCUMENTS, et non celui des abonnements : les deux ont
+  // des cellules en chasse fixe, et la première page en compte beaucoup.
+  const documents = pe.locator('.carte:has-text("Les documents de")');
+  const numeroAvant = (await documents.locator('tbody tr td.mono').first().innerText()).trim();
+  await pe.locator('summary:has-text("Annuler")').first().click();
+  await pe.locator('input[name=motif]').first().fill('Erreur de montant');
+  await pe.locator('button:has-text("Émettre l’avoir")').first().click();
+  await pe.waitForLoadState('domcontentloaded');
+  const direAvoir = await pe.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('une facture ne se supprime pas : elle s’annule par un avoir',
+     /Avoir .* émis/.test(direAvoir) && direAvoir.includes('annulée'),
+     direAvoir.replace(/\s+/g, ' ').slice(0, 80));
+  ok('et la facture d’origine reste lisible, marquée annulée',
+     (await pe.locator('.carte:has-text("Les documents de")')
+        .locator(`tbody tr:has-text("${numeroAvant}") .pastille`).first().innerText()
+        .catch(() => '')).includes('Annulée'), numeroAvant);
+
+  /* --- côté client --- */
+  await connexion(pFac, clientFact.email, clientFact.mdp);
+  await pFac.goto(`${BASE}/index.php?p=facturation`, { waitUntil: 'domcontentloaded' });
+  ok('l’organisateur a son propre espace de facturation',
+     (await pFac.locator('h1').first().innerText()) === 'Facturation');
+  ok('il y voit sa période payée, du début à la fin',
+     /\d{2}\/\d{2}\/\d{4}/.test(await pFac.locator('.carte').first().innerText()),
+     (await pFac.locator('.carte').first().innerText()).replace(/\s+/g, ' ').slice(0, 70));
+  ok('et ses documents, avec leur état',
+     (await pFac.locator('table tbody tr').count()) >= 1);
+
+  const lienPdfClient = await pFac.locator('a.bouton:has-text("PDF")').first().getAttribute('href');
+  const sienne = await pFac.request.get(new URL(lienPdfClient ?? '', BASE).toString());
+  ok('il télécharge SA facture sans passer par l’équipe',
+     sienne.status() === 200 && (await sienne.body()).subarray(0, 5).toString() === '%PDF-');
+
+  /* --- le changement d'offre : demandé, mais pas appliqué --- */
+  await pFac.locator('button:has-text("Demander cette offre")').first().click();
+  await pFac.waitForLoadState('domcontentloaded');
+  const direOffre = await pFac.locator('.msg.ok, .msg.err').first().innerText().catch(() => '');
+  ok('un changement d’offre s’applique à la PROCHAINE échéance, pas au prorata',
+     /prochaine échéance/.test(direOffre), direOffre.replace(/\s+/g, ' ').slice(0, 84));
+  await pFac.reload({ waitUntil: 'domcontentloaded' });
+  ok('en attendant, son offre ne bouge pas',
+     (await pFac.locator('h3').first().innerText()).includes('Croissance'),
+     await pFac.locator('h3').first().innerText());
+
+  /**
+   * Ce qu'un client ne peut pas faire, et qui se vérifie en l'essayant.
+   *
+   * Trois portes, poussées pour de bon : l'écran d'équipe avec un
+   * identifiant en paramètre, la facture d'un autre compte, et l'écran
+   * des réglages de facturation.
+   */
+  const volet = await pFac.request.get(`${BASE}/index.php?p=facturation&facturer=${encodeURIComponent(idFact)}`);
+  ok('un client ne voit pas le volet d’émission, même en le demandant',
+     !(await volet.text()).includes('Émettre la facture'));
+  await pFac.goto(`${BASE}/index.php?p=reglages-facturation`, { waitUntil: 'domcontentloaded' });
+  ok('ni l’écran de l’identité légale', !pFac.url().includes('p=reglages-facturation'),
+     pFac.url().replace(BASE, ''));
+  await ctxFac.close();
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

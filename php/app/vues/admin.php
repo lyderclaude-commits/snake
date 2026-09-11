@@ -50,7 +50,7 @@ $raccourcis = [
         ['?p=scan', 'Contrôle d’entrée', 'Scanner les badges'],
         ['?p=reglages', 'Réglages', 'Transport e-mail, liens, images'],
         ['?p=sauvegardes', 'Sauvegardes', 'Archives et cron'],
-        ['?p=profil', 'Mon profil', 'Mes informations'],
+        ['?p=facturation', 'Facturation', 'Abonnements et factures'],
     ],
 ];
 ?>

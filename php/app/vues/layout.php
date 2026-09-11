@@ -151,12 +151,23 @@ $_graphe = array_values(array_filter([
                 ['?p=liens',     'Liens courts',       'liens'],
             ]],
             ['?p=scan', 'Entrée', 'scan'],
+            /**
+             * Quatre destinations par groupe, jamais cinq.
+             *
+             * La règle tient depuis la refonte des menus : au-delà, un
+             * déroulant devient une liste qu'on parcourt au lieu d'un
+             * rangement qu'on connaît. Facturation y entre, et « Mon
+             * profil » en sort — ce n'est pas de l'administration de
+             * l'installation, c'est le compte de la personne, et il est
+             * déjà hors groupe dans le menu d'un organisateur.
+             */
             ['groupe', 'Système', [
                 ['?p=reglages',    'Réglages',    'reglages'],
+                ['?p=facturation', 'Facturation', 'comptes'],
                 ['?p=sauvegardes', 'Sauvegardes', 'reglages'],
                 ['?p=journal',     'Journal',     'comptes'],
-                ['?p=profil',      'Mon profil',  null],
             ]],
+            ['?p=profil', 'Mon profil', null],
         ],
         droit($me, 'decors_siens') => [
             ['?p=partenaire', 'Tableau de bord', 'decors_siens'],
@@ -166,9 +177,10 @@ $_graphe = array_values(array_filter([
                 ['?p=regie',      'Régie',        'regie'],
                 ['?p=blog-admin', 'Mes articles',       'articles'],
             ]],
-            ['?p=scan',   'Entrée',        'scan'],
-            ['?p=decors', 'Le catalogue',  null],
-            ['?p=profil', 'Mon profil',    null],
+            ['?p=scan',        'Entrée',        'scan'],
+            ['?p=decors',      'Le catalogue',  null],
+            ['?p=facturation', 'Facturation',   null],
+            ['?p=profil',      'Mon profil',    null],
         ],
         $me !== null => [
             ['?p=scan',   'Entrée',      'scan'],

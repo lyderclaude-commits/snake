@@ -39,7 +39,7 @@ const ok = (label: string, cond: boolean, detail = '') => {
 const SCENARIO = `<?php
 require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
 foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
-          'texte','regie','images','push','qr','icones','avatars','journal','abonnement','api'] as $m) {
+          'texte','regie','images','push','qr','icones','avatars','journal','abonnement','pdf','facture','api'] as $m) {
     require RACINE . "/app/$m.php";
 }
 assurer_schema();

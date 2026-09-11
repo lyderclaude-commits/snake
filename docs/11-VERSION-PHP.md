@@ -44,7 +44,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **769 scénarios, 769 réussis**
+Les deux ont été vérifiés de bout en bout : **795 scénarios, 795 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -130,9 +130,9 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 769 scénarios, dans un vrai navigateur
+npm run php:e2e          # 795 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
-                         # éditeur, TOTP, carnet, canaux, référencement
+                         # éditeur, TOTP, carnet, canaux, référencement, facture
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -150,7 +150,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 769 scénarios
+### Les 795 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -2553,6 +2553,105 @@ journal. Le passage quotidien prévient sept jours avant, puis la veille ;
 sept jours après l'échéance, le compte redescend en Découverte — sans rien
 perdre, et en le disant. Renouveler en avance ajoute au terme en cours et
 non à aujourd'hui : payer en avance ne doit pas coûter des jours.
+
+## La facturation — `?p=facturation`
+
+Tout ce qui précède vivait en morceaux : l'échéance sur la fiche d'un
+organisateur, la facture au milieu de son profil, et rien nulle part pour
+répondre à la seule question qu'on se pose le 1er du mois — **qui dois-je
+relancer ?** Il fallait ouvrir une fiche à la fois pour savoir qui allait
+tomber.
+
+Une adresse, deux écrans : le droit `comptes` décide de ce qu'on voit. Un
+organisateur qui reçoit « voir mes factures » dans un e-mail arrive donc au
+bon endroit sans qu'on ait à lui expliquer lequel.
+
+### Côté équipe
+
+Quatre chiffres en tête — encaissé ce mois avoirs déduits, récurrent
+mensuel, échéances sous sept jours, retards — puis la liste **triée par
+urgence** : les échus d'abord, les échéances proches ensuite, les
+tranquilles en bas. Personne n'ouvre cet écran pour chercher un nom.
+
+Facturer ouvre un formulaire qui fait quatre choses d'un coup : repousser
+l'échéance, émettre le document, l'envoyer, et journaliser. Le début de
+période se choisit — le code prenait la date du jour, toujours, et quelqu'un
+qui paie le 14 pour une période commencée le 1er ne pouvait pas le dire.
+
+### Côté organisateur
+
+Une frise plutôt qu'un compte à rebours : « 2 jours » seul angoisse sans
+rien dire de ce qui a été réglé. La barre montre la période entière, donc ce
+qu'il a acheté. À côté, ce qu'il consomme — 1 240 e-mails sur 2 000 : c'est
+l'argument qui fait renouveler. Puis ses documents, et les trois offres.
+
+**Rien n'est prélevé automatiquement.** Renouveler et changer d'offre
+préviennent l'équipe ; l'encaissement reste humain, par Mobile Money,
+virement ou espèces.
+
+### Ce qu'un équipier ne voit pas
+
+Un organisateur peut inviter quelqu'un sur **un** décor. Cette personne a
+son propre compte, et cet écran ne lui montre que sa propre facturation.
+Ce n'est pas un filtre qu'on ajoute : rien ici ne lit jamais autre chose que
+l'identifiant de la session. Un écran qui accepterait un identifiant de
+compte en paramètre serait la faille ; il n'y en a pas. Les comptes de la
+maison — éditeur, scanner, coordinateur — n'y accèdent pas non plus : ils ne
+paient rien et ne reçoivent aucune facture.
+
+### Les trois règles qui ne se discutent pas
+
+| Règle | Pourquoi |
+|---|---|
+| **Une facture est figée à l'émission** | Le nom du client, le montant, le taux de TVA et l'identité complète de l'émetteur y sont recopiés. Déménager l'an prochain ne doit pas réécrire un document déjà remis. |
+| **Une facture ne se supprime jamais** | On l'annule par un **avoir**, qui porte son propre numéro, la désigne, et porte le montant en négatif. Une suite de numéros trouée est le premier signe qu'un contrôleur regarde de plus près. |
+| **Un changement d'offre s'applique à l'échéance** | Jamais au prorata : « vous avez payé douze mille pour trente jours, vous en avez consommé dix-sept » ne s'explique pas au téléphone, et c'est au téléphone que ça se discute. |
+
+### La TVA, et les prix TTC
+
+Les prix affichés sont **TTC** : les 12 000 F d'une offre Croissance sont ce
+que le client règle. La facture remonte donc au hors taxes depuis ce montant,
+et écrit la taxe **par différence** — 10 169 + 1 831 = 12 000, au franc près,
+ce qu'un arrondi calculé à part ne garantit pas.
+
+Le taux se règle une fois dans **Système → Facturation → Modifier
+l'identité**, avec le RCCM, le NIF, l'adresse et le capital. À zéro, les deux
+lignes disparaissent du document et une mention les remplace. Un bouton ouvre
+un **exemple de facture** avec les réglages du moment : un taux saisi de
+travers ne se voit pas dans un champ, il se voit sur un document.
+
+### Le PDF, écrit à la main
+
+Aucune bibliothèque n'entre dans ce produit, et un `composer install` sur un
+mutualisé LWS n'est pas une option. `app/pdf.php` écrit donc le format
+lui-même, comme `app/zip.php` et `app/qr.php` avant lui : pages A4, texte,
+filets, aplats, et une image avec son masque de transparence.
+
+Deux choix évitent les ennuis. Les polices **ne sont pas incorporées** :
+Helvetica fait partie des quatorze que tout lecteur possède depuis 1993, le
+fichier pèse onze kilo-octets au lieu de trois cents, et aucune licence de
+fonte ne s'y invite. Et le texte est transcodé en **Windows-1252**, qui
+couvre le français en entier — accents, apostrophes typographiques et œ
+compris. La chasse de chaque caractère est écrite dans le fichier : sans
+elle, impossible d'aligner un montant à droite, car le PDF ne mesure rien.
+
+Le document part **en pièce jointe**, pas en lien : quelqu'un qui transmet
+sa facture à sa comptabilité ne transmet pas ses identifiants.
+
+### Comment on sait que le PDF s'ouvrira
+
+`npx tsx scripts/verifier-facture.ts` écrit le lecteur qui manque. Il ne fait
+confiance à rien de ce que produit l'écrivain : il relit l'en-tête, retrouve
+la table des références croisées, **vérifie que chaque décalage tombe
+exactement sur son objet**, décompresse le flux de la page et en ressort le
+texte. Un seul octet d'écart dans cette table et le document est refusé en
+entier, sans que rien dans le fichier ne le laisse deviner.
+
+Trente-sept contrôles, dont : la somme hors taxes plus TVA sur huit montants
+qui piègent, l'avoir et son négatif, le taux figé sur une facture déjà
+émise, les accents retrouvés après le passage en Windows-1252, et le signe
+moins d'un avoir — qui n'existe pas dans Windows-1252, et qu'il a fallu
+remplacer pour ne pas imprimer « ?12 000 ».
 
 ### Le journal — `?p=journal`
 

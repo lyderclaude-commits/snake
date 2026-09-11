@@ -89,13 +89,62 @@ function abonnement_tombe(?array $u): bool
  * payer en avance ferait perdre cinq jours, ce qui décourage exactement le
  * comportement qu'on veut encourager.
  */
-function echeance_prolonger(array $u, int $jours = ABONNEMENT_JOURS): string
+function echeance_prolonger(array $u, int $jours = ABONNEMENT_JOURS, ?string $debut = null): string
 {
     $depart = max(time(), strtotime((string) ($u['echeance_le'] ?? '')) ?: 0);
     $fin = maintenant($depart + $jours * 86400);
-    db()->prepare('UPDATE utilisateurs SET echeance_le = ?, rappel_echeance = NULL WHERE id = ?')
-        ->execute([$fin, $u['id']]);
+
+    /**
+     * Le début de la période en cours, enfin gardé quelque part.
+     *
+     * Il ne l'était nulle part : seule la date de FIN existait, et l'écran
+     * de facturation devait la deviner en lisant la dernière facture. Un
+     * compte qui n'en avait pas encore n'avait donc pas de date de début
+     * du tout. On l'écrit au PREMIER paiement et on ne le touche plus :
+     * c'est la date d'entrée du client, pas celle du dernier virement.
+     */
+    $depuis = ($u['abonne_depuis'] ?? '') ?: ($debut ?: maintenant());
+    db()->prepare('UPDATE utilisateurs SET echeance_le = ?, rappel_echeance = NULL,
+                   abonne_depuis = ? WHERE id = ?')
+        ->execute([$fin, $depuis, $u['id']]);
     return $fin;
+}
+
+/**
+ * Un changement d'offre demandé par le client, appliqué À L'ÉCHÉANCE.
+ *
+ * Jamais au prorata : « vous avez payé douze mille pour trente jours, vous
+ * en avez consommé dix-sept, on vous doit six mille huit cents moins la
+ * différence d'offre » ne s'explique pas au téléphone, et c'est au
+ * téléphone que ça se discute. La demande attend donc la fin de la période
+ * déjà payée — ce qui est aussi la seule façon de ne rien rembourser.
+ *
+ * Rend la formule effectivement posée.
+ */
+function offre_demandee_appliquer(array $u): string
+{
+    $veut = (string) ($u['offre_demandee'] ?? '');
+    $actuelle = (string) ($u['formule'] ?? 'decouverte');
+    if ($veut === '' || $veut === $actuelle || !isset(FORMULES[$veut])) {
+        return $actuelle;
+    }
+    db()->prepare('UPDATE utilisateurs SET formule = ?, offre_demandee = NULL,
+                   offre_demandee_le = NULL WHERE id = ?')
+        ->execute([$veut, $u['id']]);
+    journal_ecrire(null, 'abonnement.offre', 'compte', (string) $u['id'], (string) $u['nom'],
+        formule_libelle($actuelle) . ' vers ' . formule_libelle($veut));
+    return $veut;
+}
+
+/** Le client demande une autre offre. L'équipe la posera à l'échéance. */
+function offre_demander(array $u, string $formule): bool
+{
+    if (!isset(FORMULES[$formule]) || $formule === ($u['formule'] ?? '')) {
+        return false;
+    }
+    db()->prepare('UPDATE utilisateurs SET offre_demandee = ?, offre_demandee_le = ? WHERE id = ?')
+        ->execute([$formule, maintenant(), $u['id']]);
+    return true;
 }
 
 /** Retire l'échéance — au passage à l'offre gratuite, ou pour un compte interne. */
@@ -103,66 +152,6 @@ function echeance_retirer(string $id): void
 {
     db()->prepare('UPDATE utilisateurs SET echeance_le = NULL, rappel_echeance = NULL WHERE id = ?')
         ->execute([$id]);
-}
-
-/* ------------------------------------------------------------------ */
-/* Les factures                                                        */
-/* ------------------------------------------------------------------ */
-
-/**
- * Un numéro lisible et croissant : `WB-2026-0007`.
- *
- * Une facture se cite au téléphone et se recopie à la main. Un
- * identifiant aléatoire de trente-six caractères ne se cite pas.
- */
-function facture_numero(): string
-{
-    $annee = gmdate('Y');
-    $s = db()->prepare("SELECT numero FROM factures WHERE numero LIKE ? ORDER BY numero DESC LIMIT 1");
-    $s->execute(['WB-' . $annee . '-%']);
-    $dernier = (string) ($s->fetchColumn() ?: '');
-    $n = $dernier !== '' ? ((int) substr($dernier, -4)) + 1 : 1;
-    return sprintf('WB-%s-%04d', $annee, $n);
-}
-
-/**
- * Émet une facture pour une période, et rend son identifiant.
- *
- * Le nom du client et le montant sont RECOPIÉS dans la ligne. Changer le
- * tarif d'une offre, ou le nom d'une structure, ne doit pas réécrire une
- * facture déjà remise : ce serait un document qui ne dit plus ce qu'il
- * disait le jour où on l'a donné.
- */
-function facture_emettre(array $client, string $debut, string $fin, ?array $par = null, ?int $montant = null): string
-{
-    $formule = (string) ($client['formule'] ?? 'decouverte');
-    $id = nouvel_id();
-    db()->prepare('INSERT INTO factures
-        (id, numero, utilisateur_id, client_nom, client_org, formule, montant,
-         debut_le, fin_le, reglee_le, emise_par, cree_le)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([
-            $id, facture_numero(), $client['id'],
-            $client['nom'] ?? null, $client['organisation'] ?? null,
-            $formule, $montant ?? (int) (FORMULES[$formule]['prix'] ?? 0),
-            $debut, $fin, maintenant(), $par['id'] ?? null, maintenant(),
-        ]);
-    return $id;
-}
-
-/** Les factures d'un compte, la plus récente d'abord. */
-function factures_de(string $utilisateur_id): array
-{
-    $s = db()->prepare('SELECT * FROM factures WHERE utilisateur_id = ? ORDER BY cree_le DESC LIMIT 50');
-    $s->execute([$utilisateur_id]);
-    return $s->fetchAll();
-}
-
-function facture_par_id(string $id): ?array
-{
-    $s = db()->prepare('SELECT * FROM factures WHERE id = ?');
-    $s->execute([$id]);
-    return $s->fetch() ?: null;
 }
 
 /* ------------------------------------------------------------------ */

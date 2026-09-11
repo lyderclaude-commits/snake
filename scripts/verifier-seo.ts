@@ -63,7 +63,7 @@ const SCENARIO_PLAN = `<?php
 require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
 foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
           'texte','regie','carnet','images','push','qr','icones','avatars','journal',
-          'abonnement','api','seo'] as $m) {
+          'abonnement','pdf','facture','api','seo'] as $m) {
     require RACINE . "/app/$m.php";
 }
 assurer_schema();

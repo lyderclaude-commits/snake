@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 function assurer_schema(): void
 {
@@ -121,6 +121,33 @@ function migrer_schema(PDO $pdo, bool $mysql): void
            exactement la personne que l'organisateur veut prévenir, et
            « les invités de mes campagnes » ne le voyait jamais. */
         "ALTER TABLE push ADD COLUMN decor_id $id NULL",
+
+        /* v19 — la facturation.
+           `abonne_depuis` manquait : seule la date de FIN était gardée, et
+           le début ne se lisait que sur la dernière facture — un compte
+           sans facture n'en avait donc aucun. `offre_demandee` porte un
+           changement d'offre demandé par le client : il ne s'applique qu'à
+           l'échéance suivante, jamais au prorata, parce qu'un prorata ne
+           s'explique pas au téléphone. */
+        "ALTER TABLE utilisateurs ADD COLUMN abonne_depuis $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN offre_demandee $court NULL",
+        "ALTER TABLE utilisateurs ADD COLUMN offre_demandee_le $court NULL",
+
+        /* v19 — une facture peut désormais être ÉMISE AVANT d'être réglée,
+           et une facture émise ne se supprime jamais : on l'annule par un
+           avoir, qui porte son propre numéro et la désigne. Les montants
+           hors taxes et la TVA sont recopiés à l'émission, comme le nom du
+           client : changer le taux l'an prochain ne doit pas réécrire les
+           documents de cette année. */
+        "ALTER TABLE factures ADD COLUMN statut $court NOT NULL DEFAULT 'reglee'",
+        "ALTER TABLE factures ADD COLUMN mode $court NULL",
+        "ALTER TABLE factures ADD COLUMN reference $court NULL",
+        "ALTER TABLE factures ADD COLUMN avoir_de $id NULL",
+        "ALTER TABLE factures ADD COLUMN tva_taux INT NOT NULL DEFAULT 0",
+        "ALTER TABLE factures ADD COLUMN montant_ht INT NOT NULL DEFAULT 0",
+        "ALTER TABLE factures ADD COLUMN montant_tva INT NOT NULL DEFAULT 0",
+        "ALTER TABLE factures ADD COLUMN emetteur $txt NULL",
+        "ALTER TABLE factures ADD COLUMN envoyee_le $court NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -133,6 +160,7 @@ function migrer_schema(PDO $pdo, bool $mysql): void
     sauver_listes_collees($pdo);
     delester_offres_sans_objet($pdo);
     creancer_adresses_eprouvees($pdo);
+    dater_abonnements_anciens($pdo);
 }
 
 /**
@@ -153,6 +181,36 @@ function migrer_schema(PDO $pdo, bool $mysql): void
  * Celles qui n'ont jamais rien reçu et n'ont jamais confirmé sortent — et
  * c'est le but.
  */
+/**
+ * v19 — retrouver la date de début des abonnements déjà en cours.
+ *
+ * `abonne_depuis` n'existe que depuis la v19 : les comptes abonnés avant
+ * elle afficheraient « ? → 11/10/2026 », ce qui est vrai et inutile. La
+ * plus ancienne facture du compte porte cette date — c'est le jour où l'on
+ * a commencé à l'encaisser. Un compte jamais facturé n'en a pas, et alors
+ * l'écran dit « jusqu'au », sans début.
+ */
+function dater_abonnements_anciens(PDO $pdo): void
+{
+    try {
+        $lignes = $pdo->query(
+            "SELECT utilisateur_id, MIN(debut_le) AS debut FROM factures
+             WHERE debut_le <> '' GROUP BY utilisateur_id"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException) {
+        return;   // pas encore de table, ou pas encore la colonne
+    }
+    foreach ($lignes as $l) {
+        try {
+            $pdo->prepare("UPDATE utilisateurs SET abonne_depuis = ?
+                           WHERE id = ? AND (abonne_depuis IS NULL OR abonne_depuis = '')")
+                ->execute([(string) $l['debut'], (string) $l['utilisateur_id']]);
+        } catch (PDOException) {
+            return;   // colonne absente : la migration des colonnes n'est pas passée
+        }
+    }
+}
+
 function creancer_adresses_eprouvees(PDO $pdo): void
 {
     try {
@@ -443,6 +501,10 @@ function creer_schema(PDO $pdo, bool $mysql): void
             rappel_echeance   $court NULL,
             otp_secret        $court NULL,
             otp_actif         INT NOT NULL DEFAULT 0,
+            /* v19 — la facturation. Mêmes colonnes que la liste des ALTER. */
+            abonne_depuis     $court NULL,
+            offre_demandee    $court NULL,
+            offre_demandee_le $court NULL,
             cree_le           $court NOT NULL
         )$moteur",
 
@@ -495,6 +557,17 @@ function creer_schema(PDO $pdo, bool $mysql): void
             reglee_le      $court NULL,
             note           $txt NULL,
             emise_par      $id NULL,
+            /* v19 — voir la liste des ALTER : ces colonnes doivent exister
+               des DEUX côtés, sinon la première installation neuve tombe. */
+            statut         $court NOT NULL DEFAULT 'reglee',
+            mode           $court NULL,
+            reference      $court NULL,
+            avoir_de       $id NULL,
+            tva_taux       INT NOT NULL DEFAULT 0,
+            montant_ht     INT NOT NULL DEFAULT 0,
+            montant_tva    INT NOT NULL DEFAULT 0,
+            emetteur       $txt NULL,
+            envoyee_le     $court NULL,
             cree_le        $court NOT NULL
         )$moteur",
 

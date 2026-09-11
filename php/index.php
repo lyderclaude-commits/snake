@@ -32,6 +32,8 @@ require __DIR__ . '/app/avatars.php';
 require __DIR__ . '/app/journal.php';
 require __DIR__ . '/app/otp.php';
 require __DIR__ . '/app/abonnement.php';
+require __DIR__ . '/app/pdf.php';
+require __DIR__ . '/app/facture.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -875,13 +877,69 @@ switch ($page) {
             http_response_code(404);
             vue('introuvable', ['titre' => 'Facture introuvable']);
         }
+        /**
+         * Le PDF, servi à la même adresse et sous le même contrôle.
+         *
+         * Une seconde route aurait voulu recopier la règle d'accès au
+         * document — et une règle recopiée finit par diverger de l'autre.
+         */
+        if (($_GET['pdf'] ?? '') !== '') {
+            $doc = facture_pdf($f);
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="' . facture_nom_fichier($f) . '"');
+            header('Content-Length: ' . strlen($doc));
+            echo $doc;
+            exit;
+        }
         vue('facture', [
             'titre' => 'Facture ' . $f['numero'],
             'f' => $f,
             'retour' => droit($u, 'comptes') && $f['utilisateur_id'] !== $u['id']
                 ? '?p=organisateur&id=' . rawurlencode((string) $f['utilisateur_id'])
-                : '?p=profil',
+                : '?p=facturation',
         ]);
+
+    /**
+     * La facturation : la liste pour l'équipe, son espace pour le client.
+     *
+     * Une seule adresse pour les deux — l'e-mail « voir mes factures » mène
+     * au bon écran sans qu'on ait à savoir qui le reçoit.
+     */
+    case 'facturation':
+        require RACINE . '/app/actions/facturation.php';
+
+    case 'reglages-facturation':
+        require RACINE . '/app/actions/reglages-facturation.php';
+
+    /**
+     * Un exemple de facture, avec les réglages ACTUELS.
+     *
+     * Un taux de TVA saisi de travers ne se voit pas dans un champ : il se
+     * voit sur un document. Celui-ci n'existe qu'en mémoire, ne porte aucun
+     * numéro de la suite, et n'entre jamais en base.
+     */
+    case 'facture-exemple':
+        $u = exiger_droit('reglages');
+        $r = facturation_reglages();
+        $ttc = (int) (FORMULES['croissance']['prix'] ?? 12000);
+        $m = facture_montants($ttc, (int) $r['fact_tva']);
+        $doc = facture_pdf([
+            'id' => 'exemple', 'numero' => 'WB-' . gmdate('Y') . '-EXEMPLE',
+            'utilisateur_id' => '', 'client_nom' => 'Léna Adjovi', 'client_org' => 'Maquis Akwaba',
+            'formule' => 'croissance', 'montant' => $m['ttc'],
+            'debut_le' => maintenant(), 'fin_le' => maintenant(time() + 30 * 86400),
+            'reglee_le' => maintenant(), 'note' => 'Document d’exemple : il ne vaut pas facture.',
+            'emise_par' => null, 'statut' => 'reglee', 'mode' => 'mobile_money',
+            'reference' => 'MM-0000000', 'avoir_de' => null, 'tva_taux' => $m['taux'],
+            'montant_ht' => $m['ht'], 'montant_tva' => $m['tva'],
+            'emetteur' => json_encode($r, JSON_UNESCAPED_UNICODE),
+            'envoyee_le' => null, 'cree_le' => maintenant(),
+        ]);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="exemple-de-facture.pdf"');
+        header('Content-Length: ' . strlen($doc));
+        echo $doc;
+        exit;
 
     case 'journal':
         $u = exiger_droit('comptes');

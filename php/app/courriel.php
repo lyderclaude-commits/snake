@@ -84,7 +84,7 @@ function courriel_branche(): bool
  *
  * @return array{ok: bool, message: string}
  */
-function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string $texte, ?string $html = null, array $sup = []): array
+function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string $texte, ?string $html = null, array $sup = [], array $pieces = []): array
 {
     if (!filter_var($vers, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'message' => 'Adresse destinataire invalide.'];
@@ -107,7 +107,7 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
             return ['ok' => false, 'message' => $muet];
         }
         try {
-            smtp_envoyer($r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
+            smtp_envoyer($r, $vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces);
             return ['ok' => true, 'message' => 'Message remis au serveur SMTP.'];
         } catch (RuntimeException $e) {
             $muet = $e->getMessage();
@@ -119,14 +119,14 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
         return ['ok' => false, 'message' => 'Aucun SMTP réglé, et la fonction mail() est désactivée sur cet hébergement.'];
     }
     $de = $de ?: 'no-reply@' . (parse_url(base_url(), PHP_URL_HOST) ?: 'localhost');
-    $entetes = entetes_courriel($r, $de, $vers, $nom_vers, $sujet, $html !== null, $sup);
+    $entetes = entetes_courriel($r, $de, $vers, $nom_vers, $sujet, $html !== null, $sup, $pieces);
     // `mail()` écrit elle-même To: et Subject: — on les retire de la liste.
     unset($entetes['To'], $entetes['Subject']);
     $lignes = [];
     foreach ($entetes as $c => $v) {
         $lignes[] = $c . ': ' . $v;
     }
-    $ok = @mail($vers, encoder_entete($sujet), corps_courriel($texte, $html), implode("\r\n", $lignes));
+    $ok = @mail($vers, encoder_entete($sujet), corps_courriel($texte, $html, $pieces), implode("\r\n", $lignes));
     return $ok
         ? ['ok' => true, 'message' => 'Message confié à mail(). Vérifiez le dossier « indésirables ».']
         : ['ok' => false, 'message' => 'mail() a refusé le message. Réglez un SMTP : sur un mutualisé, c'
@@ -143,11 +143,11 @@ function envoyer_courriel(string $vers, string $nom_vers, string $sujet, string 
  * @throws RuntimeException avec un message que l'équipe puisse lire : le
  *         but de l'écran de test est de dire CE QUI cloche, pas « échec ».
  */
-function smtp_envoyer(array $r, string $vers, string $nom_vers, string $sujet, string $texte, ?string $html, array $sup = []): void
+function smtp_envoyer(array $r, string $vers, string $nom_vers, string $sujet, string $texte, ?string $html, array $sup = [], array $pieces = []): void
 {
     $flux = smtp_ouvrir($r);
     try {
-        smtp_remettre($flux, $r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
+        smtp_remettre($flux, $r, $vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces);
         @smtp_ecrire($flux, 'QUIT');
     } finally {
         @fclose($flux);
@@ -229,18 +229,19 @@ function smtp_remettre(
     string $sujet,
     string $texte,
     ?string $html,
-    array $sup = []
+    array $sup = [],
+    array $pieces = []
 ): void {
     smtp_commande($flux, 'MAIL FROM:<' . $r['courriel_expediteur'] . '>', 250);
     smtp_commande($flux, 'RCPT TO:<' . $vers . '>', [250, 251]);
     smtp_commande($flux, 'DATA', 354);
 
-    $entetes = entetes_courriel($r, $r['courriel_expediteur'], $vers, $nom_vers, $sujet, $html !== null, $sup);
+    $entetes = entetes_courriel($r, $r['courriel_expediteur'], $vers, $nom_vers, $sujet, $html !== null, $sup, $pieces);
     $message = '';
     foreach ($entetes as $c => $v) {
         $message .= $c . ': ' . $v . "\r\n";
     }
-    $message .= "\r\n" . corps_courriel($texte, $html);
+    $message .= "\r\n" . corps_courriel($texte, $html, $pieces);
 
     smtp_ecrire($flux, smtp_proteger_points($message) . "\r\n.");
     smtp_lire($flux, 250);
@@ -369,9 +370,10 @@ function entetes_courriel(
     string $nom_vers,
     string $sujet,
     bool $html,
-    array $sup = []
+    array $sup = [],
+    array $pieces = []
 ): array {
-    $limite = frontiere_courriel();
+    $limite = frontiere_courriel('alt');
     $entetes = [
         'Date' => gmdate('D, d M Y H:i:s') . ' +0000',
         'From' => adresse_affichee($r['courriel_nom'], $de),
@@ -384,11 +386,15 @@ function entetes_courriel(
     if (($r['courriel_repondre_a'] ?? '') !== '') {
         $entetes['Reply-To'] = $r['courriel_repondre_a'];
     }
-    $entetes['Content-Type'] = $html
-        ? 'multipart/alternative; boundary="' . $limite . '"'
-        : 'text/plain; charset=UTF-8';
-    if (!$html) {
-        $entetes['Content-Transfer-Encoding'] = '8bit';
+    if ($pieces) {
+        $entetes['Content-Type'] = 'multipart/mixed; boundary="' . frontiere_courriel('mix') . '"';
+    } else {
+        $entetes['Content-Type'] = $html
+            ? 'multipart/alternative; boundary="' . $limite . '"'
+            : 'text/plain; charset=UTF-8';
+        if (!$html) {
+            $entetes['Content-Transfer-Encoding'] = '8bit';
+        }
     }
     // Un message transactionnel ne doit pas déclencher de réponse
     // automatique : le « absent du bureau » du destinataire reviendrait sur
@@ -412,21 +418,61 @@ function entetes_courriel(
     return $entetes;
 }
 
-/** La frontière multipart : constante pour un message, unique entre deux. */
-function frontiere_courriel(): string
+/**
+ * La frontière multipart : constante pour un message, unique entre deux.
+ *
+ * Deux niveaux depuis que les factures partent en pièce jointe : le texte
+ * et le HTML sont deux VERSIONS du même message (`alternative`), la pièce
+ * jointe est un contenu DE PLUS (`mixed`). Les imbriquer avec la même
+ * frontière ferait terminer l'extérieur au premier séparateur intérieur,
+ * et le lecteur n'afficherait rien.
+ */
+function frontiere_courriel(string $niveau = 'alt'): string
 {
-    static $f = null;
-    return $f ??= '=_wakabi_' . bin2hex(random_bytes(8));
+    static $f = [];
+    return $f[$niveau] ??= '=_wakabi_' . $niveau . '_' . bin2hex(random_bytes(8));
 }
 
-function corps_courriel(string $texte, ?string $html): string
+/**
+ * Une pièce jointe, encodée comme l'exige le courrier.
+ *
+ * Base64 coupé à 76 caractères : au-delà, plusieurs relais recoupent
+ * eux-mêmes les lignes, et un fichier recoupé n'est plus lisible.
+ */
+function piece_courriel(array $p): string
 {
-    if ($html === null) {
-        return $texte;
+    $nom = str_replace(['"', "\r", "\n"], '', (string) ($p['nom'] ?? 'piece-jointe'));
+    $type = (string) ($p['type'] ?? 'application/octet-stream');
+    return "Content-Type: $type; name=\"$nom\"\r\n"
+         . "Content-Transfer-Encoding: base64\r\n"
+         . "Content-Disposition: attachment; filename=\"$nom\"\r\n\r\n"
+         . chunk_split(base64_encode((string) ($p['contenu'] ?? '')), 76, "\r\n");
+}
+
+function corps_courriel(string $texte, ?string $html, array $pieces = []): string
+{
+    $l = frontiere_courriel('alt');
+    $alternative = $html === null
+        ? "Content-Type: text/plain; charset=UTF-8\r\n\r\n$texte"
+        : "Content-Type: multipart/alternative; boundary=\"$l\"\r\n\r\n"
+          . "--$l\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$texte\r\n\r\n"
+          . "--$l\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n\r\n--$l--";
+
+    if (!$pieces) {
+        // Sans pièce jointe, le message garde exactement la forme d'avant :
+        // l'en-tête annonce déjà `multipart/alternative`, et le corps ne
+        // reprend donc pas son propre Content-Type.
+        return $html === null ? $texte
+            : "--$l\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$texte\r\n\r\n"
+              . "--$l\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n\r\n--$l--";
     }
-    $l = frontiere_courriel();
-    return "--$l\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$texte\r\n\r\n"
-         . "--$l\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n\r\n--$l--";
+
+    $m = frontiere_courriel('mix');
+    $out = "--$m\r\n" . $alternative . "\r\n\r\n";
+    foreach ($pieces as $piece) {
+        $out .= "--$m\r\n" . piece_courriel($piece) . "\r\n";
+    }
+    return $out . "--$m--";
 }
 
 /**
@@ -491,13 +537,14 @@ function courriel_mis_en_page(
     string $lien = '',
     string $libelle = '',
     array $sup = [],
-    ?SessionCourriel $session = null
+    ?SessionCourriel $session = null,
+    array $pieces = []
 ): array {
     $texte = texte_courriel($titre, $corps, $lien);
     $html = gabarit_courriel($titre, $corps, $lien, $libelle);
     return $session
-        ? $session->envoyer($vers, $nom_vers, $sujet, $texte, $html, $sup)
-        : envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup);
+        ? $session->envoyer($vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces)
+        : envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces);
 }
 
 /**
@@ -552,7 +599,8 @@ final class SessionCourriel
         string $sujet,
         string $texte,
         ?string $html = null,
-        array $sup = []
+        array $sup = [],
+        array $pieces = []
     ): array {
         if (!filter_var($vers, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'message' => 'Adresse destinataire invalide.', 'reprendre' => false];
@@ -563,7 +611,7 @@ final class SessionCourriel
         if (!$this->smtp) {
             // Sans SMTP réglé, on retombe sur le transport unitaire : mail()
             // n'a pas de conversation à tenir ouverte.
-            $u = envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup);
+            $u = envoyer_courriel($vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces);
             return $u + ['reprendre' => !$u['ok']];
         }
 
@@ -581,7 +629,7 @@ final class SessionCourriel
         }
 
         try {
-            smtp_remettre($this->flux, $this->r, $vers, $nom_vers, $sujet, $texte, $html, $sup);
+            smtp_remettre($this->flux, $this->r, $vers, $nom_vers, $sujet, $texte, $html, $sup, $pieces);
             return ['ok' => true, 'message' => 'Message remis au serveur SMTP.', 'reprendre' => false];
         } catch (RuntimeException $e) {
             /**
