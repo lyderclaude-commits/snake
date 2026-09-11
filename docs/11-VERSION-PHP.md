@@ -5,7 +5,8 @@ campagne est partie, **lesquels de ses messages ont échoué et pourquoi**, et
 sait les relancer — sauf sur une adresse morte, jamais. Les adresses non
 confirmées sont écartées des campagnes, le carnet excepté. L'écran d'écriture
 devient un atelier à deux colonnes, avec l'aperçu de ce que chaque plateforme
-affichera. Dans le studio, **l'œil du panneau de calques** éteint et rallume un
+affichera. La **santé du décor** ne récite plus le format du fichier ni ses
+pixels, et les **décors de la maison gardent le filigrane du guide**. Dans le studio, **l'œil du panneau de calques** éteint et rallume un
 objet pour de vrai. Le **retour en arrière est un bouton** sur tous les écrans qui
 en portent un, et **le tiret cadratin a disparu de tous les textes**. Un invité
 qui s'abonne aux notifications **sans créer de compte** appartient enfin à
@@ -43,7 +44,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **762 scénarios, 762 réussis**
+Les deux ont été vérifiés de bout en bout : **764 scénarios, 764 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -129,7 +130,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 762 scénarios, dans un vrai navigateur
+npm run php:e2e          # 764 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement
 ```
@@ -149,7 +150,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 762 scénarios
+### Les 764 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -395,6 +396,18 @@ une autre.
 - **Campagnes actives** — refusé à la soumission. Un brouillon ne coûte
   rien : ce qui occupe une place, c'est une campagne en ligne ou en route
   vers la relecture.
+- **Le filigrane** — retiré au moment de **servir** le décor, jamais de
+  l'enregistrer : un organisateur qui passe à Impact le voit disparaître de
+  ses campagnes existantes le soir même, et celui dont l'offre retombe à
+  Découverte le retrouve. **Les décors de la maison le gardent toujours**
+  (v1.2) : un compte interne n'a pas d'offre, `capacite()` lui répondait oui
+  à tout, et ses badges partaient donc sans signature. C'était un
+  contresens — une campagne du guide est précisément l'endroit où le nom du
+  guide doit se voir, et chaque badge partagé sur un statut WhatsApp est une
+  affiche gratuite. On ne se vend pas des fonctions à soi-même ; on ne se
+  retire pas sa propre signature non plus. La recette le **mesure sur
+  l'image** : la plaque du filigrane doit couvrir le coin bas-droit du
+  badge, pas seulement figurer dans le gabarit.
 - **Téléchargements** — refusé à l'**émission du badge**, c'est-à-dire au
   geste qui coûte. Le compteur était autrefois « indicatif » : une ligne
   vendue 5 000 FCFA que rien n'appliquait. L'invité reçoit un message qui
@@ -1041,13 +1054,33 @@ requête par image rendrait saccadé le geste qui doit précisément être fluid
 
 ### La santé du décor, dite pendant qu'on règle
 
-C'est le **pré-vol lui-même** — la fonction qui décide vraiment — et non une
+C'est le **pré-vol lui-même**, la fonction qui décide vraiment, et non une
 seconde liste de contrôles côté navigateur qui aurait fini par diverger.
 Vingt millisecondes, moins que le trajet réseau qui l'apporte.
 
 Un défaut trouvé en le branchant : elle se prononçait sur le cadre
 **précédent**, le fichier choisi n'étant lu que par le navigateur. Le cadre
 part donc au serveur dès qu'on le choisit.
+
+**Elle ne récite plus le fichier** (v1.2). Le panneau annonçait « Cadre WebP
+1500 × 1750 px (1500×1750) sur un décor 4:5 » : chaque mot exact, et la phrase
+entière illisible pour qui organise une soirée. Un format de fichier, une
+définition en pixels et une notation de rapport ne sont pas la *santé* d'un
+décor : c'est l'inventaire de ce qu'on vient de téléverser, et l'auteur le
+sait déjà puisqu'il a choisi le fichier.
+
+Ne restent donc que les phrases qui annoncent un **défaut visible sur le
+badge**, dites sans jargon :
+
+| Ce qu'on voyait | Ce qu'on lit maintenant |
+|---|---|
+| `Cadre WebP 1500 × 1750 px (1500×1750) sur un décor 4:5 : il sera étiré.` | Le cadre n'a pas la même forme que le décor : il sera déformé. Choisissez, à l'étape 1, le format qui lui correspond. |
+| `Cadre PNG, 1080 × 1080 px (1:1).` | *(rien : une ligne verte qui récite un fichier n'apprend rien)* |
+| `378 Ko, soutenable en 3G.` | *(rien, sauf si c'est trop lourd pour se charger)* |
+
+La recette vérifie les deux moitiés de la règle : qu'un vrai défaut est
+toujours annoncé, et qu'**il ne reste plus un seul chiffre technique** dans le
+panneau.
 
 ### La police que le produit demandait sans jamais la servir
 

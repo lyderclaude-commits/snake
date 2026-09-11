@@ -1243,9 +1243,19 @@ function valider_gabarit(array $g): void
  */
 function gabarit_selon_offre(array $gabarit, ?array $auteur): array
 {
-    // Le filigrane reste tant que l'offre ne le retire pas. C'est ce que
-    // Découverte paie de sa gratuité, et ce qu'Impact achète.
-    $gabarit['watermark']['enabled'] = !capacite($auteur, 'sans_filigrane');
+    /**
+     * Le filigrane reste tant que l'offre ne le retire pas. C'est ce que
+     * Découverte paie de sa gratuité, et ce qu'Impact achète.
+     *
+     * Sauf sur les décors de la MAISON, qui le gardent toujours. Un compte
+     * interne n'a pas d'offre : `capacite()` lui répond oui à tout, et ses
+     * badges partaient donc sans signature. C'était un contresens — une
+     * campagne du guide est précisément l'endroit où le nom du guide doit
+     * se voir, et chaque badge partagé sur un statut WhatsApp est une
+     * affiche gratuite. On ne se vend pas des fonctions à soi-même ; on ne
+     * se retire pas sa propre signature non plus.
+     */
+    $gabarit['watermark']['enabled'] = interne($auteur) || !capacite($auteur, 'sans_filigrane');
 
     // Sans redirection, l'invité reste sur Wakabi après son badge : la page
     // de l'organisateur est une ligne de l'offre, pas un acquis.

@@ -206,10 +206,24 @@ function prevol(array $gabarit, ?string $cadre_url): array
         fn($l) => ($l['type'] ?? '') === 'image' && ($l['id'] ?? '') === 'frame'
     );
 
+    /**
+     * Ce que cet écran ne dit PLUS.
+     *
+     * « Cadre WebP 1500 x 1750 px sur un décor 4:5 » : chaque mot est
+     * exact, et la phrase entière est illisible pour qui organise une
+     * soirée. Un format de fichier, une définition en pixels et une
+     * notation de rapport ne sont pas la SANTÉ d'un décor : c'est
+     * l'inventaire de ce qu'on vient de téléverser, et l'auteur le sait
+     * déjà, puisqu'il a choisi le fichier. Le mot « cadre » reste, lui :
+     * c'est le nom de l'étape 1, pas du jargon.
+     *
+     * Ne restent donc que les phrases qui annoncent un DÉFAUT VISIBLE sur
+     * le badge, dites sans jargon. Une ligne verte qui récite des
+     * kilo-octets n'apprend rien ; une ligne orange qui dit « votre image
+     * sera déformée » fait agir.
+     */
     $img = null;
     if ($sans_cadre) {
-        $ajouter('format', 'ok', 'Aucun cadre : le décor tient au fond, à la fenêtre photo et au texte.');
-        $ajouter('poids', 'ok', 'Rien à charger en plus de la photo de l’invité.');
         $ajouter('photo-visible', 'ok', 'La photo est entièrement visible : aucun cadre ne la recouvre.');
     } else {
         $chemin = chemin_cadre($cadre_url);
@@ -221,7 +235,8 @@ function prevol(array $gabarit, ?string $cadre_url): array
         /* 2 — format du fichier */
         $info = @getimagesize($chemin);
         if (!$info || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
-            $ajouter('format', 'echec', 'Le cadre doit être un PNG ou un WebP. Le SVG est refusé pour raison de sécurité.');
+            $ajouter('format', 'echec', 'Ce fichier ne convient pas comme cadre. Choisissez un PNG '
+                . 'ou un WebP : ce sont les deux formats qui gardent la transparence.');
             return ['passe' => false, 'controles' => $controles];
         }
         $img = charger_image($chemin);
@@ -242,26 +257,20 @@ function prevol(array $gabarit, ?string $cadre_url): array
          */
         $ratio_cadre = ratio_lisible((int) $info[0], (int) $info[1]);
         $ratio_toile = (string) ($gabarit['canvas']['ratio'] ?? '');
-        $type = $info[2] === IMAGETYPE_PNG ? 'PNG' : 'WebP';
         if ($ratio_toile !== '' && $ratio_cadre !== $ratio_toile) {
-            $ajouter('format', 'alerte', sprintf(
-                'Cadre %s %d × %d px (%s) sur un décor %s : il sera étiré. Alignez le format du décor sur celui du cadre.',
-                $type, $info[0], $info[1], $ratio_cadre, $ratio_toile
-            ));
-        } else {
-            $ajouter('format', 'ok', sprintf('Cadre %s, %d × %d px (%s).', $type, $info[0], $info[1], $ratio_cadre));
+            $ajouter('format', 'alerte',
+                'Le cadre n’a pas la même forme que le décor : il sera déformé. '
+                . 'Choisissez, à l’étape 1, le format qui lui correspond.');
         }
 
         /* 3 — poids */
         $poids = filesize($chemin) ?: 0;
         if ($poids > POIDS_MAX) {
             $ajouter('poids', 'echec', sprintf(
-                'Le cadre pèse %d Ko. Au-delà de %d Ko, il ne se charge pas en 3G.',
-                (int) round($poids / 1024),
+                'Le cadre est trop lourd : il ne s’affichera pas sur une connexion lente. '
+                . 'Repassez-le sous %d Ko.',
                 (int) round(POIDS_MAX / 1024)
             ));
-        } else {
-            $ajouter('poids', 'ok', sprintf('%d Ko, soutenable en 3G.', (int) round($poids / 1024)));
         }
 
         /* 4 — la photo doit se voir */
@@ -274,7 +283,8 @@ function prevol(array $gabarit, ?string $cadre_url): array
         $opaque = $slot ? part_opaque($img, $slot['x'], $slot['y'], $slot['w'], $slot['h']) : 1.0;
         if ($opaque > OPACITE_LIMITE) {
             $ajouter('photo-visible', 'echec', sprintf(
-                'Le cadre recouvre %d %% de la zone photo : l’invité n’apparaîtra pas. Rendez le centre transparent.',
+                'Le cadre recouvre %d %% de la fenêtre photo : l’invité n’apparaîtra pas. '
+                . 'Il faut que son centre soit transparent.',
                 (int) round($opaque * 100)
             ));
         } else {
@@ -319,7 +329,7 @@ function prevol(array $gabarit, ?string $cadre_url): array
     if ($trop_longs) {
         $ajouter('texte', 'alerte', 'Un texte devra être fortement réduit pour tenir : « ' . mb_substr($trop_longs[0], 0, 40) . ' ».');
     } else {
-        $ajouter('texte', 'ok', 'Les textes tiennent dans le cadre.');
+        $ajouter('texte', 'ok', 'Les textes tiennent sans être réduits.');
     }
 
     /* 7 — contraste */

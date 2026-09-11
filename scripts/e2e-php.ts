@@ -435,6 +435,41 @@ const run = async () => {
   });
   ok('QR visible dans l’aperçu', blanc > 0.15, `${Math.round(blanc * 100)} % de blanc au coin bas-gauche`);
 
+  /**
+   * Le filigrane, MESURÉ sur l'image.
+   *
+   * Un décor de la maison porte la signature du guide : c'est là que le
+   * nom doit se voir, et chaque badge partagé sur un statut WhatsApp est
+   * une affiche gratuite. Le contrôle n'existait pas, et la règle des
+   * offres l'avait discrètement retiré des décors de l'équipe — un compte
+   * interne n'ayant pas d'offre, `capacite()` lui répondait oui à tout, y
+   * compris à « sans filigrane ».
+   *
+   * On le mesure donc, plutôt que de lire le gabarit : le filigrane pose
+   * un voile sombre et du texte blanc au coin bas-droit, et c'est ce que
+   * l'invité verra.
+   */
+  const signe = await p.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement;
+    const g = c.getContext('2d')!;
+    // Le coin bas-droit, là où la plaque du filigrane se pose.
+    const d = g.getImageData(
+      Math.round(c.width * 0.75), Math.round(c.height * 0.84),
+      Math.round(c.width * 0.21), Math.round(c.height * 0.12),
+    ).data;
+    /* On compte le VOILE, pas le texte : à la taille de l'aperçu les
+       lettres sont lissées et le blanc pur y est rare, tandis que la
+       plaque sombre couvre la boîte entière. Ce décor a un fond bleu vif
+       — un pixel sombre là ne peut venir que du filigrane. */
+    let voile = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] < 60 && d[i + 2] > d[i] * 2 && d[i + 2] < 170) voile++;
+    }
+    return voile / (d.length / 4);
+  });
+  ok('le filigrane du guide est sur le badge, pas seulement dans le gabarit',
+     signe > 0.4, `${Math.round(signe * 100)} % de la plaque au coin bas-droit`);
+
   const jeton = (await p.locator('#jeton').innerText()).trim();
   ok('jeton du badge affiché', /^[2-9A-Z]{10}$/.test(jeton), jeton);
 
@@ -4320,6 +4355,19 @@ const run = async () => {
      (await aussi.locator('img').count()) === nAussi,
      `${await aussi.locator('img').count()} image(s) pour ${nAussi} carte(s)`);
 
+  /**
+   * On descend jusqu'aux cartes AVANT de les mesurer.
+   *
+   * Les vignettes sont en chargement paresseux : mesurer `naturalWidth`
+   * sans les avoir amenées à l'écran donne zéro, et le test accusait le
+   * produit d'un défaut qui n'était que le sien.
+   */
+  await aussi.first().scrollIntoViewIfNeeded();
+  await pAN.waitForFunction(
+    () => [...document.querySelectorAll('section img')].every(
+      (i) => (i as HTMLImageElement).complete),
+    undefined, { timeout: 10_000 },
+  ).catch(() => { /* on mesurera quand même : l'assertion dira la vérité */ });
   const chargees = await aussi.locator('img').evaluateAll(
     (n) => n.map((e) => (e as HTMLImageElement).naturalWidth));
   ok('et chaque image s’est réellement chargée — pas un cadre vide',
@@ -4996,8 +5044,19 @@ const run = async () => {
      (await pAT.inputValue('input[name=cadre_url]')) !== '',
      (await pAT.inputValue('input[name=cadre_url]')).slice(-22));
   const sante = await pAT.locator('#sd-sante-liste').innerText();
+  /**
+   * La santé se prononce sur CE cadre, et elle le dit sans jargon.
+   *
+   * Le panneau récitait le format du fichier, sa définition en pixels et
+   * le rapport de ses côtés — « Cadre WebP 1500 × 1750 px (1500×1750) sur
+   * un décor 4:5 ». Chaque mot exact, et la phrase illisible pour qui
+   * organise une soirée. Ce qu'on vérifie maintenant : qu'il ne reste plus
+   * un chiffre technique, et qu'un vrai défaut est toujours annoncé.
+   */
   ok('la santé du décor se prononce sur CE cadre',
-     /Ko,|Cadre (PNG|WebP)/.test(sante));
+     /recouvre|apparaît sur \d+ %/.test(sante), sante.replace(/\s+/g, ' ').slice(0, 70));
+  ok('elle ne récite plus ni format de fichier, ni pixels, ni kilo-octets',
+     !/WebP|PNG|px|Ko|\d+×\d+|\d:\d/.test(sante), sante.replace(/\s+/g, ' ').slice(0, 80));
   ok('et elle proteste tout de suite contre un cadre opaque',
      (await pAT.locator('.sd-ct.echec, .sd-ct.alerte').count()) >= 1
      && /recouvre|opaque|n’apparaîtra/.test(sante),
