@@ -827,6 +827,27 @@ côté du champ qui le décide.
 l'accueil, le catalogue, le blog, puis chaque décor publié et chaque article
 en ligne, avec sa date de dernière modification.
 
+**Le plafond a été relevé** (v1.2). Il tenait en deux nombres passés à des
+fonctions faites pour autre chose : cinq cents décors — chargés avec leur
+gabarit entier en mémoire — et cinq cents articles dont `articles_publies()`
+ne rendait en réalité que **cent**, sa propre limite écrasant celle qu'on lui
+demandait. Un blog qui publie deux fois par semaine perdait donc ses plus
+anciens articles au bout d'un an, sans que rien ne le dise.
+
+Le plan lit maintenant ses propres colonnes — l'adresse et la date, ni
+gabarit ni corps d'article — et se construit dans une seule chaîne plutôt que
+dans un tableau de sept lignes par adresse. Le plafond est à **vingt mille
+adresses**, partagées : les décors en prennent jusqu'à la moitié, les
+articles tout ce qui reste. Cinq cents contenus font un fichier de 104 Ko ;
+vingt mille en feraient quatre mégaoctets, qu'un hébergement mutualisé
+fabrique sans broncher. Le protocole en autorise cinquante mille par
+fichier : au-delà, il faudrait un **index de plans**, et ce n'est pas le
+problème d'aujourd'hui.
+
+Un article **programmé** pour la semaine prochaine reste hors du plan
+jusqu'à son heure : la condition vient de `blog_filtre()`, celle du blog
+lui-même, plutôt que d'être réécrite à côté.
+
 Les adresses y sont du XML : l'esperluette de `?p=blog&a=le-slug` s'y écrit
 `&amp;`. Une seule esperluette nue rendrait le fichier **entier** invalide —
 le moteur rejette le plan complet, pas la ligne fautive. La recette
@@ -845,7 +866,7 @@ Sans `mod_rewrite`, les deux restent joignables sur `?p=robots` et
 ### Comment on sait que c'est vrai
 
 `npx tsx scripts/verifier-seo.ts` parcourt le site **avec les yeux du
-robot** — sans session, dans le HTML, jamais à l'écran. 109 contrôles, dont
+robot** — sans session, dans le HTML, jamais à l'écran. 114 contrôles, dont
 ceux qui n'ont aucune trace visible :
 
 - l'image annoncée est **réellement téléchargée**, et ses dimensions sont
@@ -854,7 +875,12 @@ ceux qui n'ont aucune trace visible :
 - son type déclaré est comparé à celui que le serveur renvoie ;
 - chaque titre est unique d'une page à l'autre ;
 - les adresses du plan mènent à des pages **vivantes** ;
-- les écrans privés renvoient le robot au lieu de lui servir une page.
+- les écrans privés renvoient le robot au lieu de lui servir une page ;
+- le plan est fabriqué sur une installation jetable de **cinq cents
+  contenus** — deux cent cinquante décors, deux cent cinquante articles — et
+  l'on compte ce qu'il nomme. C'est la seule façon de voir une troncature :
+  une recette ne publie pas cent cinquante articles, et le plan tronqué est
+  un fichier parfaitement valide.
 
 ---
 

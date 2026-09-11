@@ -24,6 +24,51 @@ function decors_publies(int $limite = 60): array
     return $s->fetchAll();
 }
 
+/**
+ * Les seules colonnes dont un plan de site a besoin.
+ *
+ * `decors_publies()` rapporte la ligne ENTIÈRE — gabarit compris, soit
+ * plusieurs kilo-octets de JSON par décor, plus deux sous-requêtes de
+ * statistiques — et `articles_publies()` se borne à cent lignes quelle que
+ * soit la limite demandée. Ni l'un ni l'autre ne convient à un plan qui
+ * doit tout nommer : le premier ferait manquer la mémoire, le second
+ * taisait silencieusement le cent-unième article. On lit donc l'adresse et
+ * la date, et rien d'autre.
+ */
+function slugs_decors_publies(int $limite): array
+{
+    $limite = max(0, $limite);
+    if ($limite === 0) {
+        return [];
+    }
+    $s = db()->prepare("SELECT slug, publie_le, maj_le FROM decors
+        WHERE statut = 'publie' AND (expire_le IS NULL OR expire_le > ?)
+        ORDER BY publie_le DESC LIMIT $limite");
+    $s->execute([maintenant()]);
+    return $s->fetchAll();
+}
+
+/**
+ * Idem pour les articles : l'adresse et la date, sans le corps.
+ *
+ * Le filtre vient de `blog_filtre()`, celui du blog lui-même : un article
+ * programmé pour la semaine prochaine n'est pas encore publié, et le plan
+ * du site ne doit pas le désigner avant l'heure. Deux conditions écrites
+ * deux fois finissent toujours par diverger.
+ */
+function slugs_articles_publies(int $limite): array
+{
+    $limite = max(0, $limite);
+    if ($limite === 0) {
+        return [];
+    }
+    [$where, $args] = blog_filtre('');
+    $s = db()->prepare("SELECT slug, publie_le, maj_le FROM articles $where
+                        ORDER BY publie_le DESC LIMIT $limite");
+    $s->execute($args);
+    return $s->fetchAll();
+}
+
 function decor_par_slug(string $slug): ?array
 {
     $s = db()->prepare("SELECT d.*, " . STATS_SQL . " FROM decors d WHERE d.slug = ?");

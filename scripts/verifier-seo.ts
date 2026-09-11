@@ -15,6 +15,14 @@
  *   BASE_URL=http://127.0.0.1:3700 npx tsx scripts/verifier-seo.ts
  */
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const lancer = promisify(execFile);
+const RACINE = process.cwd() + '/php';
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
 
 let pass = 0;
@@ -35,6 +43,59 @@ const meta = (html: string, cle: string): string => {
     .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'")
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 };
+
+/**
+ * Le plan du site, à l'échelle où il se cassait.
+ *
+ * Ce contrôle-ci ne passe pas par un écran : il lui faut CENT CINQUANTE
+ * articles, et une recette n'en écrit pas autant. Il monte donc une
+ * installation SQLite jetable, y pose deux cent cinquante décors et deux
+ * cent cinquante articles, puis lit le plan.
+ *
+ * La panne qu'il ferme : `sitemap_xml()` demandait cinq cents articles à
+ * `articles_publies()`, dont la signature ramène la limite à cent. Le plan
+ * s'arrêtait donc au centième article sans que rien ne le dise — et sur un
+ * blog qui publie deux fois par semaine, cela veut dire qu'au bout d'un an
+ * les moteurs cessent de voir arriver les nouveaux.
+ */
+const PLAN_N = 250;
+const SCENARIO_PLAN = `<?php
+require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
+foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
+          'texte','regie','carnet','images','push','qr','icones','avatars','journal',
+          'abonnement','api','seo'] as $m) {
+    require RACINE . "/app/$m.php";
+}
+assurer_schema();
+
+$db = db();
+$maintenant = maintenant();
+$plus_tard = gmdate('Y-m-d\\\\TH:i:s\\\\Z', time() + 7 * 86400);
+$d = $db->prepare('INSERT INTO decors (id, slug, titre, statut, cree_par, gabarit,
+                                       publie_le, cree_le, maj_le)
+                   VALUES (?, ?, ?, \\'publie\\', \\'equipe\\', \\'{}\\', ?, ?, ?)');
+$a = $db->prepare('INSERT INTO articles (id, slug, titre, corps, statut,
+                                         publie_le, cree_le, maj_le)
+                   VALUES (?, ?, ?, \\'Un corps.\\', \\'publie\\', ?, ?, ?)');
+$db->beginTransaction();
+for ($i = 0; $i < ${PLAN_N}; $i++) {
+    $d->execute([nouvel_id(), 'decor-plan-' . $i, 'Décor ' . $i, $maintenant, $maintenant, $maintenant]);
+    $a->execute([nouvel_id(), 'article-plan-' . $i, 'Article ' . $i, $maintenant, $maintenant, $maintenant]);
+}
+// Un article PROGRAMMÉ : publié, mais pas encore. Le plan ne doit pas le dire.
+$a->execute([nouvel_id(), 'article-programme', 'Programmé', $plus_tard, $maintenant, $maintenant]);
+$db->commit();
+
+$plan = sitemap_xml();
+echo json_encode([
+    'decors'     => preg_match_all('/decor-plan-\\\\d+/', $plan),
+    'articles'   => preg_match_all('/article-plan-\\\\d+/', $plan),
+    'programme'  => str_contains($plan, 'article-programme'),
+    'ferme'      => str_starts_with($plan, '<?xml') && str_ends_with(trim($plan), '</urlset>'),
+    'plafond'    => SITEMAP_MAX,
+    'octets'     => strlen($plan),
+], JSON_UNESCAPED_UNICODE), "\\n";
+`;
 
 interface Page { nom: string; chemin: string; type: string }
 
@@ -218,6 +279,36 @@ const main = async () => {
   const rq = await fetch(`${BASE}/index.php?p=blog&q=soiree`);
   ok('une page de résultats de recherche non plus',
      /<meta name="robots" content="noindex/.test(await rq.text()));
+
+  /* ---- 9. le plan du site, à l'échelle où il se cassait ---- */
+  console.log('\n  ── le plan du site, sur cinq cents contenus ──');
+  const dossier = mkdtempSync(join(tmpdir(), 'wakabi-plan-'));
+  try {
+    writeFileSync(join(dossier, 'config.php'), `<?php return ['sgbd' => 'sqlite',
+      'dossier_donnees' => ${JSON.stringify(join(dossier, 'donnees'))},
+      'fichier' => ${JSON.stringify(join(dossier, 'donnees', 'wakabi.sqlite'))}];`);
+    const script = join(dossier, 'plan.php');
+    writeFileSync(script, SCENARIO_PLAN);
+    const { stdout } = await lancer('php', [script], {
+      env: { ...process.env, WAKABI_CONFIG: join(dossier, 'config.php') },
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    const r = JSON.parse(stdout.trim().split('\n').pop() ?? '{}') as {
+      decors: number; articles: number; programme: boolean;
+      ferme: boolean; plafond: number; octets: number;
+    };
+    ok('les décors publiés y sont TOUS', r.decors === PLAN_N, `${r.decors} / ${PLAN_N}`);
+    ok('les articles aussi, au-delà de la centaine où le plan s’arrêtait',
+       r.articles === PLAN_N, `${r.articles} / ${PLAN_N}`);
+    ok('un article programmé pour plus tard n’y entre pas avant l’heure',
+       r.programme === false);
+    ok('et le fichier reste bien formé', r.ferme === true,
+       `${Math.round(r.octets / 1024)} Ko`);
+    ok('le plafond laisse de la place pour grandir', r.plafond >= 20000,
+       `${r.plafond} adresses`);
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
 
   console.log(`\n━━ ${pass} réussis, ${fail} échoués ━━\n`);
   process.exit(fail === 0 ? 0 : 1);

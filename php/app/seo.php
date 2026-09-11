@@ -361,41 +361,73 @@ function robots_txt(): string
 }
 
 /**
+ * Combien d'adresses, au plus, dans le plan du site.
+ *
+ * Le protocole en autorise cinquante mille par fichier ; au-delà, il faut
+ * un INDEX de plans, et ce n'est pas le problème d'aujourd'hui. On s'arrête
+ * un peu avant, à vingt mille : le fichier pèse alors quelques mégaoctets,
+ * qu'un hébergement mutualisé fabrique sans broncher.
+ *
+ * Le plafond d'avant tenait en deux nombres passés à des fonctions faites
+ * pour autre chose : cinq cents décors — avec leur gabarit entier en
+ * mémoire — et cinq cents articles dont `articles_publies()` ne rendait
+ * que CENT, sa propre limite écrasant celle qu'on demandait. Un blog qui
+ * dépassait la centaine d'articles voyait les plus anciens disparaître du
+ * plan sans que rien ne le dise.
+ */
+const SITEMAP_MAX = 20000;
+
+/**
  * Le plan du site : la vitrine, le blog, et chaque décor publié.
  *
  * Un moteur trouve seul ce qui est lié depuis l'accueil, mais le catalogue
  * est paginé et le blog aussi : sans plan, les pages 3 et suivantes
  * attendent des mois. C'est exactement le contenu qu'on veut voir remonter.
+ *
+ * Le fichier se construit dans UNE chaîne plutôt que dans un tableau de
+ * sept lignes par adresse : à vingt mille adresses, la différence se
+ * compte en dizaines de mégaoctets, et c'est ce qui décide qu'un plan se
+ * fabrique ou qu'il manque de mémoire.
  */
 function sitemap_xml(): string
 {
-    $x = ['<?xml version="1.0" encoding="UTF-8"?>',
-          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
+    $x = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+       . "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n";
 
     $ajouter = function (string $adresse, ?string $date, string $frequence, string $poids) use (&$x): void {
-        $x[] = '  <url>';
-        $x[] = '    <loc>' . htmlspecialchars($adresse, ENT_XML1) . '</loc>';
+        $x .= '  <url>' . "\n"
+            . '    <loc>' . htmlspecialchars($adresse, ENT_XML1) . '</loc>' . "\n";
         if ($date) {
-            $x[] = '    <lastmod>' . gmdate('Y-m-d', strtotime($date)) . '</lastmod>';
+            $x .= '    <lastmod>' . gmdate('Y-m-d', strtotime($date)) . '</lastmod>' . "\n";
         }
-        $x[] = '    <changefreq>' . $frequence . '</changefreq>';
-        $x[] = '    <priority>' . $poids . '</priority>';
-        $x[] = '  </url>';
+        $x .= '    <changefreq>' . $frequence . '</changefreq>' . "\n"
+            . '    <priority>' . $poids . '</priority>' . "\n"
+            . '  </url>' . "\n";
     };
 
     $ajouter(base_url() . '/', null, 'weekly', '1.0');
     $ajouter(url_canonique(['p' => 'decors']), null, 'daily', '0.9');
     $ajouter(url_canonique(['p' => 'blog']), null, 'daily', '0.8');
 
-    foreach (decors_publies(500) as $d) {
+    /**
+     * Le budget se partage, il ne se réserve pas.
+     *
+     * Les décors servent d'abord, jusqu'à la moitié du plafond ; les
+     * articles prennent ensuite tout ce qui reste. Un catalogue maigre et
+     * un blog fourni tiennent donc entiers, et l'inverse aussi — seul un
+     * site qui dépasse vingt mille adresses à lui seul verrait une coupe,
+     * et celui-là a besoin d'un index, pas d'un plafond plus haut.
+     */
+    $budget = SITEMAP_MAX - 3;
+    $decors = slugs_decors_publies(intdiv($budget, 2));
+    foreach ($decors as $d) {
         $ajouter(url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]),
                  (string) ($d['maj_le'] ?? $d['publie_le'] ?? ''), 'weekly', '0.7');
     }
-    foreach (articles_publies(500) as $a) {
+    foreach (slugs_articles_publies($budget - count($decors)) as $a) {
         $ajouter(url_canonique(['p' => 'blog', 'a' => (string) $a['slug']]),
                  (string) ($a['maj_le'] ?? $a['publie_le'] ?? ''), 'monthly', '0.6');
     }
 
-    $x[] = '</urlset>';
-    return implode("\n", $x) . "\n";
+    return $x . '</urlset>' . "\n";
 }
