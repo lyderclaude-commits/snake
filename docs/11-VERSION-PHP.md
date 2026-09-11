@@ -44,7 +44,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **764 scénarios, 764 réussis**
+Les deux ont été vérifiés de bout en bout : **769 scénarios, 769 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -130,7 +130,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 764 scénarios, dans un vrai navigateur
+npm run php:e2e          # 769 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement
 ```
@@ -150,7 +150,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 764 scénarios
+### Les 769 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1074,13 +1074,21 @@ badge**, dites sans jargon :
 
 | Ce qu'on voyait | Ce qu'on lit maintenant |
 |---|---|
-| `Cadre WebP 1500 × 1750 px (1500×1750) sur un décor 4:5 : il sera étiré.` | Le cadre n'a pas la même forme que le décor : il sera déformé. Choisissez, à l'étape 1, le format qui lui correspond. |
+| `Cadre WebP 1500 × 1750 px (1500×1750) sur un décor 4:5 : il sera étiré.` | *(rien : voir ci-dessous)* |
 | `Cadre PNG, 1080 × 1080 px (1:1).` | *(rien : une ligne verte qui récite un fichier n'apprend rien)* |
 | `378 Ko, soutenable en 3G.` | *(rien, sauf si c'est trop lourd pour se charger)* |
+| `Le cadre recouvre 96 % de la fenêtre photo : l'invité n'apparaîtra pas.` | inchangé : c'est le défaut qu'on ne voit pas venir |
+
+**Ni la forme du cadre.** Une ligne orange avait d'abord survécu, dite en
+mots cette fois : « le cadre n'a pas la même forme que le décor : il sera
+déformé ». Elle était juste, et elle arrivait trop tard. Le format se choisit
+à l'étape 1, et le formulaire le relève déjà au téléversement : sur le
+panneau de santé, la phrase ne faisait que répéter au créateur une décision
+qu'il venait de prendre. Elle est retirée, sans remplacement.
 
 La recette vérifie les deux moitiés de la règle : qu'un vrai défaut est
 toujours annoncé, et qu'**il ne reste plus un seul chiffre technique** dans le
-panneau.
+panneau — ni le mot « déformé ».
 
 ### La police que le produit demandait sans jamais la servir
 
@@ -2039,6 +2047,15 @@ le même titre ne se distinguent plus : sans pastille de canal, on ouvre les deu
 pour trouver la bonne. La colonne **Canaux** les nomme — `E-mail`, `Telegram ×3`,
 `Push`, `WhatsApp` — regroupées par plateforme, parce que la question posée est
 « lequel », pas « combien de fois ».
+
+La cellule tient sur **une seule ligne** : deux pastilles empilées doubleraient
+la hauteur de chaque ligne du tableau, et trente campagnes deviendraient une
+page de défilement. Mais tenir sur une ligne ne veut pas dire se comprimer : un
+élément de boîte flexible rétrécit par défaut, et à partir de la troisième
+pastille la cellule étranglait les gélules jusqu'à ce que le texte en déborde.
+Elles sont donc figées (`flex:0 0 auto`) : quand il manque de la place, c'est le
+tableau qui défile de côté, pas les pastilles qui s'écrasent. La recette les
+mesure, une par une.
 
 L'état, lui, ne s'arrondit pas. Une campagne dont cinq messages sur six ont
 échoué n'est **pas** « Envoyée » : la pastille dit `5 échecs`, en rouge, et le

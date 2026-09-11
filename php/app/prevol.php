@@ -219,8 +219,12 @@ function prevol(array $gabarit, ?string $cadre_url): array
      *
      * Ne restent donc que les phrases qui annoncent un DÉFAUT VISIBLE sur
      * le badge, dites sans jargon. Une ligne verte qui récite des
-     * kilo-octets n'apprend rien ; une ligne orange qui dit « votre image
-     * sera déformée » fait agir.
+     * kilo-octets n'apprend rien ; une ligne rouge qui dit « l'invité
+     * n'apparaîtra pas » fait agir.
+     *
+     * La forme du cadre ne s'y dit plus non plus : le formulaire de
+     * l'étape 1 relève le format au téléversement, c'est là que la
+     * question se règle, pas sur ce panneau.
      */
     $img = null;
     if ($sans_cadre) {
@@ -246,22 +250,6 @@ function prevol(array $gabarit, ?string $cadre_url): array
         }
         imagealphablending($img, false);
         imagesavealpha($img, true);
-        /**
-         * Le cadre et le canevas doivent avoir les mêmes proportions.
-         *
-         * Le renderer étire le cadre sur tout le canevas : une affiche 4:5
-         * sur un décor carré perd un quart de sa hauteur, visages compris.
-         * Le formulaire relève le format au téléversement, donc arriver ici
-         * en désaccord veut dire qu'on l'a changé après — d'où l'alerte
-         * plutôt que le refus : c'est peut-être voulu, mais ça se voit.
-         */
-        $ratio_cadre = ratio_lisible((int) $info[0], (int) $info[1]);
-        $ratio_toile = (string) ($gabarit['canvas']['ratio'] ?? '');
-        if ($ratio_toile !== '' && $ratio_cadre !== $ratio_toile) {
-            $ajouter('format', 'alerte',
-                'Le cadre n’a pas la même forme que le décor : il sera déformé. '
-                . 'Choisissez, à l’étape 1, le format qui lui correspond.');
-        }
 
         /* 3 — poids */
         $poids = filesize($chemin) ?: 0;

@@ -410,10 +410,12 @@ const run = async () => {
   /**
    * Le décor de démonstration, nommément — pas « le premier du catalogue ».
    *
-   * Il appartient à l'équipe, donc son offre ne bouge jamais : les Koris et
-   * le filigrane y sont ce qu'ils doivent être. Ouvrir le premier venu
-   * faisait dépendre le résultat de l'ordre du catalogue, et donc des
-   * décors qu'une exécution précédente y avait laissés.
+   * Ouvrir le premier venu faisait dépendre le résultat de l'ordre du
+   * catalogue, et donc des décors qu'une exécution précédente y avait
+   * laissés. On ne lui demande en revanche RIEN sur le filigrane : un décor
+   * installé une fois peut avoir changé de mains depuis, et la signature
+   * suit l'offre de son propriétaire du jour. Elle s'éprouve plus bas, sur
+   * un décor que la recette vient de créer elle-même.
    */
   await p.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
   // `networkidle` et non `waitForSelector` : le canevas est dans le DOM avant
@@ -435,21 +437,65 @@ const run = async () => {
   });
   ok('QR visible dans l’aperçu', blanc > 0.15, `${Math.round(blanc * 100)} % de blanc au coin bas-gauche`);
 
+  const jeton = (await p.locator('#jeton').innerText()).trim();
+  ok('jeton du badge affiché', /^[2-9A-Z]{10}$/.test(jeton), jeton);
+
   /**
-   * Le filigrane, MESURÉ sur l'image.
+   * Le filigrane, MESURÉ sur l'image — et sur un décor à nous.
    *
    * Un décor de la maison porte la signature du guide : c'est là que le
    * nom doit se voir, et chaque badge partagé sur un statut WhatsApp est
-   * une affiche gratuite. Le contrôle n'existait pas, et la règle des
-   * offres l'avait discrètement retiré des décors de l'équipe — un compte
-   * interne n'ayant pas d'offre, `capacite()` lui répondait oui à tout, y
-   * compris à « sans filigrane ».
+   * une affiche gratuite. La règle des offres l'avait discrètement retiré
+   * des décors de l'équipe — un compte interne n'ayant pas d'offre,
+   * `capacite()` lui répondait oui à tout, y compris à « sans filigrane ».
    *
-   * On le mesure donc, plutôt que de lire le gabarit : le filigrane pose
-   * un voile sombre et du texte blanc au coin bas-droit, et c'est ce que
-   * l'invité verra.
+   * On ne le mesure pas sur un décor installé : la signature suit l'offre
+   * du PROPRIÉTAIRE DU JOUR, et une base de développement reprise d'une
+   * version à l'autre peut très bien avoir passé « J'y serai » à un
+   * partenaire en Croissance. Le test échouait alors sur l'historique de
+   * la base, pas sur le produit. La recette crée donc son propre décor,
+   * l'ouvre en invitée, mesure, puis le retire.
+   *
+   * Et l'on mesure le VOILE, pas le texte : à la taille de l'aperçu les
+   * lettres sont lissées et le blanc pur y est rare, tandis que la plaque
+   * sombre couvre la boîte entière. Le bandeau du bas est d'un bleu vif —
+   * un pixel sombre là ne peut venir que du filigrane.
    */
-  const signe = await p.evaluate(() => {
+  const titreSignature = `Signature équipe ${marque}`;
+  const pSig = await browser.newPage();
+  surveiller(pSig);
+  await connexion(pSig, ADMIN.email, ADMIN.mdp);
+  await pSig.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pSig.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(pSig, 'cadre');
+  await pSig.selectOption('select[name=disposition]', 'bandeau');
+  await etapeDecor(pSig, 'campagne');
+  await pSig.fill('input[name=titre]', titreSignature);
+  await pSig.click('main button[type=submit]');
+  await pSig.waitForLoadState('domcontentloaded');
+  await pSig.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreSignature)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pSig.locator('button:has-text("Publier")').first().click();
+  await pSig.waitForLoadState('domcontentloaded');
+  await pSig.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreSignature)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pSig.locator('a:has-text("Modifier")').first().click();
+  await pSig.waitForLoadState('domcontentloaded');
+  // La fiche montre l'ADRESSE du décor — « /mon-decor » — et non son seul
+  // identifiant : la barre oblique de tête n'appartient pas au slug.
+  const slugSignature = (await pSig.locator('code').first().innerText()).trim().replace(/^\//, '');
+  ok('l’équipe a publié un décor à elle pour éprouver la signature',
+     /^[a-z0-9-]+$/.test(slugSignature), slugSignature);
+
+  const ctxSig = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+  const pInv = await ctxSig.newPage();
+  surveiller(pInv);
+  await pInv.goto(`${BASE}/index.php?p=decor&slug=${encodeURIComponent(slugSignature)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pInv.waitForTimeout(1200);
+  await pInv.setInputFiles('#photo', 'scripts/fixtures/photo.png');
+  await pInv.waitForTimeout(3000);
+  const signe = await pInv.evaluate(() => {
     const c = document.querySelector('canvas') as HTMLCanvasElement;
     const g = c.getContext('2d')!;
     // Le coin bas-droit, là où la plaque du filigrane se pose.
@@ -457,10 +503,6 @@ const run = async () => {
       Math.round(c.width * 0.75), Math.round(c.height * 0.84),
       Math.round(c.width * 0.21), Math.round(c.height * 0.12),
     ).data;
-    /* On compte le VOILE, pas le texte : à la taille de l'aperçu les
-       lettres sont lissées et le blanc pur y est rare, tandis que la
-       plaque sombre couvre la boîte entière. Ce décor a un fond bleu vif
-       — un pixel sombre là ne peut venir que du filigrane. */
     let voile = 0;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i] < 60 && d[i + 2] > d[i] * 2 && d[i + 2] < 170) voile++;
@@ -469,9 +511,18 @@ const run = async () => {
   });
   ok('le filigrane du guide est sur le badge, pas seulement dans le gabarit',
      signe > 0.4, `${Math.round(signe * 100)} % de la plaque au coin bas-droit`);
+  await ctxSig.close();
 
-  const jeton = (await p.locator('#jeton').innerText()).trim();
-  ok('jeton du badge affiché', /^[2-9A-Z]{10}$/.test(jeton), jeton);
+  /* On remet le catalogue comme on l'a trouvé. */
+  await pSig.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreSignature)}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pSig.locator('summary:has-text("Supprimer")').first().click();
+  await pSig.fill('input[name=confirmation]', titreSignature);
+  await pSig.locator('button:has-text("Supprimer")').first().click();
+  await pSig.waitForLoadState('domcontentloaded');
+  ok('et le décor d’épreuve ne reste pas dans le catalogue',
+     /supprimé/.test(await pSig.locator('.msg.ok').first().innerText().catch(() => '')));
+  await pSig.close();
 
   console.log('\n━━ 3. Le téléchargement ━━');
   // Le bouton dit « Télécharger » : il doit produire un FICHIER, pas ouvrir
@@ -2040,6 +2091,28 @@ const run = async () => {
      /canaux/i.test(await pe2.locator('table thead').first().innerText().catch(() => '')));
   ok('et chaque ligne porte la sienne',
      (await pe2.locator('table tbody tr .puce').count()) >= 1);
+  /**
+   * Les pastilles ne se laissent plus comprimer.
+   *
+   * La cellule tient sur une ligne : deux pastilles empilées doubleraient
+   * la hauteur de chaque ligne, et trente campagnes deviendraient une page
+   * de défilement. Mais un élément de boîte flexible rétrécit par défaut :
+   * à partir de la troisième, la cellule étranglait les gélules et le
+   * texte débordait. On mesure les deux moitiés de la règle : elles ne
+   * rétrécissent plus, et rien ne dépasse d'elles.
+   */
+  const puces = await pe2.locator('table tbody .puce').evaluateAll((els) => els.map((n) => {
+    const e = n as HTMLElement;
+    return { fige: getComputedStyle(e).flexShrink === '0',
+             deborde: e.scrollWidth > e.clientWidth + 1,
+             h: Math.round(e.getBoundingClientRect().height) };
+  }));
+  ok('aucune pastille de canal ne rétrécit',
+     puces.length > 0 && puces.every((g) => g.fige),
+     `${puces.filter((g) => !g.fige).length} / ${puces.length} rétrécissable(s)`);
+  ok('et le texte ne déborde d’aucune',
+     puces.every((g) => !g.deborde) && new Set(puces.map((g) => g.h)).size <= 1,
+     `${puces.filter((g) => g.deborde).length} débordement(s), hauteurs ${[...new Set(puces.map((g) => g.h))].join('/')} px`);
 
   /**
    * Le scénario le plus important de la section : le désabonnement.
@@ -4549,8 +4622,18 @@ const run = async () => {
   const nues = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
     .map((m) => m[1]).filter((u) => /&(?!amp;|apos;|quot;|lt;|gt;|#)/.test(u));
   ok('ses esperluettes sont échappées', nues.length === 0, nues[0] ?? '');
-  ok('il liste l’article et le décor',
-     xml.includes(slugLie) && xml.includes('jy-serai'));
+  /**
+   * L'article de CETTE exécution, et des décors — pas un slug de l'installation.
+   *
+   * `sitemap_xml()` s'arrête à cinq cents décors publiés : sur une base de
+   * développement reprise d'une version à l'autre, les plus anciens sortent
+   * du plan, et « J'y serai » avec eux. Le test tombait alors sur l'âge de
+   * la base au lieu du produit. Ce qui se garantit vraiment, c'est qu'un
+   * contenu publié aujourd'hui y entre.
+   */
+  const decorsAuPlan = [...xml.matchAll(/<loc>[^<]*p=decor&amp;slug=[^<]+<\/loc>/g)].length;
+  ok('il liste l’article publié à l’instant, et les décors',
+     xml.includes(slugLie) && decorsAuPlan >= 1, `${decorsAuPlan} décor(s) au plan`);
 
   /* --- 7. Ce qui doit rester hors des moteurs --- */
   await pRobot.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
@@ -5057,6 +5140,17 @@ const run = async () => {
      /recouvre|apparaît sur \d+ %/.test(sante), sante.replace(/\s+/g, ' ').slice(0, 70));
   ok('elle ne récite plus ni format de fichier, ni pixels, ni kilo-octets',
      !/WebP|PNG|px|Ko|\d+×\d+|\d:\d/.test(sante), sante.replace(/\s+/g, ' ').slice(0, 80));
+  /**
+   * Ni la forme du cadre, qui restait dite en mots.
+   *
+   * « Le cadre n'a pas la même forme que le décor : il sera déformé »
+   * était juste, et arrivait trop tard : le format se choisit à l'étape 1,
+   * et le formulaire le relève déjà au téléversement. Sur ce panneau, la
+   * phrase ne faisait que répéter au créateur une décision qu'il venait
+   * de prendre.
+   */
+  ok('ni la forme du cadre, retirée sans remplacement',
+     !/déform|étir|même forme|proportion/i.test(sante), sante.replace(/\s+/g, ' ').slice(0, 80));
   ok('et elle proteste tout de suite contre un cadre opaque',
      (await pAT.locator('.sd-ct.echec, .sd-ct.alerte').count()) >= 1
      && /recouvre|opaque|n’apparaîtra/.test(sante),

@@ -1661,7 +1661,14 @@ tr.pale td a{color:inherit}
 .fr-q{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);font-weight:700}
 .fr-t{font-weight:700;margin:2px 0 3px}
 .puces{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:7px}
-.puce{font-size:.72rem;font-weight:600;border-radius:99px;padding:2px 9px;color:#fff}
+/* `flex:0 0 auto` n'est pas décoratif : un élément de boîte flexible
+   rétrécit par défaut, et dans la colonne « Canaux » de la régie — qui
+   tient sur une ligne — la troisième pastille étranglait les suivantes
+   jusqu'à ce que leur texte en déborde. Quand la place manque, c'est le
+   tableau qui défile de côté. La bordure transparente, elle, donne à
+   toutes la même hauteur que `.puce.plus`, seule à en porter une. */
+.puce{font-size:.72rem;font-weight:600;border-radius:99px;padding:2px 9px;color:#fff;
+  flex:0 0 auto;white-space:nowrap;line-height:1.45;border:1px solid transparent}
 .puce.telegram{background:#229ED9}
 .puce.whatsapp{background:#25D366}
 .puce.mail{background:var(--ink,#0F172A)}
@@ -1675,7 +1682,7 @@ tr.pale td a{color:inherit}
    frise des rappels. */
 
 /* Au-delà de trois canaux, on compte plutôt que d'empiler. */
-.puce.plus{background:var(--bg2);color:var(--text2);border:1px solid var(--border)}
+.puce.plus{background:var(--bg2);color:var(--text2);border-color:var(--border)}
 
 /* Un envoi qui n'a pas abouti se voit, même de loin. */
 .pastille.echec{background:#FEF2F2;color:#B91C1C}
