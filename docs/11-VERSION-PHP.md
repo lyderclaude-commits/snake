@@ -55,10 +55,17 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **811 scénarios, 811 réussis**
-sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
-service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
-requête, comptes existants intacts.
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **811 scénarios
+réussis** sur une base déjà peuplée, **810 sur une installation neuve** — un
+scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
+s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
+console dans les deux cas.
+
+La montée de version d'une installation déjà en service a été vérifiée elle
+aussi : une v1.2 installée, peuplée, puis recouverte par la v1.3 passe du
+schéma 19 au 20 à la première page ouverte — les quatre index créés, les
+comptes et les décors intacts, l'écran des rapports et son PDF servis dans la
+foulée.
 
 ---
 
