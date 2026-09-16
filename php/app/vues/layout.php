@@ -152,6 +152,16 @@ $_graphe = array_values(array_filter([
             ]],
             ['?p=scan', 'Entrée', 'scan'],
             /**
+             * Les rapports restent hors groupe, eux aussi.
+             *
+             * Non par manque de place — les trois groupes sont pleins —
+             * mais parce que c'est une destination qu'on ouvre le 1er du
+             * mois, à côté de l'entrée et du tableau de bord. La ranger
+             * dans « Système » l'aurait mise avec les sauvegardes, qu'on
+             * ouvre une fois l'an.
+             */
+            ['?p=rapports', 'Rapports', 'decors_tous'],
+            /**
              * Quatre destinations par groupe, jamais cinq.
              *
              * La règle tient depuis la refonte des menus : au-delà, un
@@ -178,6 +188,11 @@ $_graphe = array_values(array_filter([
                 ['?p=blog-admin', 'Mes articles',       'articles'],
             ]],
             ['?p=scan',        'Entrée',        'scan'],
+            // Le droit `regie` plutôt que `decors_siens` : un éditeur de la
+            // maison passe aussi par ce menu, et il n'a ni campagnes ni
+            // audience à lui. L'écran le renverrait chez lui ; autant ne
+            // pas le lui proposer.
+            ['?p=rapports',    'Rapports',      'regie'],
             ['?p=decors',      'Le catalogue',  null],
             ['?p=facturation', 'Facturation',   null],
             ['?p=profil',      'Mon profil',    null],

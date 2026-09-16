@@ -1803,3 +1803,57 @@ tr.pale td a{color:inherit}
   .ec{grid-template-columns:1fr}
   .ec-apercu{position:static!important}
 }
+
+/* ============ les rapports ============
+   Un écran qu'on lit, qu'on imprime, et dont on transmet le PDF. D'où des
+   nombres alignés au chiffre près et des colonnes qui ne bougent pas d'une
+   ligne à l'autre : `tabular-nums` n'est pas cosmétique ici, c'est ce qui
+   permet de comparer deux lignes d'un coup d'œil. */
+.filtres-rapport{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;padding:14px 16px}
+.puce-p{display:inline-block;font-size:.8rem;font-weight:600;border:1px solid var(--border);
+  background:var(--paper);color:var(--text2);border-radius:99px;padding:5px 13px;text-decoration:none;
+  white-space:nowrap}
+.puce-p:hover{border-color:var(--primary);color:var(--primary-d)}
+.puce-p.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.rap-champ{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:var(--text2);
+  font-weight:600}
+.rap-champ input,.rap-champ select{margin:0;padding:6px 10px;font-size:.84rem;border-radius:var(--r10);
+  border:1px solid var(--border);background:var(--paper);color:var(--ink);font-family:inherit;
+  max-width:230px}
+
+/* La répartition des canaux : une seule barre, un segment par canal, et
+   deux pixels de fond entre eux — sans quoi deux couleurs voisines se
+   lisent comme une seule. Chaque segment est ÉTIQUETÉ dans la légende :
+   la couleur ne porte jamais seule l'identité d'un canal. */
+.rap-barre{display:flex;gap:2px;height:22px;margin:14px 0 9px;border-radius:6px;overflow:hidden}
+.rap-barre i{display:block;height:100%;min-width:3px}
+.rap-legende{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.8rem;color:var(--text2)}
+.rap-legende span{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.pois{width:9px;height:9px;border-radius:2px;display:block;flex:0 0 auto}
+.c-mail{background:var(--ink)} .c-web{background:var(--primary)}
+.c-telegram{background:#229ED9} .c-whatsapp{background:#25D366}
+.c-plus{background:var(--text3)}
+
+.rap-preuve{display:block;font-size:.72rem;color:var(--text3);margin-top:3px}
+.rap-brut{display:block;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.72rem;
+  color:var(--text3);margin-top:2px;overflow-wrap:anywhere}
+.rap-vide{color:var(--text3)}
+.rap-mortel{color:#B91C1C;font-weight:600;font-size:.82rem}
+.rap-repris{color:#047857;font-weight:600;font-size:.82rem}
+.rap-haut{color:#047857;font-weight:700} .rap-bas{color:#B91C1C;font-weight:700}
+.rap-moment{display:inline-block;font-size:.72rem;font-weight:800;color:var(--primary-d);
+  background:var(--primary-wash);border-radius:6px;padding:1px 7px;margin-right:6px}
+.rap-quand{display:block;font-size:.75rem;color:var(--text3);margin-top:2px}
+.rap-total td{font-weight:800;background:var(--bg2);border-top:2px solid var(--border)}
+
+/* Les nombres à droite, la colonne qui les porte aussi : un en-tête
+   centré au-dessus de chiffres alignés à droite donne un tableau qui
+   tremble. */
+table th.num,table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table td.num.rouge{color:#B91C1C;font-weight:700}
+table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
+
+@media (max-width:640px){
+  .rap-champ{width:100%}
+  .rap-champ input,.rap-champ select{flex:1 1 auto;max-width:none}
+}

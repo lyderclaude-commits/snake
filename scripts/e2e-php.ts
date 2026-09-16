@@ -2386,9 +2386,10 @@ const run = async () => {
   ok('l’administration tient en trois groupes nommés',
      groupes.length === 3 && groupes.join('|') === 'Contenus|Audience|Système',
      groupes.join(' · '));
-  ok('le tableau de bord et l’entrée restent hors des groupes — un clic',
+  ok('le tableau de bord, l’entrée et les rapports restent hors des groupes — un clic',
      (await pm.locator('.barre nav > a[href*="p=admin"]').count()) === 1
-     && (await pm.locator('.barre nav > a[href*="p=scan"]').count()) === 1);
+     && (await pm.locator('.barre nav > a[href*="p=scan"]').count()) === 1
+     && (await pm.locator('.barre nav > a[href*="p=rapports"]').count()) === 1);
   ok('aucun groupe ne dépasse quatre destinations',
      (await pm.locator('.barre .deroulant').evaluateAll(
        (n) => n.every((e) => e.querySelectorAll('.volet a').length <= 4))));
@@ -5731,7 +5732,7 @@ const run = async () => {
                   'catalogue', 'journal', 'reglages', 'reglages-seo', 'sauvegardes',
                   'diffusion', 'canaux', 'liens', 'regie', 'regie-ecrire', 'regie-carnet',
                   'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau',
-                  'facturation', 'reglages-facturation'];
+                  'facturation', 'reglages-facturation', 'rapports'];
   const cadratins: string[] = [];
   for (const q of ecrans) {
     const r = await pTypo.goto(`${BASE}/index.php?p=${q}`, { waitUntil: 'domcontentloaded' })
@@ -6035,6 +6036,105 @@ const run = async () => {
   ok('ni l’écran de l’identité légale', !pFac.url().includes('p=reglages-facturation'),
      pFac.url().replace(BASE, ''));
   await ctxFac.close();
+
+  /* ================================================================ */
+  console.log('\n━━ 49. Les rapports, et ce qu’ils refusent de dire ━━');
+  /**
+   * Le seul écran dont personne ne peut vérifier les chiffres à l'œil.
+   *
+   * `verifier-rapport.ts` recompte les nombres sur une base semée au
+   * message près ; ici on éprouve ce que le fil HTTP ne montre qu'à
+   * l'usage : la place dans le menu, les périodes qui changent la page,
+   * les deux exports qui sortent vraiment, et surtout le cloisonnement —
+   * un organisateur qui demande le décor d'un autre.
+   */
+  await pe.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  ok('les rapports ont leur entrée, hors des trois groupes',
+     (await pe.locator('.barre nav > a[href*="p=rapports"]').count()) === 1);
+  ok('et le tableau de bord y mène en un clic',
+     (await pe.locator('main a[href*="p=rapports"]').count()) >= 1);
+
+  await pe.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran s’ouvre pour l’équipe, sur la plateforme entière',
+     (await pe.locator('h1').first().innerText()) === 'Rapports'
+     && (await pe.locator('.entete').innerText()).includes('Toute la plateforme'),
+     (await pe.locator('.entete p').first().innerText().catch(() => '')).slice(0, 70));
+  ok('il annonce quatre périodes toutes faites', (await pe.locator('.puce-p').count()) === 4,
+     `${await pe.locator('.puce-p').count()} périodes`);
+  ok('le tableau par canal porte une ligne de total',
+     (await pe.locator('.rap-total').count()) === 1
+     || (await pe.locator('main').innerText()).includes('Aucun message n’a été programmé'));
+  ok('il écrit, sur l’écran aussi, qu’aucun nombre ne dit « reçu »',
+     (await pe.locator('main').innerText()).includes('ne dit « reçu »'));
+
+  await pe.locator('.puce-p:has-text("Le mois dernier")').click();
+  await pe.waitForLoadState('domcontentloaded');
+  ok('choisir un mois change la période, et la nomme par son mois',
+     /(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i
+       .test(await pe.locator('.entete p').first().innerText()),
+     (await pe.locator('.entete p').first().innerText()).slice(0, 60));
+
+  const hier = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const ilYaDixJours = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+  await pe.fill('#f-du', ilYaDixJours);
+  await pe.fill('#f-au', hier);
+  await pe.locator('.filtres-rapport button[type=submit]').click();
+  await pe.waitForLoadState('domcontentloaded');
+  ok('deux dates au choix donnent une période libre de dix jours',
+     (await pe.locator('.entete p').first().innerText()).includes('10 jours'),
+     (await pe.locator('.entete p').first().innerText()).slice(0, 70));
+
+  /* --- les deux sorties --- */
+  const pdfRap = await pe.request.get(`${BASE}/index.php?p=rapports&export=pdf&periode=12-mois`);
+  const corpsPdf = await pdfRap.body();
+  ok('le PDF sort vraiment, et s’annonce comme un PDF',
+     pdfRap.status() === 200 && corpsPdf.subarray(0, 5).toString() === '%PDF-',
+     `HTTP ${pdfRap.status()} · ${corpsPdf.length} octets`);
+  ok('il se télécharge sous un nom qui dit sa portée et ses dates',
+     /attachment; filename="rapport-plateforme-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.pdf"/
+       .test(pdfRap.headers()['content-disposition'] ?? ''),
+     pdfRap.headers()['content-disposition'] ?? '');
+  const csvRap = await pe.request.get(`${BASE}/index.php?p=rapports&export=csv&periode=12-mois`);
+  const csvRapporte = await csvRap.text();
+  ok('le CSV sort avec le BOM et les points-virgules qu’attend un tableur',
+     csvRap.status() === 200 && csvRapporte.startsWith('\uFEFF')
+     && csvRapporte.includes('Canal;Programmés;Partis;'),
+     `HTTP ${csvRap.status()}`);
+
+  await pe.goto(`${BASE}/index.php?p=journal`, { waitUntil: 'domcontentloaded' });
+  ok('un export laisse une trace au journal, sous un libellé français',
+     (await pe.locator('main').innerText()).includes('exporté un rapport'),
+     (await pe.locator('main tbody tr').first().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 70));
+
+  /* --- le cloisonnement, du côté de l'organisateur --- */
+  await pe.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
+  const slugAutrui = await pe.locator('#f-decor option').nth(1).getAttribute('value') ?? '';
+  const ctxRap = await browser.newContext();
+  const pRap = await ctxRap.newPage();
+  surveiller(pRap);
+  await connexion(pRap, PART.email, PART.mdp);
+  await pRap.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur a son rapport, sur son seul compte',
+     (await pRap.locator('h1').first().innerText()) === 'Rapports'
+     && !(await pRap.locator('.entete').innerText()).includes('Toute la plateforme'),
+     (await pRap.locator('.entete p').first().innerText().catch(() => '')).slice(0, 70));
+  ok('il n’a pas le sélecteur de comptes : il n’y a que le sien',
+     (await pRap.locator('#f-org').count()) === 0);
+
+  if (slugAutrui) {
+    const titreSeul = (await pRap.locator('.entete p').first().innerText()).split('·')[0]!.trim();
+    await pRap.goto(`${BASE}/index.php?p=rapports&decor=${encodeURIComponent(slugAutrui)}`,
+                    { waitUntil: 'domcontentloaded' });
+    ok('demander le décor d’un autre ne donne pas le décor d’un autre',
+       (await pRap.locator('.entete p').first().innerText()).startsWith(titreSeul),
+       (await pRap.locator('.entete p').first().innerText()).slice(0, 70));
+  }
+  const pdfPart = await pRap.request.get(`${BASE}/index.php?p=rapports&export=pdf`);
+  ok('il exporte son propre PDF, sans rien demander à personne',
+     pdfPart.status() === 200 && (await pdfPart.body()).subarray(0, 5).toString() === '%PDF-',
+     `HTTP ${pdfPart.status()}`);
+  await ctxRap.close();
+
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.
   await pe.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });

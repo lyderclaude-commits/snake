@@ -461,11 +461,45 @@ final class EcrivainPdf
 
     private function fermer_page(): void
     {
-        $flux = gzcompress($this->flux, 6);
-        $contenu = $this->ajouter(
-            '<</Filter/FlateDecode/Length ' . strlen($flux) . ">>\nstream\n" . $flux . "\nendstream"
-        );
-        $this->pages[] = ['contenu' => $contenu, 'images' => array_values($this->images)];
+        /**
+         * Le flux est gardé TEL QUEL, et compressé seulement à l'assemblage.
+         *
+         * Parce qu'un pied de page numéroté « 2 / 4 » ne peut s'écrire
+         * qu'une fois la dernière page close : tant qu'on compressait ici,
+         * la page 1 était scellée avant que le total existe.
+         */
+        $this->pages[] = ['flux' => $this->flux, 'images' => array_values($this->images)];
+        $this->flux = '';
+    }
+
+    /**
+     * Numérote les pages, une fois qu'on sait combien il y en a.
+     *
+     * `%n` prend le numéro de la page, `%t` le total : « Page %n / %t ».
+     * Appelée juste avant `rendu()`, elle repasse sur chaque page close.
+     * Un document d'une seule page n'en a pas besoin et ne l'appelle pas ;
+     * la facture, par exemple, ne s'en sert pas.
+     */
+    public function numeroter(
+        string $gabarit,
+        float $x,
+        float $y,
+        float $taille = 7.5,
+        string $couleur = '#94A3B8',
+        string $aligne = 'droite'
+    ): void {
+        if ($this->flux !== '') {
+            $this->fermer_page();
+        }
+        $total = count($this->pages);
+        foreach ($this->pages as $i => $page) {
+            // `texte()` écrit dans `$this->flux` : on le prête à la page
+            // qu'on numérote, puis on le rend.
+            $this->flux = '';
+            $this->texte($x, $y, strtr($gabarit, ['%n' => (string) ($i + 1), '%t' => (string) $total]),
+                $taille, false, $couleur, $aligne);
+            $this->pages[$i]['flux'] = $page['flux'] . $this->flux;
+        }
         $this->flux = '';
     }
 
@@ -492,6 +526,10 @@ final class EcrivainPdf
         $arbre = $this->ajouter('');
         $numeros = [];
         foreach ($this->pages as $p) {
+            $flux = gzcompress($p['flux'], 6);
+            $contenu = $this->ajouter(
+                '<</Filter/FlateDecode/Length ' . strlen($flux) . ">>\nstream\n" . $flux . "\nendstream"
+            );
             $xo = '';
             foreach ($p['images'] as $i) {
                 $xo .= '/IM' . $i['objet'] . ' ' . $i['objet'] . ' 0 R';
@@ -501,7 +539,7 @@ final class EcrivainPdf
                 . '/MediaBox[0 0 ' . self::pt(PDF_L) . ' ' . self::pt(PDF_H) . ']'
                 . '/Resources<</Font<</F1 ' . $police . ' 0 R/F2 ' . $grasse . ' 0 R>>'
                 . ($xo !== '' ? '/XObject<<' . $xo . '>>' : '') . '>>'
-                . '/Contents ' . $p['contenu'] . ' 0 R>>'
+                . '/Contents ' . $contenu . ' 0 R>>'
             );
         }
         $this->objets[$arbre - 1] = '<</Type/Pages/Count ' . count($numeros) . '/Kids['

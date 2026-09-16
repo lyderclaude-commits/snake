@@ -34,6 +34,7 @@ require __DIR__ . '/app/otp.php';
 require __DIR__ . '/app/abonnement.php';
 require __DIR__ . '/app/pdf.php';
 require __DIR__ . '/app/facture.php';
+require __DIR__ . '/app/rapport.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -905,6 +906,16 @@ switch ($page) {
      * Une seule adresse pour les deux — l'e-mail « voir mes factures » mène
      * au bon écran sans qu'on ait à savoir qui le reçoit.
      */
+    /**
+     * Les rapports — la même adresse pour l'équipe et pour l'organisateur.
+     *
+     * Ce que le compte voit est décidé par `rapport_portee()`, à
+     * l'intérieur : un identifiant de décor ou de campagne passé ici ne
+     * donne rien à qui n'en est pas l'auteur.
+     */
+    case 'rapports':
+        require RACINE . '/app/actions/rapports.php';
+
     case 'facturation':
         require RACINE . '/app/actions/facturation.php';
 

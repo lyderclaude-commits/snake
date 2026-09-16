@@ -1,6 +1,17 @@
-# Wakabi Boost v1.2 — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1.3 — décompresser, ouvrir une page, c'est en ligne
 
-**Ce que la v1.2 ajoute à la v1.1** : la régie dit **par quels canaux** chaque
+**Ce que la v1.3 ajoute à la v1.2** : les **rapports**. Une période — ce mois,
+le mois dernier, l'année, ou deux dates au choix — une **portée** — la
+plateforme entière, un organisateur, un décor, une campagne — et toute la page
+s'y plie : ce qui est parti canal par canal, **ce qui n'est pas arrivé et
+pourquoi**, l'entonnoir de la vue à la porte, les décors classés sur la
+présence réelle. Le tout s'emporte en **PDF** et en **CSV**. Et une règle
+tient tout le module : un rapport n'écrit jamais « reçu », il écrit « parti »
+et dit, à côté, ce que « parti » prouve sur ce canal-là. La **facturation**,
+arrivée dans le dernier paquet v1.2, y trouve sa place : même générateur de
+PDF, même façon de cloisonner ce qu'un organisateur a le droit de voir.
+
+**Ce que la v1.2 avait ajouté à la v1.1** : la régie dit **par quels canaux** chaque
 campagne est partie, **lesquels de ses messages ont échoué et pourquoi**, et
 sait les relancer — sauf sur une adresse morte, jamais. Les adresses non
 confirmées sont écartées des campagnes, le carnet excepté. L'écran d'écriture
@@ -15,7 +26,7 @@ que dans les migrations, donc pas dans une installation neuve — le premier dé
 enregistré sur un site fraîchement installé échouait.
 
 Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.2.zip`) et s'affiche en pied de page :
+nomme l'archive livrée (`wakabi-boost-v1.3.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -28,7 +39,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.2.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.3.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -44,7 +55,7 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout : **795 scénarios, 795 réussis**
+Les deux ont été vérifiés de bout en bout : **811 scénarios, 811 réussis**
 sur chacun, depuis le zip livré. La montée de version d'une installation déjà en
 service a été vérifiée sur les deux moteurs : colonne ajoutée à la première
 requête, comptes existants intacts.
@@ -130,9 +141,10 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 795 scénarios, dans un vrai navigateur
+npm run php:e2e          # 811 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
-                         # éditeur, TOTP, carnet, canaux, référencement, facture
+                         # éditeur, TOTP, carnet, canaux, référencement,
+                         # facture, rapport
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -150,7 +162,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 795 scénarios
+### Les 811 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -214,6 +226,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **L'API REST** | Une clé se fabrique depuis l'écran, refuse une requête sans clé, distingue une clé inconnue d'une offre insuffisante, rend les campagnes avec leurs chiffres, crée un lien court et **refuse une cible hors des domaines Wakabi** ; une ressource inconnue rend du JSON, pas du HTML |
 | **Le mot de passe oublié** | La demande répond la même chose qu'une adresse existe ou non, mais **un message ne part que si le compte existe** ; le lien reçu ouvre le formulaire, refuse deux mots de passe différents, ne sert qu'une fois — et l'on se connecte ensuite avec le nouveau |
 | **L'échéance et la facture** | Une offre payante ouvre une carte d'abonnement ; un paiement repousse l'échéance et émet une facture numérotée qui porte le client, la période et le total ; le client la retrouve seul depuis son profil |
+| **Les rapports** | Une période et une portée commandent toute la page ; le tableau par canal ne dit jamais « reçu » mais ce que « parti » prouve ; les échecs sont regroupés par motif, traduits, et triés entre ce qui se relance et ce qui est à écarter ; le PDF et le CSV sortent vraiment, et un organisateur qui demande le décor d'un autre obtient le sien |
 | **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
 | **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
@@ -2652,6 +2665,129 @@ qui piègent, l'avoir et son négatif, le taux figé sur une facture déjà
 émise, les accents retrouvés après le passage en Windows-1252, et le signe
 moins d'un avoir — qui n'existe pas dans Windows-1252, et qu'il a fallu
 remplacer pour ne pas imprimer « ?12 000 ».
+
+### Les rapports — `?p=rapports`
+
+Le tableau de bord dit ce qui se passe **en ce moment**. Le rapport dit ce
+qui s'est passé **sur une période**, et il s'emporte : un PDF qu'on transmet
+à un sponsor, un CSV qu'on ouvre dans un tableur.
+
+Deux réglages en haut, et tout le reste de la page s'y plie : une période —
+ce mois, le mois dernier, l'année, les douze derniers mois, ou deux dates au
+choix — et une **portée** : la plateforme entière, un organisateur, un
+décor, une campagne.
+
+#### « Parti » et « reçu » ne sont pas le même chiffre
+
+C'est la règle qui commande tout le module, et elle mérite d'être dite en
+entier, parce qu'elle va contre la pente naturelle d'un écran de statistiques.
+
+Un serveur SMTP qui répond `250` dit qu'il **accepte** le message, pas qu'il
+l'a remis : le rebond peut venir une heure plus tard, et sans boîte de
+retour relevée, il ne nous revient jamais. Un service de notifications qui
+répond `201` dit exactement la même chose. Meta aussi. Telegram, lui, rend
+l'identifiant du message **publié** : c'est le seul canal du produit dont
+« parti » vaut « remis ».
+
+Alors le rapport n'écrit nulle part « reçu ». Il écrit « parti », et à côté,
+en toutes lettres, ce que « parti » prouve sur ce canal-là :
+
+| Canal | Ce que « parti » prouve | Lecture |
+|---|---|---|
+| E-mail | Accepté par le serveur du destinataire | Les **ouvertures**, par le pixel — un minimum, les images étant souvent bloquées |
+| Notifications | Accepté par le service de notifications | Rien |
+| Telegram | **Publié dans la conversation** | Rien |
+| WhatsApp | Accepté par Meta | Rien, tant que le webhook de statuts n'est pas branché |
+
+Une colonne vide vaut mieux qu'une colonne inventée : un rapport qu'on
+transmet n'a qu'une chose à vendre, et c'est d'être exact.
+
+#### Ce que l'écran montre
+
+| Bloc | Ce qu'il dit |
+|---|---|
+| **Six tuiles** | Messages programmés, partis, échecs, badges créés, présences scannées, vues — avec la variation par rapport à la période d'avant, de même durée |
+| **Par canal** | Une barre de répartition, puis une ligne par canal : programmés, partis, échecs, **écartés**, en attente, ouvertures. Un désabonné n'est ni un envoi réussi ni un échec : il a sa colonne |
+| **Ce qui n'est pas arrivé** | Les échecs regroupés par motif, traduits en français, avec le message brut du serveur — et la distinction qui compte : ce qui **se relance** et ce qui est **à écarter du carnet** |
+| **De la vue à la porte** | L'entonnoir vues → badges → téléchargés → présences, avec le taux de passage depuis l'étape d'avant : c'est là que ça fuit |
+| **Les campagnes** | Dans l'ordre où elles sont parties, avec leur moment de rappel (`J − 1`, `H − 2`) et leurs canaux réels |
+| **Les décors** | Classés sur la **présence**, pas sur les vues : un décor très vu qui ne remplit pas la salle est exactement celui qu'on croit bon et qui ne l'est pas |
+| **L'entrée, heure par heure** | Sur un décor seulement : « cent quatre-vingt-six personnes entre 19 h et 20 h » est le chiffre qui dit combien de scanners il fallait à la porte. Les heures creuses **entre** deux heures pleines restent affichées à zéro : un trou dans une soirée est une information |
+| **Les liens courts** | Avec l'avertissement qui va avec : ce compteur est **cumulé depuis la création du lien**, il ne se limite pas à la période. Le dire vaut mieux que l'omettre |
+
+#### Trois décisions qui se voient dans les chiffres
+
+**La date retenue est celle où la ligne a été figée**, pas celle de l'envoi.
+Les deux ne diffèrent que de quelques minutes, mais `cree_le` est toujours
+renseignée — une ligne jamais partie en a une aussi — et elle rattache la
+ligne à la campagne qui l'a engendrée.
+
+**Les compteurs d'une campagne sont bornés à la période, eux aussi.** Une
+campagne partie le 30 dont les reprises tombent le 1er du mois suivant
+porterait sinon, sur sa ligne, plus de messages que le total du rapport n'en
+compte. Réconciliable vaut mieux que complet.
+
+**La borne haute est exclusive et tombe au lendemain à minuit.** « Du 1er au
+30 septembre » doit contenir ce qui s'est passé le 30 à 23 h 50, et un
+`<= '2026-09-30'` comparé à un horodatage complet l'aurait perdu. C'est le
+genre d'écart qu'on ne voit qu'en recomptant à la main.
+
+#### Qui voit quels chiffres
+
+La portée est résolue **une seule fois**, dans `rapport_portee()`, et les
+requêtes qui suivent ne reçoivent plus d'identifiant venu de la requête
+HTTP : elles reçoivent la portée déjà décidée. Un organisateur n'y obtient
+jamais qu'un décor ou une campagne **dont il est l'auteur** ; demander celui
+d'un autre le ramène à son propre rapport, sans message d'erreur — on ne
+confirme pas à un curieux que l'identifiant qu'il a essayé existe.
+
+Un compte de la maison sans `decors_tous` — un éditeur, un scanner — est
+renvoyé chez lui, comme sur la facturation : il n'a ni décors à lui, ni
+campagnes, ni audience, et les chiffres de la plateforme ne le regardent pas.
+
+#### Le PDF, sur le générateur des factures
+
+Aucune bibliothèque de plus : un graphique en barres est une suite de pavés,
+et `pave()` existe depuis la facture. Le document tient en autant de pages
+qu'il faut, **numérotées** — un rapport qu'on imprime et qu'on agrafe doit
+se remettre dans l'ordre. C'est ce qui a demandé la seule vraie addition à
+`EcrivainPdf` : le flux d'une page n'est plus compressé au vol mais à
+l'assemblage, sans quoi la page 1 serait scellée avant qu'on sache combien
+il y en a.
+
+Et la note qui explique ce que chaque nombre prouve **voyage avec le
+document** : un PDF part au sponsor et se relit six mois plus tard, sans
+nous pour l'accompagner.
+
+#### Deux index, posés maintenant
+
+`envois_email(cree_le)`, `evenements(cree_le)`, `badges(cree_le)` et
+`badges(scanne_le)` arrivent avec le schéma **v20**. Sans eux, « les envois
+de septembre » balaye toute la file : quelques dizaines de milliers de
+lignes au bout d'un an, et une page qui met dix secondes. Posés maintenant
+ils coûtent une ligne ; posés sur une base de deux ans, ils bloquent le site
+le temps de se construire.
+
+#### Comment on sait que les chiffres sont justes
+
+`npx tsx scripts/verifier-rapport.ts` — **70 contrôles**. Un rapport est le
+seul écran du produit dont personne ne peut vérifier les chiffres à l'œil :
+mille lignes de file ne se recomptent pas à la main. Le vérifieur sème donc
+une base dont il connaît le contenu **au message près** — deux
+organisateurs, deux décors, quatre canaux, des échecs de six natures, et
+quatre lignes posées exprès autour des bornes — puis il recompte.
+
+Trois pièges y sont tendus :
+
+1. **Les bornes.** Un envoi du dernier jour à 23 h 50 est dans la période ;
+   un envoi du lendemain à 00 h 10 n'y est pas.
+2. **Le cloisonnement.** Le second organisateur demande le décor du premier
+   par son adresse, puis sa campagne : il doit obtenir **son** rapport,
+   sans erreur ni message.
+3. **Le PDF.** Relu comme un lecteur le relit — table des références
+   croisées, décalage de chaque objet, flux décompressé, texte — puis
+   interrogé : nomme-t-il ses quatre canaux, écrit-il qu'aucun nombre ne dit
+   « reçu », ses pages portent-elles « Page 2 / 3 » ?
 
 ### Le journal — `?p=journal`
 

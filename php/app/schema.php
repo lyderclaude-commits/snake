@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 function assurer_schema(): void
 {
@@ -1018,6 +1018,19 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_contacts_listes_contact ON contacts_listes (contact_id)',
         'CREATE INDEX idx_listes_contacts_proprietaire ON listes_contacts (proprietaire_id)',
         'CREATE INDEX idx_diffusions_date ON diffusions (cree_le)',
+        /**
+         * v20 — les rapports interrogent par PÉRIODE.
+         *
+         * « Les envois de septembre » sans index, c'est le balayage de
+         * toute la file : quelques dizaines de milliers de lignes au bout
+         * d'un an, et une page qui met dix secondes. Posés maintenant ils
+         * coûtent une ligne ; posés sur une base de deux ans, ils bloquent
+         * le site le temps de se construire.
+         */
+        'CREATE INDEX idx_envois_date ON envois_email (cree_le)',
+        'CREATE INDEX idx_evenements_date ON evenements (cree_le)',
+        'CREATE INDEX idx_badges_date ON badges (cree_le)',
+        'CREATE INDEX idx_badges_scan ON badges (scanne_le)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

@@ -63,6 +63,11 @@ $raccourcis = [
            <?= $fr($stats['koris']) ?> Koris distribués</p>
       </div>
       <div class="rangee">
+        <?php /* Le tableau de bord dit ce qui se passe en ce moment ; le
+                 rapport dit ce qui s'est passé sur une période et s'emporte
+                 en PDF. Le lien est ici parce que c'est de ce chiffre-là
+                 qu'on part quand on veut le détail. */ ?>
+        <a class="bouton fant" href="<?= e(url('?p=rapports')) ?>">Le rapport du mois</a>
         <a class="bouton fant" href="<?= e(url('?p=catalogue')) ?>">Tous les décors</a>
         <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
       </div>

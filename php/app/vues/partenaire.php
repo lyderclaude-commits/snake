@@ -13,7 +13,15 @@
         <?= interne($me) ? e(role_libelle($me['role'] ?? null))
                          : 'offre ' . e(formule_libelle($me['formule'] ?? null)) ?></p>
       </div>
-      <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">Nouveau décor</a>
+      <div class="rangee">
+        <?php /* Réservé à qui a une audience : un compte de la maison n'a
+                 ni campagnes ni décors à lui, et l'écran le renverrait
+                 ici même. */ ?>
+        <?php if (droit($me, 'regie')): ?>
+          <a class="bouton fant" href="<?= e(url('?p=rapports')) ?>">Mon rapport</a>
+        <?php endif; ?>
+        <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">Nouveau décor</a>
+      </div>
     </div>
   </section>
 

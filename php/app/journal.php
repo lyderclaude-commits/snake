@@ -49,6 +49,7 @@ const JOURNAL_ACTIONS = [
     'compte.supprime'     => 'a supprimé un compte',
     'abonnement.paye'     => 'a enregistré un paiement',
     'abonnement.echu'     => 'abonnement arrivé à terme',
+    'rapport.export'      => 'a exporté un rapport',
     'sauvegarde.restauree' => 'a restauré une sauvegarde',
     'reglages.modifies'   => 'a modifié les réglages',
 ];
