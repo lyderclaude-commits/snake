@@ -466,10 +466,13 @@ function demarrer(ctx: Contexte) {
       );
       const nom = slugifyFilename(ctx.slug, type === 'image/png' ? 'png' : 'jpg');
 
+      // Le jeton part avec : sans lui le serveur sait COMBIEN de badges
+      // ont été emportés, jamais lesquels — et « ceux qui ont créé un
+      // badge sans jamais le télécharger » reste inatteignable.
       fetch(ctx.base + '?p=api-telechargement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decor: ctx.decorId }),
+        body: JSON.stringify({ decor: ctx.decorId, jeton: jeton ?? undefined }),
       }).catch(() => {});
 
       // Le bouton dit « Télécharger » : il télécharge. Le partage est un

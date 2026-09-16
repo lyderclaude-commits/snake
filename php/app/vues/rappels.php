@@ -52,6 +52,50 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
 
+  <?php
+  /**
+   * Le sondage du lendemain, ici et pas ailleurs.
+   *
+   * C’est le même geste que poser les rappels : « Merci d’être venu »
+   * part quinze heures après l’événement, et les trois questions
+   * voyagent avec lui. Un écran de plus aurait séparé deux réglages qui
+   * ne se pensent qu’ensemble.
+   */
+  $_ouvert = (int) ($decor['sondage'] ?? 0) === 1;
+  ?>
+  <div class="carte" style="margin-bottom:16px">
+    <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div style="flex:1 1 320px">
+        <h3 style="margin:0 0 6px">Trois questions le lendemain</h3>
+        <p class="aide" style="margin:0">
+          <?php if ($_ouvert): ?>
+            Le rappel « Merci d’être venu » porte les trois questions : la note de la
+            soirée, l’intention de revenir, et un mot libre. Chaque destinataire a son
+            propre lien : une réponse par personne, et l’organisateur voit les notes
+            sans les noms.
+          <?php else: ?>
+            Une note, une intention de revenir, un mot libre. Le rappel du lendemain les
+            porte, sur l’e-mail seulement : c’est le seul canal dont chaque message
+            s’adresse à une personne et une seule.
+          <?php endif; ?>
+        </p>
+        <?php if ($_ouvert): ?>
+          <p class="aide" style="margin:10px 0 0">
+            Les réponses se lisent dans le
+            <a href="<?= e(url('?p=rapports&decor=' . rawurlencode((string) $decor['slug']))) ?>">rapport de ce décor</a>.
+          </p>
+        <?php endif; ?>
+      </div>
+      <form method="post" action="<?= e(url('?p=rappels&id=' . urlencode((string) $decor['id']))) ?>">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <input type="hidden" name="quoi" value="sondage">
+        <input type="hidden" name="sondage" value="<?= $_ouvert ? '0' : '1' ?>">
+        <button class="bouton<?= $_ouvert ? ' fant' : '' ?>" type="submit">
+          <?= $_ouvert ? 'Fermer le sondage' : 'Ouvrir le sondage' ?></button>
+      </form>
+    </div>
+  </div>
+
   <?php if (!$rappels): ?>
     <div class="carte">
       <h3 style="margin:0 0 6px">Aucun rappel pour l’instant</h3>

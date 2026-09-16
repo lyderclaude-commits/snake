@@ -161,6 +161,35 @@ $pas = function () use (&$_pas) { return ++$_pas; };
    * avec l'événement, et c'est là qu'accepter des nouvelles a du sens. Un
    * bandeau au premier chargement de l'accueil se ferme sans être lu.
    */
+  /**
+   * Le bloc du sponsor, sous le badge et avant l’abonnement.
+   *
+   * Ici, et pas en haut : la page appartient d’abord à l’invité qui
+   * vient faire son badge. Un sponsor placé au-dessus du titre ferait
+   * fuir la moitié des gens, et l’organisateur n’aurait plus d’audience
+   * à revendre l’an prochain.
+   *
+   * Le lien n’est cliquable qu’une fois relu par la maison : il mène
+   * hors de nos domaines, et c’est notre nom qui sert de caution.
+   */
+  $_sponsor = sponsor_de($d);
+  if ($_sponsor):
+  ?>
+    <aside class="sponsor-bloc">
+      <span class="sponsor-mot">Avec</span>
+      <?php if ($_sponsor['logo'] !== ''): ?>
+        <img src="<?= e((string) $_sponsor['logo']) ?>" alt="<?= e((string) $_sponsor['nom']) ?>">
+      <?php endif; ?>
+      <?php if ($_sponsor['url'] !== ''): ?>
+        <a href="<?= e((string) $_sponsor['url']) ?>" rel="noopener nofollow sponsored"
+           target="_blank"><?= e((string) $_sponsor['nom']) ?></a>
+      <?php else: ?>
+        <b><?= e((string) $_sponsor['nom']) ?></b>
+      <?php endif; ?>
+    </aside>
+  <?php
+  endif;
+
   $_push_titre = 'Être prévenu des prochaines campagnes';
   // L'abonnement se souvient d'où il vient : c'est la seule attache entre
   // cet invité et l'organisateur, s'il ne crée jamais de compte.

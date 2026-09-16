@@ -77,6 +77,7 @@ function entetes_desabonnement(string $jeton): array
  */
 const REGIE_CIBLES = [
     'mes-invites'   => ['Les invités de mes campagnes', 'partenaire'],
+    'segment'       => ['Un segment d’un de mes décors', 'partenaire'],
     'liste'         => ['Une liste de mon carnet', 'partenaire'],
     'tous'          => ['Tout le monde', 'equipe'],
     'organisateurs' => ['Les organisateurs', 'equipe'],
@@ -218,14 +219,15 @@ function campagne_email_creer(array $c): string
     $now = maintenant();
     db()->prepare('INSERT INTO campagnes_email
         (id, auteur_id, sujet, titre, corps, lien, lien_libelle, cible, liste, liste_id,
-         canaux, planifie_le, decor_id, rappel, statut, cree_le, maj_le)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+         canaux, planifie_le, decor_id, rappel, segment, sondage, statut, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
       ->execute([
           $id, $c['auteur_id'], $c['sujet'], $c['titre'], $c['corps'],
           $c['lien'] ?: null, $c['lien_libelle'] ?: null,
           $c['cible'], $c['liste'] ?: null, $c['liste_id'] ?: null,
           $c['canaux'] ?? null, $c['planifie_le'] ?? null,
           $c['decor_id'] ?? null, $c['rappel'] ?? null,
+          ($c['segment'] ?? '') ?: null, !empty($c['sondage']) ? 1 : 0,
           'brouillon', $now, $now,
       ]);
     return $id;
@@ -235,12 +237,15 @@ function campagne_email_maj(string $id, array $c): void
 {
     db()->prepare('UPDATE campagnes_email SET sujet = ?, titre = ?, corps = ?, lien = ?,
                    lien_libelle = ?, cible = ?, liste = ?, liste_id = ?, canaux = ?,
-                   planifie_le = ?, decor_id = ?, rappel = ?, maj_le = ? WHERE id = ?')
+                   planifie_le = ?, decor_id = ?, rappel = ?, segment = ?, sondage = ?,
+                   maj_le = ? WHERE id = ?')
         ->execute([
             $c['sujet'], $c['titre'], $c['corps'], $c['lien'] ?: null,
             $c['lien_libelle'] ?: null, $c['cible'], $c['liste'] ?: null,
             $c['liste_id'] ?: null, $c['canaux'] ?? null, $c['planifie_le'] ?? null,
-            $c['decor_id'] ?? null, $c['rappel'] ?? null, maintenant(), $id,
+            $c['decor_id'] ?? null, $c['rappel'] ?? null,
+            ($c['segment'] ?? '') ?: null, !empty($c['sondage']) ? 1 : 0,
+            maintenant(), $id,
         ]);
 }
 
@@ -382,7 +387,27 @@ function regie_destinataires(array $campagne, array $auteur, ?int &$ecartes = nu
      */
     $exige = verification_exigee();
 
-    if ($cible === 'liste') {
+    if ($cible === 'segment') {
+        /**
+         * La règle est rejouée ICI, au moment de figer la liste.
+         *
+         * Entre le brouillon écrit hier soir et l’envoi de ce midi, des
+         * gens ont emporté leur badge : ils ne doivent pas recevoir « il
+         * vous manque un clic ». C’est tout ce qui distingue un segment
+         * d’une liste, et c’est à cette ligne que cela se joue.
+         *
+         * `segment_emails()` applique déjà les désabonnements et la
+         * confirmation d’adresse : les écartés sont comptés là-bas.
+         */
+        $decor_id = (string) ($campagne['decor_id'] ?? '');
+        $d = $decor_id !== '' ? decor_par_id($decor_id) : null;
+        // Un décor qui n’est pas le sien ne le devient pas parce qu’une
+        // campagne le désigne : même garde qu’à l’écran.
+        if ($d && (droit($auteur, 'decors_tous')
+                   || (string) ($d['auteur_id'] ?? '') === (string) $auteur['id'])) {
+            $lignes = segment_emails((string) ($campagne['segment'] ?? ''), (string) $d['id']);
+        }
+    } elseif ($cible === 'liste') {
         /**
          * Une liste du carnet — et, à défaut, le collage d'autrefois.
          *
@@ -483,8 +508,23 @@ function regie_compter(array $campagne, array $auteur): int
  * @return array{n: int, ecartes: int}  joignables, et écartés faute
  *                                      d'adresse confirmée
  */
-function regie_compte_cible(string $cible, array $auteur, string $liste_id = ''): array
+function regie_compte_cible(string $cible, array $auteur, string $liste_id = '',
+    string $decor_id = '', string $segment = ''): array
 {
+    if ($cible === 'segment') {
+        /**
+         * Le segment sait déjà compter ses joignables : on ne réécrit pas
+         * la règle ici, où elle finirait par dire un autre nombre que
+         * l’écran des segments, pour la même question.
+         */
+        $d = $decor_id !== '' ? decor_par_id($decor_id) : null;
+        if (!$d || !(droit($auteur, 'decors_tous')
+                     || (string) ($d['auteur_id'] ?? '') === (string) $auteur['id'])) {
+            return ['n' => 0, 'ecartes' => 0];
+        }
+        return ['n' => count(segment_emails($segment, (string) $d['id'])), 'ecartes' => 0];
+    }
+
     if ($cible === 'liste') {
         // Une liste du carnet tient en quelques centaines de lignes, et
         // elle est exempte de la confirmation : la compter pour de vrai
@@ -644,7 +684,20 @@ function regie_cibles_du_canal(array $cible, array $campagne, array $auteur): ar
          * ici la ferait diverger. La ligne déclenche `push_diffuser` ;
          * le segment visé est la cible de la campagne.
          */
-        return [['cible' => (string) $campagne['cible'], 'nom' => 'Notifications navigateur']];
+        /**
+         * Un segment voyage avec le décor qui le borne.
+         *
+         * « segment » tout seul ne désigne rien : la règle et le décor
+         * partent donc ensemble dans la ligne, et `push_destinataires()`
+         * les relit au moment de diffuser. Sans cela, la file garderait
+         * une cible que plus personne ne saurait interpréter.
+         */
+        $cible_push = (string) $campagne['cible'];
+        if ($cible_push === 'segment') {
+            $cible_push = 'segment:' . segment_cle((string) ($campagne['segment'] ?? ''))
+                        . ':' . (string) ($campagne['decor_id'] ?? '');
+        }
+        return [['cible' => $cible_push, 'nom' => 'Notifications navigateur']];
     }
 
     /* Une chaîne ou un groupe : une seule ligne, quel que soit le monde
@@ -1053,14 +1106,24 @@ function regie_remettre(array $c, array $e, SessionCourriel $session, bool $cour
             return ['ok' => false, 'reprendre' => true,
                     'message' => 'Le transport e-mail est éteint : réglez-le avant d’envoyer.'];
         }
+        /**
+         * Le bouton du message mène au sondage quand il y en a un.
+         *
+         * Un rappel du lendemain qui proposerait à la fois « Revoir le
+         * décor » et « Répondre » ferait choisir entre les deux, et le
+         * sondage perdrait à tous les coups. Le lien du décor reste dans
+         * le corps du message, où il ne coûte rien.
+         */
+        $sondage_ici = sondage_actif($c);
         return courriel_mis_en_page(
             (string) $e['email'],
             (string) ($e['nom'] ?: ''),
             (string) $c['sujet'],
             (string) $c['titre'],
             regie_corps_pour($c, $e),
-            (string) ($c['lien'] ?: ''),
-            (string) ($c['lien_libelle'] ?: 'En savoir plus'),
+            $sondage_ici ? url_sondage((string) $e['jeton']) : (string) ($c['lien'] ?: ''),
+            $sondage_ici ? 'Répondre en trois questions'
+                         : (string) ($c['lien_libelle'] ?: 'En savoir plus'),
             entetes_desabonnement((string) $e['jeton']),
             $session
         ) + ['reprendre' => false];
@@ -1131,7 +1194,21 @@ function regie_modele_whatsapp(array $campagne): string
  */
 function regie_corps_pour(array $campagne, array $envoi): string
 {
-    return rtrim((string) $campagne['corps'])
+    /**
+     * Les trois questions, au bout d’un lien qui n’appartient qu’à lui.
+     *
+     * Sur l’e-mail seulement : c’est le seul canal dont chaque ligne
+     * s’adresse à UNE personne et porte son propre jeton. Un salon
+     * Telegram recevrait un lien unique, partagé, et le premier arrivé
+     * répondrait pour tout le monde.
+     */
+    $sondage = '';
+    if ((string) ($envoi['canal'] ?? 'email') === 'email' && sondage_actif($campagne)) {
+        $sondage = "\n\nEn trois questions, comment avez-vous trouvé la soirée ?\n"
+                 . url_sondage((string) $envoi['jeton']);
+    }
+
+    return rtrim((string) $campagne['corps']) . $sondage
         . "\n\n---\n"
         . 'Vous recevez ce message parce que vous avez un compte ou un badge Wakabi Boost. '
         . 'Pour ne plus jamais en recevoir : ' . url_desabonnement((string) $envoi['jeton']);

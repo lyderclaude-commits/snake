@@ -4122,7 +4122,9 @@ const run = async () => {
   const PERMIS_EDITEUR = new Set([
     // Le site public, ouvert à tout le monde, connecté ou non — y compris
     // aux robots, qui lisent robots.txt et le plan du site sans session.
-    'accueil', 'og', 'decors', 'blog', 'desabonnement', 'verifier', 'reinitialiser',
+    // `sondage` en fait partie : il s’ouvre avec le jeton d’un envoi, pas
+    // avec un compte — exactement comme le désabonnement.
+    'accueil', 'og', 'decors', 'blog', 'desabonnement', 'sondage', 'verifier', 'reinitialiser',
     'qr', 'api-telechargement', 'robots', 'sitemap',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
@@ -5728,11 +5730,26 @@ const run = async () => {
   surveiller(pTypo);
   await connexion(pTypo, ADMIN.email, ADMIN.mdp);
 
+  /**
+   * Les écrans qui vivent SOUS un décor s’atteignent avec son adresse.
+   *
+   * « ?p=segments » sans décor renvoie au rapport : le scanner ainsi
+   * relirait deux fois la même page et ne prouverait rien de la sienne. On
+   * prend donc un slug réel, celui du premier décor du sélecteur.
+   */
+  await pTypo.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
+  const slugTypo = await pTypo.locator('#f-decor option').nth(1).getAttribute('value') ?? '';
+
   const ecrans = ['accueil', 'decors', 'blog', 'admin', 'partenaire', 'profil', 'comptes',
                   'catalogue', 'journal', 'reglages', 'reglages-seo', 'sauvegardes',
                   'diffusion', 'canaux', 'liens', 'regie', 'regie-ecrire', 'regie-carnet',
                   'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau',
-                  'facturation', 'reglages-facturation', 'rapports'];
+                  'facturation', 'reglages-facturation', 'rapports',
+                  'sondage&j=PAS-UN-JETON',
+                  ...(slugTypo
+                    ? [`segments&decor=${encodeURIComponent(slugTypo)}`,
+                       `sponsor&decor=${encodeURIComponent(slugTypo)}`]
+                    : [])];
   const cadratins: string[] = [];
   for (const q of ecrans) {
     const r = await pTypo.goto(`${BASE}/index.php?p=${q}`, { waitUntil: 'domcontentloaded' })
@@ -6134,6 +6151,146 @@ const run = async () => {
      pdfPart.status() === 200 && (await pdfPart.body()).subarray(0, 5).toString() === '%PDF-',
      `HTTP ${pdfPart.status()}`);
   await ctxRap.close();
+
+
+  console.log('\n━━ 50. Du rapport à la campagne : segments, sponsor, sondage ━━');
+  /**
+   * Trois fonctionnalités qui partagent une seule question : est-ce que le
+   * nombre affiché est celui que la base porte ?
+   *
+   * `verifier-chantier2.ts` recompte tout cela sur une base semée à la
+   * personne près. Ici on éprouve ce que le fil HTTP ne montre qu’à
+   * l’usage : les chemins entre les écrans, les exports qui sortent
+   * vraiment, et le cloisonnement d’un organisateur qui demande le décor
+   * d’un autre.
+   */
+  await pe.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
+  const slugSeg = await pe.locator('#f-decor option').nth(1).getAttribute('value') ?? '';
+
+  if (slugSeg) {
+    await pe.goto(`${BASE}/index.php?p=rapports&decor=${encodeURIComponent(slugSeg)}`,
+                  { waitUntil: 'domcontentloaded' });
+    ok('le rapport d’un décor mène aux segments et au sponsor, en un clic',
+       (await pe.locator('.entete a[href*="p=segments"]').count()) === 1
+       && (await pe.locator('.entete a[href*="p=sponsor"]').count()) === 1);
+
+    /* --- les segments --- */
+    await pe.goto(`${BASE}/index.php?p=segments&decor=${encodeURIComponent(slugSeg)}`,
+                  { waitUntil: 'domcontentloaded' });
+    ok('« À qui j’écris » s’ouvre sur le décor demandé',
+       (await pe.locator('h1').first().innerText()) === 'À qui j’écris');
+    ok('il propose cinq règles, et une seule choisie',
+       (await pe.locator('.seg').count()) === 5 && (await pe.locator('.seg.on').count()) === 1,
+       `${await pe.locator('.seg').count()} segments`);
+    ok('chaque règle annonce ce qu’elle pèse et ce qu’elle joint',
+       (await pe.locator('.seg').first().innerText()).includes('joignables'),
+       (await pe.locator('.seg').first().innerText()).replace(/\s+/g, ' ').slice(0, 70));
+    ok('il dit pourquoi Telegram et WhatsApp n’y sont pas',
+       (await pe.locator('main').innerText()).includes('Telegram et WhatsApp'));
+
+    await pe.locator('.seg:not(.on)').first().click();
+    await pe.waitForLoadState('domcontentloaded');
+    ok('choisir une autre règle recharge ses nombres du moment',
+       (await pe.locator('.seg.on').count()) === 1
+       && /[?&]s=/.test(pe.url()), pe.url().split('?')[1] ?? '');
+
+    const csvSeg = await pe.request.get(
+      `${BASE}/index.php?p=segments&decor=${encodeURIComponent(slugSeg)}&s=tous&export=csv`);
+    const texteSeg = await csvSeg.text();
+    ok('la liste s’exporte, avec le BOM et les points-virgules d’un tableur',
+       csvSeg.status() === 200 && texteSeg.startsWith('\uFEFF')
+       && texteSeg.includes('Nom;Adresse;Joignable par e-mail;'),
+       `HTTP ${csvSeg.status()}`);
+    ok('sous un nom qui dit le décor et la règle',
+       /attachment; filename="segment-.+-tous-\d{4}-\d{2}-\d{2}\.csv"/
+         .test(csvSeg.headers()['content-disposition'] ?? ''),
+       csvSeg.headers()['content-disposition'] ?? '');
+
+    await pe.goto(`${BASE}/index.php?p=journal`, { waitUntil: 'domcontentloaded' });
+    ok('un export de segment laisse une trace au journal',
+       (await pe.locator('main').innerText()).includes('exporté un segment'));
+
+    /* --- le sponsor --- */
+    await pe.goto(`${BASE}/index.php?p=sponsor&decor=${encodeURIComponent(slugSeg)}`,
+                  { waitUntil: 'domcontentloaded' });
+    await pe.fill('#s-nom', 'Brasserie du Golfe');
+    await pe.fill('#s-lien', 'https://brasseriedugolfe.tg');
+    await pe.locator('main form button[type=submit]').first().click();
+    await pe.waitForLoadState('domcontentloaded');
+    ok('l’équipe pose un sponsor, et son lien n’attend personne',
+       (await pe.locator('main').innerText()).includes('Lien en service'),
+       (await pe.locator('.msg').first().innerText().catch(() => '')).slice(0, 60));
+
+    const pdfExpo = await pe.request.get(
+      `${BASE}/index.php?p=sponsor&decor=${encodeURIComponent(slugSeg)}&export=pdf`);
+    const corpsExpo = await pdfExpo.body();
+    ok('le rapport d’exposition sort vraiment, et s’annonce comme un PDF',
+       pdfExpo.status() === 200 && corpsExpo.subarray(0, 5).toString() === '%PDF-',
+       `HTTP ${pdfExpo.status()} · ${corpsExpo.length} octets`);
+    ok('sous un nom qui porte celui du sponsor',
+       /attachment; filename="exposition-brasserie-du-golfe-.+\.pdf"/
+         .test(pdfExpo.headers()['content-disposition'] ?? ''),
+       pdfExpo.headers()['content-disposition'] ?? '');
+
+    const pPublic = await browser.newPage();
+    surveiller(pPublic);
+    await pPublic.goto(`${BASE}/index.php?p=decor&slug=${encodeURIComponent(slugSeg)}`,
+                       { waitUntil: 'domcontentloaded' });
+    ok('le bloc du sponsor s’affiche sur la page du décor, sous le badge',
+       (await pPublic.locator('.sponsor-bloc').count()) === 1
+       && (await pPublic.locator('.sponsor-bloc').innerText()).includes('Brasserie du Golfe'),
+       (await pPublic.locator('.sponsor-bloc').innerText().catch(() => '')).replace(/\s+/g, ' '));
+    await pPublic.close();
+  }
+
+  /* --- le sondage du lendemain --- */
+  await pe.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
+  const hrefRappels = await pe.locator('a[href*="p=rappels&id="]').first()
+    .getAttribute('href').catch(() => null);
+  if (hrefRappels) {
+    await pe.goto(new URL(hrefRappels, BASE).toString(), { waitUntil: 'domcontentloaded' });
+    ok('le sondage se règle avec les rappels, là où part le « Merci d’être venu »',
+       (await pe.locator('form:has(input[value=sondage]) button').count()) === 1);
+    await pe.locator('form:has(input[value=sondage]) button').click();
+    await pe.waitForLoadState('domcontentloaded');
+    ok('l’ouvrir le dit, et propose de le fermer',
+       (await pe.locator('form:has(input[value=sondage]) button').innerText())
+         .includes('Fermer'),
+       (await pe.locator('.msg').first().innerText().catch(() => '')).slice(0, 60));
+    await pe.locator('form:has(input[value=sondage]) button').click();
+    await pe.waitForLoadState('domcontentloaded');
+    ok('et le refermer laisse les réponses déjà données',
+       (await pe.locator('main').innerText()).includes('restent dans le rapport'));
+  }
+
+  const pSond = await browser.newPage();
+  surveiller(pSond);
+  const rSond = await pSond.goto(`${BASE}/index.php?p=sondage&j=PAS-UN-JETON`,
+                                 { waitUntil: 'domcontentloaded' });
+  ok('un jeton inconnu répond une page close, sans dire qu’il est inconnu',
+     rSond?.status() === 200
+     && (await pSond.locator('main').innerText()).includes('n’est plus ouvert'));
+  ok('et cette page reste hors des moteurs',
+     (await pSond.locator('meta[name=robots]').getAttribute('content') ?? '').includes('noindex'),
+     await pSond.locator('meta[name=robots]').getAttribute('content') ?? 'sans balise');
+  await pSond.close();
+
+  /* --- le cloisonnement, du côté de l'organisateur --- */
+  if (slugSeg) {
+    const ctxSeg = await browser.newContext();
+    const pSeg = await ctxSeg.newPage();
+    surveiller(pSeg);
+    await connexion(pSeg, PART.email, PART.mdp);
+    await pSeg.goto(`${BASE}/index.php?p=segments&decor=${encodeURIComponent(slugSeg)}`,
+                    { waitUntil: 'domcontentloaded' });
+    ok('demander les segments du décor d’un autre renvoie au rapport, sans un mot',
+       pSeg.url().includes('p=rapports'), pSeg.url().split('?')[1] ?? '');
+    await pSeg.goto(`${BASE}/index.php?p=sponsor&decor=${encodeURIComponent(slugSeg)}`,
+                    { waitUntil: 'domcontentloaded' });
+    ok('le sponsor d’un décor d’un autre non plus',
+       pSeg.url().includes('p=rapports'), pSeg.url().split('?')[1] ?? '');
+    await ctxSeg.close();
+  }
 
 
   // Remise à zéro : la recette doit pouvoir se rejouer sur la même base.

@@ -118,7 +118,8 @@ const SCENARIO = `<?php
 require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
 foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
           'texte','regie','carnet','canaux','images','push','qr','icones','avatars',
-          'journal','abonnement','pdf','facture','rapport','api'] as $m) {
+          'journal','abonnement','pdf','facture','rapport','segment','sponsor','sondage',
+          'api'] as $m) {
     require RACINE . "/app/$m.php";
 }
 assurer_schema();

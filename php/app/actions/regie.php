@@ -209,7 +209,24 @@ if ($page === 'regie-ecrire') {
         'planifie_le' => $c['planifie_le'] ?? '',
         'decor_id' => $c['decor_id'] ?? '',
         'rappel' => $c['rappel'] ?? '',
+        'segment' => $c['segment'] ?? '',
+        'sondage' => (int) ($c['sondage'] ?? 0),
     ];
+
+    /**
+     * Arrivé de l’écran des segments : la cible est déjà choisie.
+     *
+     * C’est tout l’intérêt du chemin — « 114 badges jamais téléchargés »
+     * devient un lien, et personne n’a à retrouver le segment dans un
+     * menu. Le décor passe par `segment_decor()` : un slug venu de la
+     * requête ne donne le décor d’un autre à personne.
+     */
+    if (!$c && ($_GET['segment'] ?? '') !== ''
+        && ($d_seg = segment_decor(utilisateur_par_id($proprio) ?? $u, (string) ($_GET['decor'] ?? '')))) {
+        $valeurs['cible'] = 'segment';
+        $valeurs['segment'] = segment_cle((string) $_GET['segment']);
+        $valeurs['decor_id'] = (string) $d_seg['id'];
+    }
 
     /**
      * Les canaux qu'on peut cocher : ceux de ce compte, et les deux qui
@@ -245,9 +262,32 @@ if ($page === 'regie-ecrire') {
         if ($cle === 'liste') {
             continue;   // une liste se compte par liste, juste après
         }
+        if ($cle === 'segment') {
+            continue;   // un segment se compte avec son décor, juste après
+        }
         $p = regie_compte_cible($cle, ['id' => $proprio]);
         $portees[$cle] = ['n' => $p['n'], 'ecartes' => $p['ecartes'],
                           'push' => push_disponible() ? push_combien($cle, $proprio) : 0];
+    }
+
+    /**
+     * La portée du segment choisi, et de lui seul.
+     *
+     * Les cinq règles sur tous les décors d’un organisateur feraient
+     * cinquante requêtes à l’ouverture d’un écran où l’on n’en regarde
+     * qu’une. Celle-ci arrive déjà choisie, depuis l’écran des segments.
+     */
+    if ($valeurs['cible'] === 'segment' && $valeurs['decor_id'] !== '') {
+        $compte = regie_compte_cible('segment', ['id' => $proprio, 'role' => 'partenaire'],
+            '', (string) $valeurs['decor_id'], (string) $valeurs['segment']);
+        $portees['segment'] = [
+            'n' => $compte['n'], 'ecartes' => 0,
+            'push' => push_disponible()
+                ? count(segment_push((string) $valeurs['segment'], (string) $valeurs['decor_id']))
+                : 0,
+        ];
+    } else {
+        $portees['segment'] = ['n' => 0, 'ecartes' => 0, 'push' => 0];
     }
     foreach ($mes_listes as $li) {
         $p = regie_compte_cible('liste', ['id' => $proprio], (string) $li['id']);
@@ -340,6 +380,20 @@ if ($page === 'regie-ecrire') {
             $valeurs[$k] = trim((string) ($_POST[$k] ?? ''));
         }
         $valeurs['cible'] = (string) ($_POST['cible'] ?? '');
+        /**
+         * Le segment et son décor voyagent en champs cachés.
+         *
+         * Ils ne se choisissent pas ici : l’écran des segments les a déjà
+         * choisis, avec ses nombres sous les yeux. Le décor repasse quand
+         * même par `segment_decor()` — un champ caché est une saisie comme
+         * une autre, et se vérifie comme telle.
+         */
+        if ($valeurs['cible'] === 'segment') {
+            $d_post = segment_decor(utilisateur_par_id($proprio) ?? $u,
+                (string) ($_POST['decor_id'] ?? ''));
+            $valeurs['decor_id'] = $d_post ? (string) $d_post['id'] : '';
+            $valeurs['segment'] = segment_cle((string) ($_POST['segment'] ?? ''));
+        }
 
         $erreur = match (true) {
             !isset($cibles[$valeurs['cible']]) => 'Choisissez une cible parmi celles proposées.',
@@ -360,6 +414,9 @@ if ($page === 'regie-ecrire') {
             $valeurs['cible'] === 'liste' && $valeurs['liste'] === ''
                 && (string) ($_POST['liste_id'] ?? '') === '' =>
                 'Choisissez une liste de votre carnet, ou collez les adresses.',
+            $valeurs['cible'] === 'segment' && $valeurs['decor_id'] === '' =>
+                'Un segment se choisit depuis un décor : ouvrez « À qui j’écris » '
+                . 'depuis le rapport de l’événement.',
             default => null,
         };
 
@@ -499,6 +556,8 @@ if ($page === 'regie-ecrire') {
         'listes' => $mes_listes,
         'choix_canaux' => $choix_canaux,
         'portees' => $portees,
+        'segment_decor' => $valeurs['cible'] === 'segment' && $valeurs['decor_id'] !== ''
+            ? decor_par_id((string) $valeurs['decor_id']) : null,
         'apercu_push' => PUSH_APERCU,
         /**
          * Les cases à recocher : on refait le chemin inverse, de la cible

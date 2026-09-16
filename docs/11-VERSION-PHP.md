@@ -1,6 +1,37 @@
-# Wakabi Boost v1.3 — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1.4 — décompresser, ouvrir une page, c'est en ligne
 
-**Ce que la v1.3 ajoute à la v1.2** : les **rapports**. Une période — ce mois,
+**Ce que la v1.4 ajoute à la v1.3** : le rapport devient une **action**. Trois
+briques, qui partent toutes du même constat — un rapport qui dit « 486 badges
+créés, 372 emportés » laissait 114 personnes dans un écart que personne ne
+pouvait ouvrir.
+
+1. **Les segments.** « À qui j’écris » : cinq règles sur les invités d’un
+   décor — a créé un badge sans jamais le télécharger, l’a emporté sans
+   venir, est venu, n’a rien ouvert, tous — chacune avec deux nombres qu’on
+   ne confond jamais : **combien correspondent**, et **combien sont
+   joignables**. Un segment n’est pas une liste : c’est une règle, rejouée au
+   moment de figer la campagne. Quelqu’un qui emporte son badge à midi sort
+   tout seul du segment de midi.
+
+2. **Le sponsor.** Un nom, un logo, un lien sur le décor, et un **rapport
+   d’exposition** en PDF à remettre au sponsor : vues de la page, badges
+   créés, clics sur son lien court, personnes à la porte. Le document dit
+   lui-même qu’il compte des **occasions de voir**, pas des regards — c’est
+   cette phrase qui rend le reste crédible le jour où le sponsor pose la
+   question.
+
+3. **Le sondage du lendemain.** Trois questions accrochées au rappel
+   « Merci d’être venu » : une note, une intention de revenir, un mot libre.
+   Le jeton de chaque envoi sert de clé : **une réponse par personne**, sans
+   compte à créer, anonyme à l’affichage. Les réponses se lisent dans le
+   rapport du décor, à l’écran comme dans le PDF.
+
+Et un trou du socle est bouché au passage : le téléchargement d’un badge
+était compté par **décor**, jamais par **personne**. `badges.telecharge_le`
+répond désormais à « qui n’a pas emporté le sien », qui est la liste la plus
+rentable du produit.
+
+**Ce que la v1.3 avait ajouté à la v1.2** : les **rapports**. Une période — ce mois,
 le mois dernier, l'année, ou deux dates au choix — une **portée** — la
 plateforme entière, un organisateur, un décor, une campagne — et toute la page
 s'y plie : ce qui est parti canal par canal, **ce qui n'est pas arrivé et
@@ -26,7 +57,7 @@ que dans les migrations, donc pas dans une installation neuve — le premier dé
 enregistré sur un site fraîchement installé échouait.
 
 Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.3.zip`) et s'affiche en pied de page :
+nomme l'archive livrée (`wakabi-boost-v1.4.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -39,7 +70,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.3.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.4.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -55,17 +86,17 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **811 scénarios
-réussis** sur une base déjà peuplée, **810 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **831 scénarios
+réussis** sur une base déjà peuplée, **830 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas.
 
 La montée de version d'une installation déjà en service a été vérifiée elle
-aussi : une v1.2 installée, peuplée, puis recouverte par la v1.3 passe du
-schéma 19 au 20 à la première page ouverte — les quatre index créés, les
-comptes et les décors intacts, l'écran des rapports et son PDF servis dans la
-foulée.
+aussi : une v1.3 installée, peuplée, puis recouverte par la v1.4 passe du
+schéma 20 au 21 à la première page ouverte — les colonnes et la table neuve
+posées, les deux index créés, les comptes et les décors intacts, et les trois
+écrans neufs servis dans la foulée, exports compris.
 
 ---
 
@@ -148,10 +179,10 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 811 scénarios, dans un vrai navigateur
+npm run php:e2e          # 831 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
-                         # facture, rapport
+                         # facture, rapport, segments/sponsor/sondage
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -169,7 +200,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 811 scénarios
+### Les 831 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -234,6 +265,9 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le mot de passe oublié** | La demande répond la même chose qu'une adresse existe ou non, mais **un message ne part que si le compte existe** ; le lien reçu ouvre le formulaire, refuse deux mots de passe différents, ne sert qu'une fois — et l'on se connecte ensuite avec le nouveau |
 | **L'échéance et la facture** | Une offre payante ouvre une carte d'abonnement ; un paiement repousse l'échéance et émet une facture numérotée qui porte le client, la période et le total ; le client la retrouve seul depuis son profil |
 | **Les rapports** | Une période et une portée commandent toute la page ; le tableau par canal ne dit jamais « reçu » mais ce que « parti » prouve ; les échecs sont regroupés par motif, traduits, et triés entre ce qui se relance et ce qui est à écarter ; le PDF et le CSV sortent vraiment, et un organisateur qui demande le décor d'un autre obtient le sien |
+| **Les segments** | « À qui j'écris » s'ouvre depuis le rapport d'un décor, propose cinq règles avec **deux nombres qu'on ne confond pas** — qui correspond, qui est joignable — dit pourquoi Telegram et WhatsApp n'y sont pas, exporte la liste en CSV et laisse une trace au journal ; demander le décor d'un autre ramène au rapport, sans un mot |
+| **Le sponsor** | Un nom, un lien et un logo se posent sur le décor, le bloc apparaît **sous le badge** sur la page publique, et le rapport d'exposition sort en PDF sous un nom qui porte celui du sponsor |
+| **Le sondage** | Il se règle avec les rappels, là où part le « Merci d'être venu » ; un jeton inconnu répond une page close **sans dire qu'il est inconnu**, et cette page reste hors des moteurs |
 | **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
 | **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
@@ -2434,6 +2468,13 @@ de bord, parce qu'un point de départ ne se cherche pas dans un tiroir ; et le
 téléphone, avec une file qui attend — deux gestes de plus, ce sont deux gestes
 répétés à chaque soirée.
 
+Trois écrans n'entrent dans **aucun menu**, et c'est aussi délibéré : « À qui
+j'écris », le sponsor et le sondage n'existent que **sous un décor**. Ils
+s'atteignent depuis le rapport de l'événement ou depuis ses rappels, là où la
+question se pose. Les poser dans la barre aurait demandé à chacun de choisir
+d'abord un décor dans une liste — un geste de plus pour arriver où l'on était
+déjà.
+
 Un organisateur a le même principe, en plus court : **Tableau de bord ·
 Promotion ▾ · Le catalogue · Mon profil**. Le groupe Promotion ne montre que ce
 que l'offre donne, et disparaît entièrement s'il se viderait.
@@ -2877,6 +2918,173 @@ refabrique.
   deux mois sans être demandé, il part — et si le dossier reste trop gros,
   on rogne du plus ancien. Rien n'est perdu : la prochaine visite le
   refabrique.
+
+---
+
+## Du rapport à l'action — segments, sponsor, sondage
+
+Le rapport dit « 486 badges créés, 372 emportés ». Il manquait le clic qui
+écrit à ces 114 personnes-là, le document qu'on remet à celui qui a payé
+l'événement, et la note de la soirée pendant qu'elle est encore fraîche.
+
+### « À qui j'écris » — `?p=segments&decor=…`
+
+Cinq règles, sur les invités d'**un décor** — un segment se raisonne sur un
+événement, pas sur une plateforme :
+
+| La règle | Pourquoi elle existe |
+|---|---|
+| A créé un badge, ne l'a jamais téléchargé | Le plus rentable : ils ont commencé, il manque un clic |
+| A téléchargé son badge, n'est pas venu | Pour le prochain événement, ou pour comprendre |
+| Est venu | Les remerciements, le sondage, l'invitation suivante |
+| N'a pas ouvert les messages de ce décor | Une relance, sur un autre canal que l'e-mail |
+| Tous les invités de ce décor | Sans condition |
+
+**Trois décisions tiennent tout le module.**
+
+**Un segment n'est pas une liste : c'est une règle.** Il n'a donc pas de
+table à lui, seulement une clause de plus sur les badges du décor, rejouée
+à chaque ouverture de l'écran **et au moment où la campagne fige sa liste**.
+Quelqu'un qui emporte son badge à midi sort tout seul du segment de midi ;
+une liste enregistrée la veille lui aurait écrit pour rien. Le vérifieur
+tend exactement ce piège : neuf destinataires avant, huit après qu'un invité
+a emporté le sien.
+
+**« Correspondre » et « être joignable » sont deux nombres, et l'écran
+affiche les deux.** Une personne qui fabrique un badge sans créer de compte
+et sans accepter les notifications compte dans les statistiques de
+l'organisateur et dans aucun de ses envois. Annoncer 114 destinataires puis
+n'en toucher que 96 ferait douter de tous les autres chiffres du produit :
+l'écart est donc **nommé**, avec sa raison.
+
+**Un segment ne rouvre aucune porte que la régie a fermée.** Désabonnés
+écartés, adresses jamais confirmées écartées, quota décompté, relecture
+inchangée. Un segment change à QUI l'on écrit, jamais ce qu'on a le droit
+d'envoyer.
+
+> **Ce qu'un segment ne sait pas compter.** Telegram et WhatsApp écrivent à
+> un salon, ou à des abonnés du bot que **rien ne rattache à un badge** :
+> aucune colonne ne relie « Ama Kodjo, badge K6249XUED8 » à un `chat_id`.
+> L'écran ne les compte donc pas, et le dit. Inventer un nombre ici serait
+> exactement la faute que la deuxième décision cherche à éviter.
+
+On compte des **personnes**, pas des lignes de badge : quelqu'un qui refait
+son badge depuis un autre téléphone en a deux, et l'annoncer comme deux
+destinataires serait faux dès l'écran. Une personne est son compte quand elle
+en a un, et son badge sinon.
+
+**Le point d'entrée est le rapport.** « 114 badges jamais téléchargés »
+devient un lien : même phrase des deux côtés, et personne n'a à retrouver le
+segment dans un menu. La liste s'exporte en CSV — **les non-joignables
+compris**, c'est même la moitié de l'intérêt du fichier : dix-huit lignes sans
+adresse se vont chercher au téléphone, ou à la porte.
+
+#### Le trou du socle, bouché au passage
+
+Le téléchargement d'un badge était compté dans `evenements`, **par décor** :
+on savait que 372 badges étaient partis, jamais lesquels. `badges.telecharge_le`
+(schéma v21) répond à la question par personne. Les deux nombres ne disent
+d'ailleurs pas la même chose et cohabitent : l'événement compte les **gestes**
+— quelqu'un qui refait son badge en story après l'avoir pris en carré en
+produit deux — la colonne compte les **personnes**.
+
+### Le sponsor, et son rapport d'exposition — `?p=sponsor&decor=…`
+
+Un organisateur ne vend pas un logo : il vend une audience. Le produit savait
+déjà la compter, il lui manquait de savoir **à qui elle appartient**. Trois
+champs sur le décor — un nom, un logo, un lien — et une page A4 à remettre :
+
+| Le nombre | Ce qu'il compte |
+|---|---|
+| Vues de la page | Les ouvertures de la page du décor, où se trouve le bloc |
+| Badges créés | Ceux fabriqués depuis cette page |
+| Clics sur le lien | Le compteur de son lien court — **le seul qui prouve un geste** |
+| Personnes à la porte | Les présences scannées, comptées une par une |
+
+**Le document compte des occasions de voir, pas des regards, et il le dit
+lui-même.** Écrire « 2 140 personnes ont vu votre logo » serait faux, et se
+retournerait contre l'organisateur le jour où le sponsor pose la question.
+C'est cette phrase qui rend le reste crédible.
+
+Il ne dit pas non plus « 486 badges portant votre logo » : le bloc du sponsor
+est sur la **page** du décor, pas sur l'image du badge. Le jour où le logo
+entrera dans le gabarit, ce nombre deviendra vrai, et pas avant.
+
+**Le lien d'un sponsor est relu par la maison.** Il mène chez le sponsor,
+donc **hors de nos domaines** : le garde-fou de redirection ne peut pas s'y
+appliquer tel quel, et le laisser passer sans rien rouvrirait la porte que ce
+garde-fou ferme partout ailleurs. Il suit donc le chemin de tout ce qu'un
+organisateur publie sous notre nom : le nom et le logo s'affichent tout de
+suite, le lien devient cliquable une fois relu. Un lien qui mène chez nous,
+ou posé par un compte qui a le droit `valider`, n'attend personne.
+
+Le lien court n'est **fabriqué qu'une fois** : corriger une faute dans le nom
+du sponsor met sa cible à jour sans changer le code, donc sans remettre son
+compteur à zéro.
+
+### Le sondage du lendemain — `?p=sondage&j=…`
+
+Le rappel « Merci d'être venu » part déjà tout seul, quinze heures après
+l'événement. Trois questions au bout de son lien — une note sur cinq, une
+intention de revenir, un mot libre — et l'organisateur a la note de sa soirée
+pendant qu'elle est encore fraîche. Le sondage s'ouvre et se ferme depuis
+l'écran des rappels, là où ce message se pose.
+
+**Le jeton de l'envoi fait la clé.** Il existe déjà : il sert au
+désabonnement et au pixel d'ouverture, et il désigne une personne et une
+seule, sans compte à créer. `envoi_id` est UNIQUE dans la table : **une
+réponse par jeton, la première comptée**. Un lien transféré à toute la
+famille ne vote pas six fois. L'unicité est tenue par la contrainte de la
+base, pas par un SELECT qui précède : deux onglets ouverts sur le même lien
+arriveraient sinon dans l'intervalle.
+
+**Anonyme à l'affichage, pas en base.** L'organisateur voit les notes sans les
+noms — c'est la condition pour qu'on réponde franchement. La base, elle, sait
+relier une note à « venu » ou « pas venu », et c'est ce qui rend la mesure
+utile l'an prochain. La colonne `venu` est **recopiée à la réponse** : le
+badge peut être supprimé, le décor archivé, la question reste répondable.
+
+**Trois questions, jamais dix.** Un formulaire de dix questions au lendemain
+d'une soirée ne se remplit pas, et fait baisser le taux de réponse de tous les
+suivants.
+
+**Le lien ne part que sur l'e-mail.** C'est le seul canal dont chaque ligne
+s'adresse à UNE personne et porte son propre jeton. Une publication dans un
+salon Telegram porterait un lien unique, partagé : le premier arrivé
+répondrait pour tout le monde, et « une réponse par personne » cesserait
+d'être vrai.
+
+Les réponses se lisent dans le rapport du décor : note moyenne, part de ceux
+qui reviendront, taux de réponse, distribution des cinq notes, et **les mots
+libres en entier** — c'est ce qui se lit en premier, bien avant la moyenne.
+Le taux de réponse a pour dénominateur les messages réellement **partis** :
+prendre les programmés donnerait un taux qui baisse quand le serveur du
+destinataire tousse, ce qui n'apprend rien sur la soirée. Et le bloc ignore
+la période choisie, exprès : on note une **soirée**, pas un mois.
+
+### Ce que le schéma v21 ajoute
+
+| Table | Colonne | Pourquoi |
+|---|---|---|
+| `badges` | `telecharge_le` | Qui a emporté son badge, et pas seulement combien |
+| `decors` | `sponsor_nom`, `sponsor_logo`, `sponsor_lien`, `sponsor_code`, `sponsor_statut` | Le bloc du sponsor, son lien court compté, et sa relecture |
+| `decors` | `sondage` | Le sondage est ouvert sur ce décor |
+| `campagnes_email` | `segment`, `sondage` | La règle visée, et le message qui porte les trois questions |
+| `reponses_sondage` | *(table neuve)* | Une réponse par jeton d'envoi, `envoi_id` UNIQUE |
+
+Deux index accompagnent le lot : `badges(decor_id)`, parce qu'un segment
+interroge les badges d'un décor à chaque ouverture, et
+`reponses_sondage(decor_id)`, parce que le rapport rassemble les réponses
+d'une soirée.
+
+### Un défaut du générateur de PDF, corrigé au passage
+
+Le titre d'un document s'affichait « Rapport d™exposition » dans l'onglet du
+lecteur. Une chaîne du dictionnaire `Info` n'est pas interprétée comme le
+texte des pages : celui-ci suit l'encodage de la police, celle-là suit
+PDFDocEncoding, où l'apostrophe typographique n'existe pas. Elle s'écrit
+désormais en UTF-16BE précédée de sa marque d'ordre, la forme que la
+spécification prévoit et que tous les lecteurs comprennent.
 
 ---
 

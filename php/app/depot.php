@@ -275,6 +275,27 @@ function badge_emettre(string $decor_id, ?string $utilisateur_id): string
     return $jeton;
 }
 
+/**
+ * Note que CE badge a été emporté.
+ *
+ * `evenements` compte déjà les téléchargements du décor, et continue :
+ * les deux nombres ne disent pas la même chose. L’événement compte les
+ * GESTES — quelqu’un qui refait son badge en story après l’avoir pris en
+ * carré en produit deux. La colonne, elle, compte les PERSONNES, et c’est
+ * d’elle que dépend le segment « a créé un badge, ne l’a jamais
+ * téléchargé ».
+ *
+ * La date du PREMIER emport est gardée : `telecharge_le IS NULL` dans la
+ * condition suffit à cela, et évite qu’un second téléchargement décale
+ * la personne d’une semaine dans les rapports.
+ */
+function badge_emporte(string $jeton, string $decor_id): void
+{
+    db()->prepare('UPDATE badges SET telecharge_le = ?
+                   WHERE jeton = ? AND decor_id = ? AND telecharge_le IS NULL')
+        ->execute([maintenant(), strtoupper(trim($jeton)), $decor_id]);
+}
+
 function badge_lire(string $jeton): ?array
 {
     $s = db()->prepare('SELECT b.*, d.titre AS decor_titre, d.slug AS decor_slug, u.nom AS porteur

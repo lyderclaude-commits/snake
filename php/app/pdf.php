@@ -170,6 +170,33 @@ final class EcrivainPdf
     }
 
     /**
+     * Le titre du document, lisible par le lecteur de PDF.
+     *
+     * Une chaîne du dictionnaire Info n’est PAS interprétée comme le
+     * texte des pages : celui-ci suit l’encodage de la police
+     * (WinAnsi), celle-là suit PDFDocEncoding, où l’apostrophe
+     * typographique n’existe pas. « Rapport d’exposition » s’affichait
+     * donc « Rapport d™exposition » dans l’onglet du lecteur et dans le
+     * gestionnaire de fichiers.
+     *
+     * La sortie est une chaîne hexadécimale UTF-16BE précédée de sa
+     * marque d’ordre : c’est la forme que la spécification prévoit pour
+     * tout ce qui dépasse l’ASCII, et tous les lecteurs la comprennent.
+     */
+    private static function chaine_unicode(string $s): string
+    {
+        $u16 = function_exists('mb_convert_encoding')
+            ? @mb_convert_encoding($s, 'UTF-16BE', 'UTF-8')
+            : false;
+        if (!is_string($u16) || $u16 === '') {
+            // Sans mbstring, un titre sans accents vaut mieux qu’un titre
+            // abîmé : on retombe sur la chaîne ordinaire.
+            return self::chaine($s);
+        }
+        return '<FEFF' . strtoupper(bin2hex($u16)) . '>';
+    }
+
+    /**
      * La largeur d'un texte, en millimètres.
      *
      * Publique : la mise en page de la facture s'en sert pour décider où
@@ -548,7 +575,7 @@ final class EcrivainPdf
         $catalogue = $this->ajouter('<</Type/Catalog/Pages ' . $arbre . ' 0 R>>');
         $info = $this->ajouter(
             '<</Producer ' . self::chaine('Wakabi Boost')
-            . ($this->titre !== null ? '/Title ' . self::chaine($this->titre) : '')
+            . ($this->titre !== null ? '/Title ' . self::chaine_unicode($this->titre) : '')
             . '/CreationDate ' . self::chaine('D:' . gmdate('YmdHis') . "Z00'00") . '>>'
         );
 

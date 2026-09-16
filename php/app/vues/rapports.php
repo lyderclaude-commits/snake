@@ -49,7 +49,23 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
         </p>
       </div>
       <div class="rangee" style="gap:8px">
-        <a class="bouton" href="<?= e($lien(['export' => 'pdf'])) ?>">Exporter en PDF</a>
+        <?php if ($portee['cle'] === 'decor' && $portee['decor']): ?>
+          <?php
+          /**
+           * Le point d’entrée des segments est ICI, sur le rapport.
+           *
+           * « 114 badges jamais téléchargés » devient un lien : c’est la
+           * même phrase des deux côtés, et personne n’a à retrouver le
+           * segment dans un menu.
+           */
+          ?>
+          <a class="bouton"
+             href="<?= e(url('?p=segments&decor=' . rawurlencode((string) $portee['decor']['slug']))) ?>">À qui j’écris</a>
+          <a class="bouton fant"
+             href="<?= e(url('?p=sponsor&decor=' . rawurlencode((string) $portee['decor']['slug']))) ?>">Sponsor</a>
+        <?php endif; ?>
+        <a class="bouton<?= $portee['cle'] === 'decor' ? ' fant' : '' ?>"
+           href="<?= e($lien(['export' => 'pdf'])) ?>">Exporter en PDF</a>
         <a class="bouton fant" href="<?= e($lien(['export' => 'csv'])) ?>">CSV</a>
       </div>
     </div>
@@ -386,6 +402,64 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
     </section>
   <?php endif; ?>
 
+  <!-- ------------------- le sondage du lendemain ------------------- -->
+  <?php if ((int) $r['sondage']['reponses'] > 0): ?>
+    <?php $so = $r['sondage']; ?>
+    <section class="carte" style="margin-bottom:18px">
+      <h2>Ce qu’ils en ont pensé</h2>
+      <p class="aide" style="margin:4px 0 14px">
+        <?= e($nb((int) $so['reponses'])) ?> réponse<?= (int) $so['reponses'] > 1 ? 's' : '' ?>
+        <?php if ((int) $so['partis'] > 0): ?>
+          sur <?= e($nb((int) $so['partis'])) ?> message<?= (int) $so['partis'] > 1 ? 's' : '' ?> partis
+        <?php endif; ?>
+        · un jeton, une réponse · les notes sont anonymes, et le restent.
+      </p>
+
+      <div class="grille g3" style="margin-bottom:16px">
+        <div class="stat p"><b><?= $so['moyenne'] === null ? '<span class="rap-vide">non mesurée</span>'
+            : e(number_format((float) $so['moyenne'], 1, ',', ' ')) ?></b>
+          <span>Note moyenne sur 5</span></div>
+        <div class="stat v"><b><?= $so['revient'] === null ? '<span class="rap-vide">sans réponse</span>'
+            : e($pc((float) $so['revient'])) ?></b>
+          <span>Reviendront l’an prochain</span></div>
+        <div class="stat"><b><?= $so['taux'] === null ? '<span class="rap-vide">sans comparaison</span>'
+            : e($pc((float) $so['taux'])) ?></b>
+          <span>Ont répondu</span></div>
+      </div>
+
+      <?php foreach ($so['distribution'] as $note => $combien): ?>
+        <div class="marche">
+          <div class="haut">
+            <span><?= (int) $note ?> · <?= e(SONDAGE_NOTES[$note]) ?></span>
+            <b><?= e($nb((int) $combien)) ?></b>
+          </div>
+          <div class="rail"><i style="width:<?= (int) $so['reponses'] > 0
+              ? round($combien / (int) $so['reponses'] * 100, 2) : 0 ?>%"></i></div>
+        </div>
+      <?php endforeach; ?>
+
+      <?php if ($so['mots']): ?>
+        <h3 style="margin:20px 0 8px">Les mots, en entier</h3>
+        <p class="aide" style="margin:0 0 12px">
+          C’est ce qui se lit en premier. <?= e($nb(count($so['mots']))) ?>
+          personne<?= count($so['mots']) > 1 ? 's ont' : ' a' ?> écrit quelque chose<?php
+          if (count($so['mots']) > SONDAGE_MOTS): ?>, dont voici les
+          <?= (int) SONDAGE_MOTS ?> dernières — le PDF les porte toutes<?php endif; ?>.
+        </p>
+        <div class="sond-mots">
+          <?php foreach (array_slice($so['mots'], 0, SONDAGE_MOTS) as $m): ?>
+            <blockquote class="sond-mot">
+              <p><?= e((string) $m['mot']) ?></p>
+              <footer><?= (int) $m['note'] ?>/5 ·
+                <?= (int) $m['venu'] === 1 ? 'est venu' : 'n’est pas venu' ?> ·
+                <?= e(date_fr((string) $m['cree_le'])) ?></footer>
+            </blockquote>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
+
   <!-- ------------------- les décors ------------------- -->
   <?php if ($r['decors']): ?>
     <section class="carte" style="margin-bottom:18px">
@@ -396,7 +470,8 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
         <table>
           <thead>
             <tr><th>Décor</th><th class="num">Vues</th><th class="num">Badges</th>
-                <th class="num">Téléchargés</th><th class="num">Présents</th><th class="num">Taux</th></tr>
+                <th class="num">Téléchargés</th><th class="num">Présents</th><th class="num">Taux</th>
+                <th>À qui écrire</th></tr>
           </thead>
           <tbody>
             <?php foreach ($r['decors'] as $d): ?>
@@ -415,6 +490,9 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
                 <td class="num">
                   <?= $d['taux_presence'] === null ? '<span class="rap-vide">sans objet</span>'
                       : e($pc((float) $d['taux_presence'])) ?>
+                </td>
+                <td>
+                  <a href="<?= e(url('?p=segments&decor=' . rawurlencode((string) $d['slug']))) ?>">Les segments</a>
                 </td>
               </tr>
             <?php endforeach; ?>

@@ -834,6 +834,15 @@ function rapport(array $u, array $get): array
         'campagnes' => rapport_campagnes($bornes, $portee),
         'liens' => rapport_liens($portee),
         'entree' => rapport_entree_par_heure($bornes, $portee),
+        /**
+         * Le sondage ignore la période, exprès.
+         *
+         * On note une SOIRÉE, pas un mois. Découper les réponses par
+         * période donnerait une moyenne qui change selon les dates
+         * choisies — c’est-à-dire une moyenne dont personne ne pourrait
+         * rien faire, et que deux personnes ne liraient jamais pareil.
+         */
+        'sondage' => rapport_sondage($portee),
         'edite_le' => maintenant(),
         'edite_par' => (string) ($u['nom'] ?? ''),
     ];
@@ -912,6 +921,30 @@ function rapport_csv(array $r): string
         $lignes[] = [];
     }
 
+    if ((int) $r['sondage']['reponses'] > 0) {
+        $so = $r['sondage'];
+        $lignes[] = ['Sondage', 'Réponses', 'Messages partis', 'Note moyenne',
+                     'Reviendront %', 'Ont répondu %'];
+        $lignes[] = ['Total', $so['reponses'], $so['partis'],
+                     $so['moyenne'] === null ? '' : number_format((float) $so['moyenne'], 1, ',', ''),
+                     $so['revient'] === null ? '' : round($so['revient'] * 100),
+                     $so['taux'] === null ? '' : round($so['taux'] * 100)];
+        $lignes[] = [];
+        $lignes[] = ['Note', 'Libellé', 'Réponses'];
+        foreach ($so['distribution'] as $note => $combien) {
+            $lignes[] = [$note, SONDAGE_NOTES[$note] ?? '', $combien];
+        }
+        if ($so['mots']) {
+            $lignes[] = [];
+            $lignes[] = ['Mot libre', 'Note', 'Venu', 'Le'];
+            foreach ($so['mots'] as $m) {
+                $lignes[] = [(string) $m['mot'], (int) $m['note'],
+                             (int) $m['venu'] === 1 ? 'oui' : 'non', date_fr((string) $m['cree_le'])];
+            }
+        }
+        $lignes[] = [];
+    }
+
     if ($r['decors']) {
         $lignes[] = ['Décor', 'Vues', 'Badges', 'Téléchargés', 'Présents'];
         foreach ($r['decors'] as $d) {
@@ -919,6 +952,22 @@ function rapport_csv(array $r): string
         }
     }
 
+    return csv_rendu($lignes);
+}
+
+/**
+ * Des lignes, un fichier qu’Excel ouvre du premier coup.
+ *
+ * Point-virgule, BOM, fins de ligne Windows : c’est ce qu’attend un
+ * tableur en français, et sans eux le comptable ouvre une seule colonne
+ * pleine de caractères abîmés. Écrit ici une fois parce que trois
+ * exports le demandent — le rapport, les segments, les factures — et que
+ * trois copies auraient divergé au premier ajustement.
+ *
+ * @param list<list<string|int|float>> $lignes
+ */
+function csv_rendu(array $lignes): string
+{
     $out = "\xEF\xBB\xBF";
     foreach ($lignes as $l) {
         $out .= implode(';', array_map(static function ($c): string {
@@ -1208,6 +1257,73 @@ function rapport_pdf(array $r): string
             $y += 3.6;
             $pdf->filet($g, $y + 1.2, $d, $y + 1.2, 0.15, '#E2E8F5');
             $y += 4.6;
+        }
+    }
+
+    /* ---- le sondage du lendemain ---- */
+    $so = $r['sondage'];
+    if ((int) $so['reponses'] > 0) {
+        if ($y > $bas - 60) {
+            $y = $ouvrir();
+        }
+        $y = rapport_pdf_titre($pdf, $g, $y, 'Ce qu’ils en ont pensé');
+
+        $pc = static fn(?float $x): string => $x === null
+            ? 'sans objet' : number_format($x * 100, 0, ',', ' ') . ' %';
+        $tuiles = [
+            ['Note moyenne sur 5', $so['moyenne'] === null
+                ? 'non mesurée' : number_format((float) $so['moyenne'], 1, ',', ' ')],
+            ['Reviendront l’an prochain', $pc($so['revient'])],
+            ['Ont répondu', $pc($so['taux'])],
+        ];
+        $large = ($d - $g - 2 * 4) / 3;
+        foreach ($tuiles as $i => [$titre, $valeur]) {
+            $x = $g + $i * ($large + 4);
+            $pdf->pave($x, $y, $large, 17, '#F1F5FC');
+            $pdf->texte($x + 3.5, $y + 8, $valeur, 12, true);
+            $pdf->texte($x + 3.5, $y + 13.5, $titre, 6.5, false, '#475569');
+        }
+        $y += 23;
+
+        $piste = $d - $g - 46 - 24;
+        foreach ($so['distribution'] as $note => $combien) {
+            $pdf->texte($g, $y + 3, $note . ' · ' . (SONDAGE_NOTES[$note] ?? ''), 8.5, false);
+            $pdf->pave($g + 46, $y, $piste, 4.2, '#F1F5FC');
+            if ((int) $combien > 0) {
+                $pdf->pave($g + 46, $y, max(0.6, $piste * $combien / (int) $so['reponses']),
+                    4.2, '#2563EB');
+            }
+            $pdf->texte($d, $y + 3, number_format((int) $combien, 0, ',', ' '), 8.5, true,
+                '#0F172A', 'droite');
+            $y += 7;
+        }
+        $y += 4;
+
+        /**
+         * Les mots, TOUS, et sans nom.
+         *
+         * C’est ce qui se lit en premier — bien avant la moyenne. L’écran
+         * en montre quarante parce qu’au-delà personne ne fait défiler ;
+         * le document, lui, est fait pour être relu au calme.
+         */
+        if ($so['mots']) {
+            if ($y > $bas - 24) {
+                $y = $ouvrir();
+            }
+            $pdf->texte($g, $y, 'Les mots, en entier', 9.5, true);
+            $y += 6;
+            foreach ($so['mots'] as $m) {
+                if ($y > $bas - 14) {
+                    $y = $ouvrir();
+                }
+                $pdf->pave($g, $y - 3.2, 0.8, 9, '#2563EB');
+                $y = $pdf->paragraphe($g + 4, $y, $d - $g - 4, (string) $m['mot'],
+                    8.5, 4.2, false, '#0F172A');
+                $pdf->texte($g + 4, $y + 0.4, $m['note'] . '/5 · '
+                    . ((int) $m['venu'] === 1 ? 'est venu' : 'n’est pas venu')
+                    . ' · ' . date_fr((string) $m['cree_le']), 7, false, '#94A3B8');
+                $y += 7;
+            }
         }
     }
 

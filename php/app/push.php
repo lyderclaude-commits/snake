@@ -426,6 +426,25 @@ function push_abonnement_de(string $endpoint): ?array
  */
 function push_destinataires(string $segment, ?string $auteur_id = null): array
 {
+    /**
+     * Un segment de décor : « segment:<règle>:<décor> ».
+     *
+     * Il est traité avant le reste parce qu’il ne s’exprime pas comme les
+     * autres : les cibles historiques décrivent une population de comptes,
+     * celle-ci décrit un comportement sur UN décor. La règle vit dans
+     * `segment.php`, avec celle de l’écran et celle des e-mails : trois
+     * endroits qui doivent toucher les mêmes gens.
+     *
+     * Un abonnement pris sous un badge SANS compte n’a pas de place ici :
+     * rien ne dit s’il a emporté son badge ni s’il est venu. Il reste
+     * joignable par « les invités de mes campagnes », qui ne prétend rien
+     * de tel.
+     */
+    if (str_starts_with($segment, 'segment:')) {
+        [, $regle, $decor_id] = array_pad(explode(':', $segment, 3), 3, '');
+        return $decor_id === '' ? [] : segment_push($regle, $decor_id);
+    }
+
     $sql = 'SELECT p.* FROM push p LEFT JOIN utilisateurs u ON u.id = p.utilisateur_id WHERE 1=1';
     $args = [];
 

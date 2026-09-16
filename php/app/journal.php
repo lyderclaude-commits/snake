@@ -50,6 +50,9 @@ const JOURNAL_ACTIONS = [
     'abonnement.paye'     => 'a enregistré un paiement',
     'abonnement.echu'     => 'abonnement arrivé à terme',
     'rapport.export'      => 'a exporté un rapport',
+    'segment.export'      => 'a exporté un segment',
+    'sponsor.export'      => 'a exporté un rapport d’exposition',
+    'sponsor.modifie'     => 'a changé le sponsor d’un décor',
     'sauvegarde.restauree' => 'a restauré une sauvegarde',
     'reglages.modifies'   => 'a modifié les réglages',
 ];

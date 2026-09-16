@@ -167,9 +167,37 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
             <label for="r-cible">Cible</label>
             <select id="r-cible" name="cible">
               <?php foreach ($cibles as $cle => $lib): ?>
+                <?php
+                /**
+                 * Le segment ne se choisit pas ici.
+                 *
+                 * Il se choisit dans « À qui j’écris », où l’on voit ce que
+                 * chaque règle pèse avant de décider. Le proposer dans cette
+                 * liste ouvrirait une cible sans décor, donc sans personne,
+                 * et il faudrait l’expliquer par un message d’erreur plutôt
+                 * que par un chemin. Il n’apparaît donc que déjà choisi.
+                 */
+                if ($cle === 'segment' && $valeurs['cible'] !== 'segment') {
+                    continue;
+                }
+                ?>
                 <option value="<?= e($cle) ?>" <?= $valeurs['cible'] === $cle ? 'selected' : '' ?>><?= e($lib) ?></option>
               <?php endforeach; ?>
             </select>
+            <?php if ($valeurs['cible'] === 'segment'): ?>
+              <input type="hidden" name="segment" value="<?= e((string) $valeurs['segment']) ?>">
+              <input type="hidden" name="decor_id" value="<?= e((string) $valeurs['decor_id']) ?>">
+              <p class="aide">
+                <strong><?= e(segment_nom((string) $valeurs['segment'])) ?></strong><?php
+                if ($segment_decor): ?> · <?= e((string) $segment_decor['titre']) ?><?php endif; ?><br>
+                La règle est rejouée au moment de l’envoi : quelqu’un qui en sort d’ici là
+                ne recevra rien.
+                <?php if ($segment_decor): ?>
+                  <a href="<?= e(url('?p=segments&decor=' . rawurlencode((string) $segment_decor['slug'])
+                     . '&s=' . rawurlencode((string) $valeurs['segment']))) ?>">Changer de segment</a>
+                <?php endif; ?>
+              </p>
+            <?php endif; ?>
             <?php if (!$equipe): ?>
               <p class="aide">« Mes invités » : les gens qui ont créé un badge sur vos campagnes
               <em>et</em> qui ont un compte. La base du guide, elle, ne se loue pas.</p>

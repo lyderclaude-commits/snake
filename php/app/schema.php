@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 function assurer_schema(): void
 {
@@ -148,6 +148,35 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         "ALTER TABLE factures ADD COLUMN montant_tva INT NOT NULL DEFAULT 0",
         "ALTER TABLE factures ADD COLUMN emetteur $txt NULL",
         "ALTER TABLE factures ADD COLUMN envoyee_le $court NULL",
+
+        /* v21 — le badge se souvient d’avoir été emporté.
+           Le téléchargement n’était compté que par DÉCOR, dans
+           `evenements` : on savait que 372 badges étaient partis, jamais
+           lesquels. Un segment « a créé un badge, ne l’a jamais
+           téléchargé » était donc impossible à écrire, et c’est le plus
+           utile de tous : ces gens-là ont commencé, il leur manque un clic. */
+        "ALTER TABLE badges ADD COLUMN telecharge_le $court NULL",
+
+        /* v21 — le sponsor du décor : un nom, un logo, un lien.
+           `sponsor_code` est le code du lien court fabriqué pour lui : c’est
+           par lui que les clics se comptent, et c’est le seul chiffre du
+           rapport d’exposition qui prouve un geste. */
+        "ALTER TABLE decors ADD COLUMN sponsor_nom $court NULL",
+        "ALTER TABLE decors ADD COLUMN sponsor_logo $court NULL",
+        "ALTER TABLE decors ADD COLUMN sponsor_lien $court NULL",
+        "ALTER TABLE decors ADD COLUMN sponsor_code $court NULL",
+        /* v21 — le lien d’un sponsor sort du garde-fou de redirection : il
+           mène chez le sponsor, donc hors de nos domaines. Il passe par où
+           passe tout ce qu’un organisateur publie sous notre nom : la
+           relecture de la maison. */
+        "ALTER TABLE decors ADD COLUMN sponsor_statut $court NOT NULL DEFAULT 'a_relire'",
+        // v21 — trois questions accrochées au « Merci d’être venu ».
+        'ALTER TABLE decors ADD COLUMN sondage INT NOT NULL DEFAULT 0',
+
+        /* v21 — une campagne peut viser un SEGMENT d’un décor, et peut
+           porter le sondage du lendemain. */
+        "ALTER TABLE campagnes_email ADD COLUMN segment $court NULL",
+        'ALTER TABLE campagnes_email ADD COLUMN sondage INT NOT NULL DEFAULT 0',
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -643,6 +672,24 @@ function creer_schema(PDO $pdo, bool $mysql): void
                n'existait que chez les installations MIGRÉES : une base neuve
                partait sans elle, et le premier décor enregistré échouait. */
             evenement_le  $court NULL,
+            /* v21 — le sponsor : un nom, un logo, un lien. `sponsor_code`
+               est le lien court fabriqué pour lui, et c’est par lui que les
+               clics se comptent — le seul chiffre du rapport d’exposition
+               qui prouve un geste plutôt qu’une occasion de voir. */
+            sponsor_nom   $court NULL,
+            sponsor_logo  $court NULL,
+            sponsor_lien  $court NULL,
+            sponsor_code  $court NULL,
+            /* v21 — « a_relire » ou « valide ». Un lien de sponsor mène
+               par nature hors de nos domaines : le garde-fou de redirection
+               ne peut pas s’y appliquer tel quel, et le laisser passer sans
+               rien serait ouvrir une porte que ce garde-fou ferme ailleurs.
+               La maison relit, comme elle relit les campagnes. */
+            sponsor_statut $court NOT NULL DEFAULT 'a_relire',
+            /* v21 — le sondage du lendemain est accroché au décor, pas à la
+               campagne : c’est la soirée qu’on note, et les réponses doivent
+               se rassembler même quand deux rappels sont partis. */
+            sondage       INT NOT NULL DEFAULT 0,
             cree_le       $court NOT NULL,
             maj_le        $court NOT NULL
         )$moteur",
@@ -666,6 +713,10 @@ function creer_schema(PDO $pdo, bool $mysql): void
             decor_id       $id NOT NULL,
             utilisateur_id $id NULL,
             cree_le        $court NOT NULL,
+            /* v21 — le moment où CE badge a été emporté. `evenements`
+               comptait les téléchargements d’un décor sans dire lesquels :
+               on savait combien, jamais qui. */
+            telecharge_le  $court NULL,
             scanne_le      $court NULL,
             scanne_par     $id NULL,
             koris          INT NOT NULL DEFAULT 0
@@ -785,6 +836,12 @@ function creer_schema(PDO $pdo, bool $mysql): void
             planifie_le   $court NULL,
             decor_id      $id NULL,
             rappel        $court NULL,
+            /* v21 — le segment visé, quand la cible est « un segment d’un
+               de mes décors ». Il n’est pas une liste figée : il désigne
+               une règle, recalculée au moment où la liste est figée. */
+            segment       $court NULL,
+            /* v21 — ce message porte les trois questions du lendemain. */
+            sondage       INT NOT NULL DEFAULT 0,
             statut        $court NOT NULL DEFAULT 'brouillon',
             motif         $txt NULL,
             destinataires INT NOT NULL DEFAULT 0,
@@ -956,6 +1013,33 @@ function creer_schema(PDO $pdo, bool $mysql): void
         )$moteur",
 
         /**
+         * Les réponses au sondage du lendemain.
+         *
+         * `envoi_id` est UNIQUE, et c’est toute la mécanique : le jeton
+         * d’un envoi existe déjà — il sert au désabonnement et au pixel
+         * d’ouverture — et il désigne une personne et une seule. Une
+         * réponse par jeton, la première comptée : un lien transféré à
+         * toute la famille ne vote pas six fois, et personne n’a de compte
+         * à créer pour répondre.
+         *
+         * `venu` est recopié à la réponse plutôt que relu plus tard : le
+         * badge peut être supprimé, le décor archivé, et la question
+         * « est-ce que ceux qui sont venus ont mieux noté ? » doit rester
+         * répondable l’an prochain.
+         */
+        "CREATE TABLE IF NOT EXISTS reponses_sondage (
+            id          $id PRIMARY KEY,
+            envoi_id    $id NOT NULL UNIQUE,
+            campagne_id $id NULL,
+            decor_id    $id NOT NULL,
+            note        INT NULL,
+            revient     $court NULL,
+            mot         $txt NULL,
+            venu        INT NOT NULL DEFAULT 0,
+            cree_le     $court NOT NULL
+        )$moteur",
+
+        /**
          * L'historique des notifications parties.
          *
          * Sans lui, une diffusion ne laissait AUCUNE trace : le compteur
@@ -1031,6 +1115,13 @@ function creer_schema(PDO $pdo, bool $mysql): void
         'CREATE INDEX idx_evenements_date ON evenements (cree_le)',
         'CREATE INDEX idx_badges_date ON badges (cree_le)',
         'CREATE INDEX idx_badges_scan ON badges (scanne_le)',
+        /**
+         * v21 — un segment interroge les badges D’UN DÉCOR, et le
+         * rapport rassemble les réponses d’une soirée. Les deux
+         * questions sont posées à chaque ouverture de l’écran.
+         */
+        'CREATE INDEX idx_badges_decor ON badges (decor_id)',
+        'CREATE INDEX idx_reponses_decor ON reponses_sondage (decor_id)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

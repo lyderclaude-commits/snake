@@ -35,6 +35,9 @@ require __DIR__ . '/app/abonnement.php';
 require __DIR__ . '/app/pdf.php';
 require __DIR__ . '/app/facture.php';
 require __DIR__ . '/app/rapport.php';
+require __DIR__ . '/app/segment.php';
+require __DIR__ . '/app/sponsor.php';
+require __DIR__ . '/app/sondage.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -665,6 +668,43 @@ switch ($page) {
      * clique sur « signaler comme indésirable » — le seul geste dont on ne
      * se relève pas.
      */
+    /**
+     * Le sondage du lendemain — public, sans compte, ouvert par le jeton.
+     *
+     * Comme le désabonnement : le jeton de l’URL est le secret, et il ne
+     * vaut que pour UN destinataire. Qui l’a, a déjà reçu le message.
+     * Le formulaire, lui, porte le jeton anti-CSRF — il est envoyé depuis
+     * un navigateur, pas depuis un serveur de messagerie.
+     */
+    case 'sondage':
+        $_jeton = (string) ($_GET['j'] ?? '');
+        $ctx = sondage_contexte($_jeton);
+        $erreur = null;
+        $envoye = false;
+        $valeurs = ['note' => 0, 'revient' => '', 'mot' => ''];
+
+        if ($ctx && $post) {
+            verifier_csrf();
+            $valeurs = [
+                'note' => (int) ($_POST['note'] ?? 0),
+                'revient' => (string) ($_POST['revient'] ?? ''),
+                'mot' => (string) ($_POST['mot'] ?? ''),
+            ];
+            $_r = sondage_repondre($ctx, $valeurs);
+            $envoye = $_r['ok'];
+            $erreur = $_r['ok'] ? null : $_r['message'];
+        }
+
+        vue('sondage', [
+            'titre' => $ctx ? 'Votre avis · ' . $ctx['decor']['titre'] : 'Sondage',
+            // Un lien nominatif n’a rien à faire dans un moteur de recherche.
+            'indexable' => false,
+            'ctx' => $ctx,
+            'erreur' => $erreur,
+            'envoye' => $envoye,
+            'valeurs' => $valeurs,
+        ]);
+
     case 'desabonnement':
         $jeton = (string) ($_GET['j'] ?? '');
         $envoi = $jeton !== '' ? envoi_par_jeton($jeton) : null;
@@ -915,6 +955,26 @@ switch ($page) {
      */
     case 'rapports':
         require RACINE . '/app/actions/rapports.php';
+
+    /**
+     * « À qui j’écris » : les segments d’un décor.
+     *
+     * Toujours attaché à un décor, et à un seul : un segment se raisonne
+     * sur un événement, pas sur une plateforme. Le droit de l’ouvrir est
+     * celui du rapport, vérifié par `segment_decor()`.
+     */
+    case 'segments':
+        require RACINE . '/app/actions/segments.php';
+
+    /**
+     * Le sponsor d’un décor, et son rapport d’exposition.
+     *
+     * Même porte que les segments, même garde : on arrive ici depuis le
+     * rapport de l’événement, et un slug venu de la requête ne donne le
+     * décor de personne d’autre.
+     */
+    case 'sponsor':
+        require RACINE . '/app/actions/sponsor.php';
 
     case 'facturation':
         require RACINE . '/app/actions/facturation.php';
@@ -1368,6 +1428,22 @@ switch ($page) {
         $d = decor_par_id((string) ($corps['decor'] ?? ''));
         if ($d) {
             evenement($d['id'], 'telechargement');
+            /**
+             * Le jeton dit QUI a emporté son badge, et pas seulement combien.
+             *
+             * L’événement ci-dessus compte les gestes ; la colonne du badge
+             * compte les personnes. Sans elle, « 486 créés, 372 emportés »
+             * reste un écart qu’on ne peut pas transformer en liste — et
+             * c’est pourtant la liste la plus rentable du produit.
+             *
+             * Le jeton vient du navigateur : il est vérifié contre CE décor
+             * avant d’être cru, faute de quoi n’importe qui marquerait
+             * n’importe quel badge comme emporté.
+             */
+            $_jeton = (string) ($corps['jeton'] ?? '');
+            if ($_jeton !== '') {
+                badge_emporte($_jeton, (string) $d['id']);
+            }
             if ($me) {
                 creation_noter($me['id'], $d['id']);
             }

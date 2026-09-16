@@ -31,6 +31,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifier_csrf();
     $quoi = (string) ($_POST['quoi'] ?? '');
 
+    if ($quoi === 'sondage') {
+        /**
+         * Le sondage s’ouvre et se ferme ici, avec les rappels.
+         *
+         * C’est le même geste : « Merci d’être venu » part quinze heures
+         * après l’événement, et les trois questions voyagent avec lui.
+         * Un écran de plus aurait séparé deux réglages qui ne se pensent
+         * qu’ensemble.
+         *
+         * Le décider APRÈS avoir posé les rappels marche aussi : le lien
+         * est fabriqué au moment de l’envoi, pas à la création.
+         */
+        $ouvert = (string) ($_POST['sondage'] ?? '') === '1' ? 1 : 0;
+        db()->prepare('UPDATE decors SET sondage = ?, maj_le = ? WHERE id = ?')
+            ->execute([$ouvert, maintenant(), (string) $decor['id']]);
+        $decor['sondage'] = $ouvert;
+        $message = $ouvert
+            ? 'Sondage ouvert : le rappel du lendemain portera les trois questions.'
+            : 'Sondage fermé. Les réponses déjà données restent dans le rapport.';
+    }
+
     if ($quoi === 'poser') {
         if (!$decor['evenement_le']) {
             $erreur = 'Ce décor n’a pas de date d’événement : c’est d’elle que se déduisent les rappels. '
