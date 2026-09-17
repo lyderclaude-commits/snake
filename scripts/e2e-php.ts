@@ -4222,6 +4222,10 @@ const run = async () => {
      cibles.join(' · '));
   ok('ni régie, ni push, ni API parmi eux',
      !cibles.some((c) => /regie|diffusion|api/.test(c)), cibles.join(' · '));
+  // Le bouton des rappels non plus : un éditeur de la maison n'a ni
+  // audience à relancer ni sondage à ouvrir, et l'écran le renverrait chez lui.
+  ok('et pas davantage le bouton des rappels',
+     (await pED.locator('a[href*="p=rappels"]').count()) === 0);
 
   const jauges = await pED.locator('.jauges .marche .haut span').evaluateAll(
     (n) => n.map((e) => (e.textContent ?? '').trim()));
@@ -5835,6 +5839,36 @@ const run = async () => {
     .getAttribute('href').catch(() => null);
   ok('l’organisateur a bien une campagne publiée à éprouver', sonDecor !== null,
      sonDecor ?? 'aucune');
+
+  /**
+   * Le sondage du lendemain, atteignable par celui qui le donne.
+   *
+   * L’écran des rappels existait depuis longtemps, mais son seul bouton
+   * vivait dans le catalogue de l’équipe : un organisateur devait taper
+   * l’adresse à la main pour ouvrir son propre sondage. On éprouve donc le
+   * chemin complet, pas la présence du lien : cliquer, et trouver
+   * l’interrupteur du sondage au bout.
+   */
+  const versRappels = await pOrga.locator('a[href*="p=rappels&id="]').first()
+    .getAttribute('href').catch(() => null);
+  ok('son tableau de bord mène aux rappels de sa campagne', versRappels !== null,
+     versRappels ?? 'aucun lien');
+  ok('et le bouton dit aussi le sondage',
+     (await pOrga.locator('a[href*="p=rappels&id="]').first().innerText()
+        .catch(() => '')).includes('sondage'));
+
+  if (versRappels) {
+    await pOrga.goto(new URL(versRappels, BASE).href, { waitUntil: 'domcontentloaded' });
+    const texteRappels = await pOrga.locator('main').innerText().catch(() => '');
+    ok('il y ouvre l’écran, pas une porte fermée',
+       pOrga.url().includes('p=rappels') && !texteRappels.includes('introuvable'),
+       pOrga.url().split('index.php')[1] ?? '');
+    ok('et l’interrupteur du sondage y est à sa portée',
+       (await pOrga.locator('form button, form input[type=submit]')
+          .evaluateAll((n) => n.map((e) => (e.textContent ?? '').trim()).join(' · '))
+       ).includes('sondage'));
+    await pOrga.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  }
 
   if (sonDecor) {
     const ctxInvite = await browser.newContext();

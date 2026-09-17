@@ -31,6 +31,12 @@ Et un trou du socle est bouché au passage : le téléchargement d’un badge
 répond désormais à « qui n’a pas emporté le sien », qui est la liste la plus
 rentable du produit.
 
+Et le sondage a gagné sa porte : **« Rappels et sondage »** s’ouvre désormais
+depuis le tableau de bord de l’organisateur, sur chacune de ses campagnes
+publiées. Le bouton n’existait que dans le catalogue de l’équipe : celui qui
+donne la soirée devait taper l’adresse à la main pour ouvrir les trois
+questions du lendemain.
+
 **Ce que la v1.3 avait ajouté à la v1.2** : les **rapports**. Une période — ce mois,
 le mois dernier, l'année, ou deux dates au choix — une **portée** — la
 plateforme entière, un organisateur, un décor, une campagne — et toute la page
@@ -86,8 +92,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **831 scénarios
-réussis** sur une base déjà peuplée, **830 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **836 scénarios
+réussis** sur une base déjà peuplée, **835 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas.
@@ -179,7 +185,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 831 scénarios, dans un vrai navigateur
+npm run php:e2e          # 836 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage
@@ -200,7 +206,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 831 scénarios
+### Les 836 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -268,6 +274,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Les segments** | « À qui j'écris » s'ouvre depuis le rapport d'un décor, propose cinq règles avec **deux nombres qu'on ne confond pas** — qui correspond, qui est joignable — dit pourquoi Telegram et WhatsApp n'y sont pas, exporte la liste en CSV et laisse une trace au journal ; demander le décor d'un autre ramène au rapport, sans un mot |
 | **Le sponsor** | Un nom, un lien et un logo se posent sur le décor, le bloc apparaît **sous le badge** sur la page publique, et le rapport d'exposition sort en PDF sous un nom qui porte celui du sponsor |
 | **Le sondage** | Il se règle avec les rappels, là où part le « Merci d'être venu » ; un jeton inconnu répond une page close **sans dire qu'il est inconnu**, et cette page reste hors des moteurs |
+| **La porte de l'organisateur** | Son tableau de bord mène aux rappels de sa campagne publiée, le bouton dit aussi le sondage, le chemin s'ouvre vraiment et l'interrupteur du sondage y est à sa portée ; un **éditeur** de la maison, lui, n'a pas ce bouton |
 | **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
 | **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
@@ -1343,6 +1350,16 @@ et un bouton qu'il faut penser à cliquer les perdrait.
 
 Poser les cinq est **idempotent** : un bouton qu'on clique deux fois est un
 bouton qu'on cliquera deux fois, et l'invité recevrait tout en double.
+
+**Deux portes vers cet écran, une par métier.** « Rappels et sondage »
+s'ouvre depuis le catalogue pour l'équipe, et depuis le tableau de bord de
+l'organisateur pour ses propres campagnes publiées. Il n'en avait longtemps
+aucune : celui qui donne la soirée devait taper l'adresse à la main pour
+ouvrir son sondage du lendemain. Le bouton suit le droit `regie`, pas
+l'offre : un éditeur de la maison passe aussi par ce tableau de bord, et il
+n'a ni audience à relancer ni sondage à ouvrir. L'écran lui-même vérifie
+que le décor demandé est bien celui de qui le demande, faute de quoi il
+répond « introuvable ».
 
 ---
 

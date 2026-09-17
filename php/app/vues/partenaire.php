@@ -280,6 +280,20 @@
         <?php endif; ?>
         <?php if ($d['statut'] === 'publie'): ?>
           <a class="bouton fant petit" href="<?= e(url('?p=decor&slug=' . urlencode($d['slug']))) ?>">Voir en ligne</a>
+          <?php
+          /**
+           * Les rappels, et le sondage qui voyage avec eux.
+           *
+           * Cet écran n’était atteignable que depuis le catalogue de
+           * l’équipe : un organisateur devait taper l’adresse à la main pour
+           * ouvrir son propre sondage du lendemain. Le droit `regie` plutôt
+           * que l’offre, comme au menu : l’écran explique lui-même ce que
+           * l’offre donne, et un éditeur de la maison n’a rien à y faire.
+           */
+          if (droit($me, 'regie')): ?>
+            <a class="bouton fant petit"
+               href="<?= e(url('?p=rappels&id=' . urlencode((string) $d['id']))) ?>">Rappels et sondage</a>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
