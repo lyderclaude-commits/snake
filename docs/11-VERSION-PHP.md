@@ -40,13 +40,27 @@ AVANT de laisser faire quoi que ce soit.
    ce sont des points de départ, et qui arrive avec son fichier en a déjà
    un.
 
-4. **Le QR Code devient facultatif.** Il était obligatoire au motif qu'il fait
+4. **La destination après téléchargement ne se demande plus.** Le champ
+   posait une question dont la réponse était imposée : un décor de
+   partenaire ne pouvait renvoyer que vers un domaine Wakabi, donc on
+   faisait retaper une adresse que personne n'avait le droit de choisir, et
+   une faute de frappe valait un refus après coup. Chaque badge ramène au
+   guide, et le serveur pose l'adresse — une valeur envoyée à la main est
+   écrasée, sans quoi retirer le champ n'aurait fait que déplacer la
+   question.
+
+   La ligne d'offre « Redirection après téléchargement » change donc de
+   texte : elle promettait « la page de votre choix », ce qui n'est plus
+   vrai. Ce qu'elle donne reste réel — sans elle, l'invité atterrit sur la
+   liste des décors, c'est-à-dire devant les campagnes des autres.
+
+5. **Le QR Code devient facultatif.** Il était obligatoire au motif qu'il fait
    la différence entre un badge et une image. C'est vrai le jour d'un
    événement, et faux pour une campagne qui ne contrôle aucune entrée. Une
    case à cocher, et l'écran dit ce qu'on perd : sans QR, ni présences
    scannées, ni segment « est venu », ni Koris.
 
-5. **Les offres se tiennent depuis un écran.** Elles vivaient dans la
+6. **Les offres se tiennent depuis un écran.** Elles vivaient dans la
    constante `FORMULES`, c'est-à-dire dans le code : changer un prix demandait
    un paquet et une mise en ligne. La constante reste, comme défaut et comme
    semence ; la table dit ce que les offres valent aujourd'hui. Trois refus
@@ -273,7 +287,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | La page du QR | `?p=qr&jeton=…` répond, annonce le badge valide, refuse un code inventé |
 | Contrôle d'entrée | Entrée validée, rescan refusé, code inconnu refusé |
 | Koris | Solde crédité **au scan**, pas au téléchargement |
-| Le garde-fou | Une redirection hors domaine Wakabi est refusée à un partenaire |
+| Le garde-fou | Une redirection hors domaine Wakabi est refusée à la **construction du gabarit** — y compris un hôte qui se termine par le domaine sans lui appartenir (`wakabileguide.com.mechant.tg`) ; une destination vide aussi ; l'équipe en reste exemptée |
+| La destination | Le formulaire ne porte plus de champ de destination, et une valeur postée à la main n'y change rien |
 | Le pré-vol | Un cadre opaque ne rejoint jamais la file |
 | Une soumission valide | Créée par la recette elle-même, pour qu'elle soit rejouable |
 | Modération | Rapport affiché, approbation traitée, décor réellement ouvrable ensuite |
@@ -464,6 +479,13 @@ un décor disparu.
 > **L'équipe n'est pas soumise au garde-fou de redirection.** Un partenaire ne
 > peut renvoyer que vers un domaine Wakabi ; l'équipe peut co-brander ailleurs.
 > C'est la règle que vous aviez fixée, et elle vaut toujours.
+>
+> Le formulaire, lui, ne demande plus la destination : chaque badge ramène au
+> guide, et le serveur écrit l'adresse. Le garde-fou n'en devient pas inutile —
+> il gardait la **construction d'un gabarit**, pas ce formulaire, et l'API, le
+> semeur de démonstration et tout ce qui s'ajoutera passent par là. Il est
+> désormais éprouvé dans `verifier-portes` plutôt que dans un navigateur, parce
+> que c'est là qu'il vit.
 
 ---
 
@@ -1125,8 +1147,9 @@ partent avec le formulaire. **On enregistre depuis n'importe quelle étape.**
 
 ### Le piège que cette organisation crée, et comment il est désamorcé
 
-« Titre » et « Page de destination » sont obligatoires et vivent dans l'étape
-2. Enregistrer depuis l'étape 3 fait donc refuser l'envoi au navigateur, qui
+« Titre » est obligatoire et vit dans l'étape 2 — « Page de destination » y
+vivait aussi, jusqu'à ce que la destination cesse de se demander.
+Enregistrer depuis l'étape 3 fait donc refuser l'envoi au navigateur, qui
 essaie alors de pointer un champ **qu'il ne peut pas montrer** : sur
 plusieurs navigateurs, rien ne se passe — pas de message, pas d'envoi.
 L'écran paraît cassé alors qu'il se protège.

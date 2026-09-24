@@ -711,24 +711,51 @@ const run = async () => {
   const soldeApres = Number((await p.locator('.stat.o b').first().innerText()).replace(/\D/g, ''));
   ok('Koris crédités après scan', soldeApres === soldeAvant + 50, `${soldeAvant} → ${soldeApres}`);
 
-  console.log('\n━━ 7. Le garde-fou de redirection ━━');
+  console.log('\n━━ 7. La destination ne se demande plus ━━');
+
+  /**
+   * Le champ posait une question dont la réponse était imposée.
+   *
+   * Un décor de partenaire ne pouvait renvoyer que vers un domaine Wakabi :
+   * on faisait donc retaper une adresse que personne n'avait le droit de
+   * choisir, et une faute de frappe valait un refus après coup. Chaque
+   * badge ramène maintenant au guide, et c'est le serveur qui l'écrit.
+   *
+   * Le garde-fou lui-même n'est pas parti : il vit dans le validateur de
+   * gabarit, éprouvé par verifier-portes, parce qu'il protège aussi l'API
+   * et le semeur de démonstration. Ce qui se vérifie ICI est ce qu'un
+   * navigateur peut voir : le champ n'existe plus, et l'adresse posée est
+   * bien celle du guide.
+   */
   await inscription(p, PART.email, PART.mdp, 'partenaire', 'Test Partenaire');
+  await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await etapeDecor(p, 'campagne');
+  ok('le champ de destination a disparu du formulaire',
+     (await p.locator('input[name=redirection]').count()) === 0);
+
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(p, 'campagne');
-  await p.fill('input[name=titre]', 'Décor hors domaine');
-  await p.fill('input[name=redirection]', 'https://mon-restaurant.tg/promo');
+  await p.fill('input[name=titre]', `Destination automatique ${marque}`);
+  /* Posté à la main, et pourtant sans effet : retirer un champ d'un
+     formulaire ne doit pas seulement déplacer la question. */
+  await p.evaluate(() => {
+    const f = document.getElementById('form-decor') as HTMLFormElement | null;
+    if (!f) return;
+    const i = document.createElement('input');
+    i.type = 'hidden'; i.name = 'redirection'; i.value = 'https://mon-restaurant.tg/promo';
+    f.appendChild(i);
+  });
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
-  const refus = await p.locator('.msg.err').first().innerText().catch(() => '');
-  ok('redirection hors Wakabi refusée', /domaine Wakabi/.test(refus), refus.slice(0, 56));
+  ok('le décor est créé sans qu’on ait eu à choisir',
+     /créé/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')));
 
   console.log('\n━━ 8. Le pré-vol ━━');
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await p.setInputFiles('input[name=cadre]', 'scripts/fixtures/opaque.png');
   await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', 'Cadre aplati de test');
-  await p.fill('input[name=redirection]', 'https://wakabileguide.com/p/test');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   await p.locator('form[action*="p=soumettre"] button').first().click();
@@ -744,7 +771,6 @@ const run = async () => {
   await p.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', campagne);
-  await p.fill('input[name=redirection]', 'https://wakabileguide.com/p/recette');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   await p.locator(`.carte:has-text("${campagne}") form[action*="p=soumettre"] button`).first().click();
@@ -782,12 +808,13 @@ const run = async () => {
   await p.selectOption('select[name=disposition]', 'story');
   await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', titreEquipe);
-  // L'équipe n'est pas tenue au garde-fou : elle peut co-brander ailleurs.
-  await p.fill('input[name=redirection]', 'https://partenaire-externe.tg/soiree');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   ok('l’équipe peut créer un décor', /créé/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')));
-  ok('l’équipe n’est pas soumise au garde-fou', p.url().includes('p=catalogue'), 'redirection externe acceptée');
+  /* L'équipe reste hors du garde-fou dans le validateur — verifier-portes
+     l'éprouve — mais elle n'a plus de champ à remplir ici non plus : la
+     destination est la même pour tout le monde. */
+  ok('et elle n’a pas eu à choisir de destination', p.url().includes('p=catalogue'));
 
   // 2. Lister
   await p.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
@@ -925,7 +952,6 @@ const run = async () => {
   await p.selectOption('#cadre_fourni', 'instagram.png');
   await etapeDecor(p, 'campagne');
   await p.fill('#titre', titreIg);
-  await p.fill('#redirection', 'https://wakabileguide.com/p/instagram');
   await etapeDecor(p, 'apparence');
   await p.selectOption('#r-qr_position', 'top-right');
   await p.evaluate(`
@@ -974,7 +1000,6 @@ const run = async () => {
   await p.fill('#titre', titreMuet);
   await p.fill('#accroche', '');
   await p.fill('#champ_libelle', '');
-  await p.fill('#redirection', 'https://wakabileguide.com/p/sans-texte');
   await p.waitForTimeout(800);
   await p.click('#form-decor button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
@@ -1022,7 +1047,6 @@ const run = async () => {
   await p.selectOption('#r-fond', 'brand.primary');
   await etapeDecor(p, 'campagne');
   await p.fill('#titre', titrePB);
-  await p.fill('#redirection', 'https://wakabileguide.com/p/page-blanche');
   await p.waitForTimeout(800);
   await p.click('#form-decor button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
@@ -1379,7 +1403,6 @@ const run = async () => {
   await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(po, 'campagne');
   await po.fill('input[name=titre]', `Ciblage refusé ${marque}`);
-  await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/ciblage');
   // L'option est désactivée dans le menu : on force la valeur, comme le
   // ferait quelqu'un qui poste le formulaire à la main.
   await po.evaluate(`(() => {
@@ -1473,7 +1496,6 @@ const run = async () => {
   await po.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(po, 'campagne');
   await po.fill('input[name=titre]', titreQuota);
-  await po.fill('input[name=redirection]', 'https://wakabileguide.com/p/quota');
   await po.click('#form-decor button[type=submit]');
   await po.waitForLoadState('domcontentloaded');
   await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreQuota)}`, { waitUntil: 'domcontentloaded' });
@@ -3506,7 +3528,6 @@ const run = async () => {
   await pv.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(pv, 'campagne');
   await pv.fill('input[name=titre]', `Décor à vérifier ${marque}`);
-  await pv.fill('input[name=redirection]', 'https://wakabileguide.com/p/verif');
   await pv.click('main button[type=submit]');
   await pv.waitForLoadState('domcontentloaded');
   await pv.locator('form[action*="p=soumettre"] button').first().click();
@@ -4375,7 +4396,6 @@ const run = async () => {
   await pART.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
   await etapeDecor(pART, 'campagne');
   await pART.fill('input[name=titre]', DECOR_ART);
-  await pART.fill('input[name=redirection]', 'https://wakabileguide.com/p/lie');
   await pART.click('main button[type=submit]');
   await pART.waitForLoadState('domcontentloaded');
 
@@ -5331,7 +5351,6 @@ const run = async () => {
   ok('« Continuer » mène à l’étape suivante',
      await pAT.locator('#panneau-campagne').isVisible());
   await pAT.fill('#titre', DECOR_AT);
-  await pAT.fill('#redirection', 'https://wakabileguide.com/p/atelier');
   await pAT.locator('#panneau-campagne [data-vers=apparence]').click();
   await pAT.locator('.sd-enregistrer').click();
   await pAT.waitForLoadState('domcontentloaded');
@@ -5528,7 +5547,6 @@ const run = async () => {
   await pPerdu.fill('#titre', DECOR_PERDU);
   await pPerdu.fill('#accroche', '');
   await pPerdu.fill('#champ_libelle', '');
-  await pPerdu.fill('#redirection', 'https://wakabileguide.com/p/perdu');
   await pPerdu.locator('.sd-enregistrer').click();
   await pPerdu.waitForLoadState('domcontentloaded');
 

@@ -419,10 +419,22 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
             <p class="aide">Passée cette date, le décor cesse de produire des badges.</p></div>
         </div>
 
-        <div class="champ"><label for="redirection">Page de destination après téléchargement</label>
-          <input id="redirection" name="redirection" type="url" required value="<?= e($valeurs['redirection']) ?>">
-          <p class="aide">Doit pointer vers un domaine Wakabi
-          (<?= e(implode(', ', WAKABI_DOMAINES)) ?>) ou l’un de leurs sous-domaines.</p></div>
+        <?php
+        /**
+         * La destination après téléchargement ne se demande plus.
+         *
+         * Le champ posait une question dont la réponse était toujours la
+         * même : un décor de partenaire ne pouvait renvoyer que vers un
+         * domaine Wakabi, donc on demandait à quelqu'un de retaper une
+         * adresse qu'il n'avait pas le droit de choisir. Chaque badge
+         * ramène désormais au guide, et le serveur pose l'adresse.
+         *
+         * Le garde-fou, lui, RESTE dans le validateur de gabarit. Il ne
+         * protégeait pas que ce formulaire : l'API, le semeur de
+         * démonstration et tout ce qui construira un gabarit demain
+         * passent par la même porte.
+         */
+        ?>
 
         <div class="sd-suite">
           <button class="bouton fant" type="button" data-vers="cadre">← Le cadre</button>
@@ -823,8 +835,9 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
   /**
    * Le piège de cet écran, et la raison de ces lignes.
    *
-   * « Titre » et « Page de destination » sont obligatoires et vivent dans
-   * l'étape 2. Enregistrer depuis l'étape 3 laisse donc le navigateur
+   * « Titre » est obligatoire et vit dans l'étape 2 — « Page de
+   * destination » y vivait aussi, jusqu'à ce que la destination cesse de
+   * se demander. Enregistrer depuis l'étape 3 laisse donc le navigateur
    * refuser l'envoi en essayant de pointer un champ qu'il ne peut pas
    * montrer : sur plusieurs navigateurs, RIEN ne se passe — pas de
    * message, pas d'envoi. L'écran paraît cassé alors qu'il se protège.

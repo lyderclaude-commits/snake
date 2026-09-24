@@ -353,6 +353,20 @@ if ($post) {
         $valeurs[$k] = trim((string) ($_POST[$k] ?? $valeurs[$k]));
     }
 
+    /**
+     * La destination après téléchargement est posée ICI, et non demandée.
+     *
+     * Le formulaire ne la propose plus : chaque badge ramène au guide. On
+     * l'écrase APRÈS la récolte, donc une valeur envoyée à la main ne
+     * passe pas davantage — sans quoi retirer un champ d'un formulaire
+     * aurait seulement déplacé la question, pas répondu.
+     *
+     * L'étiquette du bouton reste ce qu'elle était : « Découvrir sur
+     * Wakabi » convient à une destination fixe, et changer les gabarits
+     * déjà publiés n'apporterait rien à personne.
+     */
+    $valeurs['redirection'] = GUIDE_URL . '/';
+
     /* ---------------- sans compte : on met de côté ---------------- */
 
     /**

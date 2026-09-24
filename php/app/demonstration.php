@@ -73,7 +73,9 @@ function installer_demonstration(string $admin_id): void
                 'sous_titre' => 'Notre soirée live du samedi', 'ville' => 'abidjan',
                 'rubrique' => 'evenements', 'disposition' => 'angle', 'cadre_url' => $url,
                 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom', 'champ_valeur' => 'Aya',
-                'redirection' => 'https://wakabileguide.com/p/maquis-akwaba',
+                // La démonstration montre ce que le produit fabrique, et il
+                // ne fabrique plus que cette destination-là.
+                'redirection' => 'https://wakabileguide.com/',
                 'redirection_libelle' => '', 'legende' => '', 'expire_le' => '',
                 'cree_par' => 'partenaire', 'partenaire_id' => $partenaire,
             ]);

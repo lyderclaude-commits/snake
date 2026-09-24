@@ -353,8 +353,20 @@ const OFFRE_LIGNES = [
         'Le filigrane discret disparaît des badges de vos invités.'],
     'koris' => ['QR Code Koris', 'capacite',
         'Chaque présence scannée à l’entrée crédite des Koris à l’invité.'],
+    /**
+     * Le libellé suit ce que la ligne donne RÉELLEMENT.
+     *
+     * Elle promettait « la page de votre choix », du temps où le décor
+     * portait un champ de destination. Ce champ n'existe plus : chaque
+     * badge ramène au guide. Ce que la ligne achète est donc autre chose,
+     * et c'est tout de même quelque chose — sans elle, l'invité atterrit
+     * sur la liste des décors, c'est-à-dire devant les campagnes des
+     * autres. Vendre un choix qu'on ne peut plus faire serait un
+     * mensonge ; ne rien dire en serait un aussi.
+     */
     'redirection' => ['Redirection après téléchargement', 'capacite',
-        'Après son badge, l’invité arrive sur la page de votre choix.'],
+        'Après son badge, l’invité part sur le guide Wakabi plutôt que sur la '
+        . 'liste des décors, où il croiserait les campagnes des autres.'],
     'stats' => ['Statistiques complètes', 'capacite',
         'Présences réelles, taux de conversion et courbe sur 14 jours, en plus des vues et téléchargements.'],
     'ciblage' => ['Ciblage ville et rubrique', 'capacite',

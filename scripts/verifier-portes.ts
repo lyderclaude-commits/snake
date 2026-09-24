@@ -269,6 +269,48 @@ foreach ([[1080, 1080], [1080, 1350], [1080, 1920], [1920, 1080],
     $out['devine']["{$l}x{$h}"] = format_devine($l, $h);
 }
 
+/* ============ le garde-fou de redirection ============ */
+
+/**
+ * Il ne se voit plus à l'écran, donc il s'éprouve ici.
+ *
+ * Le formulaire ne demande plus la destination : le serveur pose celle du
+ * guide, et le champ a disparu. Le garde-fou, lui, n'est pas devenu
+ * inutile — il ne gardait pas ce formulaire, il garde la CONSTRUCTION
+ * d'un gabarit, par où passent aussi l'API, le semeur de démonstration et
+ * tout ce qui s'ajoutera. Un décor est une page que l'on partage sous le
+ * nom de Wakabi ; sans cette règle, il devient une passerelle vers
+ * n'importe quoi.
+ *
+ * La recette ne pouvait plus l'atteindre depuis un navigateur. Elle le
+ * touche ici, à l'endroit exact où il vit.
+ */
+$gabaritAvec = static function (string $par, string $vers): array {
+    return ['disposition' => 'bandeau', 'slug' => 'gf-' . substr(md5($par . $vers), 0, 8),
+        'titre' => 'Garde-fou', 'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
+        'cree_par' => $par, 'expire_le' => '', 'accroche' => 'J Y SERAI',
+        'champ_libelle' => 'Ton prenom', 'champ_valeur' => 'Kossi',
+        'redirection' => $vers, 'redirection_libelle' => '', 'legende' => '',
+        'cadre_url' => '', 'calques' => [], 'variantes' => [], 'apparence' => []];
+};
+$essai = static function (string $par, string $vers) use ($gabaritAvec): string {
+    try {
+        construire_gabarit($gabaritAvec($par, $vers));
+        return 'accepte';
+    } catch (Throwable $e) {
+        return $e->getMessage();
+    }
+};
+
+$out['gf_partenaire_dehors'] = $essai('partenaire', 'https://mon-restaurant.tg/promo');
+$out['gf_partenaire_wakabi'] = $essai('partenaire', 'https://wakabileguide.com/');
+$out['gf_partenaire_sous_domaine'] = $essai('partenaire', 'https://studio.wakabileguide.com/x');
+$out['gf_partenaire_vide'] = $essai('partenaire', '');
+$out['gf_equipe_dehors'] = $essai('equipe', 'https://partenaire-externe.tg/soiree');
+/* Un hôte qui se TERMINE par le domaine sans lui appartenir. C'est la
+   faute classique d'un test « contient » : wakabileguide.com.mechant.tg. */
+$out['gf_partenaire_leurre'] = $essai('partenaire', 'https://wakabileguide.com.mechant.tg/x');
+
 /* ============ les entrées du tableau de bord, par rôle ============ */
 
 /**
@@ -415,6 +457,26 @@ const main = async () => {
        d['1000x1100'] === '1:1', String(d['1000x1100']));
     ok('une image sans dimensions ne fait pas tomber le calcul',
        d['0x0'] === '1:1', String(d['0x0']));
+
+    /* ---------------- le garde-fou de redirection ---------------- */
+    console.log('\n  ── le garde-fou, là où il vit désormais ──');
+    ok('un décor de partenaire ne peut pas renvoyer hors Wakabi',
+       /domaine Wakabi/.test(String(r.gf_partenaire_dehors)),
+       String(r.gf_partenaire_dehors).slice(0, 60));
+    ok('un hôte qui se TERMINE par le domaine ne passe pas non plus',
+       /domaine Wakabi/.test(String(r.gf_partenaire_leurre)),
+       String(r.gf_partenaire_leurre).slice(0, 60));
+    ok('le guide lui-même passe', r.gf_partenaire_wakabi === 'accepte',
+       String(r.gf_partenaire_wakabi).slice(0, 60));
+    ok('un sous-domaine du guide aussi', r.gf_partenaire_sous_domaine === 'accepte',
+       String(r.gf_partenaire_sous_domaine).slice(0, 60));
+    ok('une destination vide est refusée',
+       /Indiquez la page/.test(String(r.gf_partenaire_vide)),
+       String(r.gf_partenaire_vide).slice(0, 60));
+    /* L'exemption de l'équipe est délibérée : une campagne de la maison
+       peut co-brander avec un partenaire. */
+    ok('l’équipe, elle, reste hors du garde-fou', r.gf_equipe_dehors === 'accepte',
+       String(r.gf_equipe_dehors).slice(0, 60));
 
     /* ---------------- les raccourcis du tableau de bord ---------------- */
     console.log('\n  ── le tableau de bord ne propose que ce qui s’ouvre ──');
