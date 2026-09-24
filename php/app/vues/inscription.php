@@ -34,4 +34,19 @@
       <p class="aide">Huit caractères au minimum.</p></div>
     <button class="bouton" type="submit" style="width:100%;justify-content:center">Créer mon compte</button>
   </form>
+  <?php
+  /**
+   * Et la porte d'à côté, qu'il n'y avait pas du tout.
+   *
+   * L'écran ne menait nulle part : quelqu'un qui A déjà un compte et
+   * arrivait ici par le mur devait deviner l'adresse de la connexion, ou
+   * repartir. La suite voyage avec le lien, sans quoi il retrouverait sa
+   * session et perdrait ce qu'il était venu publier.
+   */
+  $_cx = ($suite ?? '') !== '' ? '?p=connexion&suite=' . rawurlencode((string) $suite) : '?p=connexion';
+  ?>
+  <p class="aide" style="text-align:center;margin-top:14px">
+    Déjà un compte ? <a href="<?= e(url($_cx)) ?>">Se connecter</a><?php
+    if (($suite ?? '') !== ''): ?>, votre travail vous suivra<?php endif; ?>
+  </p>
 </div>

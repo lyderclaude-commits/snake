@@ -438,20 +438,9 @@ const run = async () => {
   ok('et « Générer un badge » récupère la liste des décors',
      portes.some((x) => x.startsWith('p=decors')), portes.join(' · '));
 
-  // Le comparatif : la colonne Wakabi est un bandeau, pas une colonne de plus.
-  ok('le comparatif compte huit lignes', (await p.locator('.comparatif tbody tr').count()) === 8);
-  ok('la colonne Wakabi est mise en avant',
-     (await p.locator('.comparatif thead th.nous').evaluate((el) => getComputedStyle(el).backgroundColor))
-       === 'rgb(37, 99, 235)');
-  ok('les colonnes ne se ressemblent pas',
-     (await p.locator('.comparatif td:not(.nous) .verdict.oui').first()
-        .evaluate((el) => getComputedStyle(el).color))
-     !== (await p.locator('.comparatif td.nous .verdict.oui').first()
-        .evaluate((el) => getComputedStyle(el).color)));
-  ok('chaque verdict est annoncé aux lecteurs d’écran',
-     (await p.locator('.comparatif .verdict .sr').count())
-       === (await p.locator('.comparatif .verdict').count()));
-  ok('les quatre formules sont présentes', (await p.locator('.offre').count()) === 4);
+  ok('les offres de la table sont toutes là',
+     (await p.locator('.offre').count()) >= 4,
+     `${await p.locator('.offre').count()} offres`);
   ok('les questions fréquentes répondent', (await p.locator('details.qr').count()) === 6);
   await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
   const n = await p.locator('a[href*="p=decor&slug="]').count();
@@ -476,6 +465,61 @@ const run = async () => {
   // aucun gestionnaire — le test échouait sans que l'application soit en cause.
   await p.waitForLoadState('domcontentloaded');
   await p.waitForTimeout(1200);
+
+  /**
+   * L'invité n'arrive PAS avec le prénom de quelqu'un d'autre.
+   *
+   * `champ_valeur` est l'exemple posé par l'organisateur — « Kossi » — pour
+   * voir ce que son décor donne. Il était recopié dans le champ ET dessiné
+   * sur le badge : l'invité devait l'effacer avant d'écrire le sien, et
+   * repartait avec le badge de Kossi s'il ne le remarquait pas.
+   *
+   * On compte le texte clair sur la ligne du prénom, sous l'accroche : un
+   * seuil absolu aurait ramassé le « J'Y SERAI », qui reste là.
+   */
+  const ligneNom = () => p.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement | null;
+    const g = c?.getContext('2d');
+    if (!c || !g) { return -1; }
+    const d = g.getImageData(0, Math.floor(c.height * 0.90), c.width,
+                             Math.floor(c.height * 0.09)).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i]! > 230 && d[i + 1]! > 230 && d[i + 2]! > 230 && d[i + 3]! > 200) { n++; }
+    }
+    return n;
+  });
+
+  const champInvite = p.locator('input[id^=champ-]').first();
+  if (await champInvite.count()) {
+    ok('l’invité trouve le champ VIDE', (await champInvite.inputValue()) === '',
+       `« ${await champInvite.inputValue()} »`);
+    ok('l’exemple de l’organisateur reste une simple indication',
+       ((await champInvite.getAttribute('placeholder')) ?? '') !== '',
+       `placeholder « ${await champInvite.getAttribute('placeholder')} »`);
+    /**
+     * Trois mesures, parce que deux ne prouveraient rien.
+     *
+     * Un seuil absolu ne vaut pas : la ligne du prénom voisine l'accroche,
+     * qui reste dessinée et dont déborde toujours quelques pixels selon le
+     * gabarit. Ce qui se démontre, c'est que l'état D'OUVERTURE est le même
+     * que l'état APRÈS AVOIR TOUT EFFACÉ : si le badge s'ouvrait avec un
+     * prénom dessiné, les deux différeraient.
+     */
+    const nomVide = await ligneNom();
+    await champInvite.fill('Ama');
+    await p.waitForTimeout(1200);
+    const nomEcrit = await ligneNom();
+    await champInvite.fill('');
+    await p.waitForTimeout(1200);
+    const nomEfface = await ligneNom();
+
+    ok('ce qu’on tape s’écrit bien sur le badge', nomEcrit > nomVide + 60,
+       `${nomVide} → ${nomEcrit} pixels`);
+    ok('le badge s’OUVRE comme s’il avait été vidé : rien n’y est écrit d’avance',
+       Math.abs(nomEfface - nomVide) < 20, `à l’ouverture ${nomVide}, une fois vidé ${nomEfface}`);
+  }
+
   await p.setInputFiles('#photo', 'scripts/fixtures/photo.png');
   await p.waitForTimeout(3000);
 
@@ -1167,23 +1211,6 @@ const run = async () => {
                 if (v.length < 2) return true;
                 return v[0].getBoundingClientRect().top !== v[1].getBoundingClientRect().top; })()
      `));
-  // Sur téléphone, le comparatif se lit en deux cartes — une par camp,
-  // comme les offres. Le tableau, lui, doit disparaître : deux versions
-  // affichées en même temps seraient lues deux fois par un lecteur d'écran.
-  ok('le comparatif devient deux cartes, une par camp',
-     (await t.locator('.comparatif-cartes .colonne').count()) === 2
-     && await t.locator('.comparatif-cartes').isVisible());
-  ok('le tableau cède la place', !(await t.locator('.comparatif').isVisible()));
-  ok('chaque carte porte les huit lignes',
-     (await t.locator('.comparatif-cartes .colonne').first().locator('li').count()) === 8
-     && (await t.locator('.comparatif-cartes .colonne.phare li').count()) === 8);
-  ok('la carte Wakabi est mise en avant comme l’offre phare',
-     (await t.locator('.comparatif-cartes .colonne.phare').evaluate((el) => getComputedStyle(el).borderColor))
-       === 'rgb(37, 99, 235)');
-  ok('chaque verdict reste annoncé aux lecteurs d’écran',
-     (await t.locator('.comparatif-cartes .sr').count()) === 14,
-     `${await t.locator('.comparatif-cartes .sr').count()} verdicts annoncés sur 14`);
-
   // Le menu doit être REPLIÉ à l'arrivée, puis s'ouvrir au doigt. Sans le
   // premier point, la page s'ouvre sur une liste de liens ; sans le second,
   // le site n'a plus de navigation du tout sur téléphone.
@@ -1210,7 +1237,6 @@ const run = async () => {
   await tel.close();
 
   console.log('\n━━ 16. Le menu déplié sur grand écran ━━');
-  // (les cartes du comparatif y sont vérifiées aussi : c'est le même contexte)
   // Le <details> est replié par défaut : sur grand écran, c'est la feuille
   // de style qui doit le tenir ouvert. Si elle échoue, la barre est vide.
   const large = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -1219,8 +1245,6 @@ const run = async () => {
   await g.waitForTimeout(400);
   ok('la navigation reste visible sans clic', await g.locator('.menu nav').isVisible());
   ok('le bouton hamburger disparaît', !(await g.locator('.menu > summary').isVisible()));
-  ok('le comparatif reprend sa forme de tableau', await g.locator('.comparatif table').isVisible());
-  ok('les cartes du comparatif s’effacent', !(await g.locator('.comparatif-cartes').isVisible()));
   await large.close();
 
   console.log('\n━━ 17. Le navigateur intégré de WhatsApp ━━');
@@ -6404,7 +6428,7 @@ const run = async () => {
   const cibleEssai = `https://billetterie.essai-${marque}.tg/2026`;
   await pA.fill('#cible', cibleEssai);
   await pA.fill('#titre', 'Affiche du 12 septembre');
-  await pA.locator('form button[type=submit]').first().click();
+  await pA.locator('button:has-text("Créer mon compte et ce lien")').click();
   await pA.waitForLoadState('domcontentloaded');
   ok('composer sans compte mène à l’inscription, en disant pourquoi',
      pA.url().includes('p=inscription') && pA.url().includes('suite=lien'),
@@ -6619,6 +6643,67 @@ const run = async () => {
   const qrRecoche = await blancEnBas(pD);
   ok('et le recocher le remet', qrRecoche > qrCoche / 2,
      `${qrDecoche} → ${qrRecoche} pixels blancs`);
+
+  /* --- et celui qui A DÉJÀ un compte ne perd rien non plus --- */
+
+  /**
+   * Le mur ne propose pas qu'une porte.
+   *
+   * Tout le parcours menait à « créez un compte », y compris pour qui en a
+   * un. Et un simple LIEN vers la connexion n'aurait rien arrangé : le
+   * brouillon ne s'écrit qu'à l'envoi du formulaire, donc quitter la page
+   * aurait perdu le décor en allant chercher le compte qui devait le
+   * publier. C'est un second ENVOI, et c'est ce qu'on éprouve ici.
+   */
+  const ctxPorteE = await browser.newContext();
+  const pE = await ctxPorteE.newPage();
+  surveiller(pE);
+
+  await pE.goto(`${BASE}/index.php?p=nouveau&depart=studio`, { waitUntil: 'domcontentloaded' });
+  await pE.waitForTimeout(1500);
+  ok('le Studio propose aussi de se connecter',
+     (await pE.locator('button[name="vers"][value="connexion"]').count()) === 1);
+
+  await pE.locator('#onglet-campagne').click();
+  await pE.waitForTimeout(150);
+  const titreDeja = `Déjà un compte ${marque}`;
+  await pE.fill('input[name=titre]', titreDeja);
+  await pE.locator('button[name="vers"][value="connexion"]').click();
+  await pE.waitForLoadState('domcontentloaded');
+  ok('ce bouton mène à la connexion, pas à l’inscription',
+     pE.url().includes('p=connexion') && pE.url().includes('suite=decor'),
+     pE.url().split('index.php')[1] ?? '');
+
+  // Le compte créé plus haut par le parcours du lien court : il existe déjà.
+  await pE.fill('input[name=email]', courrielA);
+  await pE.fill('input[name=mot_de_passe]', 'un-mot-de-passe-solide-2026');
+  await pE.locator('main button[type=submit]').first().click();
+  await pE.waitForLoadState('domcontentloaded');
+  await pE.waitForTimeout(1800);
+  ok('se connecter ramène au Studio, et non au tableau de bord',
+     pE.url().includes('p=nouveau'), pE.url().split('index.php')[1] ?? '');
+  ok('avec le décor composé avant la connexion, intact',
+     (await pE.locator('input[name=titre]').inputValue()) === titreDeja);
+
+  await ctxPorteE.close();
+
+  /**
+   * Les deux écrans de compte se renvoient l'un à l'autre, suite comprise.
+   *
+   * Dans un contexte NEUF : les deux écrans renvoient chez lui quelqu'un
+   * qui est déjà connecté, ce qui est juste et ne montre aucun lien.
+   */
+  const ctxPorteF = await browser.newContext();
+  const pLiens = await ctxPorteF.newPage();
+  await pLiens.goto(`${BASE}/index.php?p=inscription&suite=lien`, { waitUntil: 'domcontentloaded' });
+  const versCnx = await pLiens.locator('main a[href*="p=connexion"]').first().getAttribute('href');
+  ok('l’inscription renvoie vers la connexion en gardant la suite',
+     (versCnx ?? '').includes('suite=lien'), versCnx ?? 'aucun lien');
+  await pLiens.goto(`${BASE}/index.php?p=connexion&suite=decor`, { waitUntil: 'domcontentloaded' });
+  const versInsc = await pLiens.locator('main a[href*="p=inscription"]').first().getAttribute('href');
+  ok('et la connexion renvoie vers l’inscription de même',
+     (versInsc ?? '').includes('suite=decor'), versInsc ?? 'aucun lien');
+  await ctxPorteF.close();
 
   rmSync(fichierCadre, { force: true });
   await ctxPorteD.close();

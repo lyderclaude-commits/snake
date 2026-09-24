@@ -109,10 +109,25 @@ $pas = function () use (&$_pas) { return ++$_pas; };
         <?php foreach ($champs as $c): ?>
           <div class="champ">
             <label for="champ-<?= e($c['id']) ?>"><?= e($c['placeholder'] ?? 'Texte') ?></label>
+            <?php
+            /**
+             * Vide à l'ouverture, et rien d'écrit sur le badge.
+             *
+             * `value` portait l'exemple du gabarit — « Kossi » — qui sert à
+             * l'organisateur pour voir ce que son décor donne. L'invité, lui,
+             * trouvait le prénom de quelqu'un d'autre déjà saisi ET déjà
+             * dessiné : il devait l'effacer avant d'écrire le sien, et
+             * téléchargeait le badge de Kossi s'il ne le remarquait pas.
+             *
+             * L'exemple devient donc une simple indication, qui disparaît
+             * dès la première lettre et ne s'imprime jamais.
+             */
+            ?>
             <input id="champ-<?= e($c['id']) ?>" type="text"
                    maxlength="<?= (int) ($c['maxLength'] ?? 42) ?>"
-                   value="<?= e($c['value'] ?? '') ?>">
-            <p class="aide" id="compte-<?= e($c['id']) ?>"><?= mb_strlen($c['value'] ?? '') ?>/<?= (int) ($c['maxLength'] ?? 42) ?></p>
+                   placeholder="<?= e($c['value'] ?? '') ?>"
+                   autocomplete="off" value="">
+            <p class="aide" id="compte-<?= e($c['id']) ?>">0/<?= (int) ($c['maxLength'] ?? 42) ?></p>
           </div>
         <?php endforeach; ?>
       </div>

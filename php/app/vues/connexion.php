@@ -61,8 +61,23 @@
   <p class="aide" style="text-align:center;margin-top:14px">
     <a href="<?= e(url('?p=oubli')) ?>">Mot de passe oublié ?</a>
   </p>
+  <?php
+  /**
+   * La suite traverse aussi l'aller-retour entre les deux écrans.
+   *
+   * Quelqu'un venu publier un décor qui se trompe de porte, clique
+   * « en créer un », et retombait sur une inscription ordinaire : son
+   * brouillon existait toujours en base, mais plus rien ne menait à lui.
+   */
+  $_q = ($suite ?? '') !== '' ? '?p=inscription&suite=' . rawurlencode((string) $suite) : '?p=inscription';
+  ?>
   <p class="aide" style="text-align:center;margin-top:6px">
-    Pas encore de compte ? <a href="<?= e(url('?p=inscription')) ?>">En créer un</a>
+    <?php if (($suite ?? '') !== ''): ?>
+      Pas encore de compte ? <a href="<?= e(url($_q)) ?>">En créer un</a>,
+      votre travail vous suivra.
+    <?php else: ?>
+      Pas encore de compte ? <a href="<?= e(url($_q)) ?>">En créer un</a>
+    <?php endif; ?>
   </p>
   <?php endif; ?>
 </div>

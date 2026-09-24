@@ -77,7 +77,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $erreur = 'Trop de liens en attente depuis cette connexion. '
                     . 'Créez votre compte pour reprendre celui-ci.';
         } else {
-            rediriger($moi ? '?p=liens&reprendre=1' : '?p=inscription&suite=lien');
+            if ($moi) {
+                rediriger('?p=liens&reprendre=1');
+            }
+            rediriger((string) ($_POST['vers'] ?? '') === 'connexion'
+                ? '?p=connexion&suite=lien'
+                : '?p=inscription&suite=lien');
         }
     }
 }

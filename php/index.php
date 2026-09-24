@@ -1330,7 +1330,11 @@ switch ($page) {
             if ($nom === null) {
                 json_repondre(['erreur' => 'L’image n’a pas pu être enregistrée.']);
             }
-            brouillon_fichier_noter($nom);
+            if (!brouillon_fichier_noter($nom)) {
+                brouillon_fichier_effacer($nom);
+                json_repondre(['erreur' => 'Trop d’images en attente depuis cette connexion. '
+                    . 'Créez votre compte pour les garder.']);
+            }
             json_repondre(['url' => brouillon_fichier_url($nom)]);
         }
 

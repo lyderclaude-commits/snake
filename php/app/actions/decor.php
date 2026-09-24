@@ -366,8 +366,13 @@ if ($post) {
             } elseif (($_FILES['cadre']['size'] ?? 0) > 2 * 1024 * 1024) {
                 $erreur = 'Le cadre dépasse 2 Mo.';
             } elseif ($nomQ = brouillon_fichier_ranger((string) $_FILES['cadre']['tmp_name'], $ext)) {
-                brouillon_fichier_noter($nomQ);
-                $valeurs['cadre_url'] = brouillon_fichier_url($nomQ);
+                if (brouillon_fichier_noter($nomQ)) {
+                    $valeurs['cadre_url'] = brouillon_fichier_url($nomQ);
+                } else {
+                    brouillon_fichier_effacer($nomQ);
+                    $erreur = 'Trop d’images en attente depuis cette connexion. '
+                            . 'Créez votre compte pour les garder.';
+                }
             }
         }
         if ($erreur === null) {
@@ -385,7 +390,12 @@ if ($post) {
                 $erreur = 'Trop de décors en attente depuis cette connexion. '
                         . 'Créez votre compte pour reprendre celui-ci.';
             } else {
-                rediriger('?p=inscription&suite=decor');
+                // `vers` dit à quelle porte on frappe. Le brouillon est posé
+                // dans les deux cas : c'est tout l'intérêt de passer par un
+                // envoi de formulaire plutôt que par un lien.
+                rediriger((string) ($_POST['vers'] ?? '') === 'connexion'
+                    ? '?p=connexion&suite=decor'
+                    : '?p=inscription&suite=decor');
             }
         }
     }

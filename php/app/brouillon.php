@@ -24,8 +24,24 @@ declare(strict_types=1);
 /** Combien de temps un brouillon attend son compte. */
 const BROUILLON_HEURES = 48;
 
-/** Combien de brouillons une même adresse peut laisser en attente. */
-const BROUILLON_PAR_IP = 20;
+/**
+ * Combien une même adresse peut laisser en attente.
+ *
+ * Deux plafonds, parce que les deux choses ne coûtent pas la même.
+ *
+ * Un brouillon de FORMULAIRE, c'est un kilo-octet de JSON : il n'y a aucune
+ * raison d'être avare. Un seul plafond à vingt était une erreur de dosage,
+ * et elle se payait là où le produit est vendu : derrière un cybercafé de
+ * Lomé, le partage de connexion d'un bureau ou une passerelle 4G, des
+ * dizaines de personnes sortent par la MÊME adresse. La vingt-et-unième se
+ * voyait refuser son lien sans avoir rien fait de mal.
+ *
+ * Un FICHIER, lui, pèse jusqu'à deux mégaoctets sur un disque mutualisé, et
+ * c'est le seul dépôt du produit qui ne demande pas de compte. C'est donc
+ * lui que le garde-fou vise, et lui seul.
+ */
+const BROUILLON_PAR_IP = 200;
+const BROUILLON_FICHIERS_PAR_IP = 40;
 
 /** Le cookie qui porte le jeton. */
 const BROUILLON_COOKIE = 'wkb_brouillon';
@@ -90,8 +106,12 @@ function brouillon_poser(string $genre, array $charge, ?string $fichier = null):
     brouillon_retirer($genre, $jeton);
 
     if ($ip !== '') {
-        $q = db()->prepare('SELECT COUNT(*) FROM brouillons WHERE ip = ? AND expire_le > ?');
-        $q->execute([$ip, maintenant()]);
+        // Les lignes de fichier ont leur propre plafond : les mêler ferait
+        // refuser un formulaire parce qu'on a déposé des images.
+        $q = db()->prepare(
+            'SELECT COUNT(*) FROM brouillons WHERE ip = ? AND genre <> ? AND expire_le > ?'
+        );
+        $q->execute([$ip, 'fichier', maintenant()]);
         if ((int) $q->fetchColumn() >= BROUILLON_PAR_IP) {
             return false;
         }
@@ -208,16 +228,27 @@ function brouillon_fichier_nom(string $url): string
  * fichier appartient quand on le sert, et le faire périmer avec le reste
  * même si le formulaire n'est jamais envoyé.
  */
-function brouillon_fichier_noter(string $nom): void
+function brouillon_fichier_noter(string $nom): bool
 {
     $jeton = brouillon_jeton(true);
+    $ip = brouillon_ip();
+    if ($ip !== '') {
+        $q = db()->prepare(
+            'SELECT COUNT(*) FROM brouillons WHERE ip = ? AND genre = ? AND expire_le > ?'
+        );
+        $q->execute([$ip, 'fichier', maintenant()]);
+        if ((int) $q->fetchColumn() >= BROUILLON_FICHIERS_PAR_IP) {
+            return false;
+        }
+    }
     db()->prepare(
         'INSERT INTO brouillons (id, jeton, genre, charge, fichier, ip, cree_le, expire_le)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
-        nouvel_id(), $jeton, 'fichier', '{}', $nom, brouillon_ip(), maintenant(),
+        nouvel_id(), $jeton, 'fichier', '{}', $nom, $ip, maintenant(),
         maintenant(time() + BROUILLON_HEURES * 3600),
     ]);
+    return true;
 }
 
 /**

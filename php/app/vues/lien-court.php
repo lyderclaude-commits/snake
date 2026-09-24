@@ -94,10 +94,22 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
         <?= $moi ? 'Enregistrer et continuer' : 'Créer mon compte et ce lien' ?>
       </button>
 
-      <?php if (!$moi): ?>
+      <?php
+      /**
+       * Se connecter est un ENVOI, pas un lien.
+       *
+       * Le lien quittait la page avant que le brouillon soit écrit : on
+       * perdait l'adresse qu'on venait de composer en allant chercher le
+       * compte qui devait la raccourcir. Le bouton poste le formulaire, et
+       * `vers` dit seulement à quelle porte on frappe ensuite.
+       */
+      if (!$moi): ?>
+        <button class="bouton fant" type="submit" name="vers" value="connexion"
+                style="width:100%;justify-content:center;margin-top:8px">
+          J’ai déjà un compte, me connecter
+        </button>
         <p class="aide" style="text-align:center;margin:10px 0 0">
-          Déjà un compte ?
-          <a href="<?= e(url('?p=connexion&suite=lien')) ?>">Connectez-vous</a>, votre lien vous suit.
+          Dans les deux cas, votre lien vous suit.
         </p>
       <?php endif; ?>
     </form>

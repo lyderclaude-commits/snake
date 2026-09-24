@@ -604,7 +604,24 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <?= $modifie ? 'Enregistrer les modifications'
               : ($anonyme ? 'Créer mon compte et publier' : 'Créer et enregistrer') ?>
         </button>
-        <p class="aide sd-note">Vous pouvez enregistrer depuis n’importe quelle étape.</p>
+        <?php
+        /**
+         * Se connecter est un ENVOI du formulaire, pas un lien.
+         *
+         * Un lien aurait quitté la page, et le brouillon ne s'écrit qu'à
+         * l'envoi : on aurait perdu le décor en allant chercher le compte
+         * qui devait le publier. Le bouton poste donc tout, comme l'autre,
+         * et c'est `vers` qui dit à quelle porte on frappe.
+         */
+        if ($anonyme): ?>
+          <button class="bouton fant sd-connexion" type="submit" name="vers" value="connexion"
+                  style="margin-top:8px">
+            J’ai déjà un compte, me connecter
+          </button>
+          <p class="aide sd-note">Dans les deux cas, votre décor vous suit.</p>
+        <?php else: ?>
+          <p class="aide sd-note">Vous pouvez enregistrer depuis n’importe quelle étape.</p>
+        <?php endif; ?>
       </div>
 
       <?php

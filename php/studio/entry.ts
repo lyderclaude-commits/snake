@@ -58,7 +58,16 @@ function demarrer(ctx: Contexte) {
 
   // Champs éditables décrits par le gabarit — l'éditeur n'invente rien.
   const champs = (tpl.layers ?? []).filter((l: any) => l.type === 'text' && l.editable);
-  for (const c of champs) spec.texts[c.id] = c.value ?? '';
+  /**
+   * Le badge s'ouvre SANS le texte d'exemple.
+   *
+   * `c.value` est l'exemple que l'organisateur a posé pour voir son décor
+   * — « Kossi », le plus souvent. Le dessiner chez l'invité revenait à lui
+   * présenter le badge de quelqu'un d'autre, et à le lui laisser télécharger
+   * tel quel s'il ne pensait pas à effacer. Le champ le garde en indication,
+   * la toile n'en sait rien.
+   */
+  for (const c of champs) spec.texts[c.id] = '';
 
   let couchePhoto = (tpl.layers ?? []).find((l: any) => l.type === 'photoSlot');
   let emplacement: Rect = couchePhoto?.rect ?? { x: 0, y: 0, w: 1, h: 1 };
