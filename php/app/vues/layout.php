@@ -99,10 +99,216 @@ $_graphe = array_values(array_filter([
 <?php endif; ?>
 <?php $ico = logo_fichier(); ?>
 <?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
-<link rel="stylesheet" href="<?= e(actif('public/wakabi.css')) ?>">
+<?php
+/**
+ * UNE feuille par page, jamais les deux.
+ *
+ * Les pages venues de wakabileguide.com gardent la leur : le guide pose
+ * des règles sur des éléments NUS — body, a, button, input — et Boost
+ * aussi. Chargées ensemble, elles se battraient sur chaque bouton et
+ * chaque champ du site, et le perdant changerait selon l'ordre des
+ * balises. Séparées, chaque page rend exactement comme avant la fusion.
+ *
+ * `entete.css`, lui, est servi des DEUX côtés : c'est le header commun,
+ * et c'est la seule pièce qui traverse la frontière. Il porte pour cette
+ * raison ses propres couleurs et le préfixe `wk-`.
+ */
+?>
+<link rel="stylesheet" href="<?= e(actif(page_du_guide($_page) ? 'public/guide.css' : 'public/wakabi.css')) ?>">
+<link rel="stylesheet" href="<?= e(actif('public/entete.css')) ?>">
+<?php /* L'apparition au défilement des pages du guide. Le contenu se lit
+         sans lui : voir `public/guide.js` et la règle `html.js`. */ ?>
+<?php if (page_du_guide($_page)): ?>
+<script src="<?= e(actif('public/guide.js')) ?>" defer></script>
+<?php endif; ?>
 </head>
 <body>
 
+<?php
+/**
+ * DEUX barres, et non une seule qui se réarrange.
+ *
+ * La vitrine et l'atelier sont deux métiers. Le site public garde le même
+ * menu pour tout le monde — un menu qui change à la connexion oblige à
+ * réapprendre le site au moment où l'on vient d'y entrer. Les écrans de
+ * travail, eux, gardent la barre qui se déduit des droits, et elle n'a
+ * pas bougé : ce qui marchait continue de marcher.
+ *
+ * `barre_vitrine()` (app/vitrine.php) tranche, et sa règle tient en une
+ * phrase : on est au travail dès qu'on est connecté ET ailleurs que sur
+ * le site public.
+ */
+?>
+<?php if (barre_vitrine($me, $_page)): ?>
+<?php
+/**
+ * La barre de la vitrine : la même pour tout le monde.
+ *
+ * Elle ne se réarrange pas selon qui regarde. Un site public dont le
+ * menu change à la connexion oblige chacun à réapprendre où sont les
+ * choses au moment précis où il vient d'arriver chez lui — et il oblige
+ * surtout à expliquer deux fois le même site.
+ *
+ * Seul le volet du compte connaît deux états. Et comme le menu ne bouge
+ * pas, ce volet devient la SEULE porte vers le tableau de bord : c'est
+ * pourquoi « Mon tableau de bord » y figure en tête. Sans lui, quelqu'un
+ * de connecté sur la vitrine n'aurait aucun moyen de rentrer chez lui.
+ */
+$chev = '<svg class="wk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+      . 'stroke-width="2.4" stroke-linecap="round" aria-hidden="true">'
+      . '<polyline points="6 9 12 15 18 9"></polyline></svg>';
+$ici_v = fn(string $r): bool => str_contains($r, '?p=' . $_page);
+?>
+<header class="wk-tete">
+  <div class="wk-in">
+
+    <a class="wk-marque" href="<?= e(url('')) ?>" aria-label="Wakabi, accueil"><?= logo_wakabi() ?></a>
+
+    <ul class="wk-menu">
+      <?php foreach (menu_vitrine() as $entree): ?>
+        <?php if ($entree[0] !== 'groupe'): ?>
+          <li><a href="<?= e(url($entree[0])) ?>"<?= $ici_v($entree[0]) ? ' aria-current="page"' : '' ?>><?= e($entree[1]) ?></a></li>
+        <?php else: [, $nom_g, $sous] = $entree; ?>
+          <?php
+          $dedans = false;
+          foreach ($sous as [$r, , ]) {
+              $dedans = $dedans || $ici_v($r);
+          }
+          ?>
+          <li><details class="wk-grp<?= $dedans ? ' wk-ici' : '' ?>">
+            <summary<?= $dedans ? ' aria-current="true"' : '' ?>><?= e($nom_g) ?><?= $chev ?></summary>
+            <div class="wk-volet">
+              <?php foreach ($sous as [$r, $n, $aide]): ?>
+                <a href="<?= e(url($r)) ?>">
+                  <?= icone_vitrine($r) ?>
+                  <span><?= e($n) ?><small><?= e($aide) ?></small></span>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          </details></li>
+        <?php endif; ?>
+      <?php endforeach; ?>
+    </ul>
+
+    <div class="wk-droite">
+      <a class="wk-b-out" href="<?= e(url('?p=partenaires')) ?>">Devenir Partenaire</a>
+      <a class="wk-b-pri" href="<?= e(APPLICATION_URL) ?>" target="_blank" rel="noopener">Télécharger</a>
+
+      <?php
+      /**
+       * Le compte : un `details`, pas un script.
+       *
+       * Il s'ouvre au clavier, il survit à un script qui ne charge pas, et
+       * il se referme à l'échappement. Tout le reste de ce gabarit suit
+       * déjà cette règle — le menu mobile la suivait avant lui.
+       */
+      ?>
+      <details class="wk-compte<?= $me ? ' wk-sien' : '' ?>">
+        <summary aria-label="<?= $me ? e('Mon compte, ' . $me['nom']) : 'Mon compte' ?>">
+          <?php if ($me): ?>
+            <span class="wk-pastille" aria-hidden="true"><?= e(initiales((string) $me['nom'])) ?></span>
+          <?php else: ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                 style="width:20px;height:20px"><circle cx="12" cy="8" r="3.6"></circle>
+              <path d="M4.8 20c0-3.5 3.2-5.6 7.2-5.6s7.2 2.1 7.2 5.6"></path></svg>
+          <?php endif; ?>
+          <?= $chev ?>
+        </summary>
+
+        <div class="wk-volet-u">
+          <?php if ($me): ?>
+            <div class="wk-qui">
+              <b><?= e((string) $me['nom']) ?></b>
+              <span><?= e((string) $me['email']) ?><?php
+                $f = formule_affichee($me);
+                echo $f ? ' · ' . e($f) : ''; ?></span>
+            </div>
+            <a href="<?= e(url(accueil_de($me))) ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                   style="width:18px;height:18px"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
+                <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
+                <rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+              Mon tableau de bord
+            </a>
+            <a href="<?= e(url('?p=profil')) ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                   style="width:18px;height:18px"><circle cx="12" cy="8" r="3.6"></circle>
+                <path d="M4.8 20c0-3.5 3.2-5.6 7.2-5.6s7.2 2.1 7.2 5.6"></path></svg>
+              Mon profil
+            </a>
+            <a href="<?= e(url('?p=notifications')) ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                   style="width:18px;height:18px"><path d="M18 8.5a6 6 0 1 0-12 0c0 6-2 7.5-2 7.5h16s-2-1.5-2-7.5"></path>
+                <path d="M13.7 20a2 2 0 0 1-3.4 0"></path></svg>
+              Notifications<?= $nonlues ? '<span class="wk-nb">' . (int) $nonlues . '</span>' : '' ?>
+            </a>
+            <div class="wk-sep"></div>
+            <form method="post" action="<?= e(url('?p=deconnexion')) ?>">
+              <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+              <button class="wk-sortir" type="submit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                     style="width:18px;height:18px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Déconnexion
+              </button>
+            </form>
+          <?php else: ?>
+            <a href="<?= e(url('?p=connexion')) ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                   style="width:18px;height:18px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line></svg>
+              Connexion
+            </a>
+            <a href="<?= e(url('?p=inscription')) ?>" style="background:#EFF6FF">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                   style="width:18px;height:18px"><path d="M15 20v-1.6c0-2-1.8-3.4-4-3.4H8c-2.2 0-4 1.4-4 3.4V20"></path>
+                <circle cx="9.5" cy="8" r="3.4"></circle>
+                <line x1="18" y1="7" x2="18" y2="13"></line>
+                <line x1="21" y1="10" x2="15" y2="10"></line></svg>
+              Créer un compte
+            </a>
+          <?php endif; ?>
+        </div>
+      </details>
+
+      <?php
+      /* Le hamburger reprend le MÊME menu, à plat : les sous-entrées de
+         « Boost » y sont décalées plutôt que repliées, parce qu'un
+         déroulant dans un déroulant se referme sur le doigt. */
+      ?>
+      <details class="wk-burger">
+        <summary aria-label="Menu"><span></span><span></span><span></span></summary>
+        <div class="wk-volet">
+          <?php foreach (menu_vitrine() as $entree): ?>
+            <?php if ($entree[0] !== 'groupe'): ?>
+              <a href="<?= e(url($entree[0])) ?>"<?= $ici_v($entree[0]) ? ' aria-current="page"' : '' ?>><?= e($entree[1]) ?></a>
+            <?php else: ?>
+              <?php foreach ($entree[2] as [$r, $n, ]): ?>
+                <a class="wk-sous" href="<?= e(url($r)) ?>"><?= e($entree[1]) ?> · <?= e($n) ?></a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          <?php endforeach; ?>
+          <div class="wk-sep"></div>
+          <a href="<?= e(url('?p=contact')) ?>">Contact</a>
+          <a href="<?= e(url('?p=partenaires')) ?>">Devenir Partenaire</a>
+        </div>
+      </details>
+    </div>
+
+  </div>
+</header>
+
+<?php else: ?>
 <header class="barre">
   <div class="barre-in">
     <a class="marque" href="<?= e(url('')) ?>" aria-label="Wakabi Boost, accueil"><?= logo_wakabi() ?></a>
@@ -335,6 +541,7 @@ $_graphe = array_values(array_filter([
     </details>
   </div>
 </header>
+<?php endif; ?>
 
 <main><?= $contenu ?></main>
 
@@ -436,26 +643,40 @@ $_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
 
       <?php
       /**
-       * Les colonnes du guide. Elles sortent vers wakabileguide.com, sauf
-       * les deux qui vivent ICI — les décors et le blog de Boost.
+       * Les colonnes du pied de page, désormais INTERNES.
+       *
+       * Elles sortaient vers wakabileguide.com/application.html et ses
+       * voisines. Ces pages sont maintenant des routes d'ici : continuer
+       * à sortir enverrait le visiteur sur l'ancien site statique, avec
+       * son ancien header, et il faudrait qu'il revienne à la main —
+       * c'est-à-dire exactement la coupure que la fusion supprime.
+       *
+       * Trois restent dehors, et pour trois raisons différentes :
+       * « Télécharger » va au magasin d'applications ; la confidentialité
+       * et les CGU n'ont pas encore été portées et vivent toujours
+       * là-bas. Le jour où elles le seront, ces deux lignes suivront.
        */
       $colonnes = [
         'Produit' => [
           ['Les décors',        url('?p=decors')],
           ['Le blog',           url('?p=blog')],
-          ['L’application',     GUIDE_URL . '/application.html'],
-          ['Télécharger',       'https://play.google.com/store/apps/details?id=com.wakabi.wakabimobile'],
+          ['L’application',     url('?p=application')],
+          ['Télécharger',       APPLICATION_URL],
+        ],
+        'Boost' => [
+          ['Push',          url('?p=boost-push')],
+          ['Régie',         url('?p=boost-regie')],
+          ['Liens courts',  url('?p=boost-liens')],
+          ['Créer un compte', url('?p=inscription')],
         ],
         'Partenaires' => [
-          ['Devenir partenaire', GUIDE_URL . '/partenaires.html'],
-          ['Créer un compte',    url('?p=inscription')],
-          ['Nos villes',         GUIDE_URL . '/villes.html'],
-          ['Partenariat',        GUIDE_URL . '/contact.html'],
+          ['Devenir partenaire', url('?p=partenaires')],
+          ['Nos villes',         url('?p=villes')],
+          ['Partenariat',        url('?p=contact')],
         ],
         'Wakabi' => [
-          ['À propos',        GUIDE_URL . '/a-propos.html'],
-          ['Le guide',        GUIDE_URL . '/'],
-          ['Contact',         GUIDE_URL . '/contact.html'],
+          ['À propos',        url('?p=a-propos')],
+          ['Contact',         url('?p=contact')],
           ['Confidentialité', GUIDE_URL . '/confidentialite.html'],
           ['CGU',             GUIDE_URL . '/cgu.html'],
         ],

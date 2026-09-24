@@ -1298,23 +1298,29 @@ const run = async () => {
   // Le menu doit être REPLIÉ à l'arrivée, puis s'ouvrir au doigt. Sans le
   // premier point, la page s'ouvre sur une liste de liens ; sans le second,
   // le site n'a plus de navigation du tout sur téléphone.
-  const visibleAvant = await t.locator('.menu nav').isVisible();
-  await t.click('.menu > summary');
+  /* La vitrine porte désormais la barre fusionnée : son hamburger est
+     `.wk-burger`, et le volet qu'il ouvre `.wk-volet`. La barre
+     d'administration, elle, garde `.menu` — et son propre test. */
+  const visibleAvant = await t.locator('.wk-burger .wk-volet').isVisible();
+  await t.click('.wk-burger > summary');
   await t.waitForTimeout(250);
-  const visibleApres = await t.locator('.menu nav').isVisible();
+  const visibleApres = await t.locator('.wk-burger .wk-volet').isVisible();
   ok('le menu est replié derrière le bouton', !visibleAvant);
   ok('le bouton hamburger ouvre le menu', visibleApres);
   ok('le menu ouvert reste dans l’écran',
      await t.evaluate(`
-       (() => { const n = document.querySelector('.menu nav').getBoundingClientRect();
+       (() => { const n = document.querySelector('.wk-burger .wk-volet').getBoundingClientRect();
                 return n.left >= 0 && n.right <= window.innerWidth + 1; })()
      `));
-  await t.click('.menu > summary');
+  ok('il porte bien les sept entrées du site',
+     (await t.locator('.wk-burger .wk-volet a').count()) >= 9,
+     `${await t.locator('.wk-burger .wk-volet a').count()} liens`);
+  await t.click('.wk-burger > summary');
   await t.waitForTimeout(250);
-  ok('le bouton le referme', !(await t.locator('.menu nav').isVisible()));
+  ok('le bouton le referme', !(await t.locator('.wk-burger .wk-volet').isVisible()));
 
   ok('le logo remplace le mot WAKABI dans la barre',
-     await t.evaluate(`(() => { const i = document.querySelector('.barre .marque img.logo');
+     await t.evaluate(`(() => { const i = document.querySelector('.wk-tete .wk-marque img.logo');
                                 return !!i && /logo\.(svg|png)$/.test(i.getAttribute('src') || ''); })()`));
   ok('les témoignages portent un portrait, pas des initiales',
      await t.evaluate(`(() => document.querySelectorAll('.avis .qui svg.avatar').length)()`) === 3);
@@ -1327,8 +1333,13 @@ const run = async () => {
   const g = await large.newPage();
   await g.goto(BASE, { waitUntil: 'domcontentloaded' });
   await g.waitForTimeout(400);
-  ok('la navigation reste visible sans clic', await g.locator('.menu nav').isVisible());
-  ok('le bouton hamburger disparaît', !(await g.locator('.menu > summary').isVisible()));
+  ok('la navigation reste visible sans clic', await g.locator('.wk-menu').isVisible());
+  ok('le bouton hamburger disparaît', !(await g.locator('.wk-burger > summary').isVisible()));
+  /* Le menu de la vitrine n'est pas un `details` qu'une feuille tient
+     ouvert : c'est une liste, cachée sur téléphone et montrée au-delà.
+     Le défaut qu'on guette est l'inverse de l'ancien — une barre vide
+     sur grand écran parce que la règle d'affichage a sauté. */
+  ok('et les sept entrées sont là', (await g.locator('.wk-menu > li').count()) === 7);
   await large.close();
 
   console.log('\n━━ 17. Le navigateur intégré de WhatsApp ━━');
@@ -4294,6 +4305,12 @@ const run = async () => {
     // publiques ouvertes sur la vitrine, sans plus de droit qu'un visiteur.
     'accueil', 'og', 'decors', 'blog', 'desabonnement', 'sondage', 'verifier', 'reinitialiser',
     'qr', 'api-telechargement', 'robots', 'sitemap', 'creer', 'lien-court',
+    // Les pages de contenu du site fusionné. Elles n'ont pas d'action, pas
+    // de session, rien à refuser : les ranger ailleurs ferait dire à ce
+    // contrôle qu'un éditeur « dépasse ses prérogatives » en lisant la
+    // page À Propos.
+    'application', 'partenaires', 'villes', 'a-propos', 'contact',
+    'boost-push', 'boost-regie', 'boost-liens',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
     // Son compte.
@@ -4969,20 +4986,38 @@ const run = async () => {
   const pAnon = await ctxVitrine.newPage();
 
   await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
-  const menu = await pAnon.locator('header nav > a, header nav > details > summary')
-    .evaluateAll((n) => n.map((x) => (x.textContent ?? '').trim()).filter(Boolean));
-  ok('la vitrine mène aux deux produits, puis aux décors et au blog',
-     menu.slice(0, 4).join(' · ') === 'Wakabi Boost · Wakabi le guide · Les décors · Le blog',
+  /**
+   * Le menu du site fusionné, et la règle qui le gouverne.
+   *
+   * Il ne renvoie plus « vers le guide » par un lien sortant : le guide
+   * EST ce site. Ses pages sont devenues des routes, et « Wakabi Boost »
+   * comme « Wakabi le guide » n'ont plus lieu d'être — on n'annonce pas
+   * deux produits sur le site qui les porte tous les deux.
+   */
+  const menu = await pAnon.locator('.wk-menu > li > a, .wk-menu > li > details > summary')
+    .evaluateAll((n) => n.map((x) => (x.textContent ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean));
+  ok('la vitrine porte les sept entrées du site fusionné',
+     menu.join(' · ') === 'L’Application · Boost · Les décors · Partenaires · Nos Villes · Blog · À Propos',
      menu.join(' · '));
-  ok('« Wakabi le guide » sort vraiment vers le guide',
-     ((await pAnon.locator('header nav a:has-text("Wakabi le guide")').getAttribute('href')) ?? '')
-       .startsWith('https://wakabileguide.com'));
-  ok('et il emporte rel="noopener"',
-     ((await pAnon.locator('header nav a:has-text("Wakabi le guide")').getAttribute('rel')) ?? '')
+  ok('« Boost » ouvre ses trois outils',
+     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a').count()) === 3);
+  ok('les pages du guide sont des routes, pas des liens sortants',
+     (await pAnon.locator('.wk-menu a[href^="https://wakabileguide.com"]').count()) === 0);
+  /* Enfants DIRECTS de `.wk-droite` : le volet du hamburger y vit aussi,
+     et il reprend « Devenir Partenaire » à plat pour le téléphone. Sans
+     le `>`, on compterait deux fois le même bouton. */
+  ok('les deux boutons du guide restent à droite',
+     (await pAnon.locator('.wk-droite > a.wk-b-out').count()) === 1
+     && (await pAnon.locator('.wk-droite > a.wk-b-pri').count()) === 1);
+  ok('« Télécharger » sort vers le magasin, avec rel="noopener"',
+     ((await pAnon.locator('.wk-droite > a.wk-b-pri').getAttribute('href')) ?? '')
+       .startsWith('https://play.google.com')
+     && ((await pAnon.locator('.wk-droite > a.wk-b-pri').getAttribute('rel')) ?? '')
        .includes('noopener'));
-  ok('les deux boutons d’entrée suivent',
-     (await pAnon.locator('header nav a:has-text("Connexion")').count()) === 1
-     && (await pAnon.locator('header nav a:has-text("Créer un compte")').count()) === 1);
+  ok('l’entrée se fait par le volet du compte, et non par le menu',
+     (await pAnon.locator('.wk-menu a:has-text("Connexion")').count()) === 0
+     && (await pAnon.locator('.wk-volet-u a[href*="p=connexion"]').count()) === 1
+     && (await pAnon.locator('.wk-volet-u a[href*="p=inscription"]').count()) === 1);
 
   /**
    * Les en-têtes de section sont TOUS centrés. Deux d'entre eux ne
@@ -4998,7 +5033,8 @@ const run = async () => {
      (await pAnon.locator('footer.pied-guide').count()) === 1);
   const colonnes = await pAnon.locator('.pg-col h4')
     .evaluateAll((n) => n.map((x) => (x.textContent ?? '').trim()));
-  ok('avec ses trois colonnes', colonnes.join(' · ') === 'Produit · Partenaires · Wakabi',
+  ok('avec ses quatre colonnes, Boost compris',
+     colonnes.join(' · ') === 'Produit · Boost · Partenaires · Wakabi',
      colonnes.join(' · '));
   ok('et ses quatre réseaux', (await pAnon.locator('.pg-soc').count()) === 4);
   /**
@@ -5009,8 +5045,21 @@ const run = async () => {
   ok('dessinés sur place, sans rien charger d’un autre serveur',
      (await pAnon.locator('.pg-soc svg').count()) === 4
      && (await pAnon.locator('.pg-soc img').count()) === 0);
-  ok('les liens du guide s’ouvrent à part',
-     (await pAnon.locator('.pg-liens a[href^="https://wakabileguide.com"][target="_blank"]').count()) >= 3);
+  /**
+   * Le pied de page pointe désormais vers l'INTÉRIEUR.
+   *
+   * Ses colonnes sortaient vers wakabileguide.com ; ces pages sont
+   * maintenant des routes d'ici. Ne restent dehors que la
+   * confidentialité et les CGU, pas encore portées — et elles doivent
+   * continuer de s'ouvrir à part, comme toute sortie.
+   */
+  ok('le pied de page mène aux pages du site, et non à l’ancien domaine',
+     (await pAnon.locator('.pg-col a[href*="p=application"]').count()) === 1
+     && (await pAnon.locator('.pg-col a[href*="p=villes"]').count()) === 1
+     && (await pAnon.locator('.pg-col a[href*="p=a-propos"]').count()) === 1);
+  ok('ce qui sort encore s’ouvre à part',
+     (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"]').count()) === 2
+     && (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"][target="_blank"]').count()) === 2);
 
   /* --- les autres pages publiques le portent aussi --- */
   for (const p of ['decors', 'blog']) {
@@ -5842,10 +5891,18 @@ const run = async () => {
   ok('TOUS s’ouvrent dans un onglet neuf, et lâchent notre fenêtre',
      fautifs.length === 0, fautifs[0] ?? `${dehors} liens vérifiés`);
 
-  /* --- et le guide en particulier, puisque c'est par lui qu'on est venu --- */
+  /**
+   * Et le lien sortant de la barre en particulier.
+   *
+   * C'était « Wakabi le guide » : depuis la fusion, le guide EST ce site
+   * et ce lien n'a plus lieu d'être. Le seul lien de la barre qui sorte
+   * encore est « Télécharger », vers le magasin d'applications — et c'est
+   * le plus important de tous, puisque c'est celui par lequel on gagne un
+   * utilisateur.
+   */
   await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
-  const guide = pAnon.locator('header nav a:has-text("Wakabi le guide")');
-  ok('« Wakabi le guide » s’ouvre dans un nouvel onglet',
+  const guide = pAnon.locator('.wk-droite > a.wk-b-pri');
+  ok('« Télécharger » s’ouvre dans un nouvel onglet',
      (await guide.getAttribute('target')) === '_blank',
      `target="${await guide.getAttribute('target')}"`);
 
@@ -5863,18 +5920,47 @@ const run = async () => {
      pAnon.url().includes('p=accueil'), pAnon.url().replace(BASE, ''));
   if (neuf) await neuf.close().catch(() => {});
 
-  /* --- une fois connecté, les deux entrées de vitrine s'effacent --- */
+  /**
+   * La règle du site fusionné : le menu de la vitrine NE BOUGE PAS.
+   *
+   * Il ne se réarrange pas à la connexion — un site public dont le menu
+   * change oblige chacun à réapprendre où sont les choses au moment
+   * précis où il vient d'arriver chez lui. Ce qui change, c'est la BARRE
+   * quand on passe sur un écran de travail.
+   *
+   * On relève donc le menu avant, puis après, et on compare. Comparer
+   * deux relevés vaut mieux qu'écrire la liste attendue en dur : le jour
+   * où une entrée s'ajoute, ce contrôle continue de dire ce qu'il doit
+   * dire au lieu de tomber pour une raison étrangère.
+   */
+  const menuAvant = await pAnon.locator('.wk-menu > li')
+    .evaluateAll((n) => n.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).join('|'));
+
   await pAnon.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
   await pAnon.fill('input[name=email]', ADMIN.email);
   await pAnon.fill('input[name=mot_de_passe]', ADMIN.mdp);
   await pAnon.click('main button[type=submit]');
   await pAnon.waitForLoadState('domcontentloaded');
-  const menuConnecte = await pAnon.locator('header nav').innerText();
-  ok('connecté, le menu ne propose plus « Wakabi Boost » ni « Wakabi le guide »',
-     !/Wakabi Boost|Wakabi le guide/.test(menuConnecte),
-     menuConnecte.replace(/\s+/g, ' ').slice(0, 70));
-  ok('et aucun lien ne sort vers le guide depuis le menu',
-     (await pAnon.locator('header nav a[href^="https://wakabileguide.com"]').count()) === 0);
+
+  await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const menuApres = await pAnon.locator('.wk-menu > li')
+    .evaluateAll((n) => n.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).join('|'));
+  ok('connecté, le menu de la vitrine est LE MÊME, au caractère près',
+     menuApres === menuAvant && menuAvant !== '',
+     menuApres.replace(/\|/g, ' · ').slice(0, 76));
+  ok('seul le volet du compte a changé : il porte la déconnexion',
+     (await pAnon.locator('.wk-volet-u button.wk-sortir').count()) === 1
+     && (await pAnon.locator('.wk-volet-u a[href*="p=connexion"]').count()) === 0);
+  ok('et il ouvre la seule porte vers le tableau de bord',
+     (await pAnon.locator('.wk-volet-u a[href*="p=admin"]').count()) === 1);
+  ok('aucun lien du menu ne sort vers l’ancien domaine',
+     (await pAnon.locator('.wk-menu a[href^="https://wakabileguide.com"]').count()) === 0);
+
+  /* Et sur un écran de TRAVAIL, c'est l'autre barre qui sert. */
+  await pAnon.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  ok('sur le tableau de bord, la barre d’administration prend le relais',
+     (await pAnon.locator('header.barre').count()) === 1
+     && (await pAnon.locator('.wk-tete').count()) === 0);
 
   await ctxVitrine.close();
 

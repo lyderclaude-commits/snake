@@ -39,6 +39,8 @@ require __DIR__ . '/app/segment.php';
 require __DIR__ . '/app/sponsor.php';
 require __DIR__ . '/app/sondage.php';
 require __DIR__ . '/app/brouillon.php';
+require __DIR__ . '/app/vitrine.php';
+require __DIR__ . '/app/icones-guide.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -826,6 +828,31 @@ switch ($page) {
      * Publique. L'étape « Le cadre » mélangeait les deux métiers ; cet
      * écran demande lequel, et le Studio n'ouvre que la moitié qui sert.
      */
+    /**
+     * Les pages de la vitrine fusionnée.
+     *
+     * Cinq viennent de wakabileguide.com et gardent son dessin ; trois
+     * présentent Boost et existent pour une raison précise : le menu
+     * public mène à Push, à la Régie et aux Liens courts, et y envoyer un
+     * visiteur directement l'aurait jeté contre un mur de connexion au
+     * moment où il cherchait à comprendre ce qu'on vend. Le mur reste à
+     * la fin, ici comme partout ailleurs dans le produit.
+     *
+     * Elles n'ont pas d'action : rien à lire, rien à écrire, rien à
+     * vérifier. Une action vide par page aurait fait huit fichiers qui ne
+     * disent rien.
+     */
+    case 'application':
+    case 'partenaires':
+    case 'villes':
+    case 'a-propos':
+    case 'contact':
+    case 'boost-push':
+    case 'boost-regie':
+    case 'boost-liens':
+        [$_v, $_t, $_d] = PAGES_CONTENU[$page];
+        vue($_v, ['titre' => $_t . ' · ' . seo_reglage('seo_nom_site'), 'description' => $_d]);
+
     case 'creer':
         require RACINE . '/app/actions/creer.php';
 

@@ -1,0 +1,146 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Le header partagé par le guide et par Boost.
+
+   C'est la seule pièce que les deux sites ont en commun, et elle est
+   servie sur TOUTES les pages — celles qui chargent la feuille du guide
+   comme celles qui chargent celle de Boost. Elle ne peut donc s'appuyer
+   sur les variables ni sur les classes d'aucune des deux : ses couleurs
+   sont écrites en clair, et ses classes portent le préfixe `wk-`, qui
+   n'existe nulle part ailleurs. Une collision de nom ici casserait un
+   header sur la moitié du site sans qu'on sache lequel accuser.
+
+   Les deux chartes se trouvent être la même — #2563EB, les mêmes gris,
+   Plus Jakarta Sans — ce qui rend ce fichier court. Si elles divergeaient
+   un jour, c'est ici qu'il faudrait trancher.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.wk-tete{position:sticky;top:0;z-index:900;background:rgba(255,255,255,.96);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid #E2E8F0;padding:0 24px}
+.wk-in{max-width:1200px;margin:0 auto;height:68px;display:flex;align-items:center;
+  justify-content:space-between;gap:18px}
+
+.wk-marque{flex:none;display:flex;align-items:center;text-decoration:none}
+.wk-marque img{height:30px;width:auto;display:block}
+.wk-marque-texte{font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:#0F172A}
+
+/* ---------------- le menu ---------------- */
+
+.wk-menu{flex-grow:1;display:flex;align-items:center;gap:2px;justify-content:center;
+  list-style:none;margin:0;padding:0}
+.wk-menu a,.wk-menu>li>button{font:inherit;font-size:14px;font-weight:500;color:#475569;
+  padding:7px 12px;border-radius:6px;background:transparent;border:0;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap;text-decoration:none;
+  transition:background .15s,color .15s}
+.wk-menu a:hover,.wk-menu>li>button:hover{background:#EFF6FF;color:#2563EB}
+.wk-menu a[aria-current],.wk-menu>li.wk-ici>button{font-weight:600;color:#2563EB;background:#EFF6FF}
+.wk-menu :focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+
+/* ---------------- un déroulant, sans une ligne de script ----------------
+   `details`/`summary` : il s'ouvre au clic et au clavier, il reste
+   ouvrable si le script ne charge pas, et il se referme à l'échappement
+   dans tous les navigateurs qui le gèrent. Le chevron tourne par CSS. */
+
+.wk-grp{position:relative;list-style:none}
+.wk-grp>summary{font-size:14px;font-weight:500;color:#475569;padding:7px 12px;
+  border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+  white-space:nowrap;list-style:none;transition:background .15s,color .15s}
+.wk-grp>summary::-webkit-details-marker{display:none}
+.wk-grp>summary:hover{background:#EFF6FF;color:#2563EB}
+.wk-grp[open]>summary{font-weight:600;color:#2563EB;background:#EFF6FF}
+.wk-grp>summary:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+.wk-grp .wk-chev{width:11px;height:11px;transition:transform .18s}
+.wk-grp[open] .wk-chev{transform:rotate(180deg)}
+
+.wk-volet{position:absolute;top:calc(100% + 8px);left:-6px;width:248px;background:#fff;
+  border:1px solid #E2E8F0;border-radius:14px;
+  box-shadow:0 20px 40px rgba(15,23,42,.1),0 8px 16px rgba(15,23,42,.06);
+  padding:7px;display:flex;flex-direction:column;gap:1px;z-index:5}
+.wk-volet a{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:9px;
+  font-size:14px;font-weight:600;color:#0F172A;text-decoration:none}
+.wk-volet a:hover{background:#F8FAFF}
+.wk-volet svg{flex:none;margin-top:1px}
+.wk-volet small{display:block;font-size:12px;font-weight:400;color:#475569;margin-top:1px}
+
+/* ---------------- la droite : deux boutons et le compte ---------------- */
+
+.wk-droite{flex:none;display:flex;align-items:center;gap:8px;position:relative}
+.wk-b-out,.wk-b-pri{display:inline-flex;align-items:center;font-size:13px;font-weight:600;
+  border-radius:10px;white-space:nowrap;text-decoration:none;transition:all .18s}
+.wk-b-out{padding:7px 15px;color:#2563EB;background:transparent;border:1.5px solid #2563EB}
+.wk-b-out:hover{background:#EFF6FF}
+.wk-b-pri{padding:8px 16px;color:#fff;background:#2563EB;border:0;
+  box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.wk-b-pri:hover{background:#1D4ED8;box-shadow:0 6px 20px rgba(37,99,235,.35)}
+
+.wk-compte{position:relative;list-style:none}
+.wk-compte>summary{display:inline-flex;align-items:center;gap:3px;padding:6px 7px;
+  background:transparent;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;
+  color:#0F172A;list-style:none}
+.wk-compte>summary::-webkit-details-marker{display:none}
+.wk-compte>summary:hover{border-color:#CBD5E1}
+.wk-compte[open]>summary{background:#EFF6FF;border-color:#2563EB;color:#2563EB}
+.wk-compte>summary:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+/* Connecté : l'initiale remplace la silhouette, et le bouton s'arrondit. */
+.wk-compte.wk-sien>summary{padding:4px 7px 4px 4px;border-radius:999px;gap:5px}
+.wk-pastille{width:28px;height:28px;border-radius:999px;background:#2563EB;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+.wk-volet-u{position:absolute;top:calc(100% + 10px);right:0;width:258px;background:#fff;
+  border:1px solid #E2E8F0;border-radius:16px;
+  box-shadow:0 20px 40px rgba(15,23,42,.1),0 8px 16px rgba(15,23,42,.06);
+  padding:8px;display:flex;flex-direction:column;gap:1px;z-index:6}
+.wk-volet-u a,.wk-volet-u button{display:flex;align-items:center;gap:11px;padding:10px 12px;
+  border:0;border-radius:10px;font:inherit;font-size:14px;font-weight:600;color:#0F172A;
+  background:transparent;text-align:left;width:100%;cursor:pointer;text-decoration:none}
+.wk-volet-u a:hover,.wk-volet-u button:hover{background:#F8FAFF}
+.wk-volet-u form{margin:0}
+.wk-volet-u svg{flex:none}
+.wk-qui{padding:9px 12px 11px;border-bottom:1px solid #F1F5F9;margin-bottom:4px}
+.wk-qui b{display:block;font-size:14px;color:#0F172A}
+.wk-qui span{display:block;font-size:12px;color:#475569;margin-top:2px}
+.wk-sep{border-top:1px solid #F1F5F9;margin:4px 0 2px}
+.wk-nb{margin-left:auto;padding:1px 8px;border-radius:999px;background:#DC2626;color:#fff;
+  font-size:12px;font-weight:700}
+.wk-sortir{color:#B91C1C}
+
+/* ---------------- le hamburger, et le téléphone ---------------- */
+
+.wk-burger{display:none;flex:none;list-style:none}
+.wk-burger>summary{display:flex;flex-direction:column;justify-content:center;gap:5px;
+  width:44px;height:44px;padding:0 6px;background:transparent;border:0;cursor:pointer;
+  list-style:none}
+.wk-burger>summary::-webkit-details-marker{display:none}
+.wk-burger>summary span{display:block;height:2px;background:#0F172A;border-radius:2px;
+  transition:transform .25s,opacity .2s}
+.wk-burger[open]>summary span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.wk-burger[open]>summary span:nth-child(2){opacity:0}
+.wk-burger[open]>summary span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.wk-burger>summary:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+
+@media (max-width:1080px){
+  .wk-tete{padding:0 14px}
+  .wk-in{height:60px;gap:10px}
+  .wk-menu{display:none}
+  .wk-burger{display:block}
+  .wk-b-out{display:none}
+  .wk-droite{gap:6px}
+  .wk-b-pri{padding:7px 12px;font-size:12px}
+
+  /* Le volet déroule SOUS la barre, pleine largeur : un menu de 7 entrées
+     en colonne ne tient pas dans une bulle de 248 px. */
+  .wk-burger .wk-volet{position:fixed;top:60px;left:0;right:0;width:auto;
+    border-radius:0;border-left:0;border-right:0;padding:8px 14px 18px;
+    max-height:calc(100vh - 60px);overflow-y:auto}
+  .wk-burger .wk-volet a{font-size:15px;padding:13px 12px}
+  .wk-burger .wk-volet .wk-sous{padding-left:34px}
+}
+
+@media (max-width:520px){
+  .wk-tete{padding:0 10px}
+  .wk-b-pri{padding:6px 10px;font-size:11.5px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .wk-grp .wk-chev,.wk-burger>summary span,.wk-b-pri,.wk-b-out,.wk-menu a{transition:none}
+}

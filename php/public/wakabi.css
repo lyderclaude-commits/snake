@@ -1357,7 +1357,10 @@ tr.pale td a{color:inherit}
    entre ce qu'on montre et ce qu'on utilise. */
 .pied-guide{background:var(--ink);color:rgba(255,255,255,.85);
   margin-top:70px;padding:70px 0 28px;border-top:0}
-.pg-grille{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:56px;margin-bottom:56px}
+/* La marque, puis QUATRE colonnes depuis la fusion : Boost a la sienne.
+   Une colonne de plus qu'il n'y a de pistes fait passer la dernière à la
+   ligne, seule, et le pied de page paraît cassé sans qu'on sache pourquoi. */
+.pg-grille{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:40px;margin-bottom:56px}
 .pg-logo{height:30px;margin-bottom:14px;
   /* Le logo est encré sombre : sur fond sombre il faut le retourner. */
   filter:brightness(0) invert(1);opacity:.95}
@@ -1382,7 +1385,7 @@ tr.pale td a{color:inherit}
 .pg-version{font-size:.75rem;color:rgba(255,255,255,.25)}
 
 @media (max-width:900px){
-  .pg-grille{grid-template-columns:1fr 1fr;gap:36px}
+  .pg-grille{grid-template-columns:1fr 1fr;gap:32px}
 }
 @media (max-width:620px){
   .pied-guide{margin-top:44px;padding:50px 0 22px}
