@@ -234,9 +234,11 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <label class="bouton fant fichier" for="cadre">
             <?= icone('studio') ?><span class="texte">Choisir un fichier</span>
           </label>
-          <?php if ($modifie && $valeurs['cadre_url']): ?>
-            <p class="aide">Un cadre est déjà en place. N’en choisissez un que pour le remplacer.</p>
-          <?php endif; ?>
+          <p class="aide" id="cadre-etat"<?= $valeurs['cadre_url'] ? '' : ' hidden' ?>>
+            <?= $modifie
+                ? 'Un cadre est déjà en place. N’en choisissez un que pour le remplacer.'
+                : 'Cadre en place : il apparaît dans l’aperçu, à droite.' ?>
+          </p>
           <p class="aide">PNG ou WebP à fond transparent, 2 Mo maximum. La photo de l’invité
           apparaîtra derrière : laissez donc le centre vide. Le SVG est refusé pour raison de sécurité.</p>
         </div>
@@ -1263,6 +1265,67 @@ window.WAKABI_APERCU = {
   if (champFormat) { champFormat.addEventListener('change', dessiner); }
 
   dessiner();
+})();
+</script>
+
+<script>
+/**
+ * Le cadre part dès qu'on le choisit, et l'aperçu le montre.
+ *
+ * Il ne partait qu'avec le formulaire : on choisissait un fichier, l'image
+ * de droite ne bougeait pas, et l'on découvrait son décor après
+ * l'enregistrement. C'était déjà désagréable pour un organisateur
+ * connecté ; depuis que le Studio s'ouvre sans compte, c'était devenu
+ * absurde, puisque l'« enregistrement » est le mur d'inscription : on
+ * créait un compte pour voir ce qu'on venait de déposer.
+ *
+ * Le champ fichier est vidé après l'envoi. Sans cela le fichier repartirait
+ * une seconde fois avec le formulaire, et le serveur en garderait deux
+ * copies dont une que rien ne désigne.
+ */
+(function () {
+  var champ = document.getElementById('cadre');
+  var cache = document.querySelector('input[name="cadre_url"]');
+  var etat = document.getElementById('cadre-etat');
+  var form = document.getElementById('form-decor');
+  if (!champ || !cache || !form) { return; }
+
+  var dire = function (texte, montrer) {
+    if (!etat) { return; }
+    etat.textContent = texte;
+    etat.hidden = !montrer;
+  };
+
+  champ.addEventListener('change', function () {
+    var f = champ.files && champ.files[0];
+    if (!f) { return; }
+    dire('Envoi du cadre\u2026', true);
+
+    var corps = new FormData();
+    var jeton = form.elements.namedItem('csrf');
+    corps.append('csrf', jeton ? jeton.value : '');
+    corps.append('image', f);
+
+    fetch((window.WAKABI_APERCU || {}).base + '?p=api-calque-image',
+          { method: 'POST', body: corps })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        champ.value = '';
+        if (!d.url) {
+          dire(d.erreur || 'Ce cadre a \u00e9t\u00e9 refus\u00e9.', true);
+          return;
+        }
+        cache.value = d.url;
+        dire('Cadre en place : il appara\u00eet dans l\u2019aper\u00e7u, \u00e0 droite.', true);
+        /* L'\u00e9v\u00e9nement que l'aper\u00e7u \u00e9coute : il redessine au m\u00eame rythme
+           que pour un curseur. */
+        cache.dispatchEvent(new Event('input', { bubbles: true }));
+      })
+      .catch(function () {
+        champ.value = '';
+        dire('L\u2019envoi du cadre a \u00e9chou\u00e9. R\u00e9essayez.', true);
+      });
+  });
 })();
 </script>
 

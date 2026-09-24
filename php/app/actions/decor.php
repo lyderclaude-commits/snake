@@ -296,17 +296,30 @@ if ($modifie && !$post) {
  */
 $repris = false;
 if (!$anonyme && !$modifie && ($_GET['reprendre'] ?? '') === '1' && !$post) {
-    if ($b = brouillon_consommer('decor')) {
+    if ($b = brouillon_prendre('decor')) {
         foreach ($b['charge'] as $k => $v) {
             if (array_key_exists($k, $valeurs) && is_scalar($v)) {
                 $valeurs[$k] = (string) $v;
             }
         }
-        $adopte = brouillon_fichier_adopter($b['fichier'] === null ? null : (string) $b['fichier']);
+        /**
+         * Les images sortent de quarantaine AVANT qu'on efface le brouillon.
+         *
+         * L'ordre n'est pas un détail : consommer d'abord effaçait la ligne
+         * qui dit à qui le fichier appartient, et l'adoption ne trouvait
+         * plus rien. Le décor s'ouvrait alors sans cadre, et le Studio
+         * retombait sur le modèle par défaut — ce qui se voyait comme
+         * « il m'affiche un autre cadre que celui que j'ai déposé ».
+         */
+        $adopte = brouillon_fichier_adopter($valeurs['cadre_url']);
         if ($adopte !== '') {
             $valeurs['cadre_url'] = $adopte;
         }
+        // Les calques image aussi : ils portent la même sorte d'adresse.
+        $valeurs['calques'] = brouillon_calques_adopter($valeurs['calques']);
+
         $depart = ($b['charge']['depart'] ?? '') === 'fichier' ? 'fichier' : $depart;
+        brouillon_consommer('decor');
         $repris = true;
     }
 }
@@ -333,7 +346,14 @@ if ($post) {
      * personne n'a rien à y faire.
      */
     if ($anonyme) {
-        $fichier = null;
+        /**
+         * Le fichier est déjà parti, en général.
+         *
+         * Le Studio le téléverse dès qu'on le choisit, pour que l'aperçu le
+         * montre : `cadre_url` porte alors une adresse de quarantaine, et il
+         * n'y a plus rien dans `$_FILES`. Ce bloc ne sert donc qu'au
+         * formulaire envoyé sans JavaScript, et il fait la même chose.
+         */
         if (!empty($_FILES['cadre']['tmp_name']) && is_uploaded_file($_FILES['cadre']['tmp_name'])) {
             $info = @getimagesize($_FILES['cadre']['tmp_name']);
             $ext = match ($info[2] ?? 0) {
@@ -345,15 +365,23 @@ if ($post) {
                 $erreur = 'Le cadre doit être un PNG ou un WebP à fond transparent. Le SVG est refusé.';
             } elseif (($_FILES['cadre']['size'] ?? 0) > 2 * 1024 * 1024) {
                 $erreur = 'Le cadre dépasse 2 Mo.';
-            } else {
-                $fichier = brouillon_fichier_ranger((string) $_FILES['cadre']['tmp_name'], $ext);
+            } elseif ($nomQ = brouillon_fichier_ranger((string) $_FILES['cadre']['tmp_name'], $ext)) {
+                brouillon_fichier_noter($nomQ);
+                $valeurs['cadre_url'] = brouillon_fichier_url($nomQ);
             }
         }
         if ($erreur === null) {
+            /**
+             * Le brouillon du décor ne porte AUCUN fichier, exprès.
+             *
+             * Chaque image déposée a déjà sa propre ligne, qui dit à qui elle
+             * est et la fait périmer. Recopier le nom ici donnait deux
+             * propriétaires au même fichier — et `brouillon_consommer()`
+             * l'effaçait au moment même où la reprise allait le chercher.
+             */
             $charge = $valeurs;
             $charge['depart'] = $depart;
-            if (!brouillon_poser('decor', $charge, $fichier)) {
-                brouillon_fichier_effacer($fichier);
+            if (!brouillon_poser('decor', $charge)) {
                 $erreur = 'Trop de décors en attente depuis cette connexion. '
                         . 'Créez votre compte pour reprendre celui-ci.';
             } else {

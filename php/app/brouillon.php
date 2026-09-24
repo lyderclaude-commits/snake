@@ -183,6 +183,63 @@ function brouillon_fichier_ranger(string $source, string $extension): ?string
     return @move_uploaded_file($source, dossier_brouillons() . '/' . $nom) ? $nom : null;
 }
 
+/** L'adresse à laquelle un fichier de quarantaine se regarde. */
+function brouillon_fichier_url(string $nom): string
+{
+    return url('?p=brouillon-cadre&f=' . rawurlencode($nom));
+}
+
+/** Le nom d'un fichier de quarantaine, retrouvé dans son adresse. */
+function brouillon_fichier_nom(string $url): string
+{
+    if (!preg_match('/[?&]f=([0-9a-f]{32}\.(?:png|webp))/', $url, $m)) {
+        return '';
+    }
+    return $m[1];
+}
+
+/**
+ * Note un fichier déposé sans compte, sans toucher aux autres.
+ *
+ * `brouillon_poser()` remplace le brouillon du même genre : c'est ce qu'on
+ * veut pour un formulaire, et exactement ce qu'on ne veut pas pour des
+ * fichiers, qu'on dépose un par un. Chacun a donc sa ligne, de genre
+ * `fichier`. Elle sert à deux choses, et il faut les deux : dire à QUI le
+ * fichier appartient quand on le sert, et le faire périmer avec le reste
+ * même si le formulaire n'est jamais envoyé.
+ */
+function brouillon_fichier_noter(string $nom): void
+{
+    $jeton = brouillon_jeton(true);
+    db()->prepare(
+        'INSERT INTO brouillons (id, jeton, genre, charge, fichier, ip, cree_le, expire_le)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    )->execute([
+        nouvel_id(), $jeton, 'fichier', '{}', $nom, brouillon_ip(), maintenant(),
+        maintenant(time() + BROUILLON_HEURES * 3600),
+    ]);
+}
+
+/**
+ * Ce fichier appartient-il à celui qui le demande ?
+ *
+ * Un nom de quarantaine est tiré au sort sur seize octets : le deviner est
+ * hors de portée. Mais « impossible à deviner » n'est pas une autorisation,
+ * et une adresse recopiée circule. Le jeton du cookie tranche.
+ */
+function brouillon_fichier_permis(string $nom): bool
+{
+    $jeton = brouillon_jeton();
+    if ($jeton === '' || !preg_match('/^[0-9a-f]{32}\.(png|webp)$/', $nom)) {
+        return false;
+    }
+    $q = db()->prepare(
+        'SELECT COUNT(*) FROM brouillons WHERE jeton = ? AND fichier = ? AND expire_le > ?'
+    );
+    $q->execute([$jeton, $nom, maintenant()]);
+    return (int) $q->fetchColumn() > 0;
+}
+
 function brouillon_fichier_effacer(?string $nom): void
 {
     if ($nom === null || $nom === '' || !preg_match('/^[0-9a-f]{32}\.(png|webp)$/', $nom)) {
@@ -199,16 +256,30 @@ function brouillon_fichier_effacer(?string $nom): void
  */
 function brouillon_fichier_adopter(?string $nom): string
 {
-    if ($nom === null || !preg_match('/^[0-9a-f]{32}\.(png|webp)$/', $nom)) {
+    // On accepte le nom seul comme l'adresse complète : le brouillon d'un
+    // décor porte la seconde, puisque c'est elle que l'aperçu a chargée.
+    if ($nom !== null && str_contains($nom, 'f=')) {
+        $nom = brouillon_fichier_nom($nom);
+    }
+    if ($nom === null || $nom === '' || !preg_match('/^[0-9a-f]{32}\.(png|webp)$/', $nom)) {
         return '';
     }
     $de = dossier_brouillons() . '/' . $nom;
     if (!is_file($de)) {
         return '';
     }
-    if (!@rename($de, dossier_cadres() . '/' . $nom)) {
+    /**
+     * Il change de nom en changeant de dossier.
+     *
+     * `?p=cadre` n'accepte que des noms d'UUID, et c'est ce qui empêche de
+     * lui réclamer un fichier de quarantaine par son nom à lui. Garder
+     * l'ancien nom aurait rendu le cadre adopté introuvable.
+     */
+    $neuf = nouvel_id() . '.' . (str_ends_with($nom, '.webp') ? 'webp' : 'png');
+    if (!@rename($de, dossier_cadres() . '/' . $neuf)) {
         return '';
     }
+    $nom = $neuf;
     /**
      * Recompressé à l'adoption, et non au dépôt.
      *
@@ -222,6 +293,51 @@ function brouillon_fichier_adopter(?string $nom): string
     // La même adresse que pour un cadre téléversé normalement : `donnees/`
     // n'est pas servi directement, c'est la route `?p=cadre` qui le fait.
     return url('?p=cadre&f=' . $nom);
+}
+
+/**
+ * Adopte les images d'une liste de calques, et rend la liste corrigée.
+ *
+ * Un calque image déposé sans compte porte une adresse de quarantaine, que
+ * seul son déposant peut ouvrir. Laissée telle quelle dans un décor publié,
+ * elle donnerait une image visible par son auteur et par personne d'autre :
+ * le pire des défauts, parce qu'il ne se voit pas depuis le compte qui l'a
+ * créé.
+ *
+ * La chaîne est retournée telle quelle si elle ne porte rien de la
+ * quarantaine : c'est le cas de tous les décors faits en étant connecté.
+ */
+function brouillon_calques_adopter(string $json): string
+{
+    if (!str_contains($json, 'brouillon-cadre')) {
+        return $json;
+    }
+    $calques = json_decode($json, true);
+    if (!is_array($calques)) {
+        return $json;
+    }
+
+    /** Toute cha\u00eene qui d\u00e9signe un fichier de quarantaine devient son adresse d\u00e9finitive. */
+    $muer = static function (&$valeur) use (&$muer): void {
+        if (is_array($valeur)) {
+            foreach ($valeur as &$v) {
+                $muer($v);
+            }
+            return;
+        }
+        if (!is_string($valeur) || !str_contains($valeur, 'brouillon-cadre')) {
+            return;
+        }
+        $neuf = brouillon_fichier_adopter($valeur);
+        // Introuvable ou d\u00e9j\u00e0 adopt\u00e9e : on laisse l'adresse en place plut\u00f4t
+        // que de vider le calque. Le d\u00e9faut se verra ; un calque disparu, non.
+        if ($neuf !== '') {
+            $valeur = $neuf;
+        }
+    };
+    $muer($calques);
+
+    return (string) json_encode($calques, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**

@@ -128,8 +128,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **884 scénarios
-réussis** sur une base déjà peuplée, **883 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **892 scénarios
+réussis** sur une base déjà peuplée, **891 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas.
@@ -221,7 +221,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 884 scénarios, dans un vrai navigateur
+npm run php:e2e          # 892 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -243,7 +243,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 884 scénarios
+### Les 892 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -314,7 +314,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **La porte de l'organisateur** | Son tableau de bord mène aux rappels de sa campagne publiée, le bouton dit aussi le sondage, le chemin s'ouvre vraiment et l'interrupteur du sondage y est à sa portée ; un **éditeur** de la maison, lui, n'a pas ce bouton |
 | **Les portes publiques** | Le raccourcisseur et le Studio s'ouvrent sans compte ; le prix des liens courts est annoncé **avant le premier champ** ; ce qu'on a saisi TRAVERSE le mur, décor et choix du QR compris ; le compte créé au mur est un **organisateur**, pas un participant ; un brouillon ne suit pas quelqu'un d'autre |
 | **Les deux chemins** | L'écran de choix propose deux départs et deux seulement ; celui du fichier cache la galerie de modèles, celui du studio cache le téléversement, et les **cadres fournis restent des deux côtés** |
-| **Le QR facultatif** | Une case à cocher, cochée par défaut pour ne rien changer aux décors existants ; la décocher dit ce qu'on perd et retire ses réglages, le contrôle de vol cesse de parler d'un QR absent |
+| **Le QR facultatif** | Une case à cocher, cochée par défaut pour ne rien changer aux décors existants ; la décocher dit ce qu'on perd et retire ses réglages ; il **disparaît vraiment de l'image** et revient quand on recoche, mesuré sur la toile ; sur l'image de partage dessinée par le serveur aussi, deux décors identiques à une case près |
+| **Le Studio sans compte** | L'aperçu se dessine sans session ; le cadre choisi part **tout de suite** et apparaît dans l'image avant tout compte ; il ne se sert qu'à celui qui l'a déposé ; après le compte, c'est **le même cadre** qui revient, compté en pixels et non lu dans un attribut |
 | **Les offres tenues à l'écran** | Une offre se crée, se modifie et arrive sur la vitrine **sans une ligne de code**, à l'ordre demandé, avec son accroche et son bouton ; trois refus l'encadrent : Découverte ne se supprime pas, une offre portée par des comptes non plus, et un prix de lancement au-dessus du prix normal est renvoyé |
 | **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
 | **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |

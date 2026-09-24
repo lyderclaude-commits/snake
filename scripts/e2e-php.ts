@@ -110,6 +110,41 @@ function imagePng(w: number, h: number): Buffer {
   ]);
 }
 
+/**
+ * Un cadre RECONNAISSABLE, et c'est tout l'intérêt.
+ *
+ * Une bordure magenta épaisse, un centre transparent. Un cadre uni ne
+ * prouverait rien : on veut pouvoir dire « c'est CELUI-LÀ qui est
+ * revenu », pas « une image est revenue ». Le défaut qu'on surveille
+ * était précisément celui-ci : un autre cadre que le sien.
+ */
+function cadreMagenta(cote = 400): Buffer {
+  const bord = 40;
+  const lignes: Buffer[] = [];
+  for (let y = 0; y < cote; y++) {
+    const l = Buffer.alloc(1 + cote * 4);
+    for (let x = 0; x < cote; x++) {
+      const dedans = x < bord || x >= cote - bord || y < bord || y >= cote - bord;
+      const o = 1 + x * 4;
+      if (dedans) { l[o] = 255; l[o + 1] = 0; l[o + 2] = 200; l[o + 3] = 255; }
+    }
+    lignes.push(l);
+  }
+  const bloc = (type: string, data: Buffer): Buffer => {
+    const corps = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(corps));
+    return Buffer.concat([len, corps, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(cote, 0); ihdr.writeUInt32BE(cote, 4);
+  ihdr[8] = 8; ihdr[9] = 6;   // 8 bits, RVB + alpha
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    bloc('IHDR', ihdr), bloc('IDAT', deflateSync(Buffer.concat(lignes))), bloc('IEND', Buffer.alloc(0)),
+  ]);
+}
+
 function crc32(buf: Buffer): number {
   let c = 0xffffffff;
   for (const octet of buf) {
@@ -6483,6 +6518,110 @@ const run = async () => {
      !(await pB.locator('#qr_actif').isChecked()));
   ok('l’écran le dit, plutôt que de laisser croire à un formulaire neuf',
      (await pB.locator('main .msg.ok').first().innerText()).includes('attendait'));
+
+  /* --- le cadre déposé sans compte : il doit SE VOIR, et REVENIR --- */
+
+  /**
+   * On lit les pixels, pas le HTML.
+   *
+   * Un `src` juste et une image absente se ressemblent trop dans le
+   * document : le défaut rapporté était justement que l'adresse avait
+   * l'air correcte et que le cadre affiché était un autre. Le seul
+   * témoignage qui vaille est donc la toile elle-même.
+   */
+  const compterMagenta = (page: Page) => page.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement | null;
+    const g = c?.getContext('2d');
+    if (!c || !g) { return -1; }
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i]! > 200 && d[i + 1]! < 80 && d[i + 2]! > 150 && d[i + 3]! > 200) { n++; }
+    }
+    return n;
+  });
+
+  const ctxPorteD = await browser.newContext();
+  const pD = await ctxPorteD.newPage();
+  surveiller(pD);
+  const fichierCadre = join(tmpdir(), `wakabi-cadre-${marque}.png`);
+  writeFileSync(fichierCadre, cadreMagenta());
+
+  await pD.goto(`${BASE}/index.php?p=nouveau&depart=fichier`, { waitUntil: 'domcontentloaded' });
+  await pD.waitForTimeout(1800);
+  ok('sans compte, l’aperçu se dessine quand même',
+     (await compterMagenta(pD)) >= 0,
+     'les API du Studio répondent sans session');
+
+  await pD.setInputFiles('#cadre', fichierCadre);
+  await pD.waitForTimeout(2400);
+  const adresseCadre = await pD.locator('input[name="cadre_url"]').inputValue();
+  ok('le cadre choisi part tout de suite, et reçoit une adresse',
+     adresseCadre.includes('brouillon-cadre'), adresseCadre.slice(-44));
+  const magentaAvant = await compterMagenta(pD);
+  ok('et il APPARAÎT dans l’aperçu, avant tout compte',
+     magentaAvant > 500, `${magentaAvant} pixels du cadre`);
+
+  /* Une autre session ne peut pas regarder ce fichier. */
+  const ctxVoisin = await browser.newContext();
+  const pVoisin = await ctxVoisin.newPage();
+  const vol = await pVoisin.request.get(new URL(adresseCadre, BASE).href);
+  ok('un cadre en quarantaine ne se sert qu’à celui qui l’a déposé',
+     vol.status() === 404, `HTTP ${vol.status()}`);
+  await ctxVoisin.close();
+
+  await pD.locator('#onglet-campagne').click();
+  await pD.waitForTimeout(150);
+  await pD.fill('input[name=titre]', `Gala au cadre magenta ${marque}`);
+  await pD.locator('.sd-enregistrer').click();
+  await pD.waitForLoadState('domcontentloaded');
+
+  await pD.fill('input[name=nom]', 'Porte Cadre');
+  await pD.fill('input[name=email]', `porte-cadre-${marque}@essai.tg`);
+  await pD.fill('input[name=mot_de_passe]', 'un-mot-de-passe-solide-2026');
+  await pD.locator('main form button[type=submit]').first().click();
+  await pD.waitForLoadState('domcontentloaded');
+  await pD.waitForTimeout(2400);
+
+  const adresseApres = await pD.locator('input[name="cadre_url"]').inputValue();
+  ok('après le compte, le cadre a quitté la quarantaine',
+     adresseApres.includes('p=cadre&f=') && !adresseApres.includes('brouillon'),
+     adresseApres.slice(-44));
+  const magentaApres = await compterMagenta(pD);
+  ok('et c’est LE MÊME cadre qui revient, pas un autre',
+     magentaApres > 500, `${magentaAvant} pixels avant, ${magentaApres} après`);
+
+  /* --- le QR, dans les deux sens, sur la toile --- */
+  const blancEnBas = (page: Page) => page.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement | null;
+    const g = c?.getContext('2d');
+    if (!c || !g) { return -1; }
+    // Le QR est un carré blanc dense, posé en bas à gauche par défaut.
+    const d = g.getImageData(0, Math.floor(c.height * 0.6),
+                             Math.floor(c.width * 0.45), Math.floor(c.height * 0.4)).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i]! > 245 && d[i + 1]! > 245 && d[i + 2]! > 245 && d[i + 3]! > 200) { n++; }
+    }
+    return n;
+  });
+
+  await pD.locator('#onglet-apparence').click();
+  await pD.waitForTimeout(250);
+  const qrCoche = await blancEnBas(pD);
+  await pD.locator('#qr_actif').uncheck();
+  await pD.waitForTimeout(2000);
+  const qrDecoche = await blancEnBas(pD);
+  ok('décocher le QR le retire VRAIMENT de l’image',
+     qrDecoche < qrCoche / 3, `${qrCoche} → ${qrDecoche} pixels blancs`);
+  await pD.locator('#qr_actif').check();
+  await pD.waitForTimeout(2000);
+  const qrRecoche = await blancEnBas(pD);
+  ok('et le recocher le remet', qrRecoche > qrCoche / 2,
+     `${qrDecoche} → ${qrRecoche} pixels blancs`);
+
+  rmSync(fichierCadre, { force: true });
+  await ctxPorteD.close();
 
   /* --- un brouillon ne survit pas à un autre navigateur --- */
   const ctxPorteC = await browser.newContext();

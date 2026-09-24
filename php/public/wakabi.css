@@ -804,7 +804,6 @@ details.qr p{border-top:1px solid var(--border);padding:15px 18px;margin:0;color
    par ligne sur téléphone. À deux, la vignette tombe à 170 px et le décor
    ne se voit plus — or c'est lui qu'on vient regarder. */
 .vitrines{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
-@media(min-width:900px){ .canaux .canal.actif{grid-column:span 2} }
 
 /* Le repli de suppression : un bouton qui ouvre sa propre confirmation. */
 details > summary.bouton{cursor:pointer;display:inline-flex}

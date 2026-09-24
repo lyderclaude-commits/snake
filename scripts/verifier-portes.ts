@@ -149,6 +149,72 @@ $_COOKIE[BROUILLON_COOKIE] = $jetonA;
 brouillon_consommer('decor');
 $out['a_apres_consommation'] = brouillon_prendre('decor') === null;
 
+/* ================= le QR facultatif ================= */
+
+/**
+ * L'image de partage est le SEUL rendu fait par le serveur.
+ *
+ * Le badge et l'aperçu sont dessinés par le navigateur ; celle-ci sort de
+ * GD, et c'est elle qui circule sur WhatsApp. Si le QR devait survivre à une
+ * case décochée quelque part, ce serait ici : le chemin est séparé, avec sa
+ * propre lecture du gabarit.
+ */
+$decorQr = static function (string $slug, string $qrActif) use (&$out): array {
+    $info = ['disposition' => 'bandeau', 'slug' => $slug, 'titre' => $slug,
+        'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
+        'cree_par' => 'equipe', 'expire_le' => '', 'accroche' => 'J Y SERAI',
+        'champ_libelle' => 'Ton prenom', 'champ_valeur' => 'Kossi',
+        'redirection' => 'https://wakabileguide.com/', 'redirection_libelle' => '',
+        'legende' => '', 'cadre_url' => '', 'calques' => [], 'variantes' => [],
+        'apparence' => ['qr_actif' => $qrActif]];
+    $g = construire_gabarit($info);
+    $id = decor_creer(['slug' => $slug, 'titre' => $slug, 'sous_titre' => '', 'ville' => 'lome',
+        'rubrique' => 'campagne', 'cree_par' => 'equipe', 'auteur_id' => null,
+        'gabarit' => $g, 'cadre_url' => '', 'expire_le' => null, 'evenement_le' => null]);
+    db()->prepare('UPDATE decors SET statut = ?, publie_le = ? WHERE id = ?')
+        ->execute(['publie', maintenant(), $id]);
+    return decor_par_slug($slug);
+};
+
+/**
+ * Le blanc de toute l'image, et non d'un coin choisi à l'avance.
+ *
+ * Où le QR se pose dépend de la mise en page, du format et du cadre : une
+ * fenêtre codée en dur ne vaudrait que pour le décor sur lequel on l'a
+ * relevée. Les deux décors comparés ici ne diffèrent QUE par la case à
+ * cocher : l'écart entre leurs deux nombres est le QR, où qu'il soit.
+ */
+$blancTotal = static function (array $decor): int {
+    $toile = og_badge($decor);
+    if (!$toile) {
+        return -1;
+    }
+    $n = 0;
+    $W = imagesx($toile);
+    $H = imagesy($toile);
+    for ($y = 0; $y < $H; $y++) {
+        for ($x = 0; $x < $W; $x++) {
+            $c = imagecolorat($toile, $x, $y);
+            if ((($c >> 16) & 255) > 230 && (($c >> 8) & 255) > 230 && ($c & 255) > 230) {
+                $n++;
+            }
+        }
+    }
+    imagedestroy($toile);
+    return $n;
+};
+
+$out['qr_avec'] = $blancTotal($decorQr('essai-avec-qr', '1'));
+$out['qr_sans'] = $blancTotal($decorQr('essai-sans-qr', '0'));
+$out['qr_valide_sans'] = (function (): bool {
+    try {
+        valider_gabarit(json_decode(decor_par_slug('essai-sans-qr')['gabarit'], true));
+        return true;
+    } catch (Throwable) {
+        return false;
+    }
+})();
+
 /* ================= les offres ================= */
 
 $out['semees'] = array_keys(formules());
@@ -243,6 +309,16 @@ const main = async () => {
     ok('consommer un brouillon l’efface', r.a_apres_consommation === true);
 
     /* ---------------- les offres ---------------- */
+    console.log('\n  ── le QR facultatif, sur l\u2019image que le serveur dessine ──');
+    // Deux d\u00e9cors identiques \u00e0 une case pr\u00e8s : l'\u00e9cart EST le QR.
+    ok('deux d\u00e9cors identiques, sauf la case \u00e0 cocher',
+       (r.qr_avec ?? -1) >= 0 && (r.qr_sans ?? -1) >= 0,
+       `${r.qr_avec} et ${r.qr_sans} pixels blancs`);
+    ok('celui qui garde son QR en porte bien un de plus',
+       (r.qr_avec ?? 0) - (r.qr_sans ?? 0) > 1000,
+       `\u00e9cart de ${(r.qr_avec ?? 0) - (r.qr_sans ?? 0)} pixels`);
+    ok('et il reste un gabarit valable', r.qr_valide_sans === true);
+
     console.log('\n  ── les offres, semées puis tenues ──');
     ok('la table se sème depuis la constante',
        Array.isArray(r.semees) && r.semees.includes('decouverte') && r.semees.includes('mouvement'),

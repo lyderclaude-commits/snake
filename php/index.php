@@ -1293,8 +1293,20 @@ switch ($page) {
      * quitter la page : recharger le formulaire pour un logo perdrait les
      * onze autres calques en cours de réglage.
      */
+    /**
+     * Une image pour le Studio : un calque, ou le cadre lui-même.
+     *
+     * Publique, parce que le Studio l'est. Ce qui change sans compte n'est
+     * pas le contrôle — même type, même poids, même refus du SVG — c'est
+     * l'ENDROIT : un fichier qui n'appartient à personne va en quarantaine,
+     * d'où seul son déposant peut le regarder, et d'où il s'efface tout seul
+     * au bout de quarante-huit heures s'il ne devient jamais un décor.
+     */
     case 'api-calque-image':
-        exiger_droit('decors_siens');
+        $u = utilisateur_courant();
+        if ($u !== null && !droit($u, 'decors_siens')) {
+            json_repondre(['erreur' => 'Ce compte ne crée pas de décors.']);
+        }
         verifier_csrf();
 
         $f = $_FILES['image'] ?? null;
@@ -1313,6 +1325,15 @@ switch ($page) {
         if (($f['size'] ?? 0) > 2 * 1024 * 1024) {
             json_repondre(['erreur' => 'L’image dépasse 2 Mo.']);
         }
+        if ($u === null) {
+            $nom = brouillon_fichier_ranger((string) $f['tmp_name'], $ext);
+            if ($nom === null) {
+                json_repondre(['erreur' => 'L’image n’a pas pu être enregistrée.']);
+            }
+            brouillon_fichier_noter($nom);
+            json_repondre(['url' => brouillon_fichier_url($nom)]);
+        }
+
         $nom = nouvel_id() . '.' . $ext;
         if (!move_uploaded_file($f['tmp_name'], dossier_cadres() . '/' . $nom)) {
             json_repondre(['erreur' => 'L’image n’a pas pu être enregistrée.']);
@@ -1322,8 +1343,23 @@ switch ($page) {
         $c = compresser_cadre(dossier_cadres(), $nom);
         json_repondre(['url' => url('?p=cadre&f=' . $c['nom'])]);
 
+    /**
+     * L'aperçu du Studio. Publique, sans quoi le Studio ne l'est pas.
+     *
+     * Il était derrière `decors_siens` : ouvrir `?p=nouveau` aux visiteurs
+     * sans ouvrir cette porte donnait un Studio dont l'image ne se
+     * redessinait jamais. On composait à l'aveugle.
+     *
+     * L'aperçu ne consulte aucune offre, et n'en consultait déjà aucune :
+     * il montre le décor tel qu'il est composé, filigrane compris. C'est
+     * `gabarit_selon_offre()` qui tranche à la publication, et elle est
+     * jouée par un compte réel.
+     */
     case 'api-apercu':
-        $u = exiger_droit('decors_siens');
+        $u = utilisateur_courant();
+        if ($u !== null && !droit($u, 'decors_siens')) {
+            rediriger(accueil_de($u));
+        }
         verifier_csrf();
 
         $disposition = (string) ($_POST['disposition'] ?? 'bandeau');
@@ -1491,6 +1527,16 @@ switch ($page) {
 
     case 'cadre':
         require RACINE . '/app/actions/cadre.php';
+
+    /**
+     * Un cadre déposé sans compte, servi à son seul déposant.
+     *
+     * `?p=cadre` n'accepte que des noms d'UUID : c'est ce qui empêche de lui
+     * réclamer un fichier de quarantaine. Celle-ci a sa propre porte, et son
+     * propre contrôle.
+     */
+    case 'brouillon-cadre':
+        require RACINE . '/app/actions/brouillon-cadre.php';
 
     default:
         http_response_code(404);
