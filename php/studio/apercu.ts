@@ -723,10 +723,27 @@ function demarrer(ctx: Contexte) {
    * remplace `cadre_url` : à partir de là, l'aperçu et le pré-vol parlent
    * du même fichier. C'est aussi ce qui fait qu'un cadre survit à une
    * erreur de saisie — il était déjà déposé.
+   *
+   * C'est le SEUL téléverseur de cadre. Le Studio en a porté un second,
+   * en ligne dans sa page, ajouté pour que l'aperçu montre enfin le cadre
+   * déposé sans compte — sans voir que celui-ci faisait déjà le travail.
+   * Les deux écoutaient le même `change` : chaque cadre choisi partait
+   * donc deux fois, laissait deux fichiers sur le disque dont un que plus
+   * rien ne désignait, et consommait deux places du quota de brouillons.
+   * Ce qui manquait à celui-ci, ce n'était pas l'envoi, c'étaient les
+   * trois gestes ci-dessous ; ils y sont maintenant.
    */
   async function envoyerCadre(f: File) {
     const champ = form.elements.namedItem('cadre_url') as HTMLInputElement | null;
     if (!champ) return;
+    const etat = document.getElementById('cadre-etat');
+    const dire = (texte: string) => {
+      if (!etat) return;
+      etat.textContent = texte;
+      etat.hidden = false;
+    };
+    dire('Envoi du cadre…');
+
     const corps = new FormData();
     const jeton = form.elements.namedItem('csrf') as HTMLInputElement | null;
     corps.append('csrf', jeton?.value ?? '');
@@ -734,14 +751,35 @@ function demarrer(ctx: Contexte) {
     try {
       const r = await fetch(ctx.base + '?p=api-calque-image', { method: 'POST', body: corps });
       const d = await r.json();
-      if (!d.url) return;
+      if (!d.url) {
+        dire(d.erreur || 'Ce cadre a été refusé.');
+        return;
+      }
       champ.value = d.url;
+      /**
+       * Le champ fichier se vide, parce que le fichier est arrivé.
+       *
+       * Laissé plein, il repartirait une seconde fois avec le formulaire
+       * et le serveur en garderait une troisième copie, qui prendrait la
+       * place de celle que l'aperçu montre depuis une minute.
+       */
+      const source = document.getElementById('cadre') as HTMLInputElement | null;
+      if (source) source.value = '';
+      dire('Cadre en place : il apparaît dans l’aperçu, à droite.');
+      /* L'événement que le verrou d'étapes écoute. Poser `.value` n'en
+         émet aucun : sans cette ligne, les étapes suivantes resteraient
+         fermées sur un décor dont le cadre est pourtant en place. */
+      champ.dispatchEvent(new Event('input', { bubbles: true }));
       // Le fichier local a fait son office ; le serveur sert la suite.
       if (fichierUrl) URL.revokeObjectURL(fichierUrl);
       fichierUrl = null;
       cadreCharge = '';
       plusTard();
-    } catch { /* on garde l'aperçu local : la saisie n'est pas perdue */ }
+    } catch {
+      /* On garde l'aperçu local ET le fichier dans son champ : la saisie
+         n'est pas perdue, et le formulaire l'emportera à l'envoi. */
+      dire('L’envoi du cadre a échoué. Il repartira à l’enregistrement.');
+    }
   }
 
   /* ---------------- écoute du formulaire ---------------- */

@@ -18,9 +18,27 @@ AVANT de laisser faire quoi que ce soit.
 
 3. **Deux chemins vers un décor**, demandés avant d'entrer dans le Studio :
    déposer un cadre déjà fini, ou partir de zéro. L'étape « Le cadre »
-   mélangeait les deux métiers dans le même panneau. Les cadres FOURNIS par
-   Wakabi restent des deux côtés : ce sont des modèles de la maison, pas un
-   fichier apporté du dehors.
+   mélangeait les deux métiers dans le même panneau.
+
+   Le chemin du **cadre fini** ne pose plus qu'une question : le fichier.
+   Ni modèle, ni gabarit, ni format, ni déclinaisons, ni couleur de fond —
+   le fichier répond déjà à tout cela, et le format s'y **lit** au lieu de
+   se demander. Le Studio le relève sur l'image qu'il vient d'ouvrir ;
+   sans JavaScript, le serveur le relève sur le fichier reçu
+   (`format_devine()`). Les deux appliquent la même règle : le rapport le
+   plus proche en échelle **logarithmique**, faute de quoi 16:9 paraîtrait
+   deux fois plus loin du carré que 9:16 alors que les deux sont à un
+   facteur deux. Il part d'une page blanche, seul gabarit qui n'impose
+   rien. Tant que le fichier n'est pas là, les étapes suivantes sont
+   **fermées** : régler le placement des textes avant de connaître le
+   canevas, c'est le régler deux fois. Le verrou est un script ; la serrure
+   est un contrôle serveur, parce qu'un formulaire se poste à la main.
+   La « santé du décor » disparaît de ce chemin : face à un fichier pas
+   encore déposé, elle n'annonçait qu'un reproche.
+
+   Les cadres FOURNIS par Wakabi vivent désormais dans le **Studio seul** :
+   ce sont des points de départ, et qui arrive avec son fichier en a déjà
+   un.
 
 4. **Le QR Code devient facultatif.** Il était obligatoire au motif qu'il fait
    la différence entre un badge et une image. C'est vrai le jour d'un
@@ -312,7 +330,9 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le sondage** | Il se règle avec les rappels, là où part le « Merci d'être venu » ; un jeton inconnu répond une page close **sans dire qu'il est inconnu**, et cette page reste hors des moteurs |
 | **La porte de l'organisateur** | Son tableau de bord mène aux rappels de sa campagne publiée, le bouton dit aussi le sondage, le chemin s'ouvre vraiment et l'interrupteur du sondage y est à sa portée ; un **éditeur** de la maison, lui, n'a pas ce bouton |
 | **Les portes publiques** | Le raccourcisseur et le Studio s'ouvrent sans compte ; le prix des liens courts est annoncé **avant le premier champ** ; ce qu'on a saisi TRAVERSE le mur, décor et choix du QR compris ; le compte créé au mur est un **organisateur**, pas un participant ; un brouillon ne suit pas quelqu'un d'autre |
-| **Les deux chemins** | L'écran de choix propose deux départs et deux seulement ; celui du fichier cache la galerie de modèles, celui du studio cache le téléversement, et les **cadres fournis restent des deux côtés** |
+| **Les deux chemins** | L'écran de choix propose deux départs et deux seulement ; celui du fichier cache la galerie, le gabarit, le format, les déclinaisons, les cadres fournis et la santé du décor, celui du studio cache le téléversement et **garde tout le reste** |
+| **Le chemin du cadre fini** | Les étapes 2 et 3 sont **fermées** tant qu'aucun fichier n'est déposé, l'écran dit pourquoi, « j'ai déjà un compte » reste ouvert ; le fichier déposé les ouvre, le **format se lit dans l'image** (un 4:5 donne `4:5`, pas le carré par défaut), la toile suit ce rapport, et un envoi posté à la main sans fichier est **refusé par le serveur** |
+| **Un fichier, un envoi** | Choisir un cadre déclenche **un** appel à `api-calque-image` et non deux, et vide le champ fichier pour qu'il n'en reparte pas une troisième copie avec le formulaire |
 | **Le QR facultatif** | Une case à cocher, cochée par défaut pour ne rien changer aux décors existants ; la décocher dit ce qu'on perd et retire ses réglages ; il **disparaît vraiment de l'image** et revient quand on recoche, mesuré sur la toile ; sur l'image de partage dessinée par le serveur aussi, deux décors identiques à une case près |
 | **Le Studio sans compte** | L'aperçu se dessine sans session ; le cadre choisi part **tout de suite** et apparaît dans l'image avant tout compte ; il ne se sert qu'à celui qui l'a déposé ; après le compte, c'est **le même cadre** qui revient, compté en pixels et non lu dans un attribut |
 | **Le compte qui existe déjà** | Le Studio et le raccourcisseur proposent aussi de **se connecter**, et c'est un envoi du formulaire et non un lien : le travail est mis de côté avant de quitter la page ; les deux écrans de compte se renvoient l'un à l'autre en gardant la suite |

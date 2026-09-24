@@ -518,6 +518,11 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sd-etape.actif{border-color:var(--primary);background:var(--primary-wash);color:var(--ink)}
 .sd-etape.actif .sd-num{background:var(--primary);color:#fff}
+/* Une étape fermée doit SE VOIR fermée : inerte sans le dire, on clique
+   trois fois avant de comprendre qu'il manque quelque chose ailleurs. */
+.sd-etape:disabled{opacity:.5;cursor:not-allowed;border-style:dashed}
+.sd-etape:disabled:hover{border-color:var(--border);color:var(--text2)}
+.sd-verrou-note{margin:-8px 0 16px;color:var(--text2)}
 
 .sd-panneau{margin:0}
 /* Les groupes de réglages : un cadre léger, pour savoir où l'un finit. */

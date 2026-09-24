@@ -251,6 +251,53 @@ $out['retiree_ne_se_demande_plus'] = offre_demander($u, 'croissance');
 /* La première offre qui débloque une ligne ne regarde que ce qui se vend. */
 $out['qui_debloque_regie'] = offre_qui_debloque('regie');
 
+/* ================= le format lu dans le fichier ================= */
+
+/**
+ * Le chemin « cadre fini » ne demande plus le format : il le LIT.
+ *
+ * C'est une fonction pure, donc on l'éprouve ici plutôt que dans un
+ * navigateur : ce qui compte est qu'elle ne se trompe pas de côté, et
+ * l'erreur qui guette est de comparer des rapports par soustraction — 16:9
+ * paraît alors PLUS loin du carré que 9:16, alors que les deux sont à un
+ * facteur deux.
+ */
+$out['devine'] = [];
+foreach ([[1080, 1080], [1080, 1350], [1080, 1920], [1920, 1080],
+          [2000, 2000], [800, 1000], [720, 1280], [3840, 2160],
+          [1000, 1100], [0, 0]] as [$l, $h]) {
+    $out['devine']["{$l}x{$h}"] = format_devine($l, $h);
+}
+
+/* ============ les entrées du tableau de bord, par rôle ============ */
+
+/**
+ * Un raccourci qui REFUSE est pire qu'un raccourci absent.
+ *
+ * Le tableau de bord de l'équipe listait douze écrans sans regarder le
+ * rôle. Un coordinateur y voyait « Comptes », « Réglages » et
+ * « Sauvegardes » : les trois le renvoyaient au tableau de bord, sans un
+ * mot. Un clic sans effet se réessaie — c'est ce qui le rend coûteux.
+ *
+ * On éprouve ici la table de droits elle-même, qui est ce dont la vue se
+ * sert : si le rôle coordinateur gagnait le droit « reglages » un jour, la
+ * vue suivrait, et ce contrôle doit suivre aussi.
+ */
+/* « offres » est un bouton en tête de page et non un raccourci, mais il
+   est gardé par le même droit : ce qui s'éprouve ici est la table. */
+$ecrans = ['catalogue' => 'decors_tous', 'relecture' => 'valider',
+           'blog' => 'articles', 'comptes' => 'comptes', 'regie' => 'regie',
+           'push' => 'push', 'liens' => 'liens', 'scan' => 'scan',
+           'offres' => 'reglages', 'reglages' => 'reglages', 'sauvegardes' => 'reglages'];
+$out['raccourcis'] = [];
+foreach (['coordinateur', 'equipe', 'super_admin'] as $role) {
+    $faux = ['role' => $role];
+    $out['raccourcis'][$role] = array_values(array_keys(array_filter(
+        $ecrans,
+        static fn(string $d): bool => droit($faux, $d)
+    )));
+}
+
 echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), "\\n";
 `;
 
@@ -343,6 +390,50 @@ const main = async () => {
        r.retiree_ne_se_demande_plus === false);
     ok('et « quelle offre débloque la régie » ne la propose plus',
        r.qui_debloque_regie !== 'croissance', String(r.qui_debloque_regie));
+
+    /* ---------------- le format lu dans le fichier ---------------- */
+    console.log('\n  ── le format ne se demande plus, il se lit ──');
+    const d = (r.devine ?? {}) as Record<string, string>;
+    ok('un carré donne 1:1', d['1080x1080'] === '1:1', String(d['1080x1080']));
+    ok('un 1080 × 1350 donne 4:5, et non le carré par défaut',
+       d['1080x1350'] === '4:5', String(d['1080x1350']));
+    ok('un 1080 × 1920 donne 9:16', d['1080x1920'] === '9:16', String(d['1080x1920']));
+    ok('un 1920 × 1080 donne 16:9', d['1920x1080'] === '16:9', String(d['1920x1080']));
+    ok('la taille n’entre pas en compte, seul le rapport',
+       d['2000x2000'] === '1:1' && d['800x1000'] === '4:5'
+       && d['720x1280'] === '9:16' && d['3840x2160'] === '16:9',
+       `${d['800x1000']} · ${d['720x1280']} · ${d['3840x2160']}`);
+    /**
+     * Les deux extrêmes pèsent AUTANT l'un que l'autre.
+     *
+     * C'est ce qu'une comparaison par soustraction rate : 16:9 vaut 1,78 et
+     * 9:16 vaut 0,56, donc le paysage semblerait deux fois plus loin du
+     * carré que le portrait. En échelle logarithmique ils sont à égale
+     * distance, ce qu'ils sont réellement.
+     */
+    ok('un rapport intermédiaire tombe du bon côté',
+       d['1000x1100'] === '1:1', String(d['1000x1100']));
+    ok('une image sans dimensions ne fait pas tomber le calcul',
+       d['0x0'] === '1:1', String(d['0x0']));
+
+    /* ---------------- les raccourcis du tableau de bord ---------------- */
+    console.log('\n  ── le tableau de bord ne propose que ce qui s’ouvre ──');
+    const rac = (r.raccourcis ?? {}) as Record<string, string[]>;
+    const coord = rac['coordinateur'] ?? [];
+    ok('un coordinateur garde le catalogue, la relecture et le blog',
+       ['catalogue', 'relecture', 'blog'].every((e) => coord.includes(e)),
+       coord.join(' · '));
+    ok('il ne se voit pas proposer les comptes, qui le refuseraient',
+       !coord.includes('comptes'), coord.join(' · '));
+    ok('ni les réglages, les sauvegardes ou les offres',
+       !coord.includes('reglages') && !coord.includes('sauvegardes')
+       && !coord.includes('offres'), coord.join(' · '));
+    ok('l’équipe, elle, a bien les offres et les réglages',
+       (rac['equipe'] ?? []).includes('offres') && (rac['equipe'] ?? []).includes('reglages'),
+       (rac['equipe'] ?? []).join(' · '));
+    ok('et le super-administrateur voit tout',
+       (rac['super_admin'] ?? []).length === 11,
+       `${(rac['super_admin'] ?? []).length} écran(s)`);
   } finally {
     rmSync(dossier, { recursive: true, force: true });
   }

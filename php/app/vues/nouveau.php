@@ -123,22 +123,51 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
        * qui partent avec le formulaire. C'est ce qui permet d'enregistrer
        * depuis n'importe quelle étape.
        */
-      $etapes = [
+      $etapes = $par_fichier ? [
+        'cadre'     => ['Votre décor',  'Le fichier que vous avez préparé'],
+        'campagne'  => ['La campagne',  'Textes, ville, destination'],
+        'apparence' => ['L’apparence',  'Placement et tailles'],
+      ] : [
         'cadre'     => ['Le cadre',     'Format et image de fond'],
         'campagne'  => ['La campagne',  'Textes, ville, destination'],
         'apparence' => ['L’apparence',  'Placement et tailles'],
       ];
+
+      /**
+       * Le chemin « cadre fini » est un TUNNEL, et lui seul.
+       *
+       * Les étapes sont des onglets partout ailleurs, pour qu'on puisse
+       * corriger une date six semaines plus tard sans retraverser trois
+       * pages. Ici la première étape n'est pas une étape : c'est la
+       * matière. Régler le placement des textes avant d'avoir déposé son
+       * fichier, c'est régler le placement sur un gabarit maison qu'on
+       * s'apprête justement à remplacer — donc le refaire deux fois.
+       *
+       * Le verrou est posé par le SCRIPT, jamais par le rendu. Sans
+       * JavaScript, aucun script ne viendrait le retirer : on servirait un
+       * formulaire définitivement fermé. Les étapes restent donc ouvertes
+       * dans ce cas, et c'est le serveur qui refuse un décor sans fichier
+       * — une serrure vaut mieux qu'un panneau, et il en faut une de toute
+       * façon, puisqu'un formulaire se poste à la main.
+       */
       ?>
       <nav class="sd-etapes" role="tablist" aria-label="Étapes de la création">
         <?php $n = 0; foreach ($etapes as $cle => [$nom, $sous]): $n++; ?>
           <button type="button" role="tab" class="sd-etape<?= $n === 1 ? ' actif' : '' ?>"
                   id="onglet-<?= e($cle) ?>" aria-controls="panneau-<?= e($cle) ?>"
-                  aria-selected="<?= $n === 1 ? 'true' : 'false' ?>" data-etape="<?= e($cle) ?>">
+                  aria-selected="<?= $n === 1 ? 'true' : 'false' ?>" data-etape="<?= e($cle) ?>"
+                  <?= $par_fichier && $n > 1 ? 'data-verrouillable="1"' : '' ?>>
             <span class="sd-num"><?= $n ?></span>
             <span class="sd-nom"><?= e($nom) ?><small><?= e($sous) ?></small></span>
           </button>
         <?php endforeach; ?>
       </nav>
+
+      <?php if ($par_fichier): ?>
+        <p class="aide sd-verrou-note" id="sd-verrou-note" hidden>
+          Déposez votre fichier : les étapes suivantes s’ouvrent aussitôt.
+        </p>
+      <?php endif; ?>
 
       <!-- ═══════════ 1 · Le cadre ═══════════ -->
       <section class="carte sd-panneau" id="panneau-cadre" role="tabpanel" aria-labelledby="onglet-cadre">
@@ -188,7 +217,21 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           </div>
         </div>
 
-        <div class="champ sd-champ-disposition">
+        <?php
+        /**
+         * Le gabarit, le format, les déclinaisons : cachés, pas retirés.
+         *
+         * Un cadre fini répond déjà à ces trois questions. Les poser quand
+         * même, c'est demander à quelqu'un de mesurer sa propre image, et
+         * se tromper coûte cher : un 1080 × 1350 déclaré carré s'aplatit
+         * d'un quart.
+         *
+         * Les champs RESTENT dans le document, parce qu'ils portent des
+         * valeurs que le formulaire doit envoyer. Le script les pose à
+         * partir du fichier ; un champ retiré n'aurait rien envoyé du tout.
+         */
+        ?>
+        <div class="champ sd-champ-disposition"<?= $par_fichier ? ' hidden' : '' ?>>
           <label for="disposition">Gabarit</label>
           <select id="disposition" name="disposition">
             <?php
@@ -221,7 +264,12 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <p class="aide">Changer de gabarit remet l’apparence à ses réglages d’origine.</p>
         </div>
 
-        <p class="aide si-vierge"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
+        <?php /* Sur le chemin « cadre fini », la classe elle-même saute :
+                 c'est le script qui montre les blocs `si-vierge`, et la
+                 disposition Y EST toujours « vierge ». Garder la classe
+                 aurait rouvert ce qu'on vient de fermer. */ ?>
+        <p class="aide<?= $par_fichier ? '' : ' si-vierge' ?>"<?= $par_fichier
+              || $valeurs['disposition'] !== 'vierge' ? ' hidden' : '' ?>>
           La page blanche n’en demande pas : son décor tient au fond, à la fenêtre photo et au texte.
           Vous pouvez tout de même en ajouter un.
         </p>
@@ -243,7 +291,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           apparaîtra derrière : laissez donc le centre vide. Le SVG est refusé pour raison de sécurité.</p>
         </div>
 
-        <?php $fournis = cadres_fournis(); if ($fournis && !$valeurs['cadre_url']): ?>
+        <?php $fournis = cadres_fournis(); if ($fournis && !$valeurs['cadre_url'] && !$par_fichier): ?>
           <div class="champ">
             <label for="cadre_fourni">…ou partez d’un cadre fourni</label>
             <select id="cadre_fourni" name="cadre_fourni">
@@ -272,7 +320,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * revenant sur ses pas.
          */
         ?>
-        <div class="reglages">
+        <div class="reglages"<?= $par_fichier ? ' hidden' : '' ?>>
           <?php $liste('format', 'Format du décor', FORMATS, (string) $valeurs['format'],
                        'Celui du cadre, sans quoi il serait étiré.'); ?>
         </div>
@@ -293,7 +341,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * Le quota ne compte QU’UNE campagne : c’est tout l’intérêt.
          */
         ?>
-        <div class="champ sd-formats">
+        <div class="champ sd-formats"<?= $par_fichier ? ' hidden' : '' ?>>
           <span class="champ-titre">Autres formats <span style="font-weight:400">(facultatif)</span></span>
           <div class="fmt-rangee" id="fmt-rangee"></div>
           <input type="hidden" name="variantes" id="champ-variantes"
@@ -302,13 +350,15 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <p class="aide" id="fmt-aide" style="margin:6px 0 10px"></p>
         </div>
 
-        <div class="reglages si-vierge"<?= $valeurs['disposition'] === 'vierge' ? '' : ' hidden' ?>>
+        <div class="reglages<?= $par_fichier ? '' : ' si-vierge' ?>"<?= $par_fichier
+              || $valeurs['disposition'] !== 'vierge' ? ' hidden' : '' ?>>
           <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond'],
                        'Il apparaît partout où la photo ne va pas.'); ?>
         </div>
 
         <div class="sd-suite">
-          <button class="bouton fant" type="button" data-vers="campagne">La campagne →</button>
+          <button class="bouton fant" type="button" data-vers="campagne"
+                  <?= $par_fichier ? 'data-verrouillable="1"' : '' ?>>La campagne →</button>
         </div>
       </section>
 
@@ -600,7 +650,8 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           <p class="aide" id="apercu-etat">Aperçu en cours…</p>
         </div>
 
-        <button class="bouton sd-enregistrer" type="submit">
+        <button class="bouton sd-enregistrer" type="submit"
+                <?= $par_fichier ? 'data-verrouillable="1"' : '' ?>>
           <?= $modifie ? 'Enregistrer les modifications'
               : ($anonyme ? 'Créer mon compte et publier' : 'Créer et enregistrer') ?>
         </button>
@@ -614,8 +665,12 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * et c'est `vers` qui dit à quelle porte on frappe.
          */
         if ($anonyme): ?>
+          <?php /* `formnovalidate` : ce bouton ne publie rien, il met de
+                   côté et va chercher un compte. Le faire buter sur un titre
+                   manquant — qui vit dans l'étape 2, parfois fermée —
+                   donnerait un bouton qui ne fait RIEN quand on le presse. */ ?>
           <button class="bouton fant sd-connexion" type="submit" name="vers" value="connexion"
-                  style="margin-top:8px">
+                  formnovalidate style="margin-top:8px">
             J’ai déjà un compte, me connecter
           </button>
           <p class="aide sd-note">Dans les deux cas, votre décor vous suit.</p>
@@ -646,7 +701,21 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
        * n'est pas revenu, elle annonce au moins CE QUI SERA vérifié.
        */
       ?>
-      <div class="carte sd-sante" id="sd-sante">
+      <?php
+      /**
+       * Pas de santé du décor sur le chemin « cadre fini ».
+       *
+       * Elle a un sens quand on compose : elle dit, pendant qu'on règle,
+       * ce que la relecture vérifiera. Face à un fichier déjà fini, elle
+       * n'annonce plus qu'une chose au premier écran — « aucun cadre
+       * exploitable » — avant même qu'on ait eu l'occasion d'en déposer
+       * un. Un reproche pour n'avoir pas encore commencé.
+       *
+       * Ce que le verrou dit à sa place est la même information, tournée
+       * vers le geste suivant plutôt que vers le manque.
+       */
+      ?>
+      <div class="carte sd-sante" id="sd-sante"<?= $par_fichier ? ' hidden' : '' ?>>
         <p class="pas" style="margin:0 0 10px">Santé du décor</p>
         <ul class="sd-sante-liste" id="sd-sante-liste">
           <li class="sd-ct attente">La zone photo reste visible</li>
@@ -1287,62 +1356,40 @@ window.WAKABI_APERCU = {
 
 <script>
 /**
- * Le cadre part dès qu'on le choisit, et l'aperçu le montre.
+ * Le verrou du chemin « cadre fini » : rien avant le fichier.
  *
- * Il ne partait qu'avec le formulaire : on choisissait un fichier, l'image
- * de droite ne bougeait pas, et l'on découvrait son décor après
- * l'enregistrement. C'était déjà désagréable pour un organisateur
- * connecté ; depuis que le Studio s'ouvre sans compte, c'était devenu
- * absurde, puisque l'« enregistrement » est le mur d'inscription : on
- * créait un compte pour voir ce qu'on venait de déposer.
+ * Il ne s'agit pas de discipline mais d'économie de gestes. Les textes,
+ * les tailles et les placements se règlent en fractions du canevas, et le
+ * canevas est celui du fichier : régler avant de l'avoir déposé, c'est
+ * régler sur un gabarit maison qu'on s'apprête à remplacer, donc le
+ * refaire une seconde fois.
  *
- * Le champ fichier est vidé après l'envoi. Sans cela le fichier repartirait
- * une seconde fois avec le formulaire, et le serveur en garderait deux
- * copies dont une que rien ne désigne.
+ * Le verrou est posé ICI et non au rendu : sans JavaScript, personne ne
+ * viendrait le retirer. Ce qui protège vraiment est le contrôle serveur,
+ * qui refuse un décor sans fichier sur ce chemin.
  */
 (function () {
-  var champ = document.getElementById('cadre');
   var cache = document.querySelector('input[name="cadre_url"]');
-  var etat = document.getElementById('cadre-etat');
-  var form = document.getElementById('form-decor');
-  if (!champ || !cache || !form) { return; }
+  var note = document.getElementById('sd-verrou-note');
+  var sujets = Array.prototype.slice.call(document.querySelectorAll('[data-verrouillable]'));
+  if (!cache || !sujets.length) { return; }
 
-  var dire = function (texte, montrer) {
-    if (!etat) { return; }
-    etat.textContent = texte;
-    etat.hidden = !montrer;
+  var poser = function () {
+    var ferme = cache.value === '';
+    sujets.forEach(function (b) {
+      b.disabled = ferme;
+      /* Un onglet fermé n'est pas seulement inerte : il doit le DIRE, sans
+         quoi on clique trois fois avant de comprendre. */
+      if (b.getAttribute('role') === 'tab') { b.setAttribute('aria-disabled', ferme ? 'true' : 'false'); }
+    });
+    if (note) { note.hidden = !ferme; }
   };
 
-  champ.addEventListener('change', function () {
-    var f = champ.files && champ.files[0];
-    if (!f) { return; }
-    dire('Envoi du cadre\u2026', true);
-
-    var corps = new FormData();
-    var jeton = form.elements.namedItem('csrf');
-    corps.append('csrf', jeton ? jeton.value : '');
-    corps.append('image', f);
-
-    fetch((window.WAKABI_APERCU || {}).base + '?p=api-calque-image',
-          { method: 'POST', body: corps })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        champ.value = '';
-        if (!d.url) {
-          dire(d.erreur || 'Ce cadre a \u00e9t\u00e9 refus\u00e9.', true);
-          return;
-        }
-        cache.value = d.url;
-        dire('Cadre en place : il appara\u00eet dans l\u2019aper\u00e7u, \u00e0 droite.', true);
-        /* L'\u00e9v\u00e9nement que l'aper\u00e7u \u00e9coute : il redessine au m\u00eame rythme
-           que pour un curseur. */
-        cache.dispatchEvent(new Event('input', { bubbles: true }));
-      })
-      .catch(function () {
-        champ.value = '';
-        dire('L\u2019envoi du cadre a \u00e9chou\u00e9. R\u00e9essayez.', true);
-      });
-  });
+  /* `input` est l'événement que le téléverseur émet déjà pour réveiller
+     l'aperçu : on s'y branche plutôt que d'en inventer un second. */
+  cache.addEventListener('input', poser);
+  cache.addEventListener('change', poser);
+  poser();
 })();
 </script>
 

@@ -23,11 +23,11 @@
       <p>Votre graphiste vous l’a rendu, ou vous l’avez fait ailleurs. Vous le déposez,
       on s’occupe du reste.</p>
       <ul>
-        <li>Téléverser un PNG ou WebP, 2 Mo</li>
-        <li>Relever la fenêtre photo sur le cadre</li>
-        <li>Titre, ville, date, destination</li>
+        <li>Une seule chose à faire : déposer votre PNG ou WebP</li>
+        <li>Le format se lit dans le fichier, on ne le demande pas</li>
+        <li>Puis les textes : titre, ville, date, destination</li>
       </ul>
-      <span class="chemin-coupe">Pas de galerie de modèles, pas de calques</span>
+      <span class="chemin-coupe">Ni modèle, ni format, ni calques à régler</span>
       <span class="bouton" style="width:100%;justify-content:center">Déposer mon fichier</span>
     </a>
 
@@ -59,10 +59,11 @@
   <div class="carte" style="margin-top:20px">
     <h3 style="margin:0 0 6px">Des deux côtés</h3>
     <p class="aide" style="margin:0">
-      Les cadres fournis par Wakabi (« J’y serai », « Bon plan », les trois formats
-      réseaux) restent disponibles dans les deux chemins : ce sont des modèles de la
-      maison, pas un fichier apporté du dehors. Le QR Code, lui, est facultatif des
-      deux côtés : un décor qui ne contrôle aucune entrée n’en a pas besoin.
+      Le QR Code est facultatif des deux côtés : un décor qui ne contrôle aucune
+      entrée n’en a pas besoin. Les cadres fournis par Wakabi (« J’y serai »,
+      « Bon plan », les trois formats réseaux) vivent en revanche dans le Studio
+      seul : ce sont des points de départ, et qui arrive avec son fichier en a
+      déjà un.
       <?php if (!$moi): ?>
         Vous composez sans compte ; il ne vous en faudra un qu’au moment de publier.
       <?php endif; ?>

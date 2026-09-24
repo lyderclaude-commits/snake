@@ -32,27 +32,50 @@ $files = array_filter([
  * y compris ce qui n'attend aucune décision. Les mêmes trois familles que
  * la barre — ce que je publie, à qui je parle, comment tourne la machine —
  * pour qu'on n'ait à apprendre le rangement qu'une seule fois.
+ *
+ * Chaque entrée porte le DROIT qui ouvre son écran, et la liste est filtrée
+ * dessus. Sans ce filtre, un coordinateur voyait « Comptes », « Réglages »
+ * et « Sauvegardes » : les trois le renvoyaient ici même, sans un mot
+ * d'explication, c'est-à-dire qu'un clic ne faisait rien et que l'écran
+ * paraissait cassé. Un raccourci qui refuse est pire qu'un raccourci
+ * absent, parce qu'on le réessaie.
  */
-$raccourcis = [
+$raccourcis_bruts = [
     'Contenus' => [
-        ['?p=catalogue', 'Décors', 'Créer, publier, retirer'],
-        ['?p=relecture', 'Relecture des décors', 'La file des soumissions'],
-        ['?p=blog-admin', 'Le blog', 'Écrire et publier'],
-        ['?p=blog-relecture', 'Relecture du blog', 'Les articles proposés'],
+        ['?p=catalogue', 'Décors', 'Créer, publier, retirer', 'decors_tous'],
+        ['?p=relecture', 'Relecture des décors', 'La file des soumissions', 'valider'],
+        ['?p=blog-admin', 'Le blog', 'Écrire et publier', 'articles'],
+        ['?p=blog-relecture', 'Relecture du blog', 'Les articles proposés', 'articles'],
     ],
     'Audience' => [
-        ['?p=comptes', 'Comptes', 'Rôles, offres, suspensions'],
-        ['?p=regie', 'Régie e-mail', 'Campagnes marketing'],
-        ['?p=diffusion', 'Notifications push', 'Écrire aux navigateurs'],
-        ['?p=liens', 'Liens courts', 'Adresses traçables'],
+        ['?p=comptes', 'Comptes', 'Rôles, offres, suspensions', 'comptes'],
+        ['?p=regie', 'Régie e-mail', 'Campagnes marketing', 'regie'],
+        ['?p=diffusion', 'Notifications push', 'Écrire aux navigateurs', 'push'],
+        ['?p=liens', 'Liens courts', 'Adresses traçables', 'liens'],
     ],
     'Système' => [
-        ['?p=scan', 'Contrôle d’entrée', 'Scanner les badges'],
-        ['?p=reglages', 'Réglages', 'Transport e-mail, liens, images'],
-        ['?p=sauvegardes', 'Sauvegardes', 'Archives et cron'],
-        ['?p=facturation', 'Facturation', 'Abonnements et factures'],
+        ['?p=scan', 'Contrôle d’entrée', 'Scanner les badges', 'scan'],
+        /* Les offres ont leur bouton en tête de page, gardé par le même
+           droit. Les remettre ici donnerait deux entrées du même nom sur
+           le même écran — et un troisième « Les offres » avec la carte de
+           répartition, qui parle d'autre chose. */
+        ['?p=reglages', 'Réglages', 'Transport e-mail, liens, images', 'reglages'],
+        ['?p=sauvegardes', 'Sauvegardes', 'Archives et cron', 'reglages'],
+        // La facturation s'ouvre à tous : l'équipe y voit les abonnements,
+        // les autres leurs propres factures. Elle ne refuse personne.
+        ['?p=facturation', 'Facturation', 'Abonnements et factures', ''],
     ],
 ];
+$raccourcis = [];
+foreach ($raccourcis_bruts as $famille => $entrees) {
+    $gardees = array_values(array_filter(
+        $entrees,
+        static fn(array $e): bool => $e[3] === '' || droit($me, $e[3])
+    ));
+    if ($gardees) {
+        $raccourcis[$famille] = $gardees;
+    }
+}
 ?>
 <div class="contenu">
   <section class="entete">
@@ -68,6 +91,14 @@ $raccourcis = [
                  en PDF. Le lien est ici parce que c'est de ce chiffre-là
                  qu'on part quand on veut le détail. */ ?>
         <a class="bouton fant" href="<?= e(url('?p=rapports')) ?>">Le rapport du mois</a>
+        <?php /* Les offres sont le prix du produit : on les change rarement,
+                 mais quand on les change c'est urgent, et les chercher dans
+                 un sous-menu de réglages coûte trois clics ce jour-là.
+                 `reglages` gouverne l'écran ; un coordinateur ne l'a pas, et
+                 ne doit donc pas voir un bouton qui le refuserait. */ ?>
+        <?php if (droit($me, 'reglages')): ?>
+          <a class="bouton fant" href="<?= e(url('?p=offres')) ?>">Les offres</a>
+        <?php endif; ?>
         <a class="bouton fant" href="<?= e(url('?p=catalogue')) ?>">Tous les décors</a>
         <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
       </div>
@@ -120,7 +151,7 @@ $raccourcis = [
     <?php foreach ($raccourcis as $famille => $entrees): ?>
       <div class="carte plate">
         <p class="pas" style="margin:0 0 10px"><?= e($famille) ?></p>
-        <?php foreach ($entrees as [$ou, $nom, $quoi]): ?>
+        <?php foreach ($entrees as [$ou, $nom, $quoi, $_droit]): ?>
           <a class="raccourci" href="<?= e(url($ou)) ?>">
             <b><?= e($nom) ?></b>
             <span><?= e($quoi) ?></span>

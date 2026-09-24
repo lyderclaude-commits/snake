@@ -118,13 +118,21 @@ function imagePng(w: number, h: number): Buffer {
  * revenu », pas « une image est revenue ». Le défaut qu'on surveille
  * était précisément celui-ci : un autre cadre que le sien.
  */
-function cadreMagenta(cote = 400): Buffer {
+function cadreMagenta(cote = 400, hauteur = 0): Buffer {
+  /**
+   * La hauteur est facultative, et c'est elle qui éprouve le format.
+   *
+   * Un cadre carré ne dit rien : 1:1 est aussi le format par défaut, donc
+   * un décor qui finit carré ne prouve pas qu'on a LU le fichier. Il faut
+   * un rectangle pour que la réponse attendue diffère du silence.
+   */
+  const haut = hauteur || cote;
   const bord = 40;
   const lignes: Buffer[] = [];
-  for (let y = 0; y < cote; y++) {
+  for (let y = 0; y < haut; y++) {
     const l = Buffer.alloc(1 + cote * 4);
     for (let x = 0; x < cote; x++) {
-      const dedans = x < bord || x >= cote - bord || y < bord || y >= cote - bord;
+      const dedans = x < bord || x >= cote - bord || y < bord || y >= haut - bord;
       const o = 1 + x * 4;
       if (dedans) { l[o] = 255; l[o + 1] = 0; l[o + 2] = 200; l[o + 3] = 255; }
     }
@@ -137,7 +145,7 @@ function cadreMagenta(cote = 400): Buffer {
     return Buffer.concat([len, corps, crc]);
   };
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(cote, 0); ihdr.writeUInt32BE(cote, 4);
+  ihdr.writeUInt32BE(cote, 0); ihdr.writeUInt32BE(haut, 4);
   ihdr[8] = 8; ihdr[9] = 6;   // 8 bits, RVB + alpha
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -6485,8 +6493,15 @@ const run = async () => {
   await pB.goto(`${BASE}/index.php?p=nouveau&depart=fichier`, { waitUntil: 'domcontentloaded' });
   ok('le chemin du fichier cache la galerie de modèles',
      await pB.locator('.sd-galerie-champ').first().isHidden());
-  ok('mais garde les cadres fournis par Wakabi',
-     (await pB.locator('#cadre_fourni').count()) === 1);
+  /**
+   * Les cadres fournis ne vivent plus que dans le Studio.
+   *
+   * Ils y restent, et c'est leur place : ce sont des points de départ pour
+   * qui n'a pas de fichier. Les offrir à quelqu'un qui vient justement
+   * d'en apporter un revenait à lui proposer de recommencer.
+   */
+  ok('et n’offre plus de cadre fourni : il en apporte un',
+     (await pB.locator('#cadre_fourni').count()) === 0);
 
   await pB.goto(`${BASE}/index.php?p=nouveau&depart=studio`, { waitUntil: 'domcontentloaded' });
   ok('le chemin du studio cache le téléversement de cadre',
@@ -6814,6 +6829,155 @@ const run = async () => {
   ok('le journal porte la création et la suppression, en français',
      /a créé une offre/i.test(journalOffres) && /a supprimé une offre/i.test(journalOffres));
   await pOf.close();
+
+  console.log('\n━━ 53. Le chemin « cadre fini » : un seul champ, puis les étapes ━━');
+
+  /**
+   * Ce chemin servait le Studio ENTIER à quelqu'un qui n'en avait pas
+   * besoin : galerie de modèles, gabarit, format, déclinaisons, couleur de
+   * fond. Or celui qui arrive avec un fichier a déjà répondu à tout cela —
+   * son fichier EST la réponse. On éprouve donc deux choses : que ces
+   * questions ont disparu, et que le format se lit dans l'image plutôt que
+   * de se demander.
+   */
+  const ctxFini = await browser.newContext();
+  const pF2 = await ctxFini.newPage();
+  surveiller(pF2);
+
+  const cadre45 = join(tmpdir(), `wakabi-cadre-45-${marque}.png`);
+  writeFileSync(cadre45, cadreMagenta(432, 540));   // 4:5, et non 1:1
+
+  await pF2.goto(`${BASE}/index.php?p=nouveau&depart=fichier`, { waitUntil: 'domcontentloaded' });
+  await pF2.waitForSelector('#form-decor');
+
+  const cache = async (sel: string) => !(await pF2.locator(sel).first().isVisible().catch(() => false));
+  ok('pas de galerie de modèles sur ce chemin', await cache('.sd-galerie-champ'));
+  ok('pas de menu Gabarit', await cache('.sd-champ-disposition'));
+  ok('pas de menu Format du décor', await cache('#r-format'));
+  ok('pas de rangée Autres formats', await cache('.sd-formats'));
+  ok('pas de cadre fourni', (await pF2.locator('#cadre_fourni').count()) === 0);
+  ok('pas de Santé du décor', await cache('#sd-sante'));
+  ok('le champ de téléversement, lui, est bien là',
+     await pF2.locator('label[for="cadre"]').first().isVisible());
+
+  /* --- le verrou : rien avant le fichier --- */
+  ok('l’étape « La campagne » est fermée', await pF2.locator('#onglet-campagne').isDisabled());
+  ok('l’étape « L’apparence » est fermée', await pF2.locator('#onglet-apparence').isDisabled());
+  ok('le bouton d’enregistrement est fermé', await pF2.locator('.sd-enregistrer').isDisabled());
+  ok('l’écran dit POURQUOI', await pF2.locator('#sd-verrou-note').isVisible());
+  /* Se connecter n'est jamais verrouillé : on doit pouvoir aller chercher
+     son compte même les mains vides. */
+  ok('« j’ai déjà un compte » reste ouvert', !(await pF2.locator('.sd-connexion').isDisabled()));
+
+  /**
+   * On COMPTE les envois, parce que l'oeil n'en voit qu'un.
+   *
+   * Deux téléverseurs écoutaient le même `change` : celui de l'aperçu, et
+   * un second ajouté en ligne dans la page sans voir le premier. Chaque
+   * cadre partait donc deux fois et laissait sur le disque une copie que
+   * plus rien ne désignait — rien ne se voyait à l'écran, et le quota de
+   * brouillons se vidait deux fois plus vite. Un défaut de cette sorte ne
+   * se constate qu'en regardant le réseau.
+   */
+  let envoisCadre = 0;
+  pF2.on('request', (r) => { if (r.url().includes('api-calque-image')) { envoisCadre++; } });
+
+  await pF2.setInputFiles('#cadre', cadre45);
+  await pF2.waitForFunction(() => {
+    const c = document.querySelector('input[name="cadre_url"]') as HTMLInputElement | null;
+    return !!c && c.value !== '';
+  }, undefined, { timeout: 15000 });
+  await pF2.waitForTimeout(2400);
+
+  ok('le fichier déposé ouvre l’étape suivante', !(await pF2.locator('#onglet-campagne').isDisabled()));
+  ok('et l’enregistrement avec', !(await pF2.locator('.sd-enregistrer').isDisabled()));
+  ok('la raison du verrou disparaît', await cache('#sd-verrou-note'));
+
+  const formatLu = await pF2.locator('#r-format').inputValue();
+  ok('le format se LIT dans le fichier, on ne le demande plus',
+     formatLu === '4:5', `attendu 4:5, lu ${formatLu}`);
+  const dispoLue = await pF2.locator('#disposition').inputValue();
+  ok('le cadre fini part d’une page blanche, et non d’un gabarit maison',
+     dispoLue === 'vierge', `lu ${dispoLue}`);
+  const formeToile = await pF2.evaluate(() => {
+    const c = document.getElementById('apercu') as HTMLCanvasElement | null;
+    return c ? c.width / c.height : 0;
+  });
+  ok('la toile suit ce format au lieu de l’aplatir',
+     Math.abs(formeToile - 0.8) < 0.03, `rapport ${formeToile.toFixed(3)}`);
+  ok('et le cadre déposé se voit', (await compterMagenta(pF2)) > 500);
+
+  /**
+   * UN fichier déposé, UN fichier gardé.
+   *
+   * Deux téléverseurs écoutaient le même `change` : celui de l'aperçu et
+   * un second, ajouté en ligne dans la page sans voir le premier. Chaque
+   * cadre partait donc deux fois et laissait une copie que plus rien ne
+   * désignait — invisible à l'écran, et deux places du quota au lieu d'une.
+   */
+  ok('un fichier choisi part UNE fois, et non deux',
+     envoisCadre === 1, `${envoisCadre} appel(s) à api-calque-image`);
+  ok('le champ fichier est vidé après l’envoi',
+     (await pF2.locator('#cadre').evaluate((e) => (e as HTMLInputElement).value)) === '',
+     'sinon le formulaire en rapporterait une troisième copie');
+
+  /* --- et le décor arrive au bout --- */
+  await pF2.locator('#onglet-campagne').click();
+  await pF2.waitForTimeout(150);
+  await pF2.fill('input[name=titre]', `Cadre fini ${marque}`);
+  await pF2.locator('.sd-enregistrer').click();
+  await pF2.waitForLoadState('domcontentloaded');
+  ok('le mur reste à la fin, comme sur l’autre chemin',
+     pF2.url().includes('p=inscription') && pF2.url().includes('suite=decor'),
+     pF2.url().split('index.php')[1] ?? '');
+
+  await pF2.fill('input[name=nom]', 'Cadre Fini');
+  await pF2.fill('input[name=email]', `cadre-fini-${marque}@essai.tg`);
+  await pF2.fill('input[name=mot_de_passe]', 'un-mot-de-passe-solide-2026');
+  await pF2.locator('main form button[type=submit]').first().click();
+  await pF2.waitForLoadState('domcontentloaded');
+  await pF2.waitForTimeout(2400);
+  ok('le format survit au mur', (await pF2.locator('#r-format').inputValue()) === '4:5');
+  ok('le cadre aussi', (await compterMagenta(pF2)) > 500);
+
+  /**
+   * La serrure derrière le panneau.
+   *
+   * Le verrou d'étapes est un script : un formulaire se poste à la main,
+   * et le chemin « cadre fini » part d'une page blanche, seul gabarit que
+   * le contrôle habituel laisse passer SANS cadre. Sans cette règle-ci, on
+   * créait donc par cette porte un décor entièrement vide.
+   */
+  const sansFichier = await pF2.evaluate(async (base: string) => {
+    const jeton = (document.querySelector('input[name=csrf]') as HTMLInputElement | null)?.value ?? '';
+    const corps = new URLSearchParams({
+      csrf: jeton, depart: 'fichier', disposition: 'vierge', titre: 'Décor sans rien',
+      cadre_url: '', redirection: 'https://wakabileguide.com/', ville: 'lome', rubrique: 'campagne',
+    });
+    const r = await fetch(base + '?p=nouveau', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: corps.toString(),
+    });
+    return await r.text();
+  }, BASE);
+  ok('posté à la main sans fichier, le serveur refuse',
+     /Déposez le fichier de votre décor/.test(sansFichier),
+     sansFichier.length > 0 ? 'réponse reçue' : 'aucune réponse');
+
+  rmSync(cadre45, { force: true });
+  await ctxFini.close();
+
+  /* --- le Studio, lui, garde tout --- */
+  const ctxStudio2 = await browser.newContext();
+  const pS2 = await ctxStudio2.newPage();
+  surveiller(pS2);
+  await pS2.goto(`${BASE}/index.php?p=nouveau&depart=studio`, { waitUntil: 'domcontentloaded' });
+  await pS2.waitForSelector('#form-decor');
+  ok('l’autre chemin garde sa galerie', await pS2.locator('.sd-galerie-champ').first().isVisible());
+  ok('il garde son menu Format', await pS2.locator('#r-format').isVisible());
+  ok('il garde sa Santé du décor', await pS2.locator('#sd-sante').isVisible());
+  ok('et ses étapes sont ouvertes d’emblée',
+     !(await pS2.locator('#onglet-campagne').isDisabled()));
+  await ctxStudio2.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

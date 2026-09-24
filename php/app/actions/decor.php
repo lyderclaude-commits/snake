@@ -193,9 +193,22 @@ const CLES_APPARENCE = [
     'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
 ];
 
+/**
+ * Le chemin « cadre fini » part d'une PAGE BLANCHE, et non d'un bandeau.
+ *
+ * Un cadre apporté du dehors est déjà le décor : il porte sa composition,
+ * ses couleurs et ses marges. Le poser sur « Bandeau bas · Carré » lui
+ * imposait le canevas et la mise en page d'un gabarit maison, c'est-à-dire
+ * exactement ce que la personne avait déjà fait ailleurs, en mieux. La
+ * page blanche est le seul gabarit qui ne décide de rien : le format y est
+ * libre, et c'est le fichier qui le fixe.
+ */
+$par_fichier = $depart === 'fichier' && !$modifie;
+$dispo_depart = $par_fichier ? 'vierge' : 'bandeau';
+
 $valeurs = [
     'titre' => '', 'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
-    'disposition' => 'bandeau', 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom',
+    'disposition' => $dispo_depart, 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom',
     'champ_valeur' => 'Kossi', 'redirection' => 'https://wakabileguide.com/',
     'redirection_libelle' => '', 'legende' => '', 'expire_le' => '', 'evenement_le' => '', 'cadre_url' => '',
     'cadre_fourni' => '',
@@ -211,7 +224,7 @@ $valeurs = [
     'calques' => '[]',
     /** Les déclinaisons, en JSON pour la même raison que les calques. */
     'variantes' => '{}',
-] + apparence_par_defaut('bandeau');
+] + apparence_par_defaut($dispo_depart);
 
 if ($modifie && !$post) {
     $g = json_lire($modifie['gabarit']);
@@ -319,6 +332,16 @@ if (!$anonyme && !$modifie && ($_GET['reprendre'] ?? '') === '1' && !$post) {
         $valeurs['calques'] = brouillon_calques_adopter($valeurs['calques']);
 
         $depart = ($b['charge']['depart'] ?? '') === 'fichier' ? 'fichier' : $depart;
+        /**
+         * Le chemin se retrouve ici, donc le drapeau qui en dépend aussi.
+         *
+         * On revient du mur par `?p=nouveau&reprendre=1`, sans le paramètre
+         * `depart` : c'est le brouillon qui se souvient du chemin. Laisser
+         * `$par_fichier` sur la valeur calculée à l'ouverture en ferait
+         * deux choses différentes selon l'endroit où on le lit — ce que le
+         * prochain lecteur ne soupçonnera pas.
+         */
+        $par_fichier = $depart === 'fichier' && !$modifie;
         brouillon_consommer('decor');
         $repris = true;
     }
@@ -368,6 +391,18 @@ if ($post) {
             } elseif ($nomQ = brouillon_fichier_ranger((string) $_FILES['cadre']['tmp_name'], $ext)) {
                 if (brouillon_fichier_noter($nomQ)) {
                     $valeurs['cadre_url'] = brouillon_fichier_url($nomQ);
+                    /**
+                     * Le format suit le fichier, sans le demander.
+                     *
+                     * Ce bloc ne joue que sans JavaScript : sinon le cadre
+                     * est déjà parti par `api-calque-image`, qui renvoie le
+                     * format et laisse le Studio le poser. Les deux chemins
+                     * doivent aboutir au même décor, faute de quoi couper
+                     * les scripts changerait la forme du résultat.
+                     */
+                    if ($par_fichier) {
+                        $valeurs['format'] = format_devine((int) ($info[0] ?? 0), (int) ($info[1] ?? 0));
+                    }
                 } else {
                     brouillon_fichier_effacer($nomQ);
                     $erreur = 'Trop d’images en attente depuis cette connexion. '
@@ -431,6 +466,11 @@ if ($post) {
                 ? sprintf(' Cadre optimisé : %s au lieu de %s.', poids($c['apres']), poids($c['avant']))
                 : '';
             $valeurs['cadre_url'] = url('?p=cadre&f=' . $nom);
+            // Même raison que plus haut : sans JavaScript, c'est ici que le
+            // format se lit, et il doit se lire.
+            if ($par_fichier) {
+                $valeurs['format'] = format_devine((int) ($info[0] ?? 0), (int) ($info[1] ?? 0));
+            }
         }
     }
 
@@ -461,6 +501,17 @@ if ($post) {
 
     if (!$erreur && $valeurs['titre'] === '') {
         $erreur = 'Donnez un titre à votre décor.';
+    } elseif (!$erreur && $valeurs['cadre_url'] === '' && $par_fichier) {
+        /**
+         * Le chemin « cadre fini » EXIGE le fichier, page blanche ou non.
+         *
+         * Il part d'une page blanche, or c'est le seul gabarit que le
+         * contrôle suivant laisse passer sans cadre : les deux règles
+         * combinées auraient donc laissé créer, par ce chemin-là, un décor
+         * entièrement vide. L'écran ne le propose pas, mais un formulaire
+         * se poste à la main, et le verrou d'étapes est un script.
+         */
+        $erreur = 'Déposez le fichier de votre décor : c’est lui qui fait ce décor-là.';
     } elseif (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['disposition'] !== 'vierge') {
         // La page blanche est le seul gabarit qui se passe de cadre : son
         // décor tient au fond, à la fenêtre photo et au texte.

@@ -118,6 +118,40 @@ function format_canevas(string $format): array
 }
 
 /**
+ * Le format le plus proche des dimensions d'une image.
+ *
+ * Quelqu'un qui apporte un cadre fini a déjà tranché la question du
+ * format : la réponse est dans le fichier. La lui redemander revient à lui
+ * faire mesurer sa propre image, et se paie cher dès qu'il répond de
+ * travers, parce qu'un 1080 × 1350 posé sur un canevas carré s'aplatit
+ * d'un quart et qu'aucun réglage ne rattrape ça.
+ *
+ * La comparaison se fait en échelle logarithmique. Avec une simple
+ * soustraction de rapports, 16:9 (1,78) est à 0,78 du carré tandis que
+ * 9:16 (0,56) n'en est qu'à 0,44 : une image deux fois plus haute que
+ * large paraîtrait « plus carrée » qu'une image deux fois plus large.
+ * Le logarithme rend les deux écarts égaux, ce qu'ils sont.
+ */
+function format_devine(int $largeur, int $hauteur): string
+{
+    if ($largeur < 1 || $hauteur < 1) {
+        return '1:1';
+    }
+    $mesure = log($largeur / $hauteur);
+    $meilleur = '1:1';
+    $ecart = INF;
+    foreach (array_keys(FORMATS) as $cle) {
+        $c = format_canevas($cle);
+        $d = abs($mesure - log($c['w'] / $c['h']));
+        if ($d < $ecart) {
+            $ecart = $d;
+            $meilleur = $cle;
+        }
+    }
+    return $meilleur;
+}
+
+/**
  * Le canevas d'une disposition.
  *
  * Chaque gabarit nommé a son format d'origine — c'est ce qui le rend prêt à
