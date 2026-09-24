@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 function assurer_schema(): void
 {
@@ -1027,6 +1027,66 @@ function creer_schema(PDO $pdo, bool $mysql): void
          * « est-ce que ceux qui sont venus ont mieux noté ? » doit rester
          * répondable l’an prochain.
          */
+        /**
+         * v22 — ce qu'on a commencé sans compte.
+         *
+         * Le produit demandait un compte AVANT de laisser faire quoi que
+         * ce soit. Le mur est maintenant à la fin : on compose son lien
+         * court ou son décor, et c'est au moment de le créer qu'on se
+         * présente. Sans cette table, la connexion effaçait le travail :
+         * `exiger_droit()` renvoyait sur la connexion, qui renvoyait sur
+         * le tableau de bord, et ce qu'on venait d'écrire n'existait plus.
+         *
+         * Le `jeton` vit dans un cookie et n'est rattaché à personne :
+         * c'est le seul moyen de retrouver un brouillon fait par quelqu'un
+         * qui n'existe pas encore. `expire_le` est donc obligatoire, et
+         * l'entretien fait le ménage : un brouillon anonyme ne doit pas
+         * devenir un dépôt de fichiers permanent.
+         */
+        "CREATE TABLE IF NOT EXISTS brouillons (
+            id        $id PRIMARY KEY,
+            jeton     $court NOT NULL,
+            genre     $court NOT NULL,
+            charge    $txt NOT NULL,
+            fichier   $court NULL,
+            ip        $court NULL,
+            cree_le   $court NOT NULL,
+            expire_le $court NOT NULL
+        )$moteur",
+
+        /**
+         * v22 — les offres commerciales, modifiables sans redéploiement.
+         *
+         * Elles vivaient dans la constante `FORMULES`, c'est-à-dire dans
+         * le code : changer un prix demandait un paquet et une mise en
+         * ligne. La constante RESTE, comme défaut et comme semence de
+         * cette table ; c'est elle qui décrit ce qu'une offre peut porter.
+         * La table ne fait que dire ce qu'elle porte AUJOURD'HUI.
+         *
+         * `capacites` est du JSON plutôt que dix-huit colonnes : la liste
+         * des lignes d'offre (`OFFRE_LIGNES`) bouge à chaque
+         * fonctionnalité, et une colonne par ligne aurait demandé une
+         * migration à chacune.
+         *
+         * `actif` retire une offre de la vitrine SANS la supprimer : les
+         * comptes qui la portent gardent exactement ce qu'ils ont payé.
+         * C'est la différence entre arrêter de vendre et reprendre.
+         */
+        "CREATE TABLE IF NOT EXISTS formules (
+            cle       $court PRIMARY KEY,
+            nom       $court NOT NULL,
+            prix      INT NOT NULL DEFAULT 0,
+            lancement INT NOT NULL DEFAULT 0,
+            rang      INT NOT NULL DEFAULT 0,
+            actif     INT NOT NULL DEFAULT 1,
+            tag       $court NULL,
+            cta       $court NULL,
+            phare     INT NOT NULL DEFAULT 0,
+            capacites $txt NOT NULL,
+            cree_le   $court NOT NULL,
+            maj_le    $court NULL
+        )$moteur",
+
         "CREATE TABLE IF NOT EXISTS reponses_sondage (
             id          $id PRIMARY KEY,
             envoi_id    $id NOT NULL UNIQUE,
@@ -1122,6 +1182,12 @@ function creer_schema(PDO $pdo, bool $mysql): void
          */
         'CREATE INDEX idx_badges_decor ON badges (decor_id)',
         'CREATE INDEX idx_reponses_decor ON reponses_sondage (decor_id)',
+        /**
+         * v22 — un brouillon se retrouve par son jeton, et se purge par
+         * sa date. Ce sont les deux seules questions qu'on lui pose.
+         */
+        'CREATE INDEX idx_brouillons_jeton ON brouillons (jeton)',
+        'CREATE INDEX idx_brouillons_expire ON brouillons (expire_le)',
     ] as $sql) {
         // MySQL ne connaît pas IF NOT EXISTS sur les index avant la 8.0.29 :
         // relancer l'installation ne doit pas échouer pour si peu.

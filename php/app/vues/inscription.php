@@ -11,6 +11,10 @@
 
   <form method="post" class="carte">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+      <?php /* Ce qu'on était venu faire survit au POST. */ ?>
+      <?php if (($suite ?? '') !== ''): ?>
+        <input type="hidden" name="suite" value="<?= e((string) $suite) ?>">
+      <?php endif; ?>
     <?php if (!empty($offre)): ?><input type="hidden" name="offre" value="<?= e($offre) ?>"><?php endif; ?>
     <div class="champ">
       <label for="role">Type de compte</label>

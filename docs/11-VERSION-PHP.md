@@ -1,6 +1,42 @@
-# Wakabi Boost v1.4 — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1.5 — décompresser, ouvrir une page, c'est en ligne
 
-**Ce que la v1.4 ajoute à la v1.3** : le rapport devient une **action**. Trois
+**Ce que la v1.5 ajoute à la v1.4** : le produit cesse de demander un compte
+AVANT de laisser faire quoi que ce soit.
+
+1. **Le mur passe à la fin.** On raccourcit son lien, on compose son décor, et
+   c'est au moment de le créer qu'on se présente. Ce qui a été saisi TRAVERSE
+   la connexion : une table de brouillons anonymes, un jeton dans un cookie,
+   48 heures de péremption et une quarantaine pour les fichiers déposés sans
+   compte. Jusqu'ici, `exiger_droit()` renvoyait sur la connexion et la
+   connexion renvoyait sur le tableau de bord : le travail disparaissait en
+   silence.
+
+2. **Trois cartes de la vitrine mènent quelque part**, et chacune au bon
+   endroit. « Ouvrir le Studio » envoyait sur la LISTE DES DÉCORS, c'est-à-dire
+   là où l'on fait son badge et non là où on le fabrique. « Générer un badge »
+   récupère cette destination, et le Studio prend la sienne.
+
+3. **Deux chemins vers un décor**, demandés avant d'entrer dans le Studio :
+   déposer un cadre déjà fini, ou partir de zéro. L'étape « Le cadre »
+   mélangeait les deux métiers dans le même panneau. Les cadres FOURNIS par
+   Wakabi restent des deux côtés : ce sont des modèles de la maison, pas un
+   fichier apporté du dehors.
+
+4. **Le QR Code devient facultatif.** Il était obligatoire au motif qu'il fait
+   la différence entre un badge et une image. C'est vrai le jour d'un
+   événement, et faux pour une campagne qui ne contrôle aucune entrée. Une
+   case à cocher, et l'écran dit ce qu'on perd : sans QR, ni présences
+   scannées, ni segment « est venu », ni Koris.
+
+5. **Les offres se tiennent depuis un écran.** Elles vivaient dans la
+   constante `FORMULES`, c'est-à-dire dans le code : changer un prix demandait
+   un paquet et une mise en ligne. La constante reste, comme défaut et comme
+   semence ; la table dit ce que les offres valent aujourd'hui. Trois refus
+   les encadrent, et ce sont eux l'intérêt de l'écran.
+
+---
+
+**Ce que la v1.4 avait ajouté à la v1.3** : le rapport devient une **action**. Trois
 briques, qui partent toutes du même constat — un rapport qui dit « 486 badges
 créés, 372 emportés » laissait 114 personnes dans un écart que personne ne
 pouvait ouvrir.
@@ -63,7 +99,7 @@ que dans les migrations, donc pas dans une installation neuve — le premier dé
 enregistré sur un site fraîchement installé échouait.
 
 Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.4.zip`) et s'affiche en pied de page :
+nomme l'archive livrée (`wakabi-boost-v1.5.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -76,7 +112,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.4.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.5.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -92,8 +128,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **836 scénarios
-réussis** sur une base déjà peuplée, **835 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **884 scénarios
+réussis** sur une base déjà peuplée, **883 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas.
@@ -185,10 +221,11 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 836 scénarios, dans un vrai navigateur
+npm run php:e2e          # 884 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
-                         # facture, rapport, segments/sponsor/sondage
+                         # facture, rapport, segments/sponsor/sondage,
+                         # brouillons et offres
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -206,7 +243,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 836 scénarios
+### Les 884 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -275,6 +312,10 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le sponsor** | Un nom, un lien et un logo se posent sur le décor, le bloc apparaît **sous le badge** sur la page publique, et le rapport d'exposition sort en PDF sous un nom qui porte celui du sponsor |
 | **Le sondage** | Il se règle avec les rappels, là où part le « Merci d'être venu » ; un jeton inconnu répond une page close **sans dire qu'il est inconnu**, et cette page reste hors des moteurs |
 | **La porte de l'organisateur** | Son tableau de bord mène aux rappels de sa campagne publiée, le bouton dit aussi le sondage, le chemin s'ouvre vraiment et l'interrupteur du sondage y est à sa portée ; un **éditeur** de la maison, lui, n'a pas ce bouton |
+| **Les portes publiques** | Le raccourcisseur et le Studio s'ouvrent sans compte ; le prix des liens courts est annoncé **avant le premier champ** ; ce qu'on a saisi TRAVERSE le mur, décor et choix du QR compris ; le compte créé au mur est un **organisateur**, pas un participant ; un brouillon ne suit pas quelqu'un d'autre |
+| **Les deux chemins** | L'écran de choix propose deux départs et deux seulement ; celui du fichier cache la galerie de modèles, celui du studio cache le téléversement, et les **cadres fournis restent des deux côtés** |
+| **Le QR facultatif** | Une case à cocher, cochée par défaut pour ne rien changer aux décors existants ; la décocher dit ce qu'on perd et retire ses réglages, le contrôle de vol cesse de parler d'un QR absent |
+| **Les offres tenues à l'écran** | Une offre se crée, se modifie et arrive sur la vitrine **sans une ligne de code**, à l'ordre demandé, avec son accroche et son bouton ; trois refus l'encadrent : Découverte ne se supprime pas, une offre portée par des comptes non plus, et un prix de lancement au-dessus du prix normal est renvoyé |
 | **Emporter ses données** | Un fichier JSON avec le compte, les campagnes, les badges, les liens, les Koris, les articles et les factures — et **ni mot de passe, ni clé d'API** dedans |
 | **La double authentification** | Proposée à l'équipe seule ; un code calculé **comme le ferait un téléphone** est accepté ; ensuite le mot de passe seul ne connecte plus, un mauvais code est refusé, le bon ouvre la session |
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |

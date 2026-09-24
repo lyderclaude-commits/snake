@@ -163,7 +163,7 @@ $moi = $c['id'] === $me['id'];
         <div class="champ" style="margin:0">
           <label for="p-montant">Montant reçu (F)</label>
           <input id="p-montant" name="montant" type="number" min="0" step="500"
-                 style="width:130px" value="<?= (int) (FORMULES[$c['formule']]['prix'] ?? 0) ?>">
+                 style="width:130px" value="<?= (int) (formules()[$c['formule']]['prix'] ?? 0) ?>">
         </div>
         <div class="champ" style="margin:0">
           <label for="p-jours">Pour combien de jours</label>
@@ -231,7 +231,7 @@ $moi = $c['id'] === $me['id'];
         <div class="champ" style="margin:0">
           <label for="f-formule">Offre</label>
           <select id="f-formule" name="formule" style="width:auto">
-            <?php foreach (FORMULES as $cle => $f): ?>
+            <?php foreach (formules() as $cle => $f): ?>
               <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>>
                 <?= e($f['nom']) ?> · <?= $f['prix'] ? number_format($f['prix'], 0, ',', ' ') . ' FCFA' : 'gratuit' ?>
               </option>

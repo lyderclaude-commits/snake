@@ -186,7 +186,7 @@ function facture_poser(array $client, string $debut, string $fin, ?array $par = 
 {
     $reglages = facturation_reglages();
     $formule = (string) ($client['formule'] ?? 'decouverte');
-    $ttc = (int) ($options['montant'] ?? (FORMULES[$formule]['prix'] ?? 0));
+    $ttc = (int) ($options['montant'] ?? (formules()[$formule]['prix'] ?? 0));
     $m = facture_montants($ttc, (int) $reglages['fact_tva']);
     $statut = isset(FACTURE_STATUTS[$options['statut'] ?? '']) ? (string) $options['statut'] : 'reglee';
 
@@ -221,7 +221,7 @@ function facture_poser(array $client, string $debut, string $fin, ?array $par = 
 function facture_emettre(array $client, string $debut, string $fin, ?array $par = null, ?int $montant = null): string
 {
     return facture_poser($client, $debut, $fin, $par, [
-        'montant' => $montant ?? (int) (FORMULES[$client['formule'] ?? '']['prix'] ?? 0),
+        'montant' => $montant ?? (int) (formules()[$client['formule'] ?? '']['prix'] ?? 0),
         'statut' => 'reglee',
     ]);
 }
@@ -536,7 +536,7 @@ function facturation_lignes(): array
         $lignes[] = [
             'compte' => $u,
             'etat' => $etat,
-            'prix' => (int) (FORMULES[$u['formule'] ?? '']['prix'] ?? 0),
+            'prix' => (int) (formules()[$u['formule'] ?? '']['prix'] ?? 0),
             'derniere' => facture_derniere((string) $u['id']),
             /**
              * La date de début, avec son filet de sécurité.

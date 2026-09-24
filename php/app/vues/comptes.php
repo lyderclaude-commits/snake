@@ -97,7 +97,7 @@ $ouvert = $ouvert ?? '';
            <?= in_array($roles_clients, ROLES_AVEC_OFFRE, true) ? '' : 'hidden' ?>>
         <label for="c-formule">Offre</label>
         <select id="c-formule" name="formule">
-          <?php foreach (FORMULES as $cle => $f): ?>
+          <?php foreach (formules() as $cle => $f): ?>
             <?php
             $combien = $f['campagnes'] < 0
                 ? 'illimité'
@@ -266,7 +266,7 @@ $ouvert = $ouvert ?? '';
                 ?>
                 <?php if (a_une_offre($c)): ?>
                   <select name="formule" style="width:auto" aria-label="Offre de <?= e($c['nom']) ?>">
-                    <?php foreach (FORMULES as $cle => $f): ?>
+                    <?php foreach (formules() as $cle => $f): ?>
                       <option value="<?= e($cle) ?>" <?= ($c['formule'] ?? 'decouverte') === $cle ? 'selected' : '' ?>><?= e($f['nom']) ?></option>
                     <?php endforeach; ?>
                   </select>

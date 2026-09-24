@@ -388,6 +388,32 @@ input[type=range]{width:100%;accent-color:var(--primary)}
 .msg.err{background:#FEF2F2;border-color:#FCA5A5;color:#991B1B}
 .msg.ok{background:#ECFDF5;border-color:#6EE7B7;color:#065F46}
 .msg.info{background:var(--primary-wash);border-color:#BFDBFE;color:var(--primary-d)}
+/* Les deux portes vers un décor. Une carte entièrement cliquable : le
+   bouton à l'intérieur est un repère visuel, pas une seconde cible. */
+.chemin-carte{
+  display:flex;flex-direction:column;gap:9px;padding:20px;
+  border:1.5px solid var(--border);border-radius:var(--r16);background:var(--paper);
+  color:inherit;text-decoration:none;box-shadow:var(--ombre);
+}
+.chemin-carte:hover{border-color:var(--primary)}
+.chemin-carte:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+.chemin-ico{
+  width:42px;height:42px;border-radius:var(--r10);background:var(--primary-wash);
+  color:var(--primary);display:grid;place-items:center;
+}
+.chemin-ico svg{width:20px;height:20px}
+.chemin-carte h2{font-size:1.05rem}
+.chemin-carte p{font-size:.86rem;color:var(--text2);margin:0}
+.chemin-carte ul{margin:0;padding-left:18px;font-size:.84rem;color:var(--text2);line-height:1.7}
+.chemin-carte ul li::marker{color:var(--primary)}
+.chemin-coupe{
+  font-size:.78rem;color:var(--rouge);border-top:1px dashed var(--border);
+  padding-top:10px;margin-top:auto;
+}
+
+/* Ni une erreur ni une information : ce que ça va coûter. L'ambre est la
+   seule teinte qui fasse s'arrêter sans faire croire à une panne. */
+.msg.attention{background:#FFFBEB;border-color:#FCD34D;color:#92400E}
 .msg ul{margin:.4em 0 0;padding-left:1.1em}
 
 .pastille{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em}

@@ -105,7 +105,7 @@ $regler = static function (array $f): string {
   <?php
   /* ---------------- émettre une facture ---------------- */
   if ($facturer):
-    $prix = (int) (FORMULES[$facturer['formule']]['prix'] ?? 0);
+    $prix = (int) (formules()[$facturer['formule']]['prix'] ?? 0);
     $demande = (string) ($facturer['offre_demandee'] ?? '');
   ?>
     <div class="carte" style="margin-bottom:18px;border-color:var(--primary)">
@@ -122,12 +122,12 @@ $regler = static function (array $f): string {
         <?php endif; ?>
       </p>
 
-      <?php if ($demande && isset(FORMULES[$demande])): ?>
+      <?php if ($demande && isset(formules()[$demande])): ?>
         <div class="msg ok" style="margin:0 0 14px">
           <strong>Changement d’offre demandé.</strong>
           <p style="margin:.35em 0 0">Ce client demande à passer en
           <strong><?= e(formule_libelle($demande)) ?></strong>
-          (<?= e(montant_fr((int) (FORMULES[$demande]['prix'] ?? 0))) ?> par mois).
+          (<?= e(montant_fr((int) (formules()[$demande]['prix'] ?? 0))) ?> par mois).
           Émettre la facture appliquera le changement : c’est le moment prévu pour cela.</p>
         </div>
       <?php endif; ?>
@@ -151,7 +151,7 @@ $regler = static function (array $f): string {
           <div class="champ">
             <label for="f-montant">Montant TTC</label>
             <input id="f-montant" name="montant" type="number" min="0" step="500"
-                   value="<?= (int) ($demande && isset(FORMULES[$demande]) ? FORMULES[$demande]['prix'] : $prix) ?>">
+                   value="<?= (int) ($demande && isset(formules()[$demande]) ? formules()[$demande]['prix'] : $prix) ?>">
           </div>
         </div>
 

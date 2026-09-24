@@ -298,7 +298,11 @@ function prevol(array $gabarit, ?string $cadre_url): array
     if ($collisions) {
         $ajouter('collision', 'echec', 'Un texte est posé sous ' . implode(' et ', array_unique($collisions)) . ' : il sera illisible.');
     } else {
-        $ajouter('collision', 'ok', 'Aucun texte sous le filigrane ni sous le QR.');
+        // La phrase suit le décor : annoncer « ni sous le QR » sur un badge
+        // qui n'en porte pas ferait douter de tous les autres contrôles.
+        $ajouter('collision', 'ok', ($gabarit['qr']['enabled'] ?? true)
+            ? 'Aucun texte sous le filigrane ni sous le QR.'
+            : 'Aucun texte sous le filigrane. Ce décor ne porte pas de QR Code.');
     }
 
     /* 6 — les textes tiennent dans leur zone */

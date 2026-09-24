@@ -122,7 +122,7 @@ $taux = (int) $r['fact_tva'];
        * Un taux saisi de travers ne se voit pas dans un champ : il se voit
        * sur une facture, trois semaines plus tard, chez le client.
        */
-      $ex = facture_montants((int) (FORMULES['croissance']['prix'] ?? 12000), $taux);
+      $ex = facture_montants((int) (formules()['croissance']['prix'] ?? 12000), $taux);
       ?>
       <div class="msg ok" style="margin:4px 0 0">
         <strong>Sur une offre Croissance à <?= e(montant_fr($ex['ttc'], (string) $r['fact_devise'])) ?> :</strong>

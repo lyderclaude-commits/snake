@@ -19,6 +19,10 @@
   <?php if (!empty($en_attente)): ?>
     <form method="post" class="carte">
       <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <?php /* La suite survit au POST, et au second facteur. */ ?>
+        <?php if (($suite ?? '') !== ''): ?>
+          <input type="hidden" name="suite" value="<?= e((string) $suite) ?>">
+        <?php endif; ?>
       <p style="margin:0 0 14px">Mot de passe accepté pour
       <strong><?= e((string) $en_attente['email']) ?></strong>. Ouvrez votre application
       d’authentification et saisissez le code à six chiffres.</p>
@@ -40,6 +44,10 @@
 
   <form method="post" class="carte">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <?php /* La suite survit au POST, et au second facteur. */ ?>
+        <?php if (($suite ?? '') !== ''): ?>
+          <input type="hidden" name="suite" value="<?= e((string) $suite) ?>">
+        <?php endif; ?>
     <div class="champ">
       <label for="email">Adresse e-mail</label>
       <input id="email" name="email" type="email" required autocomplete="email" value="<?= e($valeurs['email']) ?>">

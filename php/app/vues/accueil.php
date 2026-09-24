@@ -66,20 +66,34 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <p>Là où vos invités sont déjà, pas là où vous espérez qu’ils aillent.</p>
     </div>
     <div class="grille canaux">
-      <?php foreach ([
-        ['message', 'WhatsApp & Rappels', 'Invitations, rappels automatiques J-1 et H-2, chatbots. Vos messages lus à 98 %, jamais dans les spams.', 'À partir de 1 FCFA/message', false],
-        ['cloche', 'Notifications Push', 'Notifiez vos abonnés directement sur leur navigateur, sans application à installer.', 'Coût d’envoi : zéro', false],
-        ['avion', 'Telegram', 'Créez des canaux de diffusion illimités et sécurisés. Idéal pour fédérer une communauté fidèle.', 'Canaux illimités', false],
-        ['lien', 'Liens courts', 'Raccourcissez vos URLs, suivez les clics en temps réel et retargetez votre audience.', 'wkb.link', false],
-        ['studio', 'Studio Badge « J’y serai »', 'Vos invités créent leur badge personnalisé en 1 clic et le téléchargent. Effet viral sur WhatsApp et les réseaux.', 'Disponible maintenant', true],
-      ] as [$ico, $canal, $corps, $note, $actif]): ?>
-        <div class="canal<?= $actif ? ' actif' : '' ?>">
+      <?php
+      /**
+       * Trois cartes mènent quelque part, et ce sont les seules.
+       *
+       * Une seule portait un bouton, et ce bouton mentait : « Ouvrir le
+       * Studio » envoyait sur la LISTE DES DÉCORS, c'est-à-dire là où l'on
+       * fait son badge, pas là où on le fabrique. Chaque promesse est
+       * maintenant en face de sa porte, et « Générer un badge » récupère
+       * la destination qu'on lui avait prise.
+       *
+       * Les deux premières restent sans bouton : elles décrivent des
+       * canaux qui se branchent depuis un compte, pas une porte d'entrée.
+       */
+      foreach ([
+        ['cloche', 'Notifications Push', 'Notifiez vos abonnés directement sur leur navigateur, sans application à installer.', 'Coût d’envoi : zéro', null, ''],
+        ['avion', 'Telegram', 'Créez des canaux de diffusion illimités et sécurisés. Idéal pour fédérer une communauté fidèle.', 'Canaux illimités', null, ''],
+        ['message', 'WhatsApp & Rappels', 'Invitations, rappels automatiques J-1 et H-2, chatbots. Vos messages lus à 98 %, jamais dans les spams.', 'À partir de 1 FCFA/message', null, ''],
+        ['lien', 'Liens courts', 'Une adresse courte à mettre sur une affiche, et le nombre de personnes qui l’ont réellement suivie.', 'wkb.link', '?p=lien-court', 'Raccourcir un lien'],
+        ['studio', 'Studio Badge « J’y serai »', 'Composez le décor de votre événement : déposez le vôtre, ou partez de zéro dans le Studio.', 'Sans compte pour commencer', '?p=creer', 'Ouvrir le Studio'],
+        ['coche', 'Générer un badge', 'Choisissez un décor publié, ajoutez votre photo, partagez. C’est ce que font vos invités.', 'Sans compte, en 30 secondes', '?p=decors', 'Voir les décors'],
+      ] as [$ico, $canal, $corps, $note, $vers, $bouton]): ?>
+        <div class="canal<?= $vers ? ' actif' : '' ?>">
           <span class="ico"><?= icone($ico) ?></span>
           <b><?= e($canal) ?></b>
           <p><?= e($corps) ?></p>
           <span class="note"><?= e($note) ?></span>
-          <?php if ($actif): ?>
-            <a class="bouton petit" href="<?= e(url('?p=decors')) ?>" style="justify-content:center">Ouvrir le Studio</a>
+          <?php if ($vers): ?>
+            <a class="bouton petit" href="<?= e(url($vers)) ?>" style="justify-content:center"><?= e($bouton) ?></a>
           <?php endif; ?>
         </div>
       <?php endforeach; ?>
@@ -281,7 +295,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     <div class="grille offres">
       <?php
       /**
-       * Les prix et les lignes viennent de `FORMULES`, pas d'une liste écrite ici.
+       * Les prix et les lignes viennent de `formules()`, pas d'une liste écrite ici.
        *
        * Cette grille était recopiée à la main : le jour où une offre a
        * changé dans le produit, la vitrine a continué d'en promettre une
@@ -290,7 +304,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
        * plus diverger : elles n'ont qu'une source.
        */
       $lignes_offre = function (string $cle): array {
-          $f = FORMULES[$cle];
+          $f = formules()[$cle] ?? formules()['decouverte'] ?? FORMULES['decouverte'];
           $out = [];
           // Les compteurs, formulés comme on les vend.
           $out[] = [$f['campagnes'] < 0 ? 'Campagnes illimitées'
@@ -353,15 +367,38 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
           return array_values(array_filter($lignes_offre($cle),
               fn($l) => !isset($deja[$l[0]])));
       };
-      foreach ([
-        ['decouverte', 'Pour tester', 'Commencer gratuitement', false, null, null],
-        ['impact', 'Entrée sérieuse', 'Choisir Impact', true, null, null],
-        ['croissance', 'Clients actifs', 'Choisir Croissance', false, 'Tout Impact, plus :', 'impact'],
-        ['mouvement', 'Pros & institutions', 'Nous contacter', false, 'Tout Croissance, plus :', 'croissance'],
-      ] as [$cle, $tag, $cta, $phare, $prefixe, $avant]):
-        $nom = FORMULES[$cle]['nom'];
-        $prix = FORMULES[$cle]['prix'];
-        $lancement = FORMULES[$cle]['lancement'];
+      /**
+       * La liste des offres n'est plus écrite ici non plus.
+       *
+       * Les quatre clés étaient codées en dur avec leur accroche, leur
+       * bouton et leur « Tout Impact, plus : ». Ajouter une offre depuis
+       * l'administration aurait donc donné une offre invisible, et en
+       * supprimer une aurait cassé la page. Tout se déduit maintenant de
+       * l'ordre d'affichage : l'offre précédente est celle d'avant dans la
+       * liste, quelle qu'elle soit.
+       */
+      $vendues = formules_actives();
+      $cles = array_keys($vendues);
+      foreach ($cles as $i => $cle):
+        $f = $vendues[$cle];
+        $tag = (string) ($f['tag'] ?? '');
+        $cta = (string) ($f['cta'] ?? '') ?: ('Choisir ' . $f['nom']);
+        $phare = (bool) ($f['phare'] ?? false);
+        /**
+         * La PREMIÈRE offre payante liste tout ce qu'elle donne.
+         *
+         * « Tout Découverte, plus : » ferait paraître maigre l'offre
+         * d'entrée, puisque Découverte ne donne presque rien : la moitié de
+         * ses lignes disparaîtraient au nom d'un doublon. Le raccourci ne
+         * vaut qu'entre deux offres qui se paient toutes les deux.
+         */
+        $prec = $i > 0 ? $cles[$i - 1] : null;
+        $avant = $prec !== null && (int) $f['prix'] > 0
+              && (int) $vendues[$prec]['prix'] > 0 ? $prec : null;
+        $prefixe = $avant ? 'Tout ' . $vendues[$avant]['nom'] . ', plus :' : null;
+        $nom = $f['nom'];
+        $prix = (int) $f['prix'];
+        $lancement = (int) $f['lancement'];
         $lignes = $nouveautes($cle, $avant);
       ?>
         <div class="offre<?= $phare ? ' phare' : '' ?>">

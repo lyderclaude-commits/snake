@@ -14,7 +14,7 @@ $message = $message ?? null;
 $erreur = $erreur ?? null;
 $suivi = abonnement_suivi($me);
 $demande = (string) ($me['offre_demandee'] ?? '');
-$prix = (int) (FORMULES[$me['formule'] ?? '']['prix'] ?? 0);
+$prix = (int) (formules()[$me['formule'] ?? '']['prix'] ?? 0);
 
 /** La part consommée de la période payée, entre 0 et 1. */
 $part = 0.0;
@@ -105,7 +105,7 @@ $jauge = static function (string $libelle, array $q, string $unite): string {
       Écrivez-nous si vous pensez que c’est une erreur.</p>
     <?php endif; ?>
 
-    <?php if ($demande && isset(FORMULES[$demande])): ?>
+    <?php if ($demande && isset(formules()[$demande])): ?>
       <div class="msg ok" style="margin:14px 0 0">
         <strong>Changement demandé.</strong>
         <p style="margin:.35em 0 0">Vous passerez en <strong><?= e(formule_libelle($demande)) ?></strong>
@@ -171,7 +171,21 @@ $jauge = static function (string $libelle, array $q, string $unite): string {
     ils ne paient pas.</p>
 
     <div class="grille g3" style="margin-bottom:16px">
-      <?php foreach (FORMULES as $cle => $of): ?>
+      <?php
+      /**
+       * Les offres en vente, plus la sienne.
+       *
+       * Sans le « plus la sienne », un client dont l'offre vient d'être
+       * retirée du catalogue ne la verrait plus nulle part : ni marquée
+       * « votre offre », ni ailleurs. Il paierait pour quelque chose que
+       * son propre écran de facturation ne nomme plus.
+       */
+      $sienne_cle = (string) ($me['formule'] ?? '');
+      $a_vendre = formules_actives();
+      if ($sienne_cle !== '' && !isset($a_vendre[$sienne_cle]) && isset(formules()[$sienne_cle])) {
+          $a_vendre[$sienne_cle] = formules()[$sienne_cle];
+      }
+      foreach ($a_vendre as $cle => $of): ?>
         <?php if ((int) $of['prix'] === 0) { continue; } ?>
         <?php $sienne = $cle === ($me['formule'] ?? ''); ?>
         <div class="carte" style="box-shadow:none;<?= $sienne ? 'border-color:var(--primary);background:var(--primary-wash)' : '' ?>">

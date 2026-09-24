@@ -1,7 +1,37 @@
 <?php
 /** Création d'un décor par un partenaire, et soumission à la relecture. */
 
-$u = exiger_droit('decors_siens');
+/**
+ * Le Studio s'ouvre à qui n'a pas de compte, et à lui seul.
+ *
+ * Composer demandait d'être connecté, alors qu'on ne sait ce qu'on veut
+ * qu'en voyant le badge se dessiner. Le mur est déplacé à la publication.
+ *
+ * Un compte SANS le droit `decors_siens` — un participant, un scanner —
+ * garde l'ancien comportement : il est renvoyé chez lui. Le laisser
+ * composer lui ferait traverser un mur qui ne peut rien pour lui, puisqu'il
+ * a déjà le compte que ce mur propose de créer.
+ */
+$u = utilisateur_courant();
+$anonyme = $u === null;
+if (!$anonyme && !droit($u, 'decors_siens')) {
+    rediriger(accueil_de($u));
+}
+if ($anonyme && $page !== 'nouveau') {
+    // Modifier, confier, soumettre : tout cela désigne un décor qui
+    // appartient à quelqu'un. Rien à y faire sans compte.
+    rediriger('?p=connexion');
+}
+
+/**
+ * D'où part ce décor : d'un fichier, ou de rien.
+ *
+ * L'étape « Le cadre » mélangeait les deux métiers. L'écran `?p=creer`
+ * demande désormais lequel, et le Studio n'ouvre que la moitié qui sert.
+ * Le défaut reste le Studio complet : c'est ce que voit l'équipe, qui
+ * arrive par le catalogue et non par la vitrine.
+ */
+$depart = ($_GET['depart'] ?? $_POST['depart'] ?? '') === 'fichier' ? 'fichier' : 'studio';
 
 /**
  * Le même formulaire sert à créer et à modifier.
@@ -159,7 +189,7 @@ $erreur = null;
  */
 const CLES_APPARENCE = [
     'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
-    'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
+    'accroche_taille', 'champ_taille', 'qr_actif', 'qr_position', 'qr_taille', 'filigrane_position',
     'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
 ];
 
@@ -210,6 +240,10 @@ if ($modifie && !$post) {
         'bloc_w' => (float) ($claim['rect']['w'] ?? 0.48),
         'accroche_taille' => (float) ($claim['size'] ?? 0.058),
         'champ_taille' => (float) ($champ['size'] ?? 0.03),
+        // Absent vaut « oui » : les gabarits enregistrés avant que le choix
+        // existe portent tous leur QR, et rouvrir un décor ne doit pas le
+        // lui retirer en silence.
+        'qr_actif' => ($g['qr']['enabled'] ?? true) ? '1' : '0',
         'qr_position' => (string) ($g['qr']['position'] ?? 'bottom-left'),
         'qr_taille' => (float) ($g['qr']['size'] ?? 0.16),
         'filigrane_position' => (string) ($g['watermark']['position'] ?? 'bottom-right'),
@@ -246,10 +280,86 @@ if ($modifie && !$post) {
     ];
 }
 
+/* ---------------- reprendre ce qu'on avait commencé ---------------- */
+
+/**
+ * Le décor composé avant d'avoir un compte.
+ *
+ * On ne crée toujours RIEN ici : on remplit le formulaire, et la personne
+ * revérifie puis publie elle-même. C'est un clic de plus qu'une création
+ * automatique, et c'est voulu : le décor repasse par le chemin normal, avec
+ * son jeton anti-CSRF, ses quotas et sa relecture. Une création déclenchée
+ * par une simple redirection aurait contourné les trois.
+ *
+ * Le fichier, lui, sort de quarantaine maintenant : il a désormais un
+ * propriétaire, et l'aperçu a besoin de le voir.
+ */
+$repris = false;
+if (!$anonyme && !$modifie && ($_GET['reprendre'] ?? '') === '1' && !$post) {
+    if ($b = brouillon_consommer('decor')) {
+        foreach ($b['charge'] as $k => $v) {
+            if (array_key_exists($k, $valeurs) && is_scalar($v)) {
+                $valeurs[$k] = (string) $v;
+            }
+        }
+        $adopte = brouillon_fichier_adopter($b['fichier'] === null ? null : (string) $b['fichier']);
+        if ($adopte !== '') {
+            $valeurs['cadre_url'] = $adopte;
+        }
+        $depart = ($b['charge']['depart'] ?? '') === 'fichier' ? 'fichier' : $depart;
+        $repris = true;
+    }
+}
+
 if ($post) {
     verifier_csrf();
     foreach (array_keys($valeurs) as $k) {
         $valeurs[$k] = trim((string) ($_POST[$k] ?? $valeurs[$k]));
+    }
+
+    /* ---------------- sans compte : on met de côté ---------------- */
+
+    /**
+     * Le mur, et ce qui le traverse.
+     *
+     * On ne crée RIEN ici : ni décor, ni slug, ni ligne au catalogue. On
+     * range ce qui a été saisi, et on va chercher un compte. La création
+     * repassera par le chemin normal, joué par un utilisateur réel — c'est
+     * la seule façon que les quotas, la relecture et le garde-fou de
+     * redirection s'appliquent comme d'habitude.
+     *
+     * Le fichier, lui, part en quarantaine. `donnees/cadres/` sert les
+     * cadres des décors publiés ; un fichier qui n'appartient encore à
+     * personne n'a rien à y faire.
+     */
+    if ($anonyme) {
+        $fichier = null;
+        if (!empty($_FILES['cadre']['tmp_name']) && is_uploaded_file($_FILES['cadre']['tmp_name'])) {
+            $info = @getimagesize($_FILES['cadre']['tmp_name']);
+            $ext = match ($info[2] ?? 0) {
+                IMAGETYPE_PNG => 'png',
+                IMAGETYPE_WEBP => 'webp',
+                default => null,
+            };
+            if (!$ext) {
+                $erreur = 'Le cadre doit être un PNG ou un WebP à fond transparent. Le SVG est refusé.';
+            } elseif (($_FILES['cadre']['size'] ?? 0) > 2 * 1024 * 1024) {
+                $erreur = 'Le cadre dépasse 2 Mo.';
+            } else {
+                $fichier = brouillon_fichier_ranger((string) $_FILES['cadre']['tmp_name'], $ext);
+            }
+        }
+        if ($erreur === null) {
+            $charge = $valeurs;
+            $charge['depart'] = $depart;
+            if (!brouillon_poser('decor', $charge, $fichier)) {
+                brouillon_fichier_effacer($fichier);
+                $erreur = 'Trop de décors en attente depuis cette connexion. '
+                        . 'Créez votre compte pour reprendre celui-ci.';
+            } else {
+                rediriger('?p=inscription&suite=decor');
+            }
+        }
     }
 
     // Le cadre est téléversé AVEC le formulaire, mais son URL survit aux
@@ -392,4 +502,11 @@ vue('nouveau', [
     'erreur' => $erreur,
     'valeurs' => $valeurs,
     'modifie' => $modifie,
+    // `fichier` ou `studio` : la moitié du panneau « Le cadre » qui sert.
+    'depart' => $depart,
+    // Sans compte : le bouton dit « Créer mon compte et publier », et non
+    // « Enregistrer », parce que ce n'est pas ce qui va se passer.
+    'anonyme' => $anonyme,
+    // Au retour du mur : l'écran dit que le décor a été retrouvé.
+    'repris' => $repris,
 ]);

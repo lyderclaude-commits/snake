@@ -178,6 +178,16 @@ function apparence_par_defaut(string $disposition, string $format = ''): array
     $commun = [
         'texte_couleur' => 'brand.paper',
         'texte_align' => 'left',
+        /**
+         * Le QR est là par défaut, et se retire à la main.
+         *
+         * Il a longtemps été obligatoire, au motif qu'il fait la différence
+         * entre un badge et une image. C'est vrai le jour de l'événement, et
+         * faux pour une campagne qui ne contrôle aucune entrée : une
+         * annonce, un anniversaire, un soutien à une équipe. Le défaut
+         * reste « oui » pour que rien ne change sur les décors existants.
+         */
+        'qr_actif' => true,
         'qr_position' => 'bottom-left',
         'qr_taille' => 0.16,
         'filigrane_position' => 'bottom-right',
@@ -536,6 +546,15 @@ function apparence_propre(string $disposition, array $saisie): array
         'bloc_w' => $borne('bloc_w', 0.15, 1),
         'accroche_taille' => $borne('accroche_taille', 0.02, 0.12),
         'champ_taille' => $borne('champ_taille', 0.014, 0.06),
+        /**
+         * Absent vaut « oui », et seul un « 0 » franc éteint le QR.
+         *
+         * Une case décochée n'envoie RIEN : sans le champ caché qui la
+         * double dans le formulaire, décocher n'aurait jamais rien éteint.
+         * Ici on lit donc les deux cas, et l'absence totale, qui est celle
+         * d'un gabarit enregistré avant que le choix existe.
+         */
+        'qr_actif' => !in_array((string) ($saisie['qr_actif'] ?? '1'), ['0', '', 'false'], true),
         'qr_position' => $parmi('qr_position', APPARENCE_QR),
         'qr_taille' => $borne('qr_taille', 0.12, 0.28),
         'filigrane_position' => $parmi('filigrane_position', APPARENCE_FILIGRANE),
@@ -1105,10 +1124,17 @@ function construire_gabarit(array $i): array
                 array_keys($libres)
             ),
         ],
-        // Le filigrane et le QR se déplacent, ne se retirent pas : ce sont
-        // les deux informations qui font la différence avec une image.
+        /**
+         * Le filigrane se déplace et ne se retire pas : c'est l'offre qui
+         * en décide, plus bas, et pas celui qui compose.
+         *
+         * Le QR, lui, se retire. Un décor sans QR reste un décor : il ne
+         * contrôle simplement aucune entrée. Le renderer connaît déjà
+         * `enabled` ; il ne lui manquait que quelqu'un pour le lui dire.
+         */
         'watermark' => ['enabled' => true, 'position' => $a['filigrane_position'], 'opacity' => 0.9, 'variant' => 'wordmark'],
-        'qr' => ['enabled' => true, 'position' => $a['qr_position'], 'size' => $a['qr_taille']],
+        'qr' => ['enabled' => (bool) ($a['qr_actif'] ?? true),
+                 'position' => $a['qr_position'], 'size' => $a['qr_taille']],
         'variantes' => $variantes,
         // `export.formats` annonce ce que le décor sait produire : son
         // format et ses déclinaisons. Il était figé sur un seul depuis

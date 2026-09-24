@@ -18,6 +18,55 @@ foreach ($liste as $l) {
   <?php if (!empty($_GET['ok'])): ?><div class="msg ok" role="status"><?= e($_GET['ok']) ?></div><?php endif; ?>
   <?php if (!empty($_GET['err'])): ?><div class="msg err" role="alert"><?= e($_GET['err']) ?></div><?php endif; ?>
 
+  <?php
+  /**
+   * Le lien composé avant le compte, et qui attend une offre.
+   *
+   * Il n'est pas perdu, il n'est pas créé : il est en attente, et l'écran
+   * le montre tel quel. Le faire disparaître avec un simple « il vous faut
+   * telle offre » aurait fait payer ET fait retaper.
+   */
+  if (!empty($en_attente)):
+    $c = (string) ($en_attente['charge']['cible'] ?? '');
+    $t = (string) ($en_attente['charge']['titre'] ?? '');
+  ?>
+    <div class="carte" style="margin-bottom:16px;border-color:var(--gold)">
+      <div class="msg ok" style="margin:0 0 13px">
+        <strong>Votre compte est créé, et votre lien vous attend.</strong>
+        Il est mis de côté tel que vous l’avez composé.
+      </div>
+      <h3 style="margin:0 0 4px">Un pas reste à faire</h3>
+      <p class="aide" style="margin:0 0 12px">
+        <?php if ($porte === null): ?>
+          Aucune offre ne comprend de lien court pour l’instant. Le vôtre reste ici.
+        <?php else: ?>
+          Votre offre <?= e(formule_libelle($me['formule'] ?? null)) ?> n’en comprend pas.
+          Prenez l’offre <?= e((string) $porte['nom']) ?> et ce lien part aussitôt
+          vers sa destination.
+        <?php endif; ?>
+      </p>
+      <div class="carte" style="background:var(--bg2);box-shadow:none;padding:12px">
+        <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="min-width:0">
+            <?php if ($t !== ''): ?>
+              <b style="font-size:.92rem"><?= e($t) ?></b>
+            <?php endif; ?>
+            <p class="aide" style="margin:3px 0 0;overflow-wrap:anywhere">→ <?= e($c) ?></p>
+          </div>
+          <span class="pastille formule">En attente</span>
+        </div>
+      </div>
+      <div class="rangee" style="margin-top:13px;gap:10px">
+        <a class="bouton" href="<?= e(url('?p=facturation')) ?>">Voir les offres</a>
+        <form method="post" action="<?= e(url('?p=oublier-brouillon')) ?>" style="margin:0">
+          <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+          <input type="hidden" name="genre" value="lien">
+          <button class="bouton fant" type="submit">Supprimer ce brouillon</button>
+        </form>
+      </div>
+    </div>
+  <?php endif; ?>
+
   <div class="grille g4" style="margin-bottom:18px">
     <div class="stat p"><b><?= $utilises ?><?= $illimite ? '' : ' / ' . $max ?></b><span>liens</span></div>
     <div class="stat o"><b><?= $total ?></b><span>clics au total</span></div>

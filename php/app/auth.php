@@ -169,7 +169,7 @@ function formule_pour(string $role, ?string $demandee): string
     if (!in_array($role, ROLES_AVEC_OFFRE, true)) {
         return '';
     }
-    return isset(FORMULES[$demandee ?? '']) ? (string) $demandee : 'decouverte';
+    return isset(formules()[$demandee ?? '']) ? (string) $demandee : 'decouverte';
 }
 
 /**
@@ -316,6 +316,21 @@ const FORMULES = [
 ];
 
 /**
+ * Ce que la vitrine dit de chaque offre livrée d'origine.
+ *
+ * Séparé de `FORMULES` parce que ce n'en est pas : une accroche et un
+ * libellé de bouton ne décident de rien, ils se lisent. Ces valeurs ne
+ * servent qu'à semer la table la première fois ; ensuite c'est l'écran
+ * d'administration qui les tient.
+ */
+const FORMULES_VITRINE = [
+    'decouverte' => ['Pour tester',         'Commencer gratuitement', false],
+    'impact'     => ['Entrée sérieuse',     'Choisir Impact',         true],
+    'croissance' => ['Clients actifs',      'Choisir Croissance',     false],
+    'mouvement'  => ['Pros & institutions', 'Nous contacter',         false],
+];
+
+/**
  * Ce que chaque ligne veut dire, pour l'organisateur et pour l'équipe.
  *
  * Le libellé, ce qu'il faut en comprendre, et si le produit l'APPLIQUE
@@ -387,9 +402,143 @@ function role_aide(?string $r): string
     ][$r ?? ''] ?? '';
 }
 
+/**
+ * Les offres telles qu'elles sont AUJOURD'HUI.
+ *
+ * `FORMULES` reste au-dessus : c'est elle qui dit ce qu'une offre PEUT
+ * porter, et c'est elle qui sème la table la première fois. Mais un prix
+ * n'est pas une décision d'ingénieur : le changer demandait jusqu'ici un
+ * paquet et une mise en ligne. La table répond donc à « combien coûte
+ * Croissance ce mois-ci », et la constante à « quelles lignes existent ».
+ *
+ * Le défaut comble les trous : une capacité ajoutée au produit après la
+ * création d'une offre n'est pas absente, elle vaut ce que vaut
+ * Découverte, c'est-à-dire non. C'est le seul sens sûr : une clé manquante
+ * qui vaudrait « oui » offrirait la fonction à tout le monde le jour de sa
+ * sortie.
+ */
+function formules(): array
+{
+    $c = formules_cache();
+    if ($c !== null) {
+        return $c;
+    }
+    try {
+        $lignes = db()->query('SELECT * FROM formules ORDER BY rang, prix')
+                      ->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException) {
+        // Base pas encore migrée : le code sait vivre sans la table.
+        return formules_cache(false, FORMULES) ?? FORMULES;
+    }
+    if (!$lignes) {
+        semer_formules();
+        $lignes = db()->query('SELECT * FROM formules ORDER BY rang, prix')
+                      ->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    $out = [];
+    foreach ($lignes as $l) {
+        $cle = (string) $l['cle'];
+        $cap = json_decode((string) $l['capacites'], true);
+        $out[$cle] = array_merge(
+            FORMULES[$cle] ?? FORMULES['decouverte'],
+            is_array($cap) ? $cap : [],
+            [
+                'nom'       => (string) $l['nom'],
+                'prix'      => (int) $l['prix'],
+                'lancement' => (int) $l['lancement'],
+                'rang'      => (int) $l['rang'],
+                'actif'     => (int) $l['actif'] === 1,
+                'tag'       => (string) ($l['tag'] ?? ''),
+                'cta'       => (string) ($l['cta'] ?? ''),
+                'phare'     => (int) ($l['phare'] ?? 0) === 1,
+            ],
+        );
+    }
+    return formules_cache(false, $out ?: FORMULES) ?? FORMULES;
+}
+
+/**
+ * Le cache des offres, pour la durée d'une requête.
+ *
+ * Une fonction plutôt qu'un `static` dans `formules()` : PHP ne permet pas
+ * de vider la mémoire d'une autre fonction, et l'écran d'administration a
+ * besoin de relire ce qu'il vient d'écrire dans la même requête.
+ */
+function formules_cache(bool $vider = false, ?array $poser = null): ?array
+{
+    static $c = null;
+    if ($vider) {
+        return $c = null;
+    }
+    if ($poser !== null) {
+        $c = $poser;
+    }
+    return $c;
+}
+
+/**
+ * La première écriture de la table, et la seule.
+ *
+ * On ne sème QUE si la table est vide. Re-semer à chaque migration
+ * ressusciterait une offre que l'administrateur vient de supprimer, et
+ * réécrirait le prix qu'il vient de changer : la table serait modifiable
+ * en apparence et remise à zéro en silence à la mise à jour suivante.
+ */
+function semer_formules(): void
+{
+    $rang = 0;
+    $q = db()->prepare(
+        'INSERT INTO formules (cle, nom, prix, lancement, rang, actif, tag, cta, phare, capacites, cree_le)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)'
+    );
+    foreach (FORMULES as $cle => $f) {
+        $cap = $f;
+        unset($cap['nom'], $cap['prix'], $cap['lancement']);
+        [$tag, $cta, $phare] = FORMULES_VITRINE[$cle] ?? ['', 'Choisir ' . $f['nom'], false];
+        try {
+            $q->execute([
+                $cle, $f['nom'], (int) $f['prix'], (int) $f['lancement'], $rang++,
+                $tag, $cta, $phare ? 1 : 0,
+                json_encode($cap, JSON_UNESCAPED_UNICODE), maintenant(),
+            ]);
+        } catch (PDOException) {
+            // Déjà posée par une requête concurrente : la clé primaire a tranché.
+        }
+    }
+    formules_oublier();
+}
+
+/** Vider le cache de la requête, après une écriture. */
+function formules_oublier(): void
+{
+    formules_cache(true);
+}
+
+/**
+ * Les offres proposées à la vente, dans l'ordre d'affichage.
+ *
+ * Une offre retirée de la vitrine reste dans `formules()` : les comptes qui
+ * la portent gardent exactement ce qu'ils ont payé. Arrêter de vendre et
+ * reprendre sont deux gestes différents, et un seul des deux est honnête.
+ */
+function formules_actives(): array
+{
+    return array_filter(formules(), static fn(array $f): bool => ($f['actif'] ?? true) !== false);
+}
+
+/** Combien de comptes portent cette offre. Zéro, et elle se supprime. */
+function formule_portee(string $cle): int
+{
+    $q = db()->prepare('SELECT COUNT(*) FROM utilisateurs WHERE formule = ?');
+    $q->execute([$cle]);
+    return (int) $q->fetchColumn();
+}
+
 function formule_libelle(?string $cle): string
 {
-    return FORMULES[$cle ?? '']['nom'] ?? FORMULES['decouverte']['nom'];
+    $f = formules();
+    return $f[$cle ?? '']['nom'] ?? ($f['decouverte']['nom'] ?? FORMULES['decouverte']['nom']);
 }
 
 /**
@@ -403,7 +552,8 @@ function formule_libelle(?string $cle): string
 function offre(?array $u): array
 {
     $cle = $u === null ? 'decouverte' : ($u['formule'] ?? 'decouverte');
-    return FORMULES[$cle] ?? FORMULES['decouverte'];
+    $f = formules();
+    return $f[$cle] ?? $f['decouverte'] ?? FORMULES['decouverte'];
 }
 
 /**
@@ -443,10 +593,15 @@ function capacite(?array $u, string $quoi): bool
     return $quoi === 'stats' ? $v === 'completes' : (bool) $v;
 }
 
-/** La première offre qui donne accès à cette ligne. Pour savoir quoi proposer. */
+/**
+ * La première offre qui donne accès à cette ligne. Pour savoir quoi proposer.
+ *
+ * Seulement parmi celles qu'on VEND : proposer de passer à une offre
+ * retirée du catalogue enverrait le client sur un bouton qui refuse.
+ */
 function offre_qui_debloque(string $quoi): ?string
 {
-    foreach (FORMULES as $cle => $f) {
+    foreach (formules_actives() as $cle => $f) {
         $v = $f[$quoi] ?? false;
         $ouvert = match ($quoi) {
             'stats' => $v === 'completes',

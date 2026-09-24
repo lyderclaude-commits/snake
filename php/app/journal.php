@@ -55,6 +55,9 @@ const JOURNAL_ACTIONS = [
     'sponsor.modifie'     => 'a changé le sponsor d’un décor',
     'sauvegarde.restauree' => 'a restauré une sauvegarde',
     'reglages.modifies'   => 'a modifié les réglages',
+    'offre.creee'         => 'a créé une offre',
+    'offre.modifiee'      => 'a modifié une offre',
+    'offre.supprimee'     => 'a supprimé une offre',
 ];
 
 /** Combien de temps on garde le journal. Au-delà, il ne sert plus qu'à peser. */

@@ -382,8 +382,26 @@ const run = async () => {
         .filter((l) => (l as HTMLLinkElement).href.includes('fonts.'))
         .length)) === 0);
   ok('les canaux portent de vraies icônes',
-     (await p.locator('.canal .ico svg').count()) === 5,
+     (await p.locator('.canal .ico svg').count()) === 6,
      `${await p.locator('.canal .ico svg').count()} icônes dessinées`);
+
+  /**
+   * Trois cartes mènent quelque part, et chacune au bon endroit.
+   *
+   * « Ouvrir le Studio » envoyait sur la liste des décors, c'est-à-dire là
+   * où l'on FAIT son badge et non là où on le fabrique. C'est le genre de
+   * lien qu'on ne remarque jamais en relisant, et qu'un visiteur remarque
+   * tout de suite.
+   */
+  const portes = await p.locator('.canal.actif a.bouton').evaluateAll(
+    (n) => n.map((e) => `${(e.getAttribute('href') ?? '').split('?')[1] ?? ''} → ${(e.textContent ?? '').trim()}`));
+  ok('trois cartes mènent quelque part', portes.length === 3, portes.join(' · '));
+  ok('les liens courts vont au raccourcisseur, pas à la connexion',
+     portes.some((x) => x.startsWith('p=lien-court')), portes.join(' · '));
+  ok('le Studio va au Studio, pas au catalogue',
+     portes.some((x) => x.startsWith('p=creer')), portes.join(' · '));
+  ok('et « Générer un badge » récupère la liste des décors',
+     portes.some((x) => x.startsWith('p=decors')), portes.join(' · '));
 
   // Le comparatif : la colonne Wakabi est un bandeau, pas une colonne de plus.
   ok('le comparatif compte huit lignes', (await p.locator('.comparatif tbody tr').count()) === 8);
@@ -1058,7 +1076,15 @@ const run = async () => {
      (await p.locator('.barre nav .bouton, .barre nav button').first()
         .evaluate((el) => getComputedStyle(el).color)) !== 'rgb(71, 85, 105)');
 
-  for (const route of ['?p=admin', '?p=comptes', '?p=partenaire', '?p=scan', '?p=relecture', '?p=catalogue', '?p=nouveau']) {
+  /**
+   * `?p=nouveau` ne figure plus ici : le Studio s'ouvre sans compte.
+   *
+   * Ce n'est pas un relâchement, c'est un déplacement du mur. On compose,
+   * et c'est au moment de PUBLIER qu'on se présente — éprouvé plus bas.
+   * Les sept autres restent fermées : elles désignent toutes le travail
+   * de quelqu'un.
+   */
+  for (const route of ['?p=admin', '?p=comptes', '?p=partenaire', '?p=scan', '?p=relecture', '?p=catalogue', '?p=modifier', '?p=offres']) {
     await a.goto(`${BASE}/index.php${route}`, { waitUntil: 'domcontentloaded' });
     ok(`accès anonyme refusé sur ${route}`, /connexion/.test(a.url()), a.url().split('index.php')[1] ?? '');
   }
@@ -4124,8 +4150,10 @@ const run = async () => {
     // aux robots, qui lisent robots.txt et le plan du site sans session.
     // `sondage` en fait partie : il s’ouvre avec le jeton d’un envoi, pas
     // avec un compte — exactement comme le désabonnement.
+    // `creer` et `lien-court` s'y ajoutent : ce sont les deux portes
+    // publiques ouvertes sur la vitrine, sans plus de droit qu'un visiteur.
     'accueil', 'og', 'decors', 'blog', 'desabonnement', 'sondage', 'verifier', 'reinitialiser',
-    'qr', 'api-telechargement', 'robots', 'sitemap',
+    'qr', 'api-telechargement', 'robots', 'sitemap', 'creer', 'lien-court',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
     // Son compte.
@@ -4222,10 +4250,6 @@ const run = async () => {
      cibles.join(' · '));
   ok('ni régie, ni push, ni API parmi eux',
      !cibles.some((c) => /regie|diffusion|api/.test(c)), cibles.join(' · '));
-  // Le bouton des rappels non plus : un éditeur de la maison n'a ni
-  // audience à relancer ni sondage à ouvrir, et l'écran le renverrait chez lui.
-  ok('et pas davantage le bouton des rappels',
-     (await pED.locator('a[href*="p=rappels"]').count()) === 0);
 
   const jauges = await pED.locator('.jauges .marche .haut span').evaluateAll(
     (n) => n.map((e) => (e.textContent ?? '').trim()));
@@ -5841,34 +5865,16 @@ const run = async () => {
      sonDecor ?? 'aucune');
 
   /**
-   * Le sondage du lendemain, atteignable par celui qui le donne.
+   * Les rappels ne sont pas proposés à l’organisateur.
    *
-   * L’écran des rappels existait depuis longtemps, mais son seul bouton
-   * vivait dans le catalogue de l’équipe : un organisateur devait taper
-   * l’adresse à la main pour ouvrir son propre sondage. On éprouve donc le
-   * chemin complet, pas la présence du lien : cliquer, et trouver
-   * l’interrupteur du sondage au bout.
+   * Le bouton a existé une semaine sur cet écran, puis a été retiré. Ce
+   * n’est pas la route qui a fermé : `?p=rappels` répond toujours, et le
+   * catalogue de l’équipe y mène toujours (éprouvé plus haut). C’est la
+   * PORTE côté client qui n’existe plus, et c’est elle qu’on surveille :
+   * un bouton retiré revient tout seul à la refonte suivante.
    */
-  const versRappels = await pOrga.locator('a[href*="p=rappels&id="]').first()
-    .getAttribute('href').catch(() => null);
-  ok('son tableau de bord mène aux rappels de sa campagne', versRappels !== null,
-     versRappels ?? 'aucun lien');
-  ok('et le bouton dit aussi le sondage',
-     (await pOrga.locator('a[href*="p=rappels&id="]').first().innerText()
-        .catch(() => '')).includes('sondage'));
-
-  if (versRappels) {
-    await pOrga.goto(new URL(versRappels, BASE).href, { waitUntil: 'domcontentloaded' });
-    const texteRappels = await pOrga.locator('main').innerText().catch(() => '');
-    ok('il y ouvre l’écran, pas une porte fermée',
-       pOrga.url().includes('p=rappels') && !texteRappels.includes('introuvable'),
-       pOrga.url().split('index.php')[1] ?? '');
-    ok('et l’interrupteur du sondage y est à sa portée',
-       (await pOrga.locator('form button, form input[type=submit]')
-          .evaluateAll((n) => n.map((e) => (e.textContent ?? '').trim()).join(' · '))
-       ).includes('sondage'));
-    await pOrga.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
-  }
+  ok('le tableau de bord de l’organisateur ne propose pas les rappels',
+     (await pOrga.locator('a[href*="p=rappels"]').count()) === 0);
 
   if (sonDecor) {
     const ctxInvite = await browser.newContext();
@@ -6334,6 +6340,256 @@ const run = async () => {
   await pe.waitForLoadState('domcontentloaded');
   ok('le transport se rééteint', /éteint/i.test(await pe.locator('.msg').last().innerText()));
   smtp.fermer();
+
+  /* ============================================================
+     51. Les portes d'entrée : composer d'abord, se présenter ensuite
+     ============================================================ */
+  console.log('\n━━ 51. Les portes d’entrée : composer, puis se présenter ━━');
+
+  /**
+   * Le produit demandait un compte AVANT de laisser faire quoi que ce soit.
+   * Le mur est maintenant à la fin, et ce qui compte n'est pas qu'il s'ouvre :
+   * c'est que le travail le TRAVERSE. On éprouve donc le fil entier, deux
+   * fois, avec un navigateur vierge à chaque fois.
+   */
+  const ctxPorteA = await browser.newContext();
+  const pA = await ctxPorteA.newPage();
+  surveiller(pA);
+
+  /* --- le raccourcisseur public --- */
+  await pA.goto(`${BASE}/index.php?p=lien-court`, { waitUntil: 'domcontentloaded' });
+  ok('le raccourcisseur s’ouvre sans compte', !pA.url().includes('p=connexion'),
+     pA.url().split('index.php')[1] ?? '');
+  const avertLien = await pA.locator('.msg').first().innerText().catch(() => '');
+  ok('il annonce le prix AVANT le premier champ',
+     /offre/i.test(avertLien), avertLien.replace(/\s+/g, ' ').slice(0, 76));
+  ok('le prix annoncé vient de la table des offres, pas d’une phrase écrite',
+     /Impact/.test(avertLien), avertLien.replace(/\s+/g, ' ').slice(0, 50));
+
+  const cibleEssai = `https://billetterie.essai-${marque}.tg/2026`;
+  await pA.fill('#cible', cibleEssai);
+  await pA.fill('#titre', 'Affiche du 12 septembre');
+  await pA.locator('form button[type=submit]').first().click();
+  await pA.waitForLoadState('domcontentloaded');
+  ok('composer sans compte mène à l’inscription, en disant pourquoi',
+     pA.url().includes('p=inscription') && pA.url().includes('suite=lien'),
+     pA.url().split('index.php')[1] ?? '');
+
+  const courrielA = `porte-lien-${marque}@essai.tg`;
+  await pA.fill('input[name=nom]', 'Porte Lien');
+  await pA.fill('input[name=email]', courrielA);
+  await pA.fill('input[name=mot_de_passe]', 'un-mot-de-passe-solide-2026');
+  await pA.locator('main form button[type=submit]').first().click();
+  await pA.waitForLoadState('domcontentloaded');
+  ok('le compte créé ramène à son lien, pas au tableau de bord',
+     pA.url().includes('p=liens'), pA.url().split('index.php')[1] ?? '');
+
+  const texteLiens = await pA.locator('main').innerText();
+  ok('le lien composé est retrouvé, mot pour mot',
+     texteLiens.includes(cibleEssai) && texteLiens.includes('Affiche du 12 septembre'));
+  ok('et il est dit EN ATTENTE, parce que Découverte n’en donne aucun',
+     /en attente/i.test(texteLiens) && /Impact/.test(texteLiens));
+  ok('l’écran propose l’offre, et non un formulaire vide',
+     (await pA.locator('a.bouton:has-text("Voir les offres")').count()) >= 1,
+     `${await pA.locator('a.bouton:has-text("Voir les offres")').count()} bouton(s)`);
+  ok('et laisse renoncer au brouillon sans attendre 48 h',
+     (await pA.locator('button:has-text("Supprimer ce brouillon")').count()) === 1);
+
+  /**
+   * Le rôle, qui décide de tout le reste.
+   *
+   * Un formulaire public crée un « participant », qui ne détient AUCUN
+   * droit. Quelqu'un venu composer un lien ou un décor doit ressortir
+   * organisateur, sinon il obtient un compte incapable de se servir de ce
+   * qu'il vient de faire — et rien ne le lui dirait.
+   */
+  await pA.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  ok('le compte créé au mur est un ORGANISATEUR, pas un participant',
+     pA.url().includes('p=partenaire') && !pA.url().includes('p=connexion'),
+     pA.url().split('index.php')[1] ?? '');
+  await ctxPorteA.close();
+
+  /* --- les deux chemins vers un décor --- */
+  const ctxPorteB = await browser.newContext();
+  const pB = await ctxPorteB.newPage();
+  surveiller(pB);
+
+  await pB.goto(`${BASE}/index.php?p=creer`, { waitUntil: 'domcontentloaded' });
+  ok('l’écran de choix s’ouvre sans compte', !pB.url().includes('p=connexion'));
+  const chemins = await pB.locator('.chemin-carte').evaluateAll(
+    (n) => n.map((e) => (e.getAttribute('href') ?? '').split('?')[1] ?? ''));
+  ok('il propose deux chemins, et deux seulement', chemins.length === 2, chemins.join(' · '));
+  ok('l’un part d’un fichier, l’autre de rien',
+     chemins.some((c) => c.includes('depart=fichier')) && chemins.some((c) => c.includes('depart=studio')),
+     chemins.join(' · '));
+
+  await pB.goto(`${BASE}/index.php?p=nouveau&depart=fichier`, { waitUntil: 'domcontentloaded' });
+  ok('le chemin du fichier cache la galerie de modèles',
+     await pB.locator('.sd-galerie-champ').first().isHidden());
+  ok('mais garde les cadres fournis par Wakabi',
+     (await pB.locator('#cadre_fourni').count()) === 1);
+
+  await pB.goto(`${BASE}/index.php?p=nouveau&depart=studio`, { waitUntil: 'domcontentloaded' });
+  ok('le chemin du studio cache le téléversement de cadre',
+     await pB.locator('#cadre').locator('xpath=ancestor::div[contains(@class,"champ")][1]').first().isHidden());
+  ok('et garde les cadres fournis lui aussi',
+     (await pB.locator('#cadre_fourni').count()) === 1);
+  ok('la galerie de modèles, elle, est bien là',
+     await pB.locator('.sd-galerie-champ').first().isVisible());
+  ok('le bouton dit ce qui va se passer, et non « enregistrer »',
+     (await pB.locator('.sd-enregistrer').innerText()).includes('compte'),
+     await pB.locator('.sd-enregistrer').innerText());
+
+  /* --- le QR, désormais facultatif --- */
+  // Il vit dans « L'apparence », qui est repliée à l'ouverture : on déplie,
+  // comme le ferait quelqu'un qui cherche où régler son QR.
+  await pB.locator('#onglet-apparence').click();
+  await pB.waitForTimeout(150);
+  ok('le QR se retire d’une case à cocher',
+     (await pB.locator('#qr_actif').count()) === 1);
+  ok('il est coché par défaut : un décor existant ne perd rien',
+     await pB.locator('#qr_actif').isChecked());
+  ok('la conséquence est cachée tant que la case est cochée',
+     await pB.locator('#qr-consequence').isHidden());
+  await pB.locator('#qr_actif').uncheck();
+  const suiteQr = await pB.locator('#qr-consequence').innerText();
+  ok('la décocher dit ce qu’on perd, tout de suite',
+     /présences|entrée/i.test(suiteQr), suiteQr.replace(/\s+/g, ' ').slice(0, 78));
+  ok('et les réglages du QR disparaissent avec lui',
+     await pB.locator('#qr-reglages').isHidden());
+
+  /* --- composer un décor sans compte, et le retrouver --- */
+  // Le titre vit dans « La campagne » : on y retourne, comme l'utilisateur.
+  await pB.locator('#onglet-campagne').click();
+  await pB.waitForTimeout(150);
+  const titreDecor = `Soirée sans QR ${marque}`;
+  await pB.fill('input[name=titre]', titreDecor);
+  await pB.locator('.sd-enregistrer').click();
+  await pB.waitForLoadState('domcontentloaded');
+  ok('publier sans compte mène à l’inscription',
+     pB.url().includes('p=inscription') && pB.url().includes('suite=decor'),
+     pB.url().split('index.php')[1] ?? '');
+
+  await pB.fill('input[name=nom]', 'Porte Décor');
+  await pB.fill('input[name=email]', `porte-decor-${marque}@essai.tg`);
+  await pB.fill('input[name=mot_de_passe]', 'un-mot-de-passe-solide-2026');
+  await pB.locator('main form button[type=submit]').first().click();
+  await pB.waitForLoadState('domcontentloaded');
+  ok('le compte créé ramène au Studio, pas au tableau de bord',
+     pB.url().includes('p=nouveau'), pB.url().split('index.php')[1] ?? '');
+  ok('le décor composé est retrouvé, titre compris',
+     (await pB.locator('input[name=titre]').inputValue()) === titreDecor);
+  ok('et le choix du QR a traversé le mur avec lui',
+     !(await pB.locator('#qr_actif').isChecked()));
+  ok('l’écran le dit, plutôt que de laisser croire à un formulaire neuf',
+     (await pB.locator('main .msg.ok').first().innerText()).includes('attendait'));
+
+  /* --- un brouillon ne survit pas à un autre navigateur --- */
+  const ctxPorteC = await browser.newContext();
+  const pC = await ctxPorteC.newPage();
+  await pC.goto(`${BASE}/index.php?p=lien-court`, { waitUntil: 'domcontentloaded' });
+  ok('un brouillon ne suit pas quelqu’un d’autre',
+     (await pC.locator('#cible').inputValue()) === '');
+  await ctxPorteC.close();
+  await ctxPorteB.close();
+
+  /* ============================================================
+     52. Les offres, tenues depuis l'écran
+     ============================================================ */
+  console.log('\n━━ 52. Les offres, tenues depuis l’écran ━━');
+
+  const pOf = await browser.newPage();
+  surveiller(pOf);
+  await connexion(pOf, ADMIN.email, ADMIN.mdp);
+
+  await pOf.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  ok('les réglages mènent aux offres',
+     (await pOf.locator('a[href*="p=offres"]').count()) >= 1);
+
+  await pOf.goto(`${BASE}/index.php?p=offres`, { waitUntil: 'domcontentloaded' });
+  const nomsOffres = await pOf.locator('.seg .seg-nom').allInnerTexts();
+  ok('l’écran liste les offres en place', nomsOffres.length >= 4, nomsOffres.join(' · '));
+  ok('chaque ligne dit combien de comptes la portent',
+     (await pOf.locator('.seg .seg-aide').first().innerText()).includes('compte'));
+  ok('toutes les lignes réglables sont là',
+     (await pOf.locator('#cap-campagnes, #cap-liens_courts, #cap-regie, #cap-stats').count()) === 4);
+
+  /* --- en créer une, et la voir arriver sur la vitrine --- */
+  const cleNeuve = `essai${marque}`.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+  await pOf.goto(`${BASE}/index.php?p=offres&neuve=1`, { waitUntil: 'domcontentloaded' });
+  await pOf.fill('#nom', 'Essentiel');
+  await pOf.fill('#cle', cleNeuve);
+  await pOf.fill('#prix', '3000');
+  await pOf.fill('#lancement', '1500');
+  await pOf.fill('#rang', '1');
+  await pOf.fill('#tag', 'Pour démarrer');
+  await pOf.fill('#cta', 'Choisir Essentiel');
+  await pOf.fill('#cap-campagnes', '2');
+  await pOf.fill('#cap-liens_courts', '5');
+  await pOf.locator('button[type=submit]:has-text("Créer cette offre")').click();
+  await pOf.waitForLoadState('domcontentloaded');
+  ok('une offre se crée depuis l’écran',
+     (await pOf.locator('.msg.ok').first().innerText()).includes('Essentiel'),
+     await pOf.locator('.msg.ok').first().innerText());
+
+  const pVit = await browser.newPage();
+  await pVit.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const grilleOffres = await pVit.locator('.offre h3').allInnerTexts();
+  ok('et la vitrine la montre, sans une ligne de code',
+     grilleOffres.includes('Essentiel'), grilleOffres.join(' · '));
+  ok('à sa place dans l’ordre demandé',
+     grilleOffres.indexOf('Essentiel') === 1, grilleOffres.join(' · '));
+  const texteVitrine = await pVit.locator('.offre').nth(1).innerText();
+  // La casse vient du CSS (`text-transform`), pas du contenu : on compare
+  // ce qui est écrit, pas ce qui est dessiné.
+  ok('avec son accroche et son bouton',
+     /pour démarrer/i.test(texteVitrine) && /choisir essentiel/i.test(texteVitrine),
+     texteVitrine.replace(/\s+/g, ' ').slice(0, 96));
+  ok('et ses cinq liens courts, lus dans la table',
+     texteVitrine.includes('5 liens courts'), texteVitrine.replace(/\s+/g, ' ').slice(0, 90));
+
+  /* --- les trois refus, qui sont l'intérêt de l'écran --- */
+  await pOf.goto(`${BASE}/index.php?p=offres&offre=${cleNeuve}`, { waitUntil: 'domcontentloaded' });
+  await pOf.fill('#lancement', '9000');
+  await pOf.locator('button[type=submit]:has-text("Enregistrer")').click();
+  await pOf.waitForLoadState('domcontentloaded');
+  ok('un prix de lancement au-dessus du prix normal est refusé',
+     (await pOf.locator('.msg.err').first().innerText()).includes('remise'),
+     await pOf.locator('.msg.err').first().innerText());
+
+  await pOf.goto(`${BASE}/index.php?p=offres&offre=decouverte`, { waitUntil: 'domcontentloaded' });
+  ok('Découverte ne montre AUCUN bouton de suppression',
+     (await pOf.locator('button:has-text("Supprimer")').count()) === 0);
+  ok('et l’écran dit pourquoi',
+     (await pOf.locator('main').innerText()).includes('ne se supprime pas'));
+
+  await pOf.goto(`${BASE}/index.php?p=offres&offre=croissance`, { waitUntil: 'domcontentloaded' });
+  const porteeCroissance = await pOf.locator('main').innerText();
+  ok('une offre que des comptes portent ne se supprime pas non plus',
+     (await pOf.locator('button:has-text("Supprimer")').count()) === 0
+     && /portent|porte/.test(porteeCroissance));
+  ok('l’écran propose de cesser de la VENDRE, ce qui ne reprend rien à personne',
+     porteeCroissance.includes('Proposée à la vente'));
+
+  /* --- celle que personne ne porte s'efface --- */
+  await pOf.goto(`${BASE}/index.php?p=offres&offre=${cleNeuve}`, { waitUntil: 'domcontentloaded' });
+  await pOf.locator('button:has-text("Supprimer")').click();
+  await pOf.waitForLoadState('domcontentloaded');
+  ok('une offre que personne ne porte s’efface',
+     (await pOf.locator('.msg.ok').first().innerText()).includes('supprimée'),
+     await pOf.locator('.msg.ok').first().innerText());
+
+  await pVit.reload({ waitUntil: 'domcontentloaded' });
+  ok('et la vitrine ne la propose plus',
+     !(await pVit.locator('.offre h3').allInnerTexts()).includes('Essentiel'));
+  await pVit.close();
+
+  /* --- le journal a tout noté --- */
+  await pOf.goto(`${BASE}/index.php?p=journal`, { waitUntil: 'domcontentloaded' });
+  const journalOffres = await pOf.locator('main').innerText();
+  ok('le journal porte la création et la suppression, en français',
+     /a créé une offre/i.test(journalOffres) && /a supprimé une offre/i.test(journalOffres));
+  await pOf.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

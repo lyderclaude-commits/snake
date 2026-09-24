@@ -62,7 +62,7 @@ if ($page === 'creer-compte' || $page === 'creer-equipier') {
             'Ce formulaire crée des comptes clients. Pour l’équipe, utilisez l’autre.',
         $famille && !droit($u, 'comptes_internes') =>
             'Seul un super-administrateur crée un compte de l’équipe.',
-        in_array($v['role'], ROLES_AVEC_OFFRE, true) && !isset(FORMULES[$v['formule']]) =>
+        in_array($v['role'], ROLES_AVEC_OFFRE, true) && !isset(formules()[$v['formule']]) =>
             'Offre inconnue.',
         utilisateur_par_email($v['email']) !== null => 'Un compte existe déjà avec cette adresse.',
         default => null,
@@ -169,7 +169,7 @@ if ($page === 'role' || $page === 'suspendre') {
          * qui traîne une offre payante — et une échéance avec.
          */
         $formule = formule_pour($role, (string) ($_POST['formule'] ?? $vise['formule'] ?? 'decouverte'));
-        if (in_array($role, ROLES_AVEC_OFFRE, true) && !isset(FORMULES[$formule])) {
+        if (in_array($role, ROLES_AVEC_OFFRE, true) && !isset(formules()[$formule])) {
             rediriger($retour . '&err=' . urlencode('Offre inconnue.'));
         }
         // Donner un rôle interne est le même geste que d'en modifier un.
@@ -245,7 +245,7 @@ if ($page === 'role' || $page === 'suspendre') {
                 role_aide($role) . ($peut ? "\n\nCe rôle ouvre : " . implode(', ', $peut) . '.' : ''),
                 accueil_de(['role' => $role]));
         } else {
-            $f = FORMULES[$formule];
+            $f = formules()[$formule];
             $corps = 'Rôle : ' . role_libelle($role) . '. Offre : ' . formule_libelle($formule) . ".\n\n"
                 . 'Elle couvre ' . ($f['campagnes'] < 0 ? 'un nombre illimité de campagnes' : $f['campagnes'] . ' campagne(s) active(s)')
                 . ' et ' . ($f['telechargements'] < 0 ? 'des téléchargements sans limite' : $f['telechargements'] . ' téléchargements par mois')
@@ -371,7 +371,7 @@ if ($page === 'paiement') {
     }
 
     $jours = max(1, min(730, (int) ($_POST['jours'] ?? ABONNEMENT_JOURS)));
-    $montant = max(0, min(10000000, (int) ($_POST['montant'] ?? FORMULES[$vise['formule']]['prix'])));
+    $montant = max(0, min(10000000, (int) ($_POST['montant'] ?? formules()[$vise['formule']]['prix'])));
     $debut = maintenant();
     $fin = echeance_prolonger($vise, $jours);
     facture_emettre($vise, $debut, $fin, $u, $montant);

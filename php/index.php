@@ -38,6 +38,7 @@ require __DIR__ . '/app/rapport.php';
 require __DIR__ . '/app/segment.php';
 require __DIR__ . '/app/sponsor.php';
 require __DIR__ . '/app/sondage.php';
+require __DIR__ . '/app/brouillon.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -819,6 +820,15 @@ switch ($page) {
             'confiees' => decors_confies((string) $u['id']),
         ]);
 
+    /**
+     * D'où part un décor : d'un fichier fini, ou de rien.
+     *
+     * Publique. L'étape « Le cadre » mélangeait les deux métiers ; cet
+     * écran demande lequel, et le Studio n'ouvre que la moitié qui sert.
+     */
+    case 'creer':
+        require RACINE . '/app/actions/creer.php';
+
     case 'nouveau':
     case 'modifier':
     case 'equipier':
@@ -828,7 +838,18 @@ switch ($page) {
     case 'liens':
     case 'creer-lien':
     case 'supprimer-lien':
+    case 'oublier-brouillon':
         require RACINE . '/app/actions/liens.php';
+
+    /**
+     * Raccourcir un lien SANS compte.
+     *
+     * Publique, et c'est tout l'objet : la vitrine promettait wkb.link et
+     * menait à un formulaire de connexion. On compose d'abord, on se
+     * présente ensuite.
+     */
+    case 'lien-court':
+        require RACINE . '/app/actions/lien-court.php';
 
     /**
      * Suivre un lien court. Publique, et volontairement minuscule.
@@ -992,7 +1013,7 @@ switch ($page) {
     case 'facture-exemple':
         $u = exiger_droit('reglages');
         $r = facturation_reglages();
-        $ttc = (int) (FORMULES['croissance']['prix'] ?? 12000);
+        $ttc = (int) (formules()['croissance']['prix'] ?? 12000);
         $m = facture_montants($ttc, (int) $r['fact_tva']);
         $doc = facture_pdf([
             'id' => 'exemple', 'numero' => 'WB-' . gmdate('Y') . '-EXEMPLE',
@@ -1035,6 +1056,16 @@ switch ($page) {
     case 'reglages':
         require RACINE . '/app/actions/reglages.php';
 
+    /**
+     * Les offres, sous Réglages et non au menu.
+     *
+     * Le menu tient en trois groupes de quatre destinations, et cette
+     * règle vaut mieux qu'une entrée de plus. Le référencement et la
+     * facturation vivent déjà ainsi.
+     */
+    case 'offres':
+        require RACINE . '/app/actions/offres.php';
+
     case 'sauvegardes':
     case 'sauvegarder':
     case 'telecharger-sauvegarde':
@@ -1066,12 +1097,18 @@ switch ($page) {
             // main, et qui coûtent cher quand personne ne les fait.
             $cache = nettoyer_vignettes();
             $echeances = rappeler_echeances();
+            // Les brouillons anonymes : la seule écriture du produit qui ne
+            // demande pas de compte, donc la seule qui doive s'effacer toute
+            // seule. Sans ce passage, `donnees/brouillons/` grossit sans fin.
+            $vieux = brouillons_perimer();
             printf("OK %s (%d Ko), %d ancienne(s) effacée(s).\n",
                    basename($f), (int) round(filesize($f) / 1024), $effacees);
             printf("Cache : %d vignette(s) effacée(s), %s libéré(s), %s restants.\n",
                    $cache['effaces'], poids($cache['octets']), poids($cache['poids']));
             printf("Échéances : %d rappel(s), %d rétrogradation(s).\n",
                    $echeances['rappeles'], $echeances['retrogrades']);
+            printf("Brouillons : %d périmé(s), %d fichier(s) orphelin(s).\n",
+                   $vieux['brouillons'], $vieux['orphelins']);
         } catch (Throwable $e) {
             http_response_code(500);
             echo 'ÉCHEC ', $e->getMessage(), "\n";

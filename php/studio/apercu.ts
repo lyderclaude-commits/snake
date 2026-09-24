@@ -26,7 +26,7 @@ interface Contexte {
 const CHAMPS = [
   'disposition', 'cadre_url', 'cadre_fourni', 'titre', 'accroche', 'champ_libelle',
   'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
-  'accroche_taille', 'champ_taille', 'qr_position', 'qr_taille', 'filigrane_position',
+  'accroche_taille', 'champ_taille', 'qr_actif', 'qr_position', 'qr_taille', 'filigrane_position',
   'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
   'calques',
 ];
@@ -86,6 +86,20 @@ function demarrer(ctx: Contexte) {
   let tour = 0;
 
   const val = (nom: string): string => {
+    /**
+     * Une case à cocher vaut ce qu'elle vaut SI elle est cochée.
+     *
+     * Son `value` ne bouge pas quand on la décoche, et `namedItem` rend
+     * une liste dès qu'un champ caché la double — ce qui est le cas ici,
+     * parce qu'une case décochée n'envoie rien au serveur. Sans ce
+     * détour, l'aperçu aurait continué de dessiner un QR qu'on vient de
+     * retirer.
+     */
+    const boite = form.querySelector<HTMLInputElement>(
+      'input[type=checkbox][name="' + nom + '"]');
+    if (boite) {
+      return boite.checked ? boite.value : '0';
+    }
     const el = form.elements.namedItem(nom) as HTMLInputElement | null;
     return el && 'value' in el ? el.value : '';
   };

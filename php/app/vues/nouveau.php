@@ -4,10 +4,26 @@
  *
  * L'apparence n'est pas décorative. C'est ce qui permet à l'équipe comme à
  * un organisateur de prendre un gabarit et d'en faire le leur : déplacer le
- * texte, changer sa couleur, choisir le coin du QR. Ce qu'ils ne peuvent pas
- * faire, c'est retirer le QR, le filigrane ou la zone photo — ce sont eux
- * qui font la différence avec un générateur d'images.
+ * texte, changer sa couleur, choisir le coin du QR, et décider si le badge
+ * en porte un. Ce qu'ils ne peuvent pas faire, c'est retirer le filigrane,
+ * dont l'offre décide, ni la zone photo, qui est ce qui distingue un badge
+ * d'une affiche.
  */
+/**
+ * D'où part ce décor, et qui le compose.
+ *
+ * `fichier` : la personne apporte un cadre fini. Elle n'a que faire d'une
+ * galerie de modèles, et le Studio ne lui en montre pas.
+ * `studio` : elle part de rien. Le téléversement de cadre disparaît, tout
+ * le reste du Studio est intact, et les cadres FOURNIS par Wakabi restent :
+ * ce sont des modèles de la maison, pas un fichier apporté du dehors.
+ */
+$depart = $depart ?? 'studio';
+$anonyme = $anonyme ?? false;
+$repris = $repris ?? false;
+$par_fichier = $depart === 'fichier' && !$modifie;
+$par_studio = $depart === 'studio' && !$modifie;
+
 $curseur = function (string $nom, string $libelle, float $min, float $max, float $pas, $valeur, string $aide = '') {
     ?>
     <div class="champ reglage">
@@ -43,10 +59,30 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
       </p>
       <p class="aide">L’adresse du décor (<code>/<?= e($modifie['slug']) ?></code>) ne change pas :
       elle vit dans des liens déjà partagés et dans les QR des badges déjà téléchargés.</p>
+    <?php elseif ($par_fichier): ?>
+      <p>Votre cadre, la fenêtre photo, et les textes de la campagne.
+      L’aperçu suit chaque geste.</p>
     <?php else: ?>
       <p>Trois étapes, et l’aperçu suit chaque geste.</p>
     <?php endif; ?>
+    <?php if (!$modifie): ?>
+      <p class="aide"><a href="<?= e(url('?p=creer')) ?>">Changer de chemin</a></p>
+    <?php endif; ?>
   </section>
+
+  <?php if ($repris): ?>
+    <div class="msg ok" role="status">
+      <strong>Votre décor vous attendait, le voici.</strong>
+      Rien n’a été perdu : vérifiez, puis publiez.
+    </div>
+  <?php endif; ?>
+
+  <?php if ($anonyme): ?>
+    <div class="msg info">
+      <strong>Vous composez sans compte.</strong>
+      Il vous en faudra un pour publier, et votre travail vous suivra jusque-là.
+    </div>
+  <?php endif; ?>
 
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
 
@@ -67,6 +103,8 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
   ?>
   <form method="post" enctype="multipart/form-data" id="form-decor" class="sd">
     <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+    <?php /* Le chemin choisi survit au POST, et à l'aller-retour par le mur. */ ?>
+    <input type="hidden" name="depart" value="<?= e((string) $depart) ?>">
     <input type="hidden" name="cadre_url" value="<?= e($valeurs['cadre_url']) ?>">
     <?php if ($modifie): ?><input type="hidden" name="id" value="<?= e($modifie['id']) ?>"><?php endif; ?>
 
@@ -127,7 +165,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
             $fiches[$d['id']] = $d;
         }
         ?>
-        <div class="champ sd-galerie-champ">
+        <div class="champ sd-galerie-champ"<?= $par_fichier ? ' hidden' : '' ?>>
           <span class="champ-titre">Modèle</span>
           <div class="sd-galerie" role="radiogroup" aria-label="Modèle de décor">
             <?php foreach ($par_nature as $nature => $ids): ?>
@@ -188,7 +226,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
           Vous pouvez tout de même en ajouter un.
         </p>
 
-        <div class="champ">
+        <div class="champ"<?= $par_studio ? ' hidden' : '' ?>>
           <p class="pas">Votre image de cadre</p>
           <!-- Même traitement que dans le Studio : le libellé natif s'affiche
                dans la langue du navigateur, celui-ci est toujours en français. -->
@@ -344,8 +382,9 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
       <section class="carte sd-panneau" id="panneau-apparence" role="tabpanel"
                aria-labelledby="onglet-apparence" hidden>
         <div class="rangee" style="justify-content:space-between;align-items:baseline;margin-bottom:12px">
-          <p class="aide" style="margin:0;max-width:32ch">Tout se déplace sauf l’essentiel : le QR,
-          le filigrane et la zone photo restent, où que vous les mettiez.</p>
+          <p class="aide" style="margin:0;max-width:32ch">Tout se déplace. Le filigrane et la zone
+          photo restent, où que vous les mettiez ; le QR Code, lui, se retire si vous ne
+          contrôlez pas les entrées.</p>
           <button class="bouton fant petit" type="button" id="apparence-defaut">Réglages du gabarit</button>
         </div>
 
@@ -476,10 +515,39 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
 
         <fieldset class="sd-groupe sd-natif">
           <legend>Le QR et le filigrane</legend>
-          <div class="reglages">
+          <?php
+          /**
+           * Le QR se retire, et l'écran dit ce que ça coûte.
+           *
+           * Une case seule aurait laissé croire à un réglage d'apparence.
+           * C'en est un pour l'invité, et une décision d'organisation pour
+           * celui qui compose : sans QR, il n'y a rien à scanner à la
+           * porte, donc aucune présence relevée. Et sans présence relevée,
+           * le rapport perd son entonnoir, le segment « est venu » se vide
+           * et les Koris ne se créditent plus. Mieux vaut le lire ici que
+           * le découvrir le soir de l'événement.
+           *
+           * Le champ caché double la case : une case décochée n'envoie
+           * rien, et la décocher n'aurait jamais rien éteint.
+           */
+          $qr_on = (string) ($valeurs['qr_actif'] ?? '1') !== '0';
+          ?>
+          <input type="hidden" name="qr_actif" value="0">
+          <label class="case" style="margin-bottom:10px">
+            <input type="checkbox" id="qr_actif" name="qr_actif" value="1" <?= $qr_on ? 'checked' : '' ?>>
+            <span>Afficher le QR Code sur le badge</span>
+          </label>
+          <p class="aide" id="qr-consequence" style="margin:-4px 0 12px"<?= $qr_on ? ' hidden' : '' ?>>
+            Sans QR Code, ce décor ne contrôle aucune entrée : pas de présences scannées,
+            pas de segment « est venu », pas de Koris. Les vues et les téléchargements, eux,
+            se comptent toujours.
+          </p>
+          <div class="reglages" id="qr-reglages"<?= $qr_on ? '' : ' hidden' ?>>
             <?php $liste('qr_position', 'Coin du QR Code', APPARENCE_QR, (string) $valeurs['qr_position']); ?>
             <?php $curseur('qr_taille', 'Taille du QR', 0.12, 0.28, 0.005, $valeurs['qr_taille'],
                            'En dessous de 0,12 un téléphone peine à le lire.'); ?>
+          </div>
+          <div class="reglages">
             <?php $liste('filigrane_position', 'Coin du filigrane', APPARENCE_FILIGRANE, (string) $valeurs['filigrane_position']); ?>
           </div>
         </fieldset>
@@ -531,7 +599,8 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
         </div>
 
         <button class="bouton sd-enregistrer" type="submit">
-          <?= $modifie ? 'Enregistrer les modifications' : 'Créer et enregistrer' ?>
+          <?= $modifie ? 'Enregistrer les modifications'
+              : ($anonyme ? 'Créer mon compte et publier' : 'Créer et enregistrer') ?>
         </button>
         <p class="aide sd-note">Vous pouvez enregistrer depuis n’importe quelle étape.</p>
       </div>
@@ -733,18 +802,22 @@ window.WAKABI_APERCU = {
   };
 
   /**
-   * Les trois objets que TOUT décor porte.
+   * Les objets que le décor porte sans qu'on les ait posés.
    *
    * Ils ne sont pas dans le champ caché : ils vivent dans les réglages du
-   * gabarit, et ne peuvent être ni ajoutés ni retirés. Ils figurent dans la
-   * liste parce qu'un panneau de calques qui ne montrerait pas le QR ni la
-   * photo mentirait sur ce que contient le décor.
+   * gabarit. Ils figurent dans la liste parce qu'un panneau de calques qui
+   * ne montrerait pas le QR ni la photo mentirait sur ce que contient le
+   * décor — et, depuis que le QR se retire, il mentirait aussi en
+   * continuant de l'afficher une fois la case décochée.
    */
-  var FIXES = [
-    { nom: 'QR Code', eti: 'fixe' },
-    { nom: 'Filigrane Wakabi', eti: 'fixe' },
-    { nom: 'Fenêtre photo', eti: 'fixe' }
-  ];
+  var boiteQr = document.getElementById('qr_actif');
+  function fixes() {
+    var out = [];
+    if (!boiteQr || boiteQr.checked) { out.push({ nom: 'QR Code', eti: 'fixe' }); }
+    out.push({ nom: 'Filigrane Wakabi', eti: 'fixe' });
+    out.push({ nom: 'Fenêtre photo', eti: 'fixe' });
+    return out;
+  }
 
   function dessinerListe() {
     var cs = lire();
@@ -755,7 +828,7 @@ window.WAKABI_APERCU = {
     for (var i = cs.length - 1; i >= 0; i--) {
       liste.appendChild(ligneLibre(cs[i], i));
     }
-    FIXES.forEach(function (f) { liste.appendChild(ligneFixe(f)); });
+    fixes().forEach(function (f) { liste.appendChild(ligneFixe(f)); });
 
     aide.textContent = cs.length >= MAX
       ? 'Douze calques, c’est le maximum : chacun est redessiné à chaque aperçu.'
@@ -1028,6 +1101,27 @@ window.WAKABI_APERCU = {
   document.addEventListener('wakabi:calque', function (e) {
     if (e.detail !== choisi) { selectionner(e.detail); }
   });
+
+  /**
+   * La case du QR commande trois choses à la fois.
+   *
+   * Les réglages de coin et de taille n'ont plus d'objet, la phrase qui dit
+   * ce qu'on perd apparaît, et le QR quitte la liste des calques. Laisser
+   * deux curseurs actifs sous une case décochée aurait été la façon la
+   * plus sûre de faire croire que la case n'avait rien fait.
+   *
+   * L'aperçu, lui, se redessine tout seul : il écoute déjà les `change` du
+   * formulaire, et la case en est un.
+   */
+  if (boiteQr) {
+    var reglagesQr = document.getElementById('qr-reglages');
+    var consequence = document.getElementById('qr-consequence');
+    boiteQr.addEventListener('change', function () {
+      if (reglagesQr) { reglagesQr.hidden = !boiteQr.checked; }
+      if (consequence) { consequence.hidden = boiteQr.checked; }
+      dessinerListe();
+    });
+  }
 
   dessinerListe();
 })();

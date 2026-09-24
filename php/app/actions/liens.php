@@ -61,6 +61,57 @@ if ($page === 'supprimer-lien') {
         : 'err=' . rawurlencode('Ce lien n’existe pas, ou il n’est pas à vous.')));
 }
 
+/* ---------------- oublier un brouillon ---------------- */
+
+/**
+ * Le renoncement, et il est explicite.
+ *
+ * Un brouillon en attente s'efface tout seul au bout de 48 h. Mais
+ * quelqu'un qui ne prendra pas l'offre doit pouvoir le retirer de son
+ * écran tout de suite, sans attendre deux jours une carte qui lui rappelle
+ * ce qu'il n'a pas acheté.
+ */
+if ($page === 'oublier-brouillon') {
+    verifier_csrf();
+    $genre = (string) ($_POST['genre'] ?? '');
+    if (brouillon_suite($genre) !== null) {
+        brouillon_retirer($genre, brouillon_jeton());
+    }
+    rediriger('?p=liens&ok=' . rawurlencode('Brouillon supprimé.'));
+}
+
+/* ---------------- la reprise d'un brouillon ---------------- */
+
+/**
+ * Le lien composé avant d'avoir un compte.
+ *
+ * Deux issues, et une seule est un échec. Si l'offre en donne, on le crée
+ * tout de suite : la personne a fait le chemin, elle ne va pas ressaisir
+ * son adresse. Si l'offre n'en donne pas — c'est le cas de Découverte —
+ * on GARDE le brouillon et on le montre en attente. L'effacer en disant
+ * « il vous faut Impact » reviendrait à lui faire payer ET à lui faire
+ * retaper.
+ */
+$repris = null;
+$en_attente = null;
+if (($_GET['reprendre'] ?? '') === '1') {
+    if ($max === 0 || ($max > 0 && $utilises >= $max)) {
+        $en_attente = brouillon_prendre('lien');
+    } elseif ($b = brouillon_prendre('lien')) {
+        $cible = (string) ($b['charge']['cible'] ?? '');
+        $schema = strtolower((string) parse_url($cible, PHP_URL_SCHEME));
+        if (filter_var($cible, FILTER_VALIDATE_URL) && in_array($schema, ['http', 'https'], true)) {
+            $code = creer_lien((string) $u['id'], $cible, (string) ($b['charge']['titre'] ?? ''), null);
+            brouillon_consommer('lien');
+            rediriger('?p=liens&ok=' . rawurlencode(
+                'Votre lien vous attendait, le voici : ' . lien_court_url($code)));
+        }
+        // Une adresse devenue invalide entre-temps : on l'oublie plutôt que
+        // d'afficher une erreur à quelqu'un qui vient de créer son compte.
+        brouillon_consommer('lien');
+    }
+}
+
 /* ---------------- l'écran ---------------- */
 
 vue('liens', [
@@ -69,4 +120,16 @@ vue('liens', [
     'max' => $max,
     'utilises' => $utilises,
     'campagnes' => droit($u, 'decors_tous') ? decors_catalogue() : decors_de((string) $u['id']),
+    'en_attente' => $en_attente,
+    'porte' => (function (): ?array {
+        // La première offre qui en donne, déduite et non écrite : les offres
+        // se règlent depuis l'administration, et une phrase codée en dur
+        // mentirait le jour où quelqu'un les ouvre à l'offre gratuite.
+        foreach (formules_actives() as $cle => $f) {
+            if ((int) ($f['liens_courts'] ?? 0) !== 0) {
+                return ['cle' => $cle] + $f;
+            }
+        }
+        return null;
+    })(),
 ]);

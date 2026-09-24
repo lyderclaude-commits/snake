@@ -9,11 +9,32 @@
  * que la session a sauté. On le renvoie chez lui, tout simplement.
  */
 if (utilisateur_courant()) {
-    rediriger(accueil_de(utilisateur_courant()));
+    // … mais s'il venait reprendre un brouillon, c'est là qu'on l'envoie :
+    // renvoyer au tableau de bord quelqu'un déjà connecté qui vient de
+    // composer un lien lui ferait croire que son lien est perdu.
+    rediriger(brouillon_suite((string) ($_GET['suite'] ?? ''))
+        ?? accueil_de(utilisateur_courant()));
 }
 
 $erreur = null;
 $valeurs = ['email' => ''];
+
+/**
+ * Ce qu'on était en train de faire avant d'arriver ici.
+ *
+ * Se connecter renvoyait toujours au tableau de bord. C'est le bon défaut
+ * quand on vient pour travailler, et le mauvais quand on vient de composer
+ * un lien court sur la vitrine : on retrouvait son tableau de bord et rien
+ * d'autre, sans un mot sur ce qu'on venait d'écrire.
+ *
+ * La suite voyage en GET, et `brouillon_suite()` n'accepte que ce qu'elle
+ * connaît : une adresse recopiée dans la barre ne détourne donc personne
+ * ailleurs que sur les deux écrans de reprise.
+ */
+$suite = (string) ($_GET['suite'] ?? $_POST['suite'] ?? '');
+$apres = static function (array $u) use ($suite): string {
+    return brouillon_suite($suite) ?? accueil_de($u);
+};
 
 /**
  * Le second facteur attend dans la session, entre les deux écrans.
@@ -39,7 +60,7 @@ if ($post && $en_attente && isset($_POST['code'])) {
         debit_effacer($cle);
         unset($_SESSION['otp_attente']);
         connecter((string) $en_attente['id']);
-        rediriger(accueil_de($en_attente));
+        rediriger($apres($en_attente));
     } else {
         debit_noter($cle);
         $erreur = 'Ce code n’est pas le bon. Il change toutes les 30 secondes : '
@@ -73,7 +94,7 @@ if ($post && !isset($_POST['code'])) {
                 $en_attente = $u;
             } else {
                 connecter($u['id']);
-                rediriger(accueil_de($u));
+                rediriger($apres($u));
             }
         } else {
             debit_noter($cle);
@@ -87,4 +108,5 @@ vue('connexion', [
     'erreur' => $erreur,
     'valeurs' => $valeurs,
     'en_attente' => $en_attente,
+    'suite' => $suite,
 ]);

@@ -8,11 +8,27 @@
  * dont un seul porte l'offre payée.
  */
 if (utilisateur_courant()) {
-    rediriger(accueil_de(utilisateur_courant()));
+    rediriger(brouillon_suite((string) ($_GET['suite'] ?? ''))
+        ?? accueil_de(utilisateur_courant()));
 }
 
 $erreur = null;
 $valeurs = ['nom' => '', 'email' => '', 'role' => 'participant', 'organisation' => '', 'ville' => 'lome'];
+
+/**
+ * Ce qu'on était venu faire, et le rôle que ça impose.
+ *
+ * Un formulaire public crée par défaut un « participant », qui ne détient
+ * AUCUN droit : il fait des badges, il n'en fabrique pas. Quelqu'un qui
+ * arrive ici depuis le Studio ou depuis les liens courts doit donc
+ * ressortir organisateur, sinon il créerait un compte incapable de publier
+ * le décor qu'il vient de composer, et personne ne lui dirait pourquoi.
+ */
+$suite = (string) ($_POST['suite'] ?? $_GET['suite'] ?? '');
+$reprend = brouillon_suite($suite) !== null;
+if ($reprend) {
+    $valeurs['role'] = 'partenaire';
+}
 
 /**
  * L'offre cliquée sur la vitrine suit jusqu'ici.
@@ -23,7 +39,7 @@ $valeurs = ['nom' => '', 'email' => '', 'role' => 'participant', 'organisation' 
  * organisateur attend son activation.
  */
 $offre = (string) ($_POST['offre'] ?? $_GET['offre'] ?? '');
-if (!isset(FORMULES[$offre]) || $offre === 'decouverte') {
+if (!isset(formules()[$offre]) || $offre === 'decouverte') {
     $offre = '';
 }
 if ($offre !== '') {
@@ -36,6 +52,11 @@ if ($post) {
         $valeurs[$k] = trim((string) ($_POST[$k] ?? $valeurs[$k]));
     }
     $mdp = (string) ($_POST['mot_de_passe'] ?? '');
+    // Recopié APRÈS la boucle qui relit les champs : elle vient de remettre
+    // ce que le formulaire a envoyé, « participant » compris.
+    if ($reprend) {
+        $valeurs['role'] = 'partenaire';
+    }
 
     if ($valeurs['nom'] === '') {
         $erreur = 'Indiquez votre nom.';
@@ -83,7 +104,7 @@ if ($post) {
         }
 
         connecter($id);
-        $vers = accueil_de($valeurs);
+        $vers = brouillon_suite($suite) ?? accueil_de($valeurs);
         rediriger($bienvenue === '' ? $vers : $vers . '&ok=' . rawurlencode($bienvenue));
     }
 }
@@ -93,4 +114,5 @@ vue('inscription', [
     'erreur' => $erreur,
     'valeurs' => $valeurs,
     'offre' => $offre,
+    'suite' => $suite,
 ]);

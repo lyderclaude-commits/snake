@@ -197,7 +197,7 @@ $raccourcis = [
       <p class="aide" style="margin:6px 0 14px">Hors comptes de l’équipe.</p>
       <?php
       $total_formules = max(1, array_sum($formules));
-      foreach (FORMULES as $cle => $f):
+      foreach (formules() as $cle => $f):
           $n = $formules[$cle] ?? 0;
       ?>
         <div class="marche">

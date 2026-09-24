@@ -73,7 +73,7 @@ if ($post) {
 
             $fin = echeance_prolonger($c, $jours, $debut);
             $id = facture_poser($c, $debut, $fin, $u, [
-                'montant' => $montant ?: (int) (FORMULES[$posee]['prix'] ?? 0),
+                'montant' => $montant ?: (int) (formules()[$posee]['prix'] ?? 0),
                 'statut' => $statut,
                 'mode' => (string) ($_POST['mode'] ?? ''),
                 'reference' => trim((string) ($_POST['reference'] ?? '')),

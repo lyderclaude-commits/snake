@@ -48,7 +48,7 @@ function abonnement_suivi(?array $u): bool
     if (!$u || interne($u)) {
         return false;
     }
-    return (int) (FORMULES[$u['formule'] ?? '']['prix'] ?? 0) > 0;
+    return (int) (formules()[$u['formule'] ?? '']['prix'] ?? 0) > 0;
 }
 
 /** L'échéance d'un compte, ou `null` s'il n'en a pas. */
@@ -125,7 +125,7 @@ function offre_demandee_appliquer(array $u): string
 {
     $veut = (string) ($u['offre_demandee'] ?? '');
     $actuelle = (string) ($u['formule'] ?? 'decouverte');
-    if ($veut === '' || $veut === $actuelle || !isset(FORMULES[$veut])) {
+    if ($veut === '' || $veut === $actuelle || !isset(formules()[$veut])) {
         return $actuelle;
     }
     db()->prepare('UPDATE utilisateurs SET formule = ?, offre_demandee = NULL,
@@ -136,10 +136,17 @@ function offre_demandee_appliquer(array $u): string
     return $veut;
 }
 
-/** Le client demande une autre offre. L'équipe la posera à l'échéance. */
+/**
+ * Le client demande une autre offre. L'équipe la posera à l'échéance.
+ *
+ * `formules_actives()` et non `formules()` : une offre retirée de la vente
+ * ne se demande plus, même en recopiant sa clé dans le formulaire. Ceux
+ * qui la portent déjà la gardent ; c'est l'ENTRÉE qui est fermée, pas la
+ * porte de sortie.
+ */
 function offre_demander(array $u, string $formule): bool
 {
-    if (!isset(FORMULES[$formule]) || $formule === ($u['formule'] ?? '')) {
+    if (!isset(formules_actives()[$formule]) || $formule === ($u['formule'] ?? '')) {
         return false;
     }
     db()->prepare('UPDATE utilisateurs SET offre_demandee = ?, offre_demandee_le = ? WHERE id = ?')

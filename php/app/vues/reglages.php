@@ -17,7 +17,10 @@ $branche = courriel_branche();
          menu : celui-ci tient en trois groupes de quatre destinations, et
          cette règle vaut mieux qu'une entrée de plus. */
       ?>
-      <a class="bouton fant" href="<?= e(url('?p=reglages-seo')) ?>">Référencement</a>
+      <div class="rangee" style="gap:8px">
+        <a class="bouton fant" href="<?= e(url('?p=offres')) ?>">Les offres</a>
+        <a class="bouton fant" href="<?= e(url('?p=reglages-seo')) ?>">Référencement</a>
+      </div>
     </div>
   </section>
 
