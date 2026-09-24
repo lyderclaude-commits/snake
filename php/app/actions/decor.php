@@ -206,6 +206,29 @@ const CLES_APPARENCE = [
 $par_fichier = $depart === 'fichier' && !$modifie;
 $dispo_depart = $par_fichier ? 'vierge' : 'bandeau';
 
+/**
+ * Qui choisit encore sa destination, et qui ne la choisit plus.
+ *
+ * Un décor de partenaire ne peut renvoyer que vers un domaine Wakabi : lui
+ * demander l'adresse revenait à lui faire retaper une réponse imposée.
+ * Chez lui, le champ a donc disparu et le serveur écrit celle du guide.
+ *
+ * L'équipe, elle, n'a jamais été tenue par ce garde-fou — une campagne de
+ * la maison peut co-brander avec un partenaire, ou pointer la fiche du
+ * maquis dont elle annonce la soirée. Le champ lui revient, et à elle
+ * seule.
+ *
+ * La question n'est pas « qui regarde l'écran » mais « de qui sera ce
+ * décor ». À la modification, c'est `cree_par` qui tranche, et non le rôle
+ * du lecteur : un membre de l'équipe qui corrige le décor d'un
+ * organisateur reste dans le décor de cet organisateur, donc sous son
+ * garde-fou. Sans cette nuance, l'écran aurait offert un champ que le
+ * validateur refusait ensuite.
+ */
+$destination_libre = $modifie
+    ? (($modifie['cree_par'] ?? '') === 'equipe')
+    : (!$anonyme && droit($u, 'valider'));
+
 $valeurs = [
     'titre' => '', 'sous_titre' => '', 'ville' => 'lome', 'rubrique' => 'campagne',
     'disposition' => $dispo_depart, 'accroche' => 'J’Y SERAI', 'champ_libelle' => 'Ton prénom',
@@ -354,18 +377,24 @@ if ($post) {
     }
 
     /**
-     * La destination après téléchargement est posée ICI, et non demandée.
+     * La destination est posée ICI pour qui ne la choisit pas.
      *
-     * Le formulaire ne la propose plus : chaque badge ramène au guide. On
-     * l'écrase APRÈS la récolte, donc une valeur envoyée à la main ne
-     * passe pas davantage — sans quoi retirer un champ d'un formulaire
-     * aurait seulement déplacé la question, pas répondu.
+     * Le formulaire ne la propose plus à un organisateur : son badge ramène
+     * au guide. On l'écrase APRÈS la récolte des champs, donc une valeur
+     * envoyée à la main ne passe pas davantage — sans quoi retirer un champ
+     * d'un formulaire aurait seulement déplacé la question, pas répondu.
+     *
+     * L'équipe garde son champ, et sa valeur traverse : c'est le validateur
+     * de gabarit qui la juge, comme avant, et il n'a jamais soumis l'équipe
+     * au garde-fou.
      *
      * L'étiquette du bouton reste ce qu'elle était : « Découvrir sur
      * Wakabi » convient à une destination fixe, et changer les gabarits
      * déjà publiés n'apporterait rien à personne.
      */
-    $valeurs['redirection'] = GUIDE_URL . '/';
+    if (!$destination_libre) {
+        $valeurs['redirection'] = GUIDE_URL . '/';
+    }
 
     /* ---------------- sans compte : on met de côté ---------------- */
 
@@ -607,6 +636,7 @@ vue('nouveau', [
     'modifie' => $modifie,
     // `fichier` ou `studio` : la moitié du panneau « Le cadre » qui sert.
     'depart' => $depart,
+    'destination_libre' => $destination_libre,
     // Sans compte : le bouton dit « Créer mon compte et publier », et non
     // « Enregistrer », parce que ce n'est pas ce qui va se passer.
     'anonyme' => $anonyme,

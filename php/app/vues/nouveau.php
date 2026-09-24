@@ -21,6 +21,9 @@
 $depart = $depart ?? 'studio';
 $anonyme = $anonyme ?? false;
 $repris = $repris ?? false;
+/* Par défaut, personne ne choisit : c'est le cas de l'immense majorité des
+   décors, et un filet qui s'ouvrirait tout seul ne serait pas un filet. */
+$destination_libre = $destination_libre ?? false;
 $par_fichier = $depart === 'fichier' && !$modifie;
 $par_studio = $depart === 'studio' && !$modifie;
 
@@ -421,13 +424,24 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
 
         <?php
         /**
-         * La destination après téléchargement ne se demande plus.
+         * La destination ne se demande qu'à qui peut y répondre.
          *
-         * Le champ posait une question dont la réponse était toujours la
-         * même : un décor de partenaire ne pouvait renvoyer que vers un
-         * domaine Wakabi, donc on demandait à quelqu'un de retaper une
-         * adresse qu'il n'avait pas le droit de choisir. Chaque badge
-         * ramène désormais au guide, et le serveur pose l'adresse.
+         * Chez un organisateur, le champ posait une question dont la
+         * réponse était imposée : son décor ne peut renvoyer que vers un
+         * domaine Wakabi, donc on lui faisait retaper une adresse qu'il
+         * n'avait pas le droit de choisir, et une faute de frappe valait un
+         * refus découvert à l'envoi. Son badge ramène au guide, et c'est le
+         * serveur qui l'écrit.
+         *
+         * L'équipe garde le champ : elle n'a jamais été tenue par le
+         * garde-fou, et une campagne de la maison a de bonnes raisons de
+         * pointer ailleurs — la fiche du maquis dont elle annonce la
+         * soirée, le site du partenaire avec qui elle co-brande.
+         *
+         * `$destination_libre` se lit sur le décor, pas sur le lecteur : un
+         * membre de l'équipe qui corrige le décor d'un organisateur reste
+         * dans le décor de cet organisateur, donc sous son garde-fou.
+         * Offrir le champ là aurait promis ce que le validateur refuse.
          *
          * Le garde-fou, lui, RESTE dans le validateur de gabarit. Il ne
          * protégeait pas que ce formulaire : l'API, le semeur de
@@ -435,6 +449,16 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
          * passent par la même porte.
          */
         ?>
+        <?php if ($destination_libre): ?>
+          <div class="champ">
+            <label for="redirection">Page de destination après téléchargement</label>
+            <input id="redirection" name="redirection" type="url" required
+                   value="<?= e($valeurs['redirection']) ?>">
+            <p class="aide">Une campagne de la maison peut renvoyer où elle veut : la fiche
+            d’un lieu, le site d’un partenaire. Les décors des organisateurs, eux, ramènent
+            au guide sans qu’on le leur demande.</p>
+          </div>
+        <?php endif; ?>
 
         <div class="sd-suite">
           <button class="bouton fant" type="button" data-vers="cadre">← Le cadre</button>

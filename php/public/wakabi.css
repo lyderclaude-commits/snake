@@ -299,6 +299,12 @@ a{color:var(--primary-d);text-underline-offset:3px}
 .carte.plate{box-shadow:none}
 .entete{padding:34px 0 22px}
 .entete p{color:var(--text2);max-width:60ch;margin:.5em 0 0}
+/* Un entête centré. Le paragraphe porte une largeur de lecture (60ch) :
+   sans marges automatiques, son TEXTE se centre dans une boîte étroite
+   qui reste, elle, collée à gauche. Le titre paraissait alors au milieu
+   et son sous-titre décalé — deux alignements pour un même bloc. */
+.entete.centre{text-align:center}
+.entete.centre p{margin-inline:auto}
 .stat{background:var(--paper);border:1px solid var(--border);border-radius:var(--r10);padding:14px 16px}
 .stat b{display:block;font-family:var(--display);font-size:1.55rem;font-weight:800;line-height:1}
 .stat span{display:block;font-size:.8rem;color:var(--text3);margin-top:5px}

@@ -12,7 +12,7 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
 ?>
 <div class="etroit" style="max-width:560px">
 
-  <section class="entete" style="text-align:center">
+  <section class="entete centre">
     <h1>Raccourcir un lien</h1>
     <p>L’adresse peut mener n’importe où : votre billetterie, votre page Facebook,
     une fiche Wakabi. Le lien, lui, reste court et se compte.</p>

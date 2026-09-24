@@ -40,14 +40,24 @@ AVANT de laisser faire quoi que ce soit.
    ce sont des points de départ, et qui arrive avec son fichier en a déjà
    un.
 
-4. **La destination après téléchargement ne se demande plus.** Le champ
-   posait une question dont la réponse était imposée : un décor de
-   partenaire ne pouvait renvoyer que vers un domaine Wakabi, donc on
-   faisait retaper une adresse que personne n'avait le droit de choisir, et
-   une faute de frappe valait un refus après coup. Chaque badge ramène au
-   guide, et le serveur pose l'adresse — une valeur envoyée à la main est
-   écrasée, sans quoi retirer le champ n'aurait fait que déplacer la
-   question.
+4. **La destination après téléchargement ne se demande qu'à qui peut y
+   répondre.** Chez un organisateur, le champ posait une question dont la
+   réponse était imposée : son décor ne peut renvoyer que vers un domaine
+   Wakabi, donc on lui faisait retaper une adresse qu'il n'avait pas le
+   droit de choisir, et une faute de frappe valait un refus découvert à
+   l'envoi. Son badge ramène au guide, et le serveur pose l'adresse — une
+   valeur envoyée à la main est écrasée, sans quoi retirer le champ
+   n'aurait fait que déplacer la question.
+
+   **L'équipe garde le champ.** Elle n'a jamais été tenue par le garde-fou,
+   et une campagne de la maison a de bonnes raisons de pointer ailleurs :
+   la fiche du lieu dont elle annonce la soirée, le site du partenaire avec
+   qui elle co-brande. Le champ se lit sur le **décor** et non sur le
+   lecteur : un membre de l'équipe qui corrige le décor d'un organisateur
+   reste dans le décor de cet organisateur (`cree_par` vaut toujours
+   « partenaire »), donc sous son garde-fou, et n'a pas le champ non plus.
+   Offrir une porte qui s'ouvre sur un mur serait pire que ne rien
+   offrir.
 
    La ligne d'offre « Redirection après téléchargement » change donc de
    texte : elle promettait « la page de votre choix », ce qui n'est plus
@@ -288,7 +298,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | Contrôle d'entrée | Entrée validée, rescan refusé, code inconnu refusé |
 | Koris | Solde crédité **au scan**, pas au téléchargement |
 | Le garde-fou | Une redirection hors domaine Wakabi est refusée à la **construction du gabarit** — y compris un hôte qui se termine par le domaine sans lui appartenir (`wakabileguide.com.mechant.tg`) ; une destination vide aussi ; l'équipe en reste exemptée |
-| La destination | Le formulaire ne porte plus de champ de destination, et une valeur postée à la main n'y change rien |
+| La destination | Un organisateur n'a plus de champ de destination, et une valeur postée à la main n'y change rien ; l'équipe le garde et peut renvoyer hors Wakabi ; sur le décor d'un organisateur, l'équipe ne l'a pas non plus |
 | Le pré-vol | Un cadre opaque ne rejoint jamais la file |
 | Une soumission valide | Créée par la recette elle-même, pour qu'elle soit rejouable |
 | Modération | Rapport affiché, approbation traitée, décor réellement ouvrable ensuite |
@@ -480,8 +490,10 @@ un décor disparu.
 > peut renvoyer que vers un domaine Wakabi ; l'équipe peut co-brander ailleurs.
 > C'est la règle que vous aviez fixée, et elle vaut toujours.
 >
-> Le formulaire, lui, ne demande plus la destination : chaque badge ramène au
-> guide, et le serveur écrit l'adresse. Le garde-fou n'en devient pas inutile —
+> Le formulaire ne demande plus la destination à un organisateur : son badge
+> ramène au guide, et le serveur écrit l'adresse. L'équipe, elle, garde le
+> champ — et le décor d'un organisateur reste sous garde-fou même quand c'est
+> l'équipe qui le corrige. Le garde-fou n'en devient pas inutile —
 > il gardait la **construction d'un gabarit**, pas ce formulaire, et l'API, le
 > semeur de démonstration et tout ce qui s'ajoutera passent par là. Il est
 > désormais éprouvé dans `verifier-portes` plutôt que dans un navigateur, parce

@@ -9,7 +9,7 @@
 ?>
 <div class="contenu" style="max-width:880px">
 
-  <section class="entete" style="text-align:center">
+  <section class="entete centre">
     <h1>Votre décor, d’où part-il ?</h1>
     <p>Les deux mènent au même résultat. Le chemin, lui, n’a rien à voir.</p>
   </section>

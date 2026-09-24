@@ -724,32 +724,51 @@ const run = async () => {
    * Le garde-fou lui-même n'est pas parti : il vit dans le validateur de
    * gabarit, éprouvé par verifier-portes, parce qu'il protège aussi l'API
    * et le semeur de démonstration. Ce qui se vérifie ICI est ce qu'un
-   * navigateur peut voir : le champ n'existe plus, et l'adresse posée est
-   * bien celle du guide.
+   * navigateur peut voir : le champ n'existe plus pour un organisateur, et
+   * une adresse glissée à la main dans la requête ne le fait pas
+   * réapparaître par la bande.
    */
   await inscription(p, PART.email, PART.mdp, 'partenaire', 'Test Partenaire');
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
   await etapeDecor(p, 'campagne');
-  ok('le champ de destination a disparu du formulaire',
+  ok('un organisateur n’a plus de champ de destination',
      (await p.locator('input[name=redirection]').count()) === 0);
 
-  await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
-  await p.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
-  await etapeDecor(p, 'campagne');
-  await p.fill('input[name=titre]', `Destination automatique ${marque}`);
-  /* Posté à la main, et pourtant sans effet : retirer un champ d'un
-     formulaire ne doit pas seulement déplacer la question. */
-  await p.evaluate(() => {
+  /**
+   * La preuve demande de CRÉER, donc elle se fait sur un compte jetable.
+   *
+   * Découverte ne donne qu'une campagne. Consommer celle du partenaire de
+   * recette ici ferait échouer le pré-vol et la soumission deux sections
+   * plus bas, pour une raison sans rapport avec ce qu'elles éprouvent —
+   * et l'on passerait une heure à chercher un défaut de pré-vol qui
+   * n'existe pas.
+   *
+   * Ce qui se prouve : le décor est CRÉÉ alors qu'on a glissé une adresse
+   * hors Wakabi dans la requête. Si la valeur avait survécu, le garde-fou
+   * l'aurait refusée. Retirer un champ d'un formulaire ne doit pas
+   * seulement déplacer la question.
+   */
+  const ctxDest = await browser.newContext();
+  const pDest = await ctxDest.newPage();
+  surveiller(pDest);
+  await inscription(pDest, `destination-${marque}@essai.tg`,
+                    'un-mot-de-passe-solide-2026', 'partenaire', 'Destination Jetable');
+  await pDest.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pDest.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await etapeDecor(pDest, 'campagne');
+  await pDest.fill('input[name=titre]', `Destination automatique ${marque}`);
+  await pDest.evaluate(() => {
     const f = document.getElementById('form-decor') as HTMLFormElement | null;
-    if (!f) return;
+    if (!f) { return; }
     const i = document.createElement('input');
     i.type = 'hidden'; i.name = 'redirection'; i.value = 'https://mon-restaurant.tg/promo';
     f.appendChild(i);
   });
-  await p.click('main button[type=submit]');
-  await p.waitForLoadState('domcontentloaded');
-  ok('le décor est créé sans qu’on ait eu à choisir',
-     /créé/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')));
+  await pDest.click('main button[type=submit]');
+  await pDest.waitForLoadState('domcontentloaded');
+  ok('une adresse postée à la main ne passe pas, et le décor se crée quand même',
+     /créé/.test(await pDest.locator('.msg.ok').first().innerText().catch(() => '')));
+  await ctxDest.close();
 
   console.log('\n━━ 8. Le pré-vol ━━');
   await p.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
@@ -808,13 +827,21 @@ const run = async () => {
   await p.selectOption('select[name=disposition]', 'story');
   await etapeDecor(p, 'campagne');
   await p.fill('input[name=titre]', titreEquipe);
+  /**
+   * L'équipe garde le champ, et le garde-fou ne la tient pas.
+   *
+   * Une campagne de la maison a de bonnes raisons de pointer ailleurs : la
+   * fiche du lieu dont elle annonce la soirée, le site du partenaire avec
+   * qui elle co-brande. C'est la règle d'origine, et elle vaut toujours.
+   */
+  ok('l’équipe, elle, garde son champ de destination',
+     (await p.locator('input[name=redirection]').count()) === 1);
+  await p.fill('input[name=redirection]', 'https://partenaire-externe.tg/soiree');
   await p.click('main button[type=submit]');
   await p.waitForLoadState('domcontentloaded');
   ok('l’équipe peut créer un décor', /créé/.test(await p.locator('.msg.ok').first().innerText().catch(() => '')));
-  /* L'équipe reste hors du garde-fou dans le validateur — verifier-portes
-     l'éprouve — mais elle n'a plus de champ à remplir ici non plus : la
-     destination est la même pour tout le monde. */
-  ok('et elle n’a pas eu à choisir de destination', p.url().includes('p=catalogue'));
+  ok('et elle n’est pas soumise au garde-fou', p.url().includes('p=catalogue'),
+     'redirection externe acceptée');
 
   // 2. Lister
   await p.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
@@ -827,7 +854,32 @@ const run = async () => {
   await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreEquipe)}`, { waitUntil: 'domcontentloaded' });
   ok('la recherche par titre fonctionne', (await p.locator('.carte').count()) === 1);
 
-  // 3. Modifier
+  /**
+   * Le champ se lit sur le DÉCOR, pas sur qui le regarde.
+   *
+   * Un membre de l'équipe qui corrige le décor d'un organisateur reste dans
+   * le décor de cet organisateur : `cree_par` vaut toujours « partenaire »,
+   * donc le garde-fou s'applique. Offrir le champ là aurait promis ce que
+   * le validateur refuse ensuite — une porte qui s'ouvre sur un mur.
+   */
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(campagne)}`,
+               { waitUntil: 'domcontentloaded' });
+  const versDecorPart = await p.locator('a:has-text("Modifier")').first()
+    .getAttribute('href').catch(() => null);
+  if (versDecorPart) {
+    await p.goto(new URL(versDecorPart, BASE).href, { waitUntil: 'domcontentloaded' });
+    await etapeDecor(p, 'campagne');
+    ok('sur le décor d’un organisateur, l’équipe n’a pas le champ non plus',
+       (await p.locator('input[name=redirection]').count()) === 0,
+       'cree_par = partenaire, donc garde-fou');
+  } else {
+    ok('sur le décor d’un organisateur, l’équipe n’a pas le champ non plus', false,
+       'décor du partenaire introuvable au catalogue');
+  }
+
+  // 3. Modifier — on revient sur la recherche que l'étape précédente a quittée.
+  await p.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(titreEquipe)}`,
+               { waitUntil: 'domcontentloaded' });
   await p.locator('a:has-text("Modifier")').first().click();
   await p.waitForLoadState('domcontentloaded');
   const slugAvant = await p.locator('code').first().innerText().catch(() => '');
@@ -6507,6 +6559,30 @@ const run = async () => {
   ok('l’un part d’un fichier, l’autre de rien',
      chemins.some((c) => c.includes('depart=fichier')) && chemins.some((c) => c.includes('depart=studio')),
      chemins.join(' · '));
+
+  /**
+   * Le titre et son sous-titre sur le MÊME axe.
+   *
+   * Un entête centré ne suffisait pas : le paragraphe porte une largeur de
+   * lecture de 60ch, donc son texte se centrait dans une boîte étroite qui
+   * restait, elle, collée à gauche. Le titre était au milieu, sa phrase
+   * décalée sous lui — deux alignements pour un même bloc, et l'oeil le
+   * voit tout de suite sans savoir nommer ce qui cloche.
+   *
+   * On mesure les deux centres plutôt que de lire une règle CSS : c'est le
+   * rendu qui décidait, et c'est lui qu'on interroge.
+   */
+  const axes = await pB.evaluate(() => {
+    const sec = document.querySelector('.entete.centre');
+    const h = sec?.querySelector('h1');
+    const par = sec?.querySelector('p');
+    if (!h || !par) { return null; }
+    const a = h.getBoundingClientRect(), b = par.getBoundingClientRect();
+    return { titre: a.left + a.width / 2, sous: b.left + b.width / 2 };
+  });
+  ok('le sous-titre est sur le même axe que le titre',
+     !!axes && Math.abs(axes.titre - axes.sous) < 2,
+     axes ? `${axes.titre.toFixed(0)}px contre ${axes.sous.toFixed(0)}px` : 'entête introuvable');
 
   await pB.goto(`${BASE}/index.php?p=nouveau&depart=fichier`, { waitUntil: 'domcontentloaded' });
   ok('le chemin du fichier cache la galerie de modèles',
