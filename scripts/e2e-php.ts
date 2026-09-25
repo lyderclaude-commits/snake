@@ -1300,8 +1300,10 @@ const run = async () => {
      relance.slice(0, 60));
 
   // 6. Le tableau de bord dit ce qu'il doit dire.
+  //    L'analyse vit dans le second onglet depuis qu'il y en a deux : le
+  //    premier sert à décider, celui-ci à mesurer.
   await connexion(p, ADMIN.email, ADMIN.mdp);
-  await p.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`${BASE}/index.php?p=admin&vue=chiffres`, { waitUntil: 'domcontentloaded' });
   ok('les cinq indicateurs de la semaine sont là', (await p.locator('.kpis .stat').count()) === 5);
   ok('chaque indicateur porte sa variation',
      (await p.locator('.kpis .delta').count()) === (await p.locator('.kpis .stat').count()));
@@ -2671,17 +2673,31 @@ const run = async () => {
      (await pm.locator('.barre .deroulant').evaluateAll(
        (n) => n.every((e) => e.querySelectorAll('.volet a').length <= 4))));
 
+  /**
+   * « Où aller » remplace douze raccourcis en trois colonnes par une
+   * rangée de pastilles chiffrées. Ce qu'on éprouve reste le même : le
+   * tableau de bord mène PARTOUT en un clic, sans rien proposer qui
+   * refuserait ensuite.
+   */
   ok('le tableau de bord mène partout en un clic',
-     (await pm.locator('.raccourci').count()) === 12,
-     `${await pm.locator('.raccourci').count()} raccourcis`);
-  ok('les raccourcis reprennent les familles du menu',
-     (await pm.locator('.raccourcis .pas').evaluateAll(
-       (n) => n.map((e) => (e.textContent ?? '').trim()).join('|'))) === 'Contenus|Audience|Système');
+     (await pm.locator('.bord-pastilles a').count()) === 13,
+     `${await pm.locator('.bord-pastilles a').count()} pastilles`);
+  ok('et chaque pastille porte son chiffre quand il y en a un',
+     (await pm.locator('.bord-pastilles a span').count()) >= 5,
+     `${await pm.locator('.bord-pastilles a span').count()} chiffres`);
 
-  // Les files du tableau de bord montrent bien les trois natures d'attente.
-  ok('la file du tableau de bord compte aussi les articles et les campagnes',
-     /article\(s\) à relire|campagne\(s\) e-mail à relire|décor\(s\) à relire|Rien n’attend/
-       .test(await pm.locator('.files, .msg.ok').first().innerText().catch(() => '')));
+  /**
+   * La file dit QUOI, et non COMBIEN.
+   *
+   * Un compteur « 2 décors à relire » oblige à ouvrir un autre écran pour
+   * savoir lesquels. Chaque ligne porte donc son genre, son titre, son
+   * auteur, son âge et son bouton.
+   */
+  const file = await pm.locator('.bord-file').first().innerText().catch(() => '');
+  ok('la file du tableau de bord nomme les objets, avec leur genre',
+     /Rien n’attend/.test(file)
+     || (await pm.locator('.bord-ligne .bord-genre').count()) >= 1,
+     file.split('\n').slice(0, 3).join(' · ').slice(0, 70));
 
   // Sur téléphone, les groupes deviennent des intitulés, pas des tiroirs.
   const ctxTel = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -2728,13 +2744,17 @@ const run = async () => {
 
   // Et le style s'applique VRAIMENT : c'est ce que le rendu doit prouver,
   // pas la présence d'un attribut.
-  const style = await pfix.locator('.raccourci').first().evaluate((e) => {
+  const style = await pfix.locator('.bord-pastilles a').first().evaluate((e) => {
     const c = getComputedStyle(e);
-    return { display: c.display, decoration: c.textDecorationLine };
+    return { display: c.display, decoration: c.textDecorationLine, radius: c.borderRadius };
   });
-  ok('les raccourcis sont des blocs, pas du texte au fil de l’eau',
-     style.display === 'block' && style.decoration === 'none',
-     `${style.display} / ${style.decoration}`);
+  /* `inline-flex` posé sur l'enfant d'un conteneur flex se CALCULE en
+     `flex` : c'est une règle de CSS, pas un défaut. Ce qu'on éprouve est
+     la forme — une boîte entièrement arrondie, sans soulignement. */
+  ok('les pastilles sont des pastilles, pas du texte au fil de l’eau',
+     /^(inline-)?flex$/.test(style.display) && style.decoration === 'none'
+     && parseFloat(style.radius) > 20,
+     `${style.display} / ${style.decoration} / ${style.radius}`);
 
   /* 2. Le déroulant se referme quand on clique ailleurs. */
   const ouverts = () => pfix.locator('details.deroulant[open]').count();
@@ -6479,6 +6499,9 @@ const run = async () => {
      (await pe.locator('.barre nav > a[href*="p=rapports"]').count()) === 1);
   ok('et le tableau de bord y mène en un clic',
      (await pe.locator('main a[href*="p=rapports"]').count()) >= 1);
+  await pe.goto(`${BASE}/index.php?p=admin&vue=chiffres`, { waitUntil: 'domcontentloaded' });
+  ok('l’onglet des chiffres porte le rapport du mois, son voisin naturel',
+     (await pe.locator('main a[href*="p=rapports"]').count()) >= 1);
 
   await pe.goto(`${BASE}/index.php?p=rapports`, { waitUntil: 'domcontentloaded' });
   ok('l’écran s’ouvre pour l’équipe, sur la plateforme entière',
@@ -7442,7 +7465,176 @@ const run = async () => {
   await pBlog.close();
 
   /* ================================================================== */
-  console.log('\n━━ 55. Le formulaire de contact envoie vraiment ━━');
+  console.log('\n━━ 55. Le tableau de bord : d’abord ce qu’il y a à faire ━━');
+
+  /**
+   * L'écran d'avant rangeait sept blocs, dont cinq d'analyse, sur 1 760 px
+   * de haut. Ce qu'on vient y chercher vingt fois par jour — la file de
+   * relecture, et un lien vers un écran — était séparé par une grille de
+   * chiffres puis noyé dans douze raccourcis de même taille.
+   *
+   * Ce qu'on éprouve ici n'est donc pas « les blocs sont présents » mais
+   * « rien n'a été perdu en chemin » : tout ce que l'écran montrait se
+   * retrouve dans l'un des deux onglets.
+   */
+  const pBord = await browser.newPage();
+  surveiller(pBord);
+  await connexion(pBord, ADMIN.email, ADMIN.mdp);
+  await pBord.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+
+  ok('le tableau de bord s’ouvre sur « À faire »',
+     (await pBord.locator('.bord-onglets a[aria-current]').innerText()).includes('À faire'));
+  ok('et il annonce qui regarde, et à quel titre',
+     /Super administrateur/.test(await pBord.locator('.bord-qui p').innerText()));
+
+  /**
+   * La hauteur est le sujet, pas un détail de mise en page : c'est elle
+   * qui décidait qu'on ne voyait jamais le bas de l'écran.
+   */
+  const hautFaire = await pBord.evaluate(() => document.documentElement.scrollHeight);
+  ok('l’onglet « À faire » tient bien au-dessus des 1 760 px d’avant',
+     hautFaire < 1500, `${hautFaire} px`);
+
+  /* --- la file dit QUOI, et depuis quand --- */
+  const lignes = await pBord.locator('.bord-ligne').count();
+  if (lignes > 0) {
+    const premiere = await pBord.locator('.bord-ligne').first();
+    ok('chaque ligne porte son genre, son titre et son bouton',
+       (await premiere.locator('.bord-genre').count()) === 1
+       && (await premiere.locator('.bord-titre').innerText()).trim() !== ''
+       && (await premiere.locator('.bouton').count()) === 1);
+    ok('et son âge, dit en français',
+       /il y a |hier|min|h$/.test((await premiere.locator('.bord-age').innerText()).trim()),
+       (await premiere.locator('.bord-age').innerText()).trim());
+
+    /**
+     * Le plus vieux EN HAUT. C'est tout l'ordre de la file, et il ne se
+     * voit qu'en comparant deux lignes : un tri par genre grouperait les
+     * décors et cacherait l'article qui attend depuis huit jours.
+     */
+    const ages = await pBord.locator('.bord-ligne .bord-age').evaluateAll(
+      (n) => n.map((e) => (e.textContent ?? '').trim()));
+    const jours = ages.map((a) => {
+      const m = /il y a (\d+) jours/.exec(a);
+      if (m) return Number(m[1]);
+      if (a === 'hier') return 1;
+      return 0;
+    });
+    ok('la file range du plus vieux au plus récent',
+       jours.every((j, i) => i === 0 || jours[i - 1] >= j), jours.join(' ≥ '));
+  } else {
+    ok('la file vide le dit, au lieu de laisser un trou',
+       (await pBord.locator('.bord-vide').count()) === 1);
+  }
+
+  /**
+   * « Reprendre » lit le journal, qui enregistrait déjà tout sans que
+   * personne le relise. Un objet ne doit y paraître qu'UNE fois : publier,
+   * corriger puis republier le même décor remplirait sinon les quatre
+   * places avec le même titre.
+   */
+  const repris = await pBord.locator('.bord-reprendre a').evaluateAll(
+    (n) => n.map((e) => (e.getAttribute('href') ?? '')));
+  ok('« Reprendre » ne répète jamais deux fois le même objet',
+     repris.length === new Set(repris).size, `${repris.length} cartes`);
+  ok('et chacune mène quelque part',
+     repris.every((h) => h !== '' && !h.endsWith('#')), repris.slice(0, 2).join(' · '));
+
+  /* --- la semaine, en une bande qui mène aux chiffres --- */
+  ok('la semaine tient en une bande, et mène à l’onglet des chiffres',
+     (await pBord.locator('a.bord-semaine[href*="vue=chiffres"]').count()) === 1
+     && (await pBord.locator('.bord-semaine .bord-mesure').count()) === 5);
+
+  /* --- l'onglet des chiffres porte TOUT le reste --- */
+  await pBord.goto(`${BASE}/index.php?p=admin&vue=chiffres`, { waitUntil: 'domcontentloaded' });
+  /* En minuscules des deux côtés : `innerText` rend la casse AFFICHÉE, et
+     « Les 7 derniers jours » est un intertitre en capitales. Comparer tel
+     quel aurait déclaré perdu un bloc qui est là. */
+  const chiffres = (await pBord.locator('main').innerText()).toLowerCase();
+  const attendus = ['Les 7 derniers jours', 'La boucle, sur 30 jours', 'Derniers inscrits',
+                    'Les offres', 'Téléchargements, 14 derniers jours', 'Les décors qui portent'];
+  const perdus = attendus.filter((t) => !chiffres.includes(t.toLowerCase()));
+  ok('rien de l’ancien écran n’a été perdu : tout est dans « Les chiffres »',
+     perdus.length === 0, perdus.join(', ') || `${attendus.length} blocs retrouvés`);
+  ok('et les cinq indicateurs de la semaine y sont en entier',
+     (await pBord.locator('.stat').count()) === 5);
+
+  /**
+   * LE DROIT GOUVERNE LES DEUX ONGLETS.
+   *
+   * Un coordinateur n'a ni `comptes` ni `reglages` : les pastilles qui
+   * mènent là ne doivent pas lui être proposées, et la ligne des comptes
+   * suspendus ne doit pas entrer dans sa file. Un raccourci qui refuse est
+   * pire qu'un raccourci absent, parce qu'on le réessaie.
+   */
+  /* Le coordinateur de la section 32 sert encore : le créer une seconde
+     fois ne prouverait rien de plus, et son adresse est déjà prise. */
+  const pCoord = await browser.newPage();
+  surveiller(pCoord);
+  await connexion(pCoord, `coordinateur-${marque}@wakabileguide.com`, MDP_INTERNE);
+  await pCoord.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  const pastillesC = await pCoord.locator('.bord-pastilles a').evaluateAll(
+    (n) => n.map((e) => (e.getAttribute('href') ?? '').split('?')[1] ?? ''));
+  ok('un coordinateur ne se voit proposer aucun écran qui le refuserait',
+     !pastillesC.some((h) => /p=(comptes|reglages|sauvegardes|offres|journal)/.test(h)),
+     pastillesC.map((h) => h.replace('p=', '')).join(' · '));
+  ok('mais il garde le catalogue, le blog, la régie et l’entrée',
+     ['catalogue', 'blog-admin', 'regie', 'scan']
+       .every((r) => pastillesC.some((h) => h.includes('p=' + r))),
+     pastillesC.map((h) => h.replace('p=', '')).join(' · '));
+  ok('et aucune ligne de compte suspendu n’entre dans sa file',
+     (await pCoord.locator('.bord-ligne .bord-genre.compte').count()) === 0);
+
+  /**
+   * LA RECHERCHE TRAVERSE LES FAMILLES, sans traverser les droits.
+   *
+   * Atteindre un décor précis demandait d'ouvrir le catalogue puis d'y
+   * filtrer. Mais une recherche qui rendrait un compte à qui n'a pas le
+   * droit `comptes` serait une fuite, pas une commodité : le nom et
+   * l'adresse s'y lisent avant tout clic.
+   */
+  /* On cherche un décor RÉEL, pris dans le catalogue : un titre inventé
+     ne prouverait que l'absence de résultat. */
+  await pBord.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
+  const unTitre = ((await pBord.locator('b.display').first()
+    .innerText().catch(() => '')) || '').trim().split(' ')[0];
+  /* Un titre RÉELLEMENT lu dans le catalogue, et le dire : un repli sur un
+     mot inventé aurait laissé passer le contrôle sans rien prouver. */
+  ok('le catalogue donne un titre à chercher', unTitre.length >= 2, `« ${unTitre} »`);
+  await pBord.goto(`${BASE}/index.php?p=recherche&q=${encodeURIComponent(unTitre)}`,
+                   { waitUntil: 'domcontentloaded' });
+  ok('la recherche de la barre retrouve un décor par son titre',
+     (await pBord.locator('.bord-resultats a[href*="p=modifier"]').count()) >= 1,
+     `« ${unTitre} »`);
+  ok('une seule lettre est refusée, plutôt que de rendre la moitié du produit',
+     (await (await pBord.goto(`${BASE}/index.php?p=recherche&q=a`,
+       { waitUntil: 'domcontentloaded' }), pBord.locator('main').innerText()))
+       .includes('Deux lettres au moins'));
+
+  await pCoord.goto(`${BASE}/index.php?p=recherche&q=${encodeURIComponent(ADMIN.email)}`,
+                    { waitUntil: 'domcontentloaded' });
+  /* Dans les RÉSULTATS, et non dans la page : celle-ci répète le terme
+     cherché dans son titre, ce qui rendrait le contrôle toujours faux. */
+  ok('un coordinateur ne trouve aucun compte par la recherche',
+     (await pCoord.locator('.bord-resultats a[href*="p=organisateur"]').count()) === 0
+     && !(await pCoord.locator('.bord-resultats').count()
+          ? await pCoord.locator('.bord-resultats').first().innerText()
+          : '').includes(ADMIN.email));
+
+  /* Un organisateur n'a pas cet écran du tout : il n'appartient qu'au
+     tableau de bord, et aucun menu ne l'y mène. */
+  const pOrg = await browser.newPage();
+  surveiller(pOrg);
+  await connexion(pOrg, PART.email, PART.mdp);
+  await pOrg.goto(`${BASE}/index.php?p=recherche&q=soiree`, { waitUntil: 'domcontentloaded' });
+  ok('un organisateur n’atteint pas la recherche de l’administration',
+     !pOrg.url().includes('p=recherche'), pOrg.url().split('index.php')[1] ?? '');
+  await pOrg.close();
+  await pCoord.close();
+  await pBord.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 56. Le formulaire de contact envoie vraiment ━━');
 
   /**
    * Il arrivait du guide avec `onsubmit="handleContact(event)"`, fonction

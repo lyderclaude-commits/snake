@@ -270,14 +270,20 @@ a{color:var(--primary-d);text-underline-offset:3px}
      `::details-content` est le pseudo-élément par lequel Chrome masque un
      <details> replié ; sans lui, le volet reste invisible quoi qu'on écrive
      sur ses enfants. */
-  .deroulant > summary{
+  /* Ces quatre règles ne valent QUE dans le menu de la barre, et le dire
+     est le correctif : écrites sur `.deroulant` seul, elles aplatissaient
+     n'importe quel déroulant de n'importe quel écran. Le bouton
+     « + Nouveau » du tableau de bord s'ouvrait donc tout seul sur un
+     téléphone, cinq liens dépliés en pleine page sous un bouton qui
+     n'avait jamais été cliqué. */
+  .menu .deroulant > summary{
     display:block;pointer-events:none;cursor:default;
     font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
     color:var(--text3);padding:12px 12px 5px;
   }
-  .deroulant > summary svg{display:none}
-  .deroulant::details-content{content-visibility:visible;block-size:auto}
-  .deroulant > .volet{
+  .menu .deroulant > summary svg{display:none}
+  .menu .deroulant::details-content{content-visibility:visible;block-size:auto}
+  .menu .deroulant > .volet{
     position:static;display:flex;flex-direction:column;gap:1px;
     min-width:0;padding:0;background:none;border:0;box-shadow:none;
   }
@@ -285,8 +291,8 @@ a{color:var(--primary-d);text-underline-offset:3px}
      qui suit un lien, et un lien qui suit un groupe. Sans le second,
      « Entrée » se lisait comme la dernière entrée d'« Audience » — alors
      que c'est justement le lien qu'on a sorti des groupes exprès. */
-  .deroulant + .deroulant > summary,
-  a + .deroulant > summary{border-top:1px solid var(--border);margin-top:6px}
+  .menu .deroulant + .deroulant > summary,
+  .menu a + .deroulant > summary{border-top:1px solid var(--border);margin-top:6px}
   .menu[open] > nav .deroulant + a:not(.bouton){
     border-top:1px solid var(--border);margin-top:6px;padding-top:14px;
   }
@@ -1819,3 +1825,154 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
   background:var(--bg2);border-radius:0 var(--r10) var(--r10) 0}
 .sond-mot p{margin:0;font-size:.92rem;line-height:1.5}
 .sond-mot footer{margin-top:6px;font-size:.74rem;color:var(--text3);font-weight:600}
+
+/* ============ le tableau de bord ============
+   Deux onglets : ce qu'on fait, et ce qu'on mesure. L'écran d'avant
+   rangeait les deux ensemble sur 1 760 px de haut, si bien qu'on
+   traversait cinq blocs d'analyse pour atteindre la file de relecture,
+   vingt fois par jour. */
+
+.bord{padding-top:26px}
+
+/* La barre de commande : qui je suis, ce que je cherche, ce que je crée. */
+.bord-barre{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.bord-qui{flex:1 1 220px;min-width:0}
+.bord-qui h1{margin:0;font-family:var(--display);font-size:1.65rem;letter-spacing:-.03em}
+.bord-qui p{margin:2px 0 0;font-size:.86rem;color:var(--text2)}
+
+.bord-chercher{flex:0 1 420px;min-width:220px;position:relative;display:flex;align-items:center}
+.bord-chercher svg{position:absolute;left:12px;width:18px;height:18px;color:var(--text2);
+  pointer-events:none}
+.bord-chercher input[type=search]{
+  width:100%;padding:11px 42px 11px 38px;border:1px solid var(--border);
+  border-radius:var(--r10);background:var(--paper);font-size:.92rem;color:var(--ink);
+}
+.bord-chercher kbd{
+  position:absolute;right:10px;padding:2px 7px;border:1px solid var(--border);
+  border-radius:6px;background:var(--bg2);font-family:ui-monospace,monospace;
+  font-size:.75rem;color:var(--text2);pointer-events:none;
+}
+/* Le raccourci ne sert plus à rien une fois le champ saisi : l'indice
+   s'efface pour ne pas flotter par-dessus le texte qu'on tape. */
+.bord-chercher input[type=search]:focus ~ kbd{display:none}
+
+/* « + Nouveau » emprunte l'allure d'un bouton, pas d'un lien de menu. */
+.bord-nouveau > summary{
+  padding:10px 16px;border-radius:var(--r10);background:var(--primary);
+  color:#fff;font-size:.9rem;font-weight:700;
+}
+.bord-nouveau > summary:hover{background:var(--primary-d);color:#fff}
+.bord-nouveau[open] > summary{background:var(--primary-d);color:#fff}
+
+/* Les onglets. Une ligne, et la barre bleue dessous : c'est la forme que
+   tout le monde connaît, et elle dit « il y a autre chose à côté ». */
+.bord-onglets{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.bord-onglets a{
+  display:inline-flex;align-items:center;gap:7px;padding:10px 16px 12px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  color:var(--text2);font-size:.92rem;font-weight:600;text-decoration:none;
+}
+.bord-onglets a:hover{color:var(--ink)}
+.bord-onglets a[aria-current]{color:var(--ink);font-weight:700;border-bottom-color:var(--primary)}
+.bord-compte{
+  padding:1px 8px;border-radius:999px;background:var(--rouge);
+  color:#fff;font-size:.75rem;font-weight:700;
+}
+
+/* Un intertitre et sa glose, sur la même ligne. */
+.bord-tete{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.bord-tete h2{margin:0;font-family:var(--display);font-size:1.05rem}
+.bord-tete > a{margin-left:auto;color:var(--primary-d);font-weight:600}
+
+/* Sur la page de recherche, la note DIT le résultat — l'adresse du décor,
+   l'e-mail du compte. Serrée dans la colonne d'auteur d'une file, elle se
+   coupait juste avant ce qui la distingue de la ligne d'au-dessus. */
+.bord-resultats .bord-auteur{width:auto;flex:0 1 auto;margin-left:auto;
+  max-width:46%;text-align:right}
+
+/* La file : une ligne par objet, le bouton au bout. */
+.bord-file{padding:16px 18px}
+.bord-ligne{
+  display:flex;align-items:center;gap:14px;padding:11px 0;
+  border-top:1px solid var(--bg2);
+}
+.bord-ligne:first-of-type{border-top:0}
+.bord-titre{flex:1 1 auto;min-width:0;font-size:.92rem;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bord-auteur,.bord-age{flex:none;font-size:.84rem;color:var(--text2)}
+.bord-auteur{width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bord-age{width:104px}
+/* Ce qui attend depuis trop longtemps se voit SANS lire la date. */
+.bord-age.vieux{color:var(--rouge);font-weight:700}
+.bord-vide{margin:6px 0}
+.bord-calme{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--bg2);
+  font-size:.84rem;color:var(--text2)}
+.bord-calme a{font-weight:600}
+
+/* La pastille de genre : elle porte la couleur de sa famille, la même
+   d'un bloc à l'autre, pour qu'on la reconnaisse sans la lire. */
+.bord-genre{
+  flex:none;display:inline-block;padding:3px 9px;border-radius:999px;
+  font-size:.75rem;font-weight:700;background:var(--bg2);color:var(--text2);
+}
+.bord-genre.decor{background:var(--primary-wash);color:var(--primary-d)}
+.bord-genre.article{background:#FFF4E8;color:#9A4A0B}
+.bord-genre.regie,.bord-genre.campagne{background:#E6F6F3;color:#0B6157}
+.bord-genre.compte{background:#FDECEC;color:#B91C1C}
+.bord-genre.lien,.bord-genre.liste{background:#F3EEFE;color:#5B21B6}
+
+/* « Reprendre » : quatre cartes, et leur genre en tête. */
+.bord-reprendre{margin-bottom:22px}
+.bord-reprendre a{display:flex;flex-direction:column;gap:5px;text-decoration:none;color:inherit}
+.bord-reprendre a:hover{border-color:var(--primary)}
+.bord-reprendre .bord-genre{align-self:flex-start}
+.bord-reprendre b{font-size:.92rem;line-height:1.3}
+
+/* « Où aller » : des pastilles, et leur chiffre. */
+.bord-pastilles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.bord-pastilles a{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;
+  background:var(--paper);border:1px solid var(--border);border-radius:999px;
+  font-size:.86rem;font-weight:600;color:var(--ink);text-decoration:none;
+  transition:border-color .15s,background .15s;
+}
+.bord-pastilles a:hover{border-color:var(--primary);background:var(--bg2)}
+.bord-pastilles a span{color:var(--text2);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* La semaine, en une bande : elle dit si quelque chose a bougé, et mène
+   au détail. Cinq cartes de statistiques coupaient l'écran d'action en
+   deux pour dire la même chose. */
+.bord-semaine{display:block;padding:14px 20px 16px;text-decoration:none;color:inherit}
+.bord-semaine:hover{border-color:var(--primary)}
+.bord-semaine-haut{display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;margin-bottom:10px}
+.bord-semaine-titre{font-size:.78rem;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.08em}
+.bord-semaine-tout{font-size:.84rem;font-weight:700;color:var(--primary-d)}
+/* Cinq colonnes, et les libellés ENTIERS. Sur une seule ligne, « Présences
+   scannées » et « Nouveaux comptes » se coupaient au milieu d'un mot : un
+   tableau de bord qui abrège les mots qu'il compte ne se lit plus. */
+.bord-mesures{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.bord-mesure{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 7px;min-width:0}
+.bord-mesure b{font-family:var(--display);font-size:1.2rem}
+.bord-mesure > span:first-of-type{font-size:.82rem;color:var(--text2)}
+
+@media(max-width:1000px){
+  .bord-mesures{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .bord-qui{flex-basis:100%}
+  .bord-chercher{flex-basis:100%}
+}
+@media(max-width:620px){
+  .bord-mesures{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  /* Sur un téléphone, l'auteur et l'âge passent SOUS le titre : trois
+     colonnes de 100 px chacune ne laissaient au titre que deux mots. */
+  .bord-ligne{flex-wrap:wrap;gap:8px 12px}
+  .bord-ligne .bord-titre{flex-basis:100%;order:2;white-space:normal}
+  .bord-ligne .bord-genre{order:1}
+  .bord-ligne .bord-auteur,.bord-ligne .bord-age{order:3;width:auto}
+  .bord-ligne .bouton{order:4;margin-left:auto}
+}

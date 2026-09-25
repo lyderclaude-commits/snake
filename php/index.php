@@ -42,6 +42,7 @@ require __DIR__ . '/app/brouillon.php';
 require __DIR__ . '/app/vitrine.php';
 require __DIR__ . '/app/icones-guide.php';
 require __DIR__ . '/app/wordpress.php';
+require __DIR__ . '/app/bord.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -910,27 +911,68 @@ switch ($page) {
 
     /* ---- équipe ---- */
 
+    /**
+     * Le tableau de bord, en DEUX onglets.
+     *
+     * « À faire » d'abord : ce qui attend une décision, ce qu'on a touché
+     * en dernier, et où aller. « Les chiffres » ensuite, avec tout ce que
+     * l'écran d'avant montrait — rien n'a été perdu, tout a été rangé.
+     *
+     * Les deux partagent la barre de commande, donc les données qui la
+     * nourrissent : le compte de la file et ce qu'on a le droit de créer.
+     */
     case 'admin':
-        exiger_droit('decors_tous');
-        vue('admin', [
-            'titre' => 'Tableau de bord',
-            'stats' => tableau_de_bord(),
-            // Les trois files que l'équipe alimente elle-même : décors,
-            // articles, campagnes. Elles sont comptées ici plutôt que dans
-            // `tableau_de_bord()` parce qu'elles n'ont de sens que sur cet
-            // écran — le reste du produit ne les regarde jamais.
-            'blog_a_relire' => articles_a_relire(),
-            'regie_a_relire' => campagnes_email_en_attente(),
-            'regie_en_file' => regie_en_attente_denvoi(),
+        $u = exiger_droit('decors_tous');
+        $_stats = tableau_de_bord();
+        $_a_faire = bord_a_traiter($u);
+        $_commun = [
+            'stats' => $_stats,
             'semaine' => indicateurs(7),
-            'boucle' => entonnoir(30),
-            'serie' => telechargements_par_jour(),
-            'formules' => comptes_par_formule(),
-            'roles' => comptes_par_role(),
-            // Quatre et non six : la carte doit faire la hauteur de celle du
-            // tunnel qui lui fait face, sinon la rangée se troue.
-            'nouveaux' => comptes_recents(4),
-            'tetes' => decors_en_tete(6),
+            'a_traiter' => count($_a_faire),
+            'nouveau' => bord_nouveau($u),
+        ];
+
+        if (($_GET['vue'] ?? '') === 'chiffres') {
+            vue('admin-chiffres', $_commun + [
+                'titre' => 'Tableau de bord · Les chiffres',
+                'boucle' => entonnoir(30),
+                'serie' => telechargements_par_jour(),
+                'formules' => comptes_par_formule(),
+                'roles' => comptes_par_role(),
+                // Quatre et non six : la carte doit faire la hauteur de celle
+                // du tunnel qui lui fait face, sinon la rangée se troue.
+                'nouveaux' => comptes_recents(4),
+                'tetes' => decors_en_tete(6),
+            ]);
+        }
+
+        vue('admin', $_commun + [
+            'titre' => 'Tableau de bord',
+            'a_faire' => $_a_faire,
+            'sans_urgence' => bord_sans_urgence($u, $_stats, regie_en_attente_denvoi()),
+            'reprendre' => bord_reprendre($u),
+            'ou_aller' => bord_ou_aller($u, $_stats),
+        ]);
+
+    /**
+     * La recherche de la barre de commande.
+     *
+     * Elle traverse les familles — décors, comptes, articles, liens — et
+     * chacune reste gardée par son droit. Atteindre un décor précis
+     * demandait d'ouvrir le catalogue puis d'y filtrer : deux navigations
+     * pour un coup d'oeil qu'on répète vingt fois par jour.
+     */
+    case 'recherche':
+        /* Le MÊME droit que le tableau de bord : la recherche est sa barre
+           de commande, pas un écran de plus. L'ouvrir plus largement
+           donnerait aux organisateurs une page que personne n'a demandée,
+           et qu'aucun menu ne mène. */
+        $u = exiger_droit('decors_tous');
+        $_q = trim((string) ($_GET['q'] ?? ''));
+        vue('recherche', [
+            'titre' => $_q !== '' ? 'Recherche « ' . $_q . ' »' : 'Rechercher',
+            'cherche' => $_q,
+            'familles' => bord_chercher($u, $_q),
         ]);
 
     case 'catalogue':

@@ -26,6 +26,11 @@ UN SEUL SITE.
    débordements horizontaux, un plancher de lisibilité et quatre cibles
    tactiles corrigés.
 
+6. **Le tableau de bord passe en deux onglets** : « À faire » d'abord, avec la
+   file de relecture nommée objet par objet, ce qu'on a touché en dernier et
+   une barre de recherche qui traverse les familles ; « Les chiffres » ensuite,
+   où tout l'analytique déménage sans rien perdre.
+
 Le détail se lit dans « La fusion des deux sites », plus bas.
 
 ---
@@ -200,8 +205,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **956 scénarios
-réussis** sur une base déjà peuplée, **955 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **976 scénarios
+réussis** sur une base déjà peuplée, **975 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
@@ -294,7 +299,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 956 scénarios, dans un vrai navigateur
+npm run php:e2e          # 976 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -316,7 +321,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 956 scénarios
+### Les 976 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -336,7 +341,9 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Gestion par l'équipe** | Ajouter, lister, filtrer, chercher, modifier, publier, supprimer — et le refus quand le titre de confirmation ne correspond pas |
 | **Comptes et offres** | L'équipe crée un compte avec son rôle et son offre, une adresse déjà prise est refusée sans effacer la saisie, la personne créée se connecte et voit son quota |
 | **Le quota d'une offre** | Découverte bloque la deuxième campagne active ; l'offre relevée, la campagne repart |
-| **Le tableau de bord** | Cinq indicateurs avec leur variation, l'entonnoir en quatre étapes, la répartition des quatre offres |
+| **Le tableau de bord** | Il s'ouvre sur « À faire » et tient **sous 1 500 px** là où l'écran d'avant en faisait 1 760 ; chaque ligne de la file porte son genre, son titre, son auteur, son âge en français et son bouton, **du plus vieux au plus récent** ; « Reprendre » ne répète jamais deux fois le même objet et chaque carte mène quelque part ; l'onglet « Les chiffres » porte **les six blocs** de l'ancien écran, vérifiés un par un |
+| **Le droit gouverne les deux onglets** | Un coordinateur ne se voit proposer aucun écran qui le refuserait, garde le catalogue, le blog, la régie et l'entrée, et aucune ligne de compte suspendu n'entre dans sa file |
+| **La recherche de la barre** | Elle retrouve un décor par son titre, refuse une seule lettre, **ne rend aucun compte** à un coordinateur, et n'existe pas du tout pour un organisateur |
 | **Le menu du téléphone** | Replié à l'arrivée, ouvert au doigt, refermé, jamais hors de l'écran — et déplié sans clic sur grand écran |
 | **La marque** | Le logo dans la barre, les portraits des témoignages |
 | **Les sept gabarits** | Les sept formats proposés, l'aperçu change de forme avec le format, TikTok remonte son QR hors de la zone de la légende |
@@ -362,7 +369,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le blog proposé** | Un organisateur propose, l'article n'est **pas** public, il ne se modifie plus, la rédaction le renvoie avec un motif obligatoire, l'auteur le voit et re-soumet, il paraît signé de son nom — et il ne peut plus le retirer seul une fois en ligne |
 | **Le carnet d'adresses** | Un collage réaliste (tableur, `Nom <adresse>`, `adresse (Nom)`, doublon en majuscules, ligne illisible) devient des fiches ; ré-importer n'ajoute rien ; corriger une adresse corrige la campagne ; **archiver**, **sortir de la liste** et **supprimer** ont trois effets distincts et vérifiés ; supprimer une liste rend ses fiches au carnet ; le carnet d'un organisateur est invisible à l'équipe ; l'export CSV porte son BOM |
 | **La régie e-mail** | Sans l'offre, un écran d'explication et aucun lien dans le menu ; un lien hors domaine Wakabi est refusé à un organisateur, qui ne peut pas envoyer lui-même ; l'équipe prépare et envoie, un **vrai serveur SMTP** reçoit ; **chaque message porte son lien de désabonnement**, il s'ouvre sans être connecté, un clic suffit, et le désabonné ne reçoit plus rien à la campagne suivante |
-| **Les menus rangés** | Trois groupes nommés, quatre destinations au plus, les douze raccourcis du tableau de bord dans les mêmes familles |
+| **Les menus rangés** | Trois groupes nommés, quatre destinations au plus ; le tableau de bord mène aux **treize** destinations en un clic, chacune avec son chiffre |
 | **Le cache et les menus** | La feuille de style et les bundles portent une empreinte de version et se téléchargent ; les raccourcis sont bien des blocs (mesuré au rendu, pas sur un attribut) ; un déroulant se referme au clic extérieur et à Échap, et un seul reste ouvert |
 | **L’historique des notifications** | Chaque envoi laisse une ligne datée avec son segment, ses abonnements visés, les **personnes** touchées et les **remises** — deux nombres distincts ; l’historique d’un organisateur ne contient pas celui du guide |
 | **L’article et son décor** | Le décor cité apparaît dans l’article publié avec un bouton vers lui, et **remplace** l’invitation générique ; rouvrir l’article ne le détache pas ; un identifiant trafiqué est ignoré sans casser l’article ; un décor **archivé après la parution** retire sa carte et laisse le texte intact |
@@ -1826,6 +1833,91 @@ portée d'un service worker est celle de son dossier. Il ne fait qu'une chose,
 afficher la notification et ouvrir le bon onglet — **pas de cache**, parce
 qu'un service worker qui met en cache sert un jour une vieille page à
 quelqu'un qui vient de mettre à jour.
+
+---
+
+## Le tableau de bord — `?p=admin`
+
+Deux onglets, et le premier est celui qu'on vient chercher.
+
+L'écran d'avant rangeait **sept blocs, dont cinq d'analyse**, sur 1 760 px de
+haut. Ce qu'on y vient faire vingt fois par jour — ouvrir la file de
+relecture, partir vers un écran — était séparé par une grille de chiffres
+puis noyé dans douze raccourcis de même taille. Le tableau du bas ne se
+voyait jamais.
+
+**Rien n'a été supprimé.** Tout ce que l'écran montrait est dans l'onglet
+« Les chiffres », vérifié bloc par bloc par la recette. Le tableau de bord
+cesse simplement d'être un rapport — le rapport existe déjà, avec sa période
+et son PDF.
+
+### « À faire »
+
+**La barre de commande** : qui regarde et à quel titre, un champ de recherche
+(la touche `/` y amène au clavier), et un bouton « + Nouveau » qui ne propose
+que ce qu'on a le droit de fabriquer.
+
+**« À traiter »** est une **liste d'objets**, pas une rangée de compteurs. Un
+compteur « 2 décors à relire » oblige à ouvrir un autre écran pour savoir
+lesquels, et ne dit jamais que l'un attend depuis six jours. Chaque ligne
+porte son genre, son titre, son auteur, son âge en français et son bouton ; au
+delà de trois jours l'âge passe au rouge. Les décors, les articles et les
+campagnes e-mail s'y mêlent, **du plus vieux au plus récent** : trier par
+genre aurait groupé les décors et caché l'article qui attend depuis huit
+jours. Les brouillons jamais soumis et les décors en correction tiennent sur
+une ligne « sans urgence » à part — ils informent, ils n'appellent aucune
+décision.
+
+**« Reprendre »** montre les quatre dernières choses que **vous** avez
+touchées, lues dans le journal, qui les enregistrait déjà sans que personne
+les relise. C'est ce qui manque quand on referme l'ordinateur au milieu d'une
+relecture. Un objet n'y paraît qu'une fois, à sa date la plus récente :
+publier, corriger puis republier le même décor aurait rempli les quatre
+places avec le même titre.
+
+**« Où aller »** remplace les douze raccourcis par une rangée de pastilles
+chiffrées : « Comptes 340 » se lit plus vite que « Comptes / Rôles, offres,
+suspensions » et tient sur une ligne. Chacune porte le droit qui ouvre son
+écran, et la liste est filtrée dessus.
+
+**La semaine** tient en une bande cliquable : elle dit si quelque chose a
+bougé, et mène au détail.
+
+### La recherche — `?p=recherche`
+
+Atteindre un décor précis demandait d'ouvrir le catalogue puis d'y filtrer :
+deux navigations pour un coup d'oeil. Et chaque famille avait sa propre
+recherche, à un endroit différent — il fallait d'abord se rappeler **dans
+quel écran** chercher.
+
+Un seul champ traverse les décors, les comptes, les articles et les liens
+courts. **Chaque famille reste gardée par son droit** : une recherche qui
+rendrait un compte à quelqu'un sans le droit `comptes` serait une fuite et
+non une commodité, puisque le nom et l'adresse s'y lisent avant tout clic. Un
+coordinateur n'y trouve donc aucun compte, et un organisateur n'atteint pas
+l'écran du tout.
+
+> Les liens courts sont cherchés **chez leur auteur seulement**, comme
+> `?p=liens` les montre — y compris à l'équipe. Sans cela, le résultat aurait
+> mené à une liste qui ne le contient pas, et la cible d'un lien dit ce qu'on
+> prépare.
+
+### Qui voit quoi
+
+| Rôle | Où il atterrit | Ce que le tableau de bord lui montre |
+|---|---|---|
+| `super_admin`, `equipe` | `?p=admin` | Tout |
+| `coordinateur` | `?p=admin` | Sans les comptes, les offres, les réglages, les sauvegardes ni le journal — les cinq écrans qui le renvoyaient d'où il venait |
+| `editeur` | `?p=partenaire` | L'espace organisateur, inchangé |
+| `scanner` | `?p=scan` | Le contrôle d'entrée, inchangé |
+
+> **Un `order` non borné renvoyait une pastille en bas de sa carte.** La règle
+> qui réordonne une ligne de file sur téléphone était écrite sur
+> `.bord-genre` seul, donc elle s'appliquait aussi aux cartes « Reprendre ».
+> Et les règles qui aplatissent les déroulants du menu sur téléphone étaient
+> écrites sur `.deroulant` seul : le bouton « + Nouveau » s'ouvrait tout seul,
+> cinq liens dépliés en pleine page sous un bouton jamais cliqué. Les deux
+> sélecteurs disent maintenant où ils s'appliquent.
 
 ---
 
