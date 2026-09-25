@@ -211,11 +211,13 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
 Les deux ont été vérifiés de bout en bout, depuis le zip livré : **985 scénarios
-réussis** sur une base déjà peuplée, **984 sur une installation neuve** — un
-scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
-s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
-console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
-vérifieurs, qui éprouvent ce qu'aucun navigateur ne peut voir.
+réussis** sur une base déjà peuplée, **984 sur une installation neuve** — le
+scénario qui manque est celui de la deuxième page du catalogue, qui demande
+plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
+la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
+zéro erreur de console dans les deux cas. S'y ajoutent **701 contrôles**
+répartis en quinze vérifieurs, qui éprouvent ce qu'aucun navigateur ne peut
+voir.
 
 La montée de version d'une installation déjà en service a été vérifiée elle
 aussi : une v1.3 installée, peuplée, puis recouverte par la v1.4 passe du
