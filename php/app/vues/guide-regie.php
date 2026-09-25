@@ -14,7 +14,7 @@
     </div>
     <h1>Vos invités vous appartiennent</h1>
     <p>Chaque badge généré laisse une adresse. La régie en fait une audience, et cette
-    audience reste la vôtre — pas celle d’un réseau social qui décide qui vous voit.</p>
+    audience reste la vôtre, et non celle d’un réseau social qui décide qui vous voit.</p>
   </div></div>
 </div>
 
@@ -52,7 +52,7 @@
         <div class="why-icon"><?= icone_guide('analyse', 32) ?></div>
         <div class="why-title">Savoir ce qui est arrivé</div>
         <div class="why-desc">Parti, reçu, ouvert, suivi, échoué. Et surtout : les échecs
-        listés, avec leur motif, et relançables — c’est la seule partie qu’on ne voit
+        listés, avec leur motif, et relançables : c’est la seule partie qu’on ne voit
         jamais ailleurs, et la seule qui se corrige.</div>
       </div>
     </div>

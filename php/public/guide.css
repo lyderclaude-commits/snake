@@ -1556,3 +1556,88 @@ img, video, iframe { max-width: 100%; height: auto; }
 }@media (max-width: 600px){
   .blog-pagination { gap: 4px; }
   .pag-btn { min-width: 34px; height: 34px; font-size: 13px; padding: 0 8px; }}
+
+/* ================================================================
+   LE PLANCHER DE LISIBILITÉ SUR TÉLÉPHONE
+   ================================================================
+
+   La feuille d'origine RÉTRÉCIT le texte quand l'écran rétrécit :
+   « En direct » tombe à 9 px sous 480, le nom d'une ville à 12, le
+   libellé d'un champ de formulaire à 11. C'est l'inverse de ce qu'il
+   faut. Sur un téléphone tenu à bout de bras, dans la rue, à Lomé, ces
+   tailles-là ne se lisent pas — et ce sont justement les mots qui
+   portent l'information : le pays, l'état d'une ville, ce qu'on demande
+   dans un champ.
+
+   La place ne manque pourtant pas : la grille des villes passe à deux
+   colonnes sous 480 px, soit près de 175 px par carte. On rend donc aux
+   libellés une taille lisible plutôt que de gagner des pixels dont
+   personne n'a besoin.
+
+   Ce bloc est ÉCRIT ICI et pas dans les règles d'origine, pour la même
+   raison que le correctif de `.fade-up` : on garde la feuille du guide
+   telle qu'elle est arrivée, et on ajoute par-dessus ce que la mesure
+   au navigateur a montré. La différence se relit d'un coup d'oeil le
+   jour d'une mise à jour du guide.
+
+   Le seuil est 13 px : en dessous, un texte français en Plus Jakarta
+   Sans devient pénible sur une dalle de téléphone d'entrée de gamme —
+   et c'est le parc réel ici. */
+@media (max-width: 768px) {
+  .city-name { font-size: 15px; }
+  .city-country { font-size: 13px; }
+  .city-status { font-size: 12px; padding: 3px 9px; }
+  .tag { font-size: 13px; padding: 5px 13px; }
+  .pill { font-size: 13px; }
+  .pricing-tier { font-size: 13px; }
+  .pt-role { font-size: 13px; }
+  .featured-label { font-size: 12px; }
+  .form-group label, .contact-form label { font-size: 13px; }
+  /* Le chiffre est gros, son unité minuscule : « +68% » sans « de
+     visibilité moyenne » ne veut rien dire. */
+  .why-metric span { font-size: 13px; }
+
+  /* Le fil d'Ariane est un LIEN : à 12 px collé à sa ligne, il fait
+     19 px de haut, soit moins que la pulpe d'un doigt. On l'agrandit
+     et on lui donne de quoi être visé. */
+  .breadcrumb { font-size: 13px; line-height: 1.6; }
+  .breadcrumb a { display: inline-block; padding: 7px 2px; }
+  .breadcrumb-sep { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+  /* Les mêmes, contre les règles de la feuille d'origine qui les
+     rapetissent encore à cette largeur. */
+  .city-name { font-size: 15px; }
+  .city-country { font-size: 13px; }
+  .city-status { font-size: 12px; padding: 3px 8px; }
+  .tag { font-size: 13px; padding: 5px 12px; }
+}
+
+/* ----------------------------------------------------------------
+   UNE COLONNE DE GRILLE NE DOIT PAS ÊTRE POUSSÉE PAR SON CONTENU
+
+   Par défaut, un enfant de grille a `min-width: auto` : sa colonne ne
+   peut pas devenir plus étroite que son contenu le plus large. Une
+   image de 1024 px de côté impose donc une colonne de 1024 px, même
+   dans un téléphone de 390 — et comme la feuille masque le
+   débordement (`overflow-x: hidden`, plus haut), rien ne le signale :
+   le texte part simplement hors de l'écran, sans barre de défilement
+   pour le rattraper.
+
+   Mesuré sur « À Propos », dont la colonne de texte sortait entière du
+   cadre dès que la maquette se chargeait. Le défaut ne se voyait pas
+   ici, faute de réseau pour charger l'image — c'est exactement le
+   genre de chose qu'on ne trouve qu'en mesurant. */
+/* Le drapeau est un DESSIN, plus un caractère.
+   Il était un emoji, que `text-align: center` de la carte centrait tout
+   seul ; c'est maintenant un `<svg>` de largeur fixe, et un bloc de
+   largeur fixe se colle à gauche. La carte a l'air cassée pour cette
+   seule raison. */
+.city-flag { display: flex; justify-content: center; }
+
+.hero-inner > *, .about-grid > *, .app-showcase > *, .contact-grid > *,
+.kori-grid > *, .features-grid > *, .values-grid > *, .why-grid > *,
+.steps-grid > *, .cities-grid > *, .team-grid > *, .pricing-grid > *,
+.partner-testimonials > *, .stats-grid > *, .testi-grid > *,
+.form-row > *, .footer-grid > * { min-width: 0; }

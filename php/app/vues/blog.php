@@ -42,7 +42,7 @@
   <?php else: ?>
     <div class="grille g3">
       <?php foreach ($liste as $a): ?>
-        <a class="vignette article" href="<?= e(url('?p=blog&a=' . urlencode($a['slug']))) ?>">
+        <a class="vignette article" href="<?= e(url(url_article($a))) ?>">
           <?php
           /* Toujours une image : sa couverture, à défaut le cadre du décor
              qu'il cite, à défaut la vignette de la maison. Une carte sans

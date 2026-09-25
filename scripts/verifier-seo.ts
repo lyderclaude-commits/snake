@@ -63,10 +63,16 @@ const SCENARIO_PLAN = `<?php
 require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
 foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
           'texte','regie','carnet','images','push','qr','icones','avatars','journal',
-          'abonnement','pdf','facture','api','seo'] as $m) {
+          'abonnement','pdf','facture','api','vitrine','wordpress','seo'] as $m) {
     require RACINE . "/app/$m.php";
 }
 assurer_schema();
+
+/* La source du guide est coupée ici : ce qu'on mesure est le PLAFOND du
+   plan sur cinq cents contenus, pas la disponibilité d'un WordPress. Un
+   appel réseau au milieu rendrait la mesure dépendante d'une machine qui
+   n'a rien à voir avec elle. */
+reglages_bdd_poser(['wp_racine' => '']);
 
 $db = db();
 $maintenant = maintenant();
@@ -115,15 +121,31 @@ const main = async () => {
   const unArticle = locs.find((u) => u.includes('p=blog&a=')) ?? '';
   const unDecor = locs.find((u) => u.includes('p=decor&slug=')) ?? '';
 
+  /**
+   * Les huit pages de contenu du site fusionné passent le MÊME examen.
+   *
+   * Ce sont elles qui répondent à « devenir partenaire à Lomé » ou
+   * « application bons plans Cotonou » : c'est la raison d'être de la
+   * fusion. Oubliées de `SEO_PAGES_PUBLIQUES`, elles auraient porté
+   * `noindex` en silence, et la moitié du site public serait restée
+   * invisible sans que rien ne le signale.
+   */
+  const CONTENU = ['application', 'boost-push', 'boost-regie', 'boost-liens',
+                   'partenaires', 'villes', 'a-propos', 'contact'];
+
   const pages: Page[] = [
     { nom: 'l’accueil', chemin: '/index.php?p=accueil', type: 'website' },
     { nom: 'les décors', chemin: '/index.php?p=decors', type: 'website' },
     { nom: 'le blog', chemin: '/index.php?p=blog', type: 'website' },
+    ...CONTENU.map((p): Page => ({ nom: `?p=${p}`, chemin: `/index.php?p=${p}`, type: 'website' })),
     ...(unArticle ? [{ nom: 'un article', chemin: unArticle.replace(BASE, ''), type: 'article' }] : []),
     ...(unDecor ? [{ nom: 'un décor', chemin: unDecor.replace(BASE, ''), type: 'website' }] : []),
   ];
   ok('le plan du site désigne un article et un décor',
      unArticle !== '' && unDecor !== '', `${locs.length} adresses`);
+  const manquantes = CONTENU.filter((p) => !locs.some((u) => u.endsWith(`p=${p}`)));
+  ok('et les huit pages de contenu y figurent toutes',
+     manquantes.length === 0, manquantes.join(', ') || `${CONTENU.length} sur ${CONTENU.length}`);
 
   const titres = new Map<string, string>();
 

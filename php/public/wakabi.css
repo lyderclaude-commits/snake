@@ -580,7 +580,11 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
      `display:contents` dissout la colonne de droite pour que ses trois
      cartes deviennent des éléments de la grille : sans cela, la liste de
      relecture resterait collée sous l'aperçu, entre lui et les étapes. */
-  .sd{grid-template-columns:1fr}
+  /* `minmax(0,1fr)` et non `1fr` : une piste `1fr` ne descend pas sous
+     le contenu le plus large qu'elle porte, et le Studio débordait donc
+     de la page sur un écran de 320 px. La forme longue autorise la
+     colonne à se resserrer, et c'est le contenu qui s'adapte. */
+  .sd{grid-template-columns:minmax(0,1fr)}
   .sd-apercu{display:contents}
   .sd-carte-apercu{order:-1;position:sticky;top:70px;z-index:5;
     display:grid;grid-template-columns:auto minmax(180px,1fr);
@@ -631,7 +635,11 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .chercher input[type=text],.chercher input[type=search]{width:var(--recherche)}
 @media(max-width:640px){
   .chercher{margin-left:0;width:100%}
-  .chercher input[type=text],.chercher input[type=search]{width:auto;flex:1}
+  /* `min-width:0` et pas seulement `flex:1` : un `<input>` refuse par
+     défaut de descendre sous la largeur de ses vingt caractères, si bien
+     que sur un écran de 320 px le bouton « Chercher » sortait de la page
+     — et avec lui, toute la page se mettait à défiler de travers. */
+  .chercher input[type=text],.chercher input[type=search]{width:auto;flex:1;min-width:0}
 }
 
 .bloc-comptes{margin-top:22px}
@@ -657,6 +665,9 @@ th.chiffre,td.chiffre{text-align:right}
 footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:var(--text3);font-size:.85rem}
 .pied{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:0}
 .pied .logo{height:26px;opacity:.85}
+/* Le logo du pied court est un retour à l'accueil : 26 px de haut, c'est
+   la hauteur de l'image, pas une cible qu'un pouce trouve. */
+.pied > a{display:inline-flex;align-items:center;padding:6px 0}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--r6)}
 [hidden]{display:none!important}
 
@@ -940,6 +951,13 @@ input[type=file].fichier-natif{
 .lecture .couverture{
   width:100%;height:auto;display:block;border-radius:var(--r16);
   margin:0 0 28px;background:var(--bg2);
+  /* `auto 16/9` : la proportion RÉELLE si le navigateur la connaît, sinon
+     celle-ci. Nos images portent leurs dimensions et gardent donc la leur ;
+     celles des articles repris du guide, non — le fichier n'est pas chez
+     nous et on ne peut pas le mesurer. Sans cette ligne, leur boîte fait
+     zéro pixel de haut puis saute à sa taille en arrivant, et l'article
+     descend d'un écran sous les yeux de qui le lisait. */
+  aspect-ratio:auto 16/9;
 }
 
 .corps-article{font-size:1.05rem;line-height:1.75;color:var(--ink)}
@@ -1107,6 +1125,9 @@ input[type=file].fichier-natif{
 .image-article{margin:1.9em auto;padding:0;max-width:100%}
 .image-article img{
   width:100%;height:auto;display:block;border-radius:var(--r10);background:var(--bg2);
+  /* Même raison que la couverture : une image du guide n'a pas de
+     dimensions à annoncer, et le texte sauterait à son arrivée. */
+  aspect-ratio:auto 3/2;
 }
 @media(max-width:640px){
   /* Sur un écran de téléphone, la colonne fait déjà 92 vw : y appliquer
@@ -1393,6 +1414,21 @@ tr.pale td a{color:inherit}
   .pg-accroche{max-width:100%}
   .pg-bas{flex-direction:column;text-align:center;gap:10px}
   .pg-legal{justify-content:center}
+
+  /* Le pied de page est le plan du site sur un téléphone : c'est par
+     là qu'on retrouve « Partenaires » ou « CGU » quand le menu est
+     refermé. Mesuré : ses liens faisaient 21 px de haut pour 13 px de
+     texte — on vise à côté une fois sur trois. On leur donne de la
+     hauteur et une taille qui se lit, sans toucher au pied des grands
+     écrans, où la souris ne rate pas. */
+  .pg-col h4{font-size:.8rem}
+  .pg-liens{gap:2px}
+  .pg-liens a{font-size:.9rem;padding:8px 0;display:block}
+  .pg-legal{gap:6px 18px}
+  .pg-legal a{font-size:.8rem;padding:7px 0;display:inline-block}
+  .pg-copy,.pg-version{font-size:.8rem}
+  /* Le logo du pied est lui aussi un retour à l'accueil. */
+  .pied-guide a:has(>.pg-logo){display:inline-block;padding:5px 0}
 }
 
 /* ============ le retour en tête de page ============

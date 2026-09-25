@@ -166,7 +166,7 @@ $brouillon = $a['statut'] !== 'publie';
       <h2 style="font-size:1.15rem;margin:0 0 14px">À lire aussi</h2>
       <div class="grille g3">
         <?php foreach ($autres as $x): ?>
-          <a class="vignette article" href="<?= e(url('?p=blog&a=' . urlencode($x['slug']))) ?>">
+          <a class="vignette article" href="<?= e(url(url_article($x))) ?>">
             <?php $_ia = image_reduite(illustration_article($x), 320); ?>
             <img src="<?= e($_ia['src']) ?>"
                  <?= $_ia['srcset'] ? 'srcset="' . e($_ia['srcset']) . '" sizes="(max-width:700px) 92vw, 240px"' : '' ?>

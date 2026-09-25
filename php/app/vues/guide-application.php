@@ -43,9 +43,15 @@
           <a href="<?= e(APPLICATION_URL) ?>" target="_blank" class="btn btn-primary btn-lg">Télécharger gratuitement</a>
         </div>
         <div class="phones-wrap fade-up fade-up-d2">
-          <div class="phone-side phone-left"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE-2.png" alt="App screen 2" loading="lazy" style="height:360px;"></div>
-          <div class="phone-main"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE.png" alt="App screen main" loading="lazy" style="height:420px;"></div>
-          <div class="phone-side phone-right"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/mockup-4tel-1024x1024-1.png" alt="App mockup" loading="lazy" style="height:360px;"></div>
+          <div class="phone-side phone-left"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE-2.png"
+            alt="L’écran des bons plans, dans l’application Wakabi" width="1080" height="2160"
+            loading="lazy" decoding="async" referrerpolicy="no-referrer" style="height:360px;"></div>
+          <div class="phone-main"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE.png"
+            alt="L’accueil de l’application Wakabi sur un téléphone" width="1080" height="2160"
+            loading="lazy" decoding="async" referrerpolicy="no-referrer" style="height:420px;"></div>
+          <div class="phone-side phone-right"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/mockup-4tel-1024x1024-1.png"
+            alt="L’application Wakabi sur quatre téléphones" width="1024" height="1024"
+            loading="lazy" decoding="async" referrerpolicy="no-referrer" style="height:360px;"></div>
         </div>
       </div>
     </div>
@@ -55,7 +61,7 @@
       <div style="text-align:center;margin-bottom:50px;" class="fade-up">
         <h2 class="headline">4 niveaux <span>d'explorateur</span></h2>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;" class="fade-up">
+      <div class="features-grid fade-up">
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-xl);padding:28px;text-align:center;">
           <div style="font-size:36px;margin-bottom:12px;"><?= icone_guide('compass', 32) ?></div>
           <div style="font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:6px;">Découvreur</div>
@@ -89,7 +95,7 @@
         <div class="tag">Fonctionnalités</div>
         <h2 class="headline">Tout ce dont tu as <span>besoin</span></h2>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;" class="fade-up">
+      <div class="values-grid fade-up">
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-xl);padding:28px;">
           <div style="font-size:32px;margin-bottom:14px;"><?= icone_guide('map-marker', 32) ?></div>
           <div style="font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:8px;">Carte interactive</div>

@@ -775,6 +775,25 @@ function reglages_bdd(array $cles): array
     return $out;
 }
 
+/**
+ * Le compteur d'écritures des réglages.
+ *
+ * Les lecteurs qui gardent leur valeur en mémoire pour la durée de la
+ * requête — et il en faut, sinon `wp_racine()` interroge la base cinq fois
+ * par page — ont besoin de savoir qu'elle a bougé. En production la
+ * question ne se pose guère : une écriture est suivie d'une redirection,
+ * donc d'un nouveau processus. C'est dans un script qui écrit puis relit
+ * que le souvenir devient faux, sans rien dire.
+ */
+function reglages_version(bool $incrementer = false): int
+{
+    static $n = 0;
+    if ($incrementer) {
+        $n++;
+    }
+    return $n;
+}
+
 function reglages_bdd_poser(array $valeurs): void
 {
     $now = maintenant();
@@ -794,6 +813,7 @@ function reglages_bdd_poser(array $valeurs): void
             }
         }
     }
+    reglages_version(true);
 }
 
 /* ================= notifications ================= */
@@ -860,6 +880,28 @@ function notifications_marquer_lues(string $utilisateur_id): void
 function equipe(): array
 {
     return db()->query("SELECT * FROM utilisateurs WHERE role = 'equipe' AND suspendu = 0")->fetchAll();
+}
+
+/**
+ * Qui reçoit un message venu du dehors.
+ *
+ * `equipe()` ne rend que le rôle « equipe », et c'est juste pour une file
+ * de relecture : on y range le travail de la rédaction, qui a ce rôle-là.
+ * Un message de contact n'a pas de file. S'il n'arrive à personne, il est
+ * perdu — et le visiteur a pourtant lu « message envoyé », ce qui est le
+ * pire des deux mondes.
+ *
+ * Or une installation neuve n'a QU'UN super-administrateur : sans cette
+ * liste, les premières demandes de partenariat d'un site tout neuf
+ * tomberaient toutes dans le vide. On y ajoute le coordinateur, qui
+ * arbitre déjà le reste. Le scanner et l'éditeur n'y sont pas : l'un tient
+ * la porte d'une soirée, l'autre écrit des articles.
+ */
+function destinataires_contact(): array
+{
+    return db()->query("SELECT * FROM utilisateurs
+                        WHERE role IN ('equipe', 'coordinateur', 'super_admin')
+                          AND suspendu = 0")->fetchAll();
 }
 
 /**
@@ -1397,6 +1439,30 @@ function articles_publies(int $limite = 30, int $depuis = 0, string $cherche = '
     [$where, $args] = blog_filtre($cherche);
     $s = db()->prepare("SELECT * FROM articles $where
                         ORDER BY publie_le DESC LIMIT $limite OFFSET $depuis");
+    $s->execute($args);
+    return $s->fetchAll();
+}
+
+/**
+ * Les articles publiés jusqu'à un rang donné, sans décalage.
+ *
+ * `articles_publies()` plafonne à cent, et c'est bien : elle sert des
+ * listes qu'on affiche. Celle-ci sert la FUSION du blog, qui a besoin des
+ * `n` plus récents pour les entrelacer avec ceux du guide — et `n` grandit
+ * avec le numéro de page. Le plafond d'affichage aurait faussé le tri sans
+ * rien dire : à partir de la page douze, des articles auraient disparu de
+ * la liste sans jamais réapparaître ailleurs.
+ *
+ * Il y a un plafond quand même, à deux mille : passé deux cent vingt
+ * pages, personne ne fait défiler, et une requête sans borne est une
+ * requête qui finit par manquer de mémoire.
+ */
+function articles_publies_jusqua(int $rang, string $cherche = ''): array
+{
+    $rang = max(1, min(2000, $rang));
+    [$where, $args] = blog_filtre($cherche);
+    $s = db()->prepare("SELECT * FROM articles $where
+                        ORDER BY publie_le DESC LIMIT $rang");
     $s->execute($args);
     return $s->fetchAll();
 }

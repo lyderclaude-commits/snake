@@ -32,6 +32,38 @@ $mien = function (?array $a) use ($u, $equipe): array {
     return $a;
 };
 
+/* ---------------- la source du guide ---------------- */
+
+/**
+ * D'où viennent les articles repris de wakabileguide.com.
+ *
+ * Réglé ici et non dans `config.php` : le jour où WordPress déménage, le
+ * blog fusionné perd la moitié de son contenu, et il faut pouvoir le
+ * réparer depuis un navigateur — pas par FTP, un dimanche, depuis un
+ * téléphone.
+ *
+ * Vide, la source est débranchée : le blog ne montre plus que les articles
+ * d'ici, et plus un seul appel ne part. C'est ce qu'on règle sur un
+ * hébergement sans sortie réseau.
+ */
+if ($page === 'blog-admin' && $post) {
+    verifier_csrf();
+    exiger_droit('valider');
+    $racine = rtrim(trim((string) ($_POST['wp_racine'] ?? '')), '/');
+    if ($racine !== '' && !preg_match('~^https?://[^\s/]+~i', $racine)) {
+        rediriger('?p=blog-admin&err=' . rawurlencode(
+            'L’adresse doit commencer par http:// ou https://.'));
+    }
+    reglages_bdd_poser(['wp_racine' => $racine]);
+    /* Le répit après panne vise l'ANCIENNE adresse : le garder ferait
+       croire que la nouvelle ne répond pas non plus, pendant cinq
+       minutes, juste après qu'on vient de la corriger. */
+    wp_panne_noter(false);
+    journal_ecrire($u, 'reglages.modifies', 'reglages', null, 'Source du blog');
+    rediriger('?p=blog-admin&ok=' . rawurlencode(
+        $racine === '' ? 'Source du guide débranchée.' : 'Source du guide enregistrée.'));
+}
+
 /* ---------------- soumettre, décider, supprimer ---------------- */
 
 if ($page === 'blog-action') {
@@ -299,6 +331,12 @@ if ($page === 'blog-editer') {
 
 vue('blog-admin', [
     'titre' => $equipe ? 'Le blog' : 'Mes articles',
+    'wp_racine' => wp_racine(),
+    'wp_defaut' => WP_RACINE_DEFAUT,
+    /* Un chiffre vaut mieux qu'une case cochée : « 42 articles » dit que
+       l'adresse répond, que le format est le bon et que le cache est
+       chaud. Une case « source active » n'aurait dit que ce qu'on a tapé. */
+    'wp_etat' => $equipe && wp_actif() ? wp_jusqua(1) : null,
     'liste' => $equipe ? articles_tous() : articles_de((string) $u['id']),
     'equipe' => $equipe,
     'a_relire' => $equipe ? articles_a_relire() : 0,

@@ -1,7 +1,37 @@
-# Wakabi Boost v1.5 — décompresser, ouvrir une page, c'est en ligne
+# Wakabi Boost v1.6 — décompresser, ouvrir une page, c'est en ligne
 
-**Ce que la v1.5 ajoute à la v1.4** : le produit cesse de demander un compte
-AVANT de laisser faire quoi que ce soit.
+**Ce que la v1.6 ajoute à la v1.5** : `wakabileguide.com` et Boost deviennent
+UN SEUL SITE.
+
+1. **Un seul en-tête, et huit pages de contenu** (`?p=application`,
+   `?p=partenaires`, `?p=villes`, `?p=a-propos`, `?p=contact`, et les trois
+   pages de présentation de Boost). La barre de vitrine ne change jamais,
+   connecté ou non ; la barre d'administration se déduit des droits et ne
+   paraît que sur les écrans de travail.
+
+2. **Un seul blog.** Les articles du WordPress du guide et ceux de Boost se
+   rangent dans une même liste, triée par date. Lus **côté serveur** et non
+   depuis le navigateur : le blog du guide arrivait vide aux moteurs, et ses
+   articles n'étaient dans aucun plan de site. Le HTML de WordPress est
+   **traduit**, jamais recopié.
+
+3. **Cinq gestes qui ne faisaient rien** ont été réparés : quatre boutons sans
+   lien, et le formulaire de contact, qui appelait une fonction inexistante.
+
+4. **Les huit pages de contenu entrent dans les moteurs.** Elles portaient
+   `noindex` et n'étaient dans aucun plan : la moitié du site public restait
+   invisible.
+
+5. **Le téléphone, mesuré à sept largeurs** dans un vrai navigateur : trois
+   débordements horizontaux, un plancher de lisibilité et quatre cibles
+   tactiles corrigés.
+
+Le détail se lit dans « La fusion des deux sites », plus bas.
+
+---
+
+**Ce que la v1.5 avait ajouté à la v1.4** : le produit cesse de demander un
+compte AVANT de laisser faire quoi que ce soit.
 
 1. **Le mur passe à la fin.** On raccourcit son lien, on compose son décor, et
    c'est au moment de le créer qu'on se présente. Ce qui a été saisi TRAVERSE
@@ -141,7 +171,7 @@ que dans les migrations, donc pas dans une installation neuve — le premier dé
 enregistré sur un site fraîchement installé échouait.
 
 Le numéro vit dans `php/app/bootstrap.php`,
-nomme l'archive livrée (`wakabi-boost-v1.5.zip`) et s'affiche en pied de page :
+nomme l'archive livrée (`wakabi-boost-v1.6.zip`) et s'affiche en pied de page :
 quand quelqu'un écrit « ça ne marche pas », la première question est
 « quelle version ? », et personne ne sait y répondre si le produit ne le dit
 pas lui-même.
@@ -154,7 +184,7 @@ Node.js demande un processus permanent, une compilation et 843 Mo de mémoire.
 
 ## Installer
 
-1. Décompressez `wakabi-boost-v1.5.zip` dans le dossier de votre sous-domaine.
+1. Décompressez `wakabi-boost-v1.6.zip` dans le dossier de votre sous-domaine.
 2. Ouvrez `https://boost.wakabileguide.com/install.php`.
 3. Répondez à trois questions. C'est fini.
 4. **Supprimez `install.php`.**
@@ -170,11 +200,12 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **891 scénarios
-réussis** sur une base déjà peuplée, **890 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **957 scénarios
+réussis** sur une base déjà peuplée, **956 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
-console dans les deux cas.
+console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
+vérifieurs, qui éprouvent ce qu'aucun navigateur ne peut voir.
 
 La montée de version d'une installation déjà en service a été vérifiée elle
 aussi : une v1.3 installée, peuplée, puis recouverte par la v1.4 passe du
@@ -263,7 +294,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 891 scénarios, dans un vrai navigateur
+npm run php:e2e          # 957 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -285,7 +316,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 891 scénarios
+### Les 957 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -368,6 +399,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
 | **Le journal, la recherche, l'entretien** | Le journal est servi à qui gère les comptes ; le blog public se cherche et dit quand il ne trouve rien ; la maintenance des images rend un bilan ; une sauvegarde s'inspecte avant d'être restaurée, et un nom mal recopié annule la restauration |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
+| **Le contact du guide** | Le formulaire **poste vers le serveur**, sans script ; une adresse fautive est refusée **par le serveur** et la saisie n'est pas perdue ; l'envoi redirige vers sa propre adresse (une page rechargée ne renvoie pas le message), et **l'équipe le reçoit vraiment**, avec l'adresse de réponse et le texte |
+| **Le blog fusionné** | Les articles du WordPress du guide entrent dans la liste de Boost, triés par date, cherchables dans la même recherche ; leur HTML est **traduit** et non recopié — le `<script>` de WordPress ne traverse pas et n'arrive pas à s'exécuter, un `href="javascript:"` redevient du texte, une image hébergée ailleurs disparaît, celle du guide passe ; l'adresse canonique reste celle de Boost, ces articles entrent enfin dans le plan du site, et **WordPress arrêté, le cache périmé sert encore** ; la source se débranche depuis l'écran de la rédaction |
 | **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
 | **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
 | **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
@@ -1796,6 +1829,138 @@ quelqu'un qui vient de mettre à jour.
 
 ---
 
+## La fusion des deux sites
+
+`wakabileguide.com` et `boost.wakabileguide.com` étaient deux sites. Deux
+en-têtes, deux pieds de page, deux logos, et un visiteur qui passait de l'un à
+l'autre changeait de maison sans le vouloir. Ils n'en font plus qu'un.
+
+### Deux barres, et non une qui se réarrange
+
+La **barre de vitrine** ne bouge jamais : `L'Application · Boost (Push, Régie,
+Liens courts) · Les décors · Partenaires · Nos Villes · Blog · À Propos`,
+identique qu'on soit connecté ou non. Un site public dont le menu se réarrange
+selon qui regarde oblige chacun à réapprendre où sont les choses, et oblige
+surtout à expliquer deux fois le même site.
+
+Seul le **volet du compte** connaît deux états : il propose de se connecter ou
+de créer un compte, ou bien il porte le nom de la personne, son tableau de
+bord et de quoi ressortir. Ce volet est alors la seule porte vers l'atelier,
+et c'est pourquoi « Mon tableau de bord » y figure en tête.
+
+La **barre d'administration** se déduit des droits, comme avant, et ne paraît
+que sur les écrans de travail. `barre_vitrine()` tranche entre les deux, et sa
+règle tient en une phrase : *on est au travail dès qu'on est connecté ET
+ailleurs que sur le site public*.
+
+### Une feuille de style par page, jamais les deux
+
+Les deux feuilles portent près de sept cents noms de classes et n'en partagent
+que quatre : le guide nomme en anglais, Boost en français. Mais toutes deux
+posent aussi des règles sur des éléments **nus** — `body`, `a`, `button`,
+`input`. Chargées ensemble, elles se seraient battues sur chaque bouton et
+chaque champ, et le perdant aurait changé selon l'ordre des balises.
+
+Chaque page charge donc la sienne. Seul `public/entete.css` traverse la
+frontière, d'où son préfixe `wk-` et ses couleurs écrites en clair plutôt
+qu'en variables : il est servi sous les deux feuilles et ne peut donc dépendre
+des variables d'aucune.
+
+### Les huit pages de contenu
+
+Cinq viennent du guide (`?p=application`, `?p=partenaires`, `?p=villes`,
+`?p=a-propos`, `?p=contact`) et trois présentent Boost (`?p=boost-push`,
+`?p=boost-regie`, `?p=boost-liens`). Ces trois-là sont des pages de
+**présentation**, pas les écrans du produit : le menu public mène à une
+explication, et non contre un mur de connexion.
+
+Elles n'écrivent aucun prix. `offre_porte()` lit l'offre qui ouvre la ligne
+et le bandeau se compose au rendu, si bien qu'un tarif changé depuis
+l'administration ne laisse pas trois pages de vitrine en train de mentir.
+
+**Trente-quatre dépendances extérieures ont disparu au passage** : vingt-huit
+icônes chargées chez un tiers, une requête chacune, et six drapeaux en PNG.
+Elles sont redessinées dans `app/icones-guide.php`, comme le reste de la
+maison. Sur une connexion où le mégaoctet se compte, c'est ce qui décide qu'une
+page s'affiche ou qu'elle attende.
+
+Quatre images restent chargées depuis le guide : les maquettes de
+l'application, qui vivent dans sa médiathèque. Elles portent maintenant leurs
+dimensions, donc la page **réserve leur place** au lieu de sauter quand elles
+arrivent, et une légende en français au lieu de « App screen 2 ».
+
+### Cinq choses qui ne faisaient rien
+
+Le contenu venu du guide marchait à l'oeil. Cinq gestes, pourtant, ne
+menaient nulle part, et aucun ne se voyait sans l'essayer :
+
+- **Quatre `<button href="…">`.** Un bouton n'a pas d'attribut `href` : les
+  trois appels à l'action des cartes d'offre de `?p=partenaires` et celui de
+  la liste d'attente de `?p=villes` ne faisaient **rien du tout** au clic. Ils
+  sont devenus des liens.
+
+- **Le formulaire de contact.** Il portait
+  `onsubmit="handleContact(event)"`, et cette fonction n'existait nulle part :
+  le bouton levait une erreur JavaScript, le message n'allait nulle part, et
+  le visiteur repartait convaincu d'avoir écrit. Un formulaire muet est pire
+  que pas de formulaire — l'adresse e-mail juste au-dessus, elle, marchait.
+
+`?p=contact` a donc son action (`app/actions/contact.php`) : envoi ordinaire
+de formulaire, jeton CSRF, limite de huit messages par quart d'heure et par
+adresse IP, objets validés contre une liste écrite côté serveur, et la saisie
+qui **revient** après un refus. Le message part par une notification à chaque
+compte interne qui peut y répondre — `equipe`, `coordinateur`,
+`super_admin` — ce qui le dépose dans le produit **et** dans leur boîte quand
+le transport e-mail est branché.
+
+> La liste ne se limite pas au rôle `equipe`, contrairement au reste du
+> produit. C'est délibéré : une installation neuve n'a qu'un
+> super-administrateur, et ses premières demandes de partenariat seraient
+> tombées dans le vide pendant que le visiteur lisait « message envoyé ».
+
+Deux restes de balisage traînaient aussi au bas de `?p=contact` : un
+commentaire « PAGE : CONFIDENTIALITÉ » et un `<template>` jamais refermé,
+copiés depuis le fichier unique du guide. Ils sont partis.
+
+### Le téléphone, mesuré et non supposé
+
+Les pages du guide arrivaient avec deux habitudes qui ne tiennent pas sur un
+écran de 390 px, et qu'aucune lecture du code n'aurait révélées : il a fallu
+mesurer dans un vrai navigateur, à sept largeurs, ce que chaque bloc occupait.
+
+1. **Des grilles écrites en dur dans l'attribut `style`.** Une déclaration
+   `grid-template-columns: repeat(4,1fr)` en ligne ne se corrige par aucune
+   requête média : sur un téléphone, les quatre niveaux d'explorateur
+   tenaient dans 70 px chacun et le quatrième sortait de l'écran. Comme la
+   feuille du guide masque le débordement (`overflow-x: hidden`), rien ne le
+   signalait : le contenu partait simplement dehors, sans barre de défilement
+   pour le rattraper. Les deux grilles passent aux classes responsives de la
+   feuille.
+
+2. **Du texte qui rapetisse quand l'écran rapetisse.** « En direct » tombait à
+   9 px sous 480, un nom de pays à 10, le libellé d'un champ de formulaire à
+   11. C'est l'inverse de ce qu'il faut, et ce sont justement les mots qui
+   portent l'information. La place ne manquait pourtant pas : la grille des
+   villes passe à deux colonnes, soit 175 px par carte. Un plancher de 13 px
+   est posé en fin de `guide.css`, écrit là plutôt que dans les règles
+   d'origine pour que la différence se relise d'un coup d'oeil le jour d'une
+   mise à jour du guide.
+
+Trois défauts de disposition ont été trouvés par la même mesure et corrigés :
+
+| Où | Ce qui se passait |
+|---|---|
+| `?p=a-propos` | Une image de 1024 px imposait une colonne de 1024 px : sur un téléphone, **toute la colonne de texte partait hors de l'écran**. Un enfant de grille a `min-width: auto` par défaut, et sa piste ne descend donc pas sous son contenu. Le défaut ne se voyait qu'avec l'image chargée. |
+| `?p=blog` | Un `<input>` refuse de descendre sous la largeur de ses vingt caractères : à 320 px, le bouton « Chercher » sortait de la page et **toute la page se mettait à défiler de côté**. |
+| `?p=nouveau` | Même cause, autre endroit : la piste `1fr` du Studio ne descendait pas sous son contenu, et l'atelier débordait de 3 px à 320 px. |
+
+Les cibles tactiles ont été relevées là où la mesure les donnait sous 32 px :
+le bouton « Télécharger » de la barre et la pastille du compte (30 px), le fil
+d'Ariane des pages du guide (19 px), et les liens du pied de page (21 px), qui
+sont le plan du site quand le menu est refermé.
+
+---
+
 ## Le blog — `?p=blog`
 
 Lisible par **tout le monde**, sans compte, et repris sur la page d'accueil.
@@ -1809,6 +1974,97 @@ compte Mouvement : l'article y est vendu comme un service, rédigé et publié
 par la rédaction. Un champ de saisie libre sur une page publique confié à des
 comptes clients, c'est le début d'une modération qu'on n'a pas les moyens de
 tenir.
+
+### Un seul blog, deux sources
+
+Depuis la fusion, `?p=blog` mêle les articles écrits ici et ceux du WordPress
+du guide, **triés par date dans une seule liste**. Le lecteur ne les distingue
+pas : c'est un blog. Leurs adresses, elles, se distinguent — `&a=` pour les
+nôtres, `&g=` pour ceux du guide. Un seul paramètre aurait suffi jusqu'au jour
+où deux articles portent le même slug, et ce jour-là l'un des deux serait
+devenu inatteignable sans qu'un mot le dise.
+
+**La lecture se fait côté serveur**, et c'est le premier bénéfice. Le blog du
+guide allait chercher ses articles *depuis le navigateur* : la page arrivait
+vide, un script appelait `wp-json/wp/v2/posts?_embed`, puis fabriquait les
+cartes. Un moteur de recherche recevait donc une page blanche, et ces articles
+n'étaient dans aucun plan de site — pour un guide dont tout le métier est de se
+faire trouver, c'était le contraire du but. Ils y sont maintenant.
+
+Le reste suit : chaque visiteur ne paie plus l'aller-retour vers WordPress sur
+sa 3G, et les deux sources peuvent enfin se rencontrer quelque part pour être
+rangées par date.
+
+#### Le HTML de WordPress n'est jamais recopié
+
+C'est le point entier de `app/wordpress.php`. `texte.php` l'écrit en toutes
+lettres : le corps d'un article est du **texte**, échappé d'abord, et aucune
+balise ne vient de la saisie. Coller ici le `content.rendered` de WordPress
+ferait exactement ce que cette règle interdit — et la faille serait d'autant
+plus vicieuse qu'elle passerait par un serveur de confiance : il suffirait d'un
+compte d'auteur WordPress compromis pour poser un `<script>` sur toutes les
+pages du site fusionné.
+
+Le HTML est donc **traduit** vers les marques de la maison, puis rendu par
+`texte_riche()` comme un article d'ici :
+
+```
+<h2>…</h2>     →  ## …            <blockquote>  →  > …
+<h3>…</h3>     →  ### …           <li>…</li>    →  - …
+<a href>…</a>  →  [texte](url)    <figure>+<img>→  ![légende](url)
+```
+
+Ce qui n'est pas reconnu devient du texte nu. Une adresse qui n'est pas
+`http(s)` ne devient pas un lien : un `javascript:` redevient la phrase qu'il
+portait.
+
+#### Les images : une exception, et une seule
+
+Le projet ne rend d'ordinaire que les images qu'il héberge. Les articles du
+guide font exception sur décision explicite, parce que leurs images vivent dans
+sa médiathèque et qu'un import n'a été demandé par personne. **L'exception est
+bornée à l'hôte de l'API** — pas « n'importe quelle adresse », l'hôte du guide
+et lui seul. La différence est tout le sujet : on fait confiance à son propre
+serveur, pas au web entier. Une image d'un tiers glissée dans un article
+disparaît de la page.
+
+#### Ce qui arrive quand WordPress ne répond pas
+
+Trois états, et le troisième est celui qui compte :
+
+| État | Ce qui est servi |
+|---|---|
+| Cache frais (< 10 min) | Le cache |
+| Cache périmé, WordPress répond | On rafraîchit, on sert le neuf |
+| Cache périmé, **WordPress muet** | **Le cache périmé** |
+
+Le dernier cas est le seul qu'on ne voit jamais en recette et le seul qui
+arrive vraiment un dimanche soir. Un blog qui affiche les articles d'hier vaut
+infiniment mieux qu'un blog vide.
+
+Et si WordPress ne répond pas du tout — cas banal sur un mutualisé sans sortie
+réseau — un **répit de cinq minutes** s'installe après le premier échec. Sans
+lui, chaque affichage du blog paierait le délai de connexion pour échouer
+pareil : le blog resterait lisible, mais lent à en être inutilisable, et rien
+ne dirait pourquoi.
+
+#### La source se règle depuis l'écran
+
+`?p=blog-admin` porte, pour l'équipe seule, l'adresse de l'API et le nombre
+d'articles réellement repris. Un chiffre plutôt qu'une case cochée : « 42
+articles » dit que l'adresse répond, que le format est le bon et que le cache
+est chaud. Le jour où WordPress déménage, le blog fusionné perd la moitié de
+son contenu, et il faut pouvoir le réparer depuis un navigateur — pas par FTP,
+un dimanche, depuis un téléphone.
+
+**Vider le champ débranche la source** : le blog ne montre plus que les
+articles d'ici et plus un seul appel ne part. C'est ce qu'on règle sur un
+hébergement sans sortie réseau.
+
+L'adresse canonique d'un article du guide reste **celle de Boost**. Après la
+fusion, le WordPress n'est plus que la salle de rédaction ; se déclarer
+canonique vers lui reviendrait à demander aux moteurs d'envoyer les lecteurs
+sur un backend.
 
 ### On écrit dans un éditeur, mais ce n'est pas du HTML qui part
 

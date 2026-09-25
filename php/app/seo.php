@@ -122,7 +122,22 @@ function url_canonique(?array $params = null): string
  * moteurs, ce qui se répare ; l'oublier dans une liste d'exclusions la
  * publierait, ce qui ne se répare pas.
  */
-const SEO_PAGES_PUBLIQUES = ['accueil', 'decors', 'decor', 'blog', 'inscription', 'connexion'];
+const SEO_PAGES_PUBLIQUES = ['accueil', 'decors', 'decor', 'blog', 'inscription', 'connexion',
+    /**
+     * Les huit pages de contenu du site fusionné.
+     *
+     * Elles sont la raison d'être de la fusion : c'est par elles qu'on se
+     * fait trouver sur « devenir partenaire à Lomé » ou « application bons
+     * plans Cotonou ». Oubliées ici, elles auraient porté `noindex` — donc
+     * la moitié du site public serait restée invisible, et personne ne
+     * l'aurait vu passer.
+     *
+     * La liste est écrite en clair plutôt que déduite de `PAGES_CONTENU` :
+     * une page de contenu nouvelle n'est pas forcément une page qu'on veut
+     * dans les résultats, et `seo.php` ne doit pas dépendre de `vitrine.php`.
+     */
+    'application', 'partenaires', 'villes', 'a-propos', 'contact',
+    'boost-push', 'boost-regie', 'boost-liens'];
 
 function seo_indexable(string $page): bool
 {
@@ -410,6 +425,18 @@ function sitemap_xml(): string
     $ajouter(url_canonique(['p' => 'blog']), null, 'daily', '0.8');
 
     /**
+     * Les pages de contenu, juste après l'accueil.
+     *
+     * Elles changent rarement et c'est justement ce qui les rend utiles :
+     * ce sont elles qui répondent à « devenir partenaire à Lomé ». Un plan
+     * qui ne listerait que les décors et les articles laisserait un robot
+     * les découvrir au hasard des liens, ou pas du tout.
+     */
+    foreach (array_keys(PAGES_CONTENU) as $_p) {
+        $ajouter(url_canonique(['p' => $_p]), null, 'monthly', '0.7');
+    }
+
+    /**
      * Le budget se partage, il ne se réserve pas.
      *
      * Les décors servent d'abord, jusqu'à la moitié du plafond ; les
@@ -418,15 +445,33 @@ function sitemap_xml(): string
      * site qui dépasse vingt mille adresses à lui seul verrait une coupe,
      * et celui-là a besoin d'un index, pas d'un plafond plus haut.
      */
-    $budget = SITEMAP_MAX - 3;
+    $budget = SITEMAP_MAX - 3 - count(PAGES_CONTENU);
     $decors = slugs_decors_publies(intdiv($budget, 2));
     foreach ($decors as $d) {
         $ajouter(url_canonique(['p' => 'decor', 'slug' => (string) $d['slug']]),
                  (string) ($d['maj_le'] ?? $d['publie_le'] ?? ''), 'weekly', '0.7');
     }
-    foreach (slugs_articles_publies($budget - count($decors)) as $a) {
+    $articles = slugs_articles_publies($budget - count($decors));
+    foreach ($articles as $a) {
         $ajouter(url_canonique(['p' => 'blog', 'a' => (string) $a['slug']]),
                  (string) ($a['maj_le'] ?? $a['publie_le'] ?? ''), 'monthly', '0.6');
+    }
+
+    /**
+     * Les articles du guide entrent dans le plan, eux aussi.
+     *
+     * C'est même le premier bénéfice de la fusion : ces articles-là
+     * n'étaient dans AUCUN plan de site, parce qu'ils n'existaient que
+     * dans un appel JavaScript. Les déclarer ici, c'est leur donner leur
+     * première chance d'être indexés.
+     *
+     * On passe par le cache habituel : le plan se fabrique rarement, et
+     * s'il tombe sur un WordPress muet, il rend ce qu'on avait — un plan
+     * un peu court vaut mieux qu'un plan absent.
+     */
+    foreach (wp_jusqua(min(200, $budget - count($decors) - count($articles)))['articles'] as $g) {
+        $ajouter(url_canonique(['p' => 'blog', 'g' => (string) $g['slug']]),
+                 (string) ($g['maj_le'] ?? $g['publie_le'] ?? ''), 'monthly', '0.6');
     }
 
     return $x . '</urlset>' . "\n";

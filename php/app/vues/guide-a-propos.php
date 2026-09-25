@@ -35,7 +35,10 @@
           <p style="color:var(--text2);line-height:1.85;">Le nom Wakabi vient du concept "Le Guide" l'ami qui connaît tout, qui te montre les bons coins et qui ne te déçoit jamais. C'est exactement ce que nous voulons être pour chaque utilisateur.</p>
         </div>
         <div class="fade-up fade-up-d2">
-          <img src="https://v3.1.wakabileguide.com/wp-content/uploads/2026/02/mockup-4tel-1024x1024.png">
+          <img src="https://v3.1.wakabileguide.com/wp-content/uploads/2026/02/mockup-4tel-1024x1024.png"
+               alt="L’application Wakabi sur quatre téléphones" width="1024" height="1024"
+               loading="lazy" decoding="async" referrerpolicy="no-referrer"
+               style="border-radius:var(--r-2xl)">
           <!--<div style="background:linear-gradient(135deg,var(--blue-50),var(--blue-100));border-radius:var(--r-2xl);padding:48px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
             <div style="font-size:60px;margin-bottom:8px;">🌍</div>
             <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--blue-800);text-align:center;">Fondé en 2024<br>à Lomé, Togo</div>
@@ -67,7 +70,7 @@
       </div>
       <div class="values-grid fade-up">
         <div class="value-card"><div class="value-icon"><?= icone_guide('boutique', 32) ?></div><div class="value-title">Local d'abord</div><div class="value-desc">Nous construisons pour l'Afrique, par l'Afrique. Chaque décision produit et marketing est pensée pour les réalités locales.</div></div>
-        <div class="value-card"><div class="value-icon"><?= icone_guide('equipe', 32) ?></div><div class="value-title">Communauté avant tout</div><div class="value-desc">Wakabi n'est pas juste une app — c'est une communauté de gens qui aiment leur ville et veulent la faire découvrir aux autres.</div></div>
+        <div class="value-card"><div class="value-icon"><?= icone_guide('equipe', 32) ?></div><div class="value-title">Communauté avant tout</div><div class="value-desc">Wakabi n'est pas juste une app : c'est une communauté de gens qui aiment leur ville et veulent la faire découvrir aux autres.</div></div>
         <div class="value-card"><div class="value-icon"><?= icone_guide('creativite', 32) ?></div><div class="value-title">Innovation africaine</div><div class="value-desc">On ne copie pas les modèles occidentaux. On crée des solutions qui correspondent à nos contextes, nos usages et nos ambitions.</div></div>
         <div class="value-card"><div class="value-icon"><?= icone_guide('telephone', 32) ?></div><div class="value-title">Mobile-first</div><div class="value-desc">L'Afrique est mobile. Tout ce que nous créons est pensé pour fonctionner parfaitement sur smartphone, avec n'importe quelle connexion.</div></div>
         <div class="value-card"><div class="value-icon"><?= icone_guide('confiance', 32) ?></div><div class="value-title">Confiance & transparence</div><div class="value-desc">Aucune commission cachée pour nos partenaires, aucune vente de données pour nos utilisateurs. Notre modèle est clair et honnête.</div></div>

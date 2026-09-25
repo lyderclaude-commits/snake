@@ -54,12 +54,17 @@ mkdirSync(join(RACINE, 'donnees/sauvegardes'), { recursive: true });
 // Les couvertures d'articles, et le cache des images redimensionnées.
 mkdirSync(join(RACINE, 'donnees/medias'), { recursive: true });
 mkdirSync(join(RACINE, 'donnees/vignettes'), { recursive: true });
+// Le cache des articles repris du guide. Même raison que les autres : un
+// hébergement aux droits stricts refuse parfois un mkdir, et le blog
+// rappellerait alors WordPress à chaque affichage.
+mkdirSync(join(RACINE, 'donnees/cache'), { recursive: true });
 writeFileSync(join(RACINE, 'donnees/.htaccess'), 'Deny from all\nRequire all denied\n');
 writeFileSync(join(RACINE, 'donnees/cadres/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/og/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/sauvegardes/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/medias/.gitkeep'), '');
 writeFileSync(join(RACINE, 'donnees/vignettes/.gitkeep'), '');
+writeFileSync(join(RACINE, 'donnees/cache/.gitkeep'), '');
 
 // `studio/` contient les sources TypeScript : inutiles en production.
 rmSync(join(RACINE, 'studio'), { recursive: true, force: true });

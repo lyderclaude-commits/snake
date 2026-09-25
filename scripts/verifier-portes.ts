@@ -47,7 +47,7 @@ require ${JSON.stringify(RACINE)} . '/app/bootstrap.php';
 foreach (['schema','auth','gabarit','depot','prevol','courriel','og','zip','sauvegarde',
           'texte','regie','carnet','canaux','images','push','qr','icones','avatars',
           'journal','abonnement','pdf','facture','rapport','segment','sponsor','sondage',
-          'brouillon','api'] as $m) {
+          'brouillon','vitrine','wordpress','api'] as $m) {
     require RACINE . "/app/$m.php";
 }
 assurer_schema();
@@ -340,6 +340,56 @@ foreach (['coordinateur', 'equipe', 'super_admin'] as $role) {
     )));
 }
 
+/* ================= le pont WordPress ================= */
+
+/**
+ * La traduction du HTML de WordPress, éprouvée SANS réseau.
+ *
+ * C'est la partie du pont qui décide de la sécurité de tout le site
+ * fusionné, et elle est pure : une chaîne entre, une chaîne sort. La
+ * vérifier ici plutôt qu'au navigateur la rend rapide, déterministe, et
+ * indépendante d'un serveur qui répond.
+ */
+reglages_bdd_poser(['wp_racine' => 'https://admin.wakabileguide.com/wp-json/wp/v2']);
+
+$out['wp_script'] = wp_html_vers_texte(
+    '<p>Avant</p><scr' . 'ipt>alert(1)</scr' . 'ipt><p>Après</p>');
+$out['wp_js_lien'] = wp_html_vers_texte(
+    '<p><a href="javascript:alert(1)">cliquez</a></p>');
+$out['wp_lien'] = wp_html_vers_texte(
+    '<p>Voir <a href="https://wakabileguide.com/x">le guide</a>.</p>');
+$out['wp_blocs'] = wp_html_vers_texte(
+    '<h2>Titre</h2><ul><li>Un</li><li>Deux</li></ul><blockquote>Dit</blockquote>');
+/* Un retour à la ligne DANS un paragraphe est une espace, pas une coupure :
+   sans cela, une phrase se brisait en deux au milieu. */
+$out['wp_lignes'] = wp_html_vers_texte("<p>Une phrase\n coupée en deux.</p>");
+$out['wp_figure'] = wp_html_vers_texte(
+    '<figure><img src="https://admin.wakabileguide.com/i.png" alt="a"/>'
+    . '<figcaption>La légende</figcaption></figure>');
+
+$out['wp_img_guide'] = wp_image_permise('https://admin.wakabileguide.com/wp-content/i.png');
+$out['wp_img_tiers'] = wp_image_permise('https://exemple-tiers.net/i.png');
+/* Un hôte qui se TERMINE par le nôtre sans lui appartenir : le même leurre
+   que le garde-fou de redirection connaît déjà. */
+$out['wp_img_leurre'] = wp_image_permise('https://admin.wakabileguide.com.mechant.tg/i.png');
+$out['wp_img_http'] = wp_image_permise('http://admin.wakabileguide.com/i.png');
+
+/* Rendue dans un corps d'article : l'image du guide passe, celle d'ailleurs
+   disparaît : c'est image_article() qui tranche, et non la vue. */
+$out['wp_rendu_guide'] = texte_riche('![Une salle](https://admin.wakabileguide.com/wp-content/s.png)');
+$out['wp_rendu_tiers'] = texte_riche('![Ailleurs](https://exemple-tiers.net/s.png)');
+
+/* Débranchée, la source ne laisse plus passer aucune image distante. */
+reglages_bdd_poser(['wp_racine' => '']);
+$out['wp_debranche_img'] = wp_image_permise('https://admin.wakabileguide.com/wp-content/i.png');
+$out['wp_debranche_actif'] = wp_actif();
+$out['wp_debranche_liste'] = wp_jusqua(20)['articles'];
+
+/* La date de WordPress arrive sans fuseau : sans son Z, un article du
+   guide se rangeait une heure trop tôt ou trop tard parmi les nôtres. */
+$out['wp_date'] = wp_date('2026-09-22T09:00:00');
+$out['wp_date_vide'] = wp_date('');
+
 echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), "\\n";
 `;
 
@@ -496,6 +546,58 @@ const main = async () => {
     ok('et le super-administrateur voit tout',
        (rac['super_admin'] ?? []).length === 11,
        `${(rac['super_admin'] ?? []).length} écran(s)`);
+
+    /* ---------------- le pont WordPress ---------------- */
+    console.log('\n  ── ce que WordPress envoie, et ce qui en ressort ──');
+
+    /**
+     * La traduction est la frontière de sécurité du blog fusionné : tout ce
+     * qui passe ici arrive ensuite sur une page publique. Un compte d'auteur
+     * compromis chez le guide ne doit rien pouvoir en faire.
+     */
+    ok('un <script> de WordPress ne survit pas à la traduction',
+       !/script|alert/.test(String(r.wp_script)) && /Avant/.test(String(r.wp_script)),
+       String(r.wp_script).replace(/\n/g, ' ⏎ ').slice(0, 60));
+    ok('un href javascript: redevient du texte, pas un lien',
+       String(r.wp_js_lien) === 'cliquez', String(r.wp_js_lien));
+    ok('un lien http, lui, garde sa forme',
+       String(r.wp_lien).includes('[le guide](https://wakabileguide.com/x)'),
+       String(r.wp_lien));
+    ok('titres, listes et citations prennent les marques de la maison',
+       /## Titre/.test(String(r.wp_blocs)) && /- Un\n- Deux/.test(String(r.wp_blocs))
+       && /> Dit/.test(String(r.wp_blocs)),
+       String(r.wp_blocs).replace(/\n/g, ' ⏎ ').slice(0, 70));
+    ok('un retour à la ligne dans un paragraphe est une espace, pas une coupure',
+       String(r.wp_lignes) === 'Une phrase coupée en deux.', String(r.wp_lignes));
+    ok('une figure garde sa légende, et non le texte alternatif',
+       String(r.wp_figure).includes('![La légende](https://admin.wakabileguide.com/i.png)'),
+       String(r.wp_figure));
+
+    ok('une image du guide est permise', r.wp_img_guide === true);
+    ok('une image d’un tiers ne l’est pas', r.wp_img_tiers === false);
+    ok('un hôte qui se TERMINE par celui du guide ne passe pas',
+       r.wp_img_leurre === false);
+    ok('le même hôte en clair passe aussi (le guide décide de son schéma)',
+       r.wp_img_http === true);
+
+    ok('rendue dans un article, l’image du guide apparaît',
+       /<img src="https:\/\/admin\.wakabileguide\.com/.test(String(r.wp_rendu_guide))
+       && /referrerpolicy="no-referrer"/.test(String(r.wp_rendu_guide)),
+       String(r.wp_rendu_guide).slice(0, 70));
+    ok('celle d’un tiers, non : la ligne disparaît',
+       !String(r.wp_rendu_tiers).includes('exemple-tiers'),
+       String(r.wp_rendu_tiers).slice(0, 70));
+
+    ok('source débranchée, plus aucune image distante ne passe',
+       r.wp_debranche_img === false);
+    ok('et plus aucun appel ne part',
+       r.wp_debranche_actif === false
+       && Array.isArray(r.wp_debranche_liste) && r.wp_debranche_liste.length === 0);
+
+    ok('une date de WordPress est ramenée au format de la maison',
+       r.wp_date === '2026-09-22T09:00:00Z', String(r.wp_date));
+    ok('une date absente ne devient pas 1970',
+       r.wp_date_vide === '', JSON.stringify(r.wp_date_vide));
   } finally {
     rmSync(dossier, { recursive: true, force: true });
   }

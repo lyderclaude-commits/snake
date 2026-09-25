@@ -20,7 +20,11 @@
 .wk-in{max-width:1200px;margin:0 auto;height:68px;display:flex;align-items:center;
   justify-content:space-between;gap:18px}
 
-.wk-marque{flex:none;display:flex;align-items:center;text-decoration:none}
+/* Le logo est le lien de retour à l'accueil, et le premier qu'on tente
+   quand on s'est perdu. Mesuré à 30 px de haut, soit la hauteur de son
+   image : on lui ajoute de quoi être visé sans le faire grandir. */
+.wk-marque{flex:none;display:flex;align-items:center;text-decoration:none;
+  padding:5px 0}
 .wk-marque img{height:30px;width:auto;display:block}
 .wk-marque-texte{font-weight:800;font-size:1.05rem;letter-spacing:-.03em;color:#0F172A}
 
@@ -125,7 +129,14 @@
   .wk-burger{display:block}
   .wk-b-out{display:none}
   .wk-droite{gap:6px}
-  .wk-b-pri{padding:7px 12px;font-size:12px}
+
+  /* Le bouton et la pastille du compte restent VISABLES AU DOIGT.
+     Mesuré : à 7px/12px ils faisaient 30 px de haut — moins que la
+     pulpe d'un pouce, et le seul bouton d'action de la barre. On
+     descend la taille du texte, pas la surface à viser. */
+  .wk-b-pri{padding:9px 13px;font-size:13px;min-height:38px}
+  .wk-compte>summary{padding:8px 9px;min-height:38px}
+  .wk-compte.wk-sien>summary{padding:4px 8px 4px 4px}
 
   /* Le volet déroule SOUS la barre, pleine largeur : un menu de 7 entrées
      en colonne ne tient pas dans une bulle de 248 px. */
@@ -138,7 +149,9 @@
 
 @media (max-width:520px){
   .wk-tete{padding:0 10px}
-  .wk-b-pri{padding:6px 10px;font-size:11.5px}
+  /* Plus étroit, mais pas plus petit : c'est le libellé qui se resserre,
+     la cible garde ses 38 px. */
+  .wk-b-pri{padding:9px 11px;font-size:12.5px}
 }
 
 @media (prefers-reduced-motion:reduce){

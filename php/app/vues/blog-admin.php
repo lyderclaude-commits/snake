@@ -98,6 +98,58 @@ $etats = [
     </div>
   <?php endif; ?>
 
+  <?php if ($equipe): ?>
+    <?php
+    /**
+     * La source du guide, et l'état de la fusion.
+     *
+     * Le blog public mêle les articles d'ici à ceux du WordPress de
+     * wakabileguide.com, triés par date. Le lecteur ne voit qu'un blog ;
+     * la rédaction, elle, a besoin de savoir d'où vient l'autre moitié et
+     * de pouvoir la débrancher — sinon le jour de la panne, personne ne
+     * sait quoi regarder.
+     */
+    $_ok = $wp_etat !== null && $wp_etat['total'] > 0;
+    ?>
+    <div class="carte" style="margin-top:16px">
+      <h3 style="margin:0 0 6px">Les articles du guide</h3>
+      <p class="aide" style="margin:0 0 14px">Le blog public montre ces articles-là et les vôtres
+      dans une seule liste, du plus récent au plus ancien. Ils sont lus depuis le WordPress du
+      guide et gardés en mémoire dix minutes, donc une correction là-bas met au plus dix minutes
+      à paraître ici.</p>
+
+      <?php if ($wp_etat === null): ?>
+        <p class="msg" style="margin:0 0 14px">Source débranchée : le blog ne montre que vos articles.</p>
+      <?php elseif ($_ok): ?>
+        <p class="msg ok" style="margin:0 0 14px" role="status">
+          <strong><?= (int) $wp_etat['total'] ?> article<?= $wp_etat['total'] > 1 ? 's' : '' ?></strong>
+          repris du guide<?= $wp_etat['frais'] ? '' : ', d’après la dernière lecture réussie' ?>.
+        </p>
+      <?php else: ?>
+        <p class="msg err" style="margin:0 0 14px" role="alert">
+          <strong>Le guide ne répond pas.</strong> Le blog reste en ligne avec vos articles seuls.
+          Vérifiez l’adresse ci-dessous, ou laissez le champ vide pour débrancher la source.
+        </p>
+      <?php endif; ?>
+
+      <form method="post" action="<?= e(url('?p=blog-admin')) ?>">
+        <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+        <div class="champ">
+          <label for="wp_racine">Adresse de l’API WordPress</label>
+          <input type="url" id="wp_racine" name="wp_racine" value="<?= e((string) $wp_racine) ?>"
+                 placeholder="<?= e($wp_defaut) ?>" inputmode="url" spellcheck="false"
+                 autocapitalize="off" autocomplete="off">
+          <p class="aide">Par défaut&nbsp;: <code><?= e($wp_defaut) ?></code>.
+          Videz le champ pour ne plus rien demander au guide.</p>
+        </div>
+        <div class="rangee" style="gap:10px;flex-wrap:wrap">
+          <button class="bouton" type="submit">Enregistrer</button>
+          <a class="bouton fant" href="<?= e(url('?p=blog')) ?>">Voir le blog</a>
+        </div>
+      </form>
+    </div>
+  <?php endif; ?>
+
   <?php if (!$equipe): ?>
     <div class="carte" style="margin-top:16px">
       <h3 style="margin:0 0 8px">Comment ça se passe</h3>

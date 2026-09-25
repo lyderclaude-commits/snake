@@ -32,7 +32,7 @@
         <p class="subhead" style="margin:14px auto;text-align:center;">Wakabi vous connecte directement avec des milliers de clients prêts à découvrir votre établissement. Zéro commission sur vos ventes.</p>
       </div>
       <div class="why-grid fade-up">
-        <div class="why-card"><div class="why-icon"><?= icone_guide('visibilite', 32) ?></div><div class="why-title">Visibilité maximale</div><div class="why-desc">Votre établissement présenté à tous les utilisateurs dans votre zone. Profil complet, photos, horaires — tout ce dont vos clients ont besoin.</div><div class="why-metric">+68% <span>de visibilité moyenne</span></div></div>
+        <div class="why-card"><div class="why-icon"><?= icone_guide('visibilite', 32) ?></div><div class="why-title">Visibilité maximale</div><div class="why-desc">Votre établissement présenté à tous les utilisateurs dans votre zone. Profil complet, photos, horaires : tout ce dont vos clients ont besoin.</div><div class="why-metric">+68% <span>de visibilité moyenne</span></div></div>
         <div class="why-card"><div class="why-icon"><?= icone_guide('pourcentage', 32) ?></div><div class="why-title">0% de commission</div><div class="why-desc">Contrairement aux autres plateformes, Wakabi ne prend aucune commission sur vos ventes. Abonnement fixe, revenus 100% conservés.</div><div class="why-metric">100% <span>des revenus conservés</span></div></div>
         <div class="why-card"><div class="why-icon"><?= icone_guide('analyse', 32) ?></div><div class="why-title">Analytics en temps réel</div><div class="why-desc">Statistiques : vues du profil, clics, scans de Qr Code, avis clients. Optimisez avec des données concrètes.</div><div class="why-metric">Temps réel <span>données & insights</span></div></div>
       </div>
@@ -51,11 +51,11 @@
             <div class="pf-item"><span class="pf-check">✓</span>Profil référencé dans l'annuaire</div>
             <div class="pf-item"><span class="pf-check">✓</span>Informations de base</div>
             <div class="pf-item"><span class="pf-check">✓</span>Réception d'avis clients</div>
-            <div class="pf-item pf-dim"><span class="pf-check">—</span>Galerie photos complète</div>
-            <div class="pf-item pf-dim"><span class="pf-check">—</span>Mise en avant résultats</div>
-            <div class="pf-item pf-dim"><span class="pf-check">—</span>Intégration Carte Wakabi</div>
+            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Galerie photos complète</div>
+            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Mise en avant résultats</div>
+            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Intégration Carte Wakabi</div>
           </div>
-          <button class="btn btn-outline" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Commencer gratuitement</button>
+          <a class="btn btn-outline" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Commencer gratuitement</a>
         </div>
         <div class="pricing-card featured">
           <div class="featured-label">🤍 Le plus populaire</div>
@@ -70,7 +70,7 @@
             <div class="pf-item"><span class="pf-check">✓</span>Mise en avant dans les résultats</div>
             <div class="pf-item"><span class="pf-check">✓</span>Notifications push audience</div>
           </div>
-          <button class="btn btn-white" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Devenir partenaire Pro</button>
+          <a class="btn btn-white" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Devenir partenaire Pro</a>
         </div>
         <div class="pricing-card">
           <div class="pricing-tier">Enterprise</div><div class="pricing-name">Premium</div>
@@ -86,7 +86,7 @@
             <div class="pf-item"><span class="pf-check">✓</span>Campagnes personnalisées</div>
             <div class="pf-item"><span class="pf-check">✓</span>Account manager dédié</div>
           </div>
-          <button class="btn btn-outline" style="width:100%;justify-content:center;border-color:var(--primary);color:var(--primary);" href="<?= e(url('?p=contact')) ?>">Nous contacter</button>
+          <a class="btn btn-outline" style="width:100%;justify-content:center;border-color:var(--primary);color:var(--primary);" href="<?= e(url('?p=contact')) ?>">Nous contacter</a>
         </div>
       </div>
     </div>
@@ -110,7 +110,7 @@
   <!-- Testimonials partenaires -->
   <div class="testimonial-band">
     <div class="container">
-      <div style="text-align:center;margin-bottom:44px;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.4);font-weight:700;margin-bottom:12px;">Ce que disent nos partenaires</p><h2 style="font-family:var(--font-display);font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;color:#fff;letter-spacing:-0.03em;">Ils nous font confiance</h2></div>
+      <div style="text-align:center;margin-bottom:44px;"><p style="font-size:13px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.55);font-weight:700;margin-bottom:12px;">Ce que disent nos partenaires</p><h2 style="font-family:var(--font-display);font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;color:#fff;letter-spacing:-0.03em;">Ils nous font confiance</h2></div>
       <div class="partner-testimonials">
         <div class="pt-card"><p class="pt-quote">"Depuis que nous sommes sur Wakabi, notre fréquentation le week-end a augmenté de 40%. Les clients viennent en citant l'app. C'est un canal marketing qui fonctionne vraiment."</p><div class="pt-name">Kofi Mensah</div><div class="pt-role">Gérant, Le Grill de Lomé</div></div>
         <div class="pt-card"><p class="pt-quote">"Le rapport qualité-prix est imbattable. Pour 15 000 XOF par mois, j'ai une visibilité que je n'aurais jamais pu acheter sur les réseaux sociaux seul."</p><div class="pt-name">Aïcha Traoré</div><div class="pt-role">Propriétaire, Boutique Mode Abidjan</div></div>

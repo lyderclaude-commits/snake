@@ -64,6 +64,105 @@ function ouvrirPush(port: number): { clePublique: string; auth: string; fermer: 
 }
 
 /**
+ * Un faux WordPress, pour éprouver le pont du blog fusionné.
+ *
+ * Le vrai vit chez le guide et n'est pas joignable d'une machine de
+ * recette. Ce qui compte n'est pas de l'appeler LUI : c'est que la
+ * traduction du HTML de WordPress vers le texte de la maison soit juste,
+ * que les images d'un tiers tombent, qu'un `javascript:` ne devienne
+ * jamais un lien, et que le blog survive à une panne de la source. Tout
+ * cela se prouve contre un serveur qu'on tient — et qu'on peut arrêter.
+ */
+function ouvrirWordpress(port: number): { fermer: () => void; arreter: () => void } {
+  let debout = true;
+  const hote = `http://127.0.0.1:${port}`;
+
+  /* Un article qui porte TOUT ce qu'on veut voir traduit : titres,
+     liste, citation, figure légendée, lien sortant — et deux pièges. */
+  const corps = [
+    '<p>Trois cents personnes à la Villa Karo, un vendredi de mai. Voici',
+    '<strong>exactement</strong>',
+    'comment nous avons rempli la salle.</p>',
+    "<h2>Le badge avant l'affiche</h2>",
+    '<p>Un invité qui fabrique son badge partage sa propre photo.</p>',
+    '<ul><li>Le décor, publié le lundi</li><li>Le QR à l’entrée</li></ul>',
+    '<blockquote>On a su qui venait avant d’ouvrir les portes.</blockquote>',
+    `<figure><img src="${hote}/wp-content/uploads/villa.png" alt="La salle pleine"/>`,
+    '<figcaption>La Villa Karo, 21 h.</figcaption></figure>',
+    '<p>Tout est raconté <a href="https://wakabileguide.com/villa-karo">sur le guide</a>.</p>',
+    '<p><a href="javascript:alert(1)">ne doit pas devenir un lien</a></p>',
+    "<script>window.PIRATE = 1</scr" + "ipt>",
+  ].join('\n');
+
+  const posts = [
+    {
+      id: 101, slug: 'villa-karo-trois-cents',
+      date_gmt: '2026-09-22T09:00:00', modified_gmt: '2026-09-23T10:00:00',
+      link: 'https://wakabileguide.com/blog/villa-karo-trois-cents',
+      title: { rendered: 'Trois cents personnes &#224; la Villa Karo' },
+      excerpt: { rendered: '<p>Ce qui a march&#233;, et ce qui n&rsquo;a pas march&#233;.</p>' },
+      content: { rendered: corps },
+      _embedded: {
+        'wp:featuredmedia': [{ source_url: `${hote}/wp-content/uploads/couverture.png` }],
+        'wp:term': [[{ name: 'Retours d’expérience' }]],
+        author: [{ name: 'Kossi Adjo' }],
+      },
+    },
+    {
+      id: 102, slug: 'cotonou-marche-de-nuit',
+      date_gmt: '2026-09-10T08:00:00', modified_gmt: '2026-09-10T08:00:00',
+      link: 'https://wakabileguide.com/blog/cotonou-marche-de-nuit',
+      title: { rendered: 'Cotonou&nbsp;: le march&#233; de nuit' },
+      excerpt: { rendered: '<p>Deux mille passages en quatre heures.</p>' },
+      /* L'image vient d'AILLEURS : elle ne doit pas être rendue. */
+      content: { rendered: '<p>Un marché, deux mille passages.</p>'
+        + '<figure><img src="https://exemple-tiers.net/pirate.png" alt="ailleurs"/></figure>' },
+      _embedded: { 'wp:term': [[{ name: 'Villes' }]], author: [{ name: 'Aïcha B.' }] },
+    },
+    {
+      id: 103, slug: 'abidjan-ouverture',
+      date_gmt: '2025-12-01T08:00:00', modified_gmt: '2025-12-01T08:00:00',
+      link: 'https://wakabileguide.com/blog/abidjan-ouverture',
+      title: { rendered: 'Abidjan ouvre' }, excerpt: { rendered: '' },
+      content: { rendered: '<p>La troisième ville du guide.</p>' },
+      _embedded: { 'wp:term': [[{ name: 'Villes' }]], author: [{ name: 'La rédaction' }] },
+    },
+  ];
+
+  const serveur = createServeurHttp((req, res) => {
+    const u = new URL(req.url ?? '/', hote);
+    if (!debout) { res.writeHead(503); res.end('{"code":"down"}'); return; }
+    if (u.pathname.startsWith('/wp-content/')) {
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      res.end(Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAGklEQVR42mP8z8BQz0AEYBxVSF+FAAEGAAoDA/9/1Z0aAAAAAElFTkSuQmCC',
+        'base64'));
+      return;
+    }
+    let liste = posts;
+    const cherche = u.searchParams.get('search') ?? '';
+    if (cherche) {
+      liste = liste.filter((x) => (x.title.rendered + x.content.rendered)
+        .toLowerCase().includes(cherche.toLowerCase()));
+    }
+    const slug = u.searchParams.get('slug') ?? '';
+    if (slug) liste = liste.filter((x) => x.slug === slug);
+
+    const par = Math.max(1, Number(u.searchParams.get('per_page') ?? 10));
+    const page = Math.max(1, Number(u.searchParams.get('page') ?? 1));
+    const tranche = liste.slice((page - 1) * par, page * par);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'X-WP-Total': String(liste.length),
+      'X-WP-TotalPages': String(Math.max(1, Math.ceil(liste.length / par))),
+    });
+    res.end(JSON.stringify(tranche));
+  });
+  serveur.listen(port, '127.0.0.1');
+  return { fermer: () => serveur.close(), arreter: () => { debout = false; } };
+}
+
+/**
  * Le code à six chiffres, calculé comme le ferait l'application du
  * téléphone — et non par le code qu'on éprouve.
  *
@@ -5996,6 +6095,12 @@ const run = async () => {
                   'diffusion', 'canaux', 'liens', 'regie', 'regie-ecrire', 'regie-carnet',
                   'blog-admin', 'blog-relecture', 'api-doc', 'scan', 'nouveau',
                   'facturation', 'reglages-facturation', 'rapports',
+                  /* Les huit pages venues du guide : elles arrivent d'un autre
+                     site, avec ses habitudes typographiques, et c'est
+                     exactement pour ça qu'elles doivent passer sous la même
+                     règle que le reste de la maison. */
+                  'application', 'boost-push', 'boost-regie', 'boost-liens',
+                  'partenaires', 'villes', 'a-propos', 'contact',
                   'sondage&j=PAS-UN-JETON',
                   ...(slugTypo
                     ? [`segments&decor=${encodeURIComponent(slugTypo)}`,
@@ -7158,6 +7263,208 @@ const run = async () => {
   ok('et ses étapes sont ouvertes d’emblée',
      !(await pS2.locator('#onglet-campagne').isDisabled()));
   await ctxStudio2.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 54. Le blog fusionné : les articles du guide ━━');
+
+  /**
+   * Le blog du guide vivait dans un appel JavaScript : la page arrivait
+   * vide, un script allait chercher WordPress, puis fabriquait les cartes.
+   * Trois conséquences qu'on éprouve ici, et qui sont tout l'objet de la
+   * fusion : le serveur rend désormais le texte (donc un moteur le lit),
+   * les deux sources se rangent dans UNE liste triée par date, et le blog
+   * tient debout quand WordPress ne répond plus.
+   *
+   * Le HTML de WordPress n'est JAMAIS recopié tel quel — c'est la règle
+   * de `texte.php`, et c'est la vérification la plus importante de cette
+   * section : un compte d'auteur compromis chez le guide ne doit pas
+   * pouvoir poser un script sur toutes les pages de Boost.
+   */
+  const WP_PORT = 3933;
+  const wp = ouvrirWordpress(WP_PORT);
+  const RACINE_WP = `http://127.0.0.1:${WP_PORT}/wp-json/wp/v2`;
+
+  const pWp = await browser.newPage();
+  surveiller(pWp);
+  await connexion(pWp, ADMIN.email, ADMIN.mdp);
+
+  /* --- brancher la source depuis l'écran, comme le ferait la rédaction --- */
+  const brancher = async (adresse: string) => {
+    await pWp.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+    await pWp.fill('#wp_racine', adresse);
+    await pWp.locator('form[action*="blog-admin"] button[type=submit]').first().click();
+    await pWp.waitForLoadState('domcontentloaded');
+  };
+
+  await brancher(RACINE_WP);
+  /* Le compte est lu DANS la carte de la source : le bandeau vert du haut
+     est le message d'enregistrement, qui dirait la même chose même si
+     WordPress ne répondait pas. */
+  const carteSource = await pWp.locator('.carte', { hasText: 'Les articles du guide' })
+    .first().textContent() ?? '';
+  ok('la rédaction branche la source du guide depuis son écran',
+     /\b3 articles\b/.test(carteSource), carteSource.replace(/\s+/g, ' ').slice(0, 90));
+
+  /* --- la liste : une seule, triée par date --- */
+  const pBlog = await browser.newPage();
+  surveiller(pBlog);
+  await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
+  ok('un article du guide paraît dans le blog de Boost',
+     await pBlog.locator('a[href*="p=blog&g=villa-karo-trois-cents"]').first().isVisible());
+  ok('son titre arrive décodé, pas en entités HTML',
+     (await pBlog.locator('.vignette.article b').first().textContent() ?? '')
+       .includes('Trois cents personnes à la Villa Karo'));
+
+  /**
+   * La recherche interroge LES DEUX sources.
+   *
+   * Sans le `search=` passé à WordPress, une recherche n'aurait fouillé
+   * que la moitié du blog, en silence : le lecteur aurait conclu que
+   * l'article n'existe pas.
+   */
+  ok('la recherche du blog atteint aussi le guide',
+     (await pBlog.locator('.vignette.article').count()) === 1,
+     `${await pBlog.locator('.vignette.article').count()} carte(s)`);
+
+  /* --- l'article, et la traduction du HTML --- */
+  await pBlog.goto(`${BASE}/index.php?p=blog&g=villa-karo-trois-cents`,
+                   { waitUntil: 'domcontentloaded' });
+  const corpsArt = await pBlog.locator('.corps-article').innerHTML();
+  ok('le corps est rendu par le serveur, mis en forme',
+     /<h3>Le badge avant/.test(corpsArt) && /<ul>/.test(corpsArt)
+     && /<blockquote>/.test(corpsArt), corpsArt.slice(0, 60));
+  ok('la figure du guide garde sa légende',
+     /<figcaption>La Villa Karo, 21 h\.<\/figcaption>/.test(corpsArt));
+  ok('l’image hébergée par le guide est rendue',
+     new RegExp(`<img src="http://127\\.0\\.0\\.1:${WP_PORT}/wp-content`).test(corpsArt));
+  ok('le lien sortant porte noopener et nofollow',
+     /rel="noopener noreferrer nofollow"/.test(corpsArt));
+
+  /**
+   * Les deux pièges. Ils valent le reste de la section à eux seuls :
+   * ce sont les deux façons dont un WordPress compromis contaminerait
+   * toutes les pages du site fusionné.
+   */
+  ok('le <script> de WordPress ne traverse pas',
+     !/PIRATE/.test(await pBlog.content()));
+  ok('aucun script n’a pu s’exécuter',
+     await pBlog.evaluate(() => (window as unknown as { PIRATE?: number }).PIRATE === undefined));
+  ok('un href javascript: redevient du texte',
+     !/javascript:/i.test(corpsArt) && /ne doit pas devenir un lien/.test(corpsArt));
+
+  await pBlog.goto(`${BASE}/index.php?p=blog&g=cotonou-marche-de-nuit`,
+                   { waitUntil: 'domcontentloaded' });
+  ok('une image hébergée AILLEURS ne passe pas',
+     !(await pBlog.content()).includes('exemple-tiers.net'));
+
+  ok('l’adresse qui fait foi est celle de Boost, pas celle de WordPress',
+     (await pBlog.locator('link[rel=canonical]').getAttribute('href') ?? '')
+       .includes('p=blog&g=cotonou-marche-de-nuit'));
+
+  /**
+   * Le slug inconnu se demande SANS le navigateur.
+   *
+   * Ce qu'on veut savoir est le code de réponse, et une page ouverte à la
+   * main pour ça journaliserait un 404 dans la console — que la recette
+   * traiterait ensuite comme une panne, alors qu'elle vient de le
+   * provoquer.
+   */
+  const r404 = await fetch(`${BASE}/index.php?p=blog&g=jamais-publie-ici`);
+  ok('un slug inconnu rend un 404, pas une page vide',
+     r404.status === 404 && (await r404.text()).includes('introuvable'),
+     `HTTP ${r404.status}`);
+
+  /* --- le plan du site : la première indexation de ces articles --- */
+  const plan = await (await fetch(`${BASE}/index.php?p=sitemap`)).text();
+  ok('les articles du guide entrent enfin dans le plan du site',
+     plan.includes('p=blog&amp;g=villa-karo-trois-cents'));
+
+  /* --- WordPress tombe : le blog reste debout --- */
+  wp.arreter();
+  await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
+  ok('WordPress muet, le cache périmé sert quand même',
+     await pBlog.locator('a[href*="p=blog&g=villa-karo-trois-cents"]').first().isVisible());
+
+  /* --- débrancher : plus un seul appel ne part --- */
+  await brancher('');
+  await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
+  ok('source débranchée, le blog ne montre plus que les articles d’ici',
+     (await pBlog.locator('a[href*="p=blog&g="]').count()) === 0);
+
+  await pWp.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  ok('et l’écran de la rédaction le dit',
+     (await pWp.locator('.carte', { hasText: 'Les articles du guide' }).textContent() ?? '')
+       .includes('débranchée'));
+
+  wp.fermer();
+  await pWp.close();
+  await pBlog.close();
+
+  /* ================================================================== */
+  console.log('\n━━ 55. Le formulaire de contact envoie vraiment ━━');
+
+  /**
+   * Il arrivait du guide avec `onsubmit="handleContact(event)"`, fonction
+   * qui n'existait nulle part : le bouton levait une erreur JavaScript et
+   * le message n'allait nulle part. Le visiteur, lui, repartait convaincu
+   * d'avoir écrit — c'est le pire des deux mondes, et la raison pour
+   * laquelle cette section existe.
+   *
+   * Ce qu'on éprouve n'est pas l'écran : c'est qu'une NOTIFICATION arrive
+   * à l'équipe. Un « Message envoyé » affiché sans destinataire est
+   * exactement le défaut qu'on vient de réparer.
+   */
+  const pCt = await browser.newPage();
+  surveiller(pCt);
+
+  /* Ce que l'équipe voit avant l'envoi, pour compter la différence. */
+  const pEq = await browser.newPage();
+  surveiller(pEq);
+  await connexion(pEq, ADMIN.email, ADMIN.mdp);
+  const avantNotifs = async () => {
+    await pEq.goto(`${BASE}/index.php?p=notifications`, { waitUntil: 'domcontentloaded' });
+    return await pEq.locator('body').innerText();
+  };
+  const marqueCt = `maquis-${marque}`;
+
+  await pCt.goto(`${BASE}/index.php?p=contact`, { waitUntil: 'domcontentloaded' });
+  ok('le formulaire poste vers le serveur, sans script',
+     (await pCt.locator('form.contact-form').getAttribute('method') ?? '').toLowerCase() === 'post'
+     && (await pCt.locator('form.contact-form').getAttribute('onsubmit')) === null);
+
+  /* --- une adresse fautive : on le dit, et on ne perd rien --- */
+  await pCt.fill('#c-nom', 'Ama Dossou');
+  await pCt.fill('#c-email', 'pas-une-adresse');
+  await pCt.selectOption('#c-objet', 'partenaire');
+  await pCt.fill('#c-message', `Je tiens un ${marqueCt} à Bè.`);
+  /* `novalidate` par le DOM : c'est le SERVEUR qu'on éprouve, pas la
+     validation du navigateur, qui n'existe pas sur tous les téléphones. */
+  await pCt.evaluate(() => document.querySelector('form.contact-form')?.setAttribute('novalidate', ''));
+  await pCt.click('form.contact-form button[type=submit]');
+  await pCt.waitForLoadState('domcontentloaded');
+  ok('une adresse fautive est refusée par le serveur',
+     (await pCt.locator('[role=alert]').innerText()).includes('adresse e-mail'));
+  ok('et la saisie n’est pas perdue',
+     (await pCt.inputValue('#c-nom')) === 'Ama Dossou'
+     && (await pCt.inputValue('#c-message')).includes(marqueCt));
+
+  /* --- l'envoi qui marche --- */
+  await pCt.fill('#c-email', `ama-${marque}@exemple.tg`);
+  await pCt.fill('#c-ville', 'Lomé');
+  await pCt.click('form.contact-form button[type=submit]');
+  await pCt.waitForLoadState('domcontentloaded');
+  ok('le message part et la page le confirme',
+     (await pCt.locator('.form-success').first().innerText()).includes('Message envoyé'));
+  ok('la page de confirmation a SON adresse, pas le POST rejoué',
+     pCt.url().includes('p=contact&ok=1'));
+
+  const boiteEquipe = await avantNotifs();
+  ok('l’équipe reçoit vraiment le message, avec son adresse de réponse',
+     boiteEquipe.includes('Ama Dossou') && boiteEquipe.includes(`ama-${marque}@exemple.tg`));
+  ok('et le texte du message arrive avec', boiteEquipe.includes(marqueCt));
+
+  await pCt.close();
+  await pEq.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

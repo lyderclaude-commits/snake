@@ -41,6 +41,7 @@ require __DIR__ . '/app/sondage.php';
 require __DIR__ . '/app/brouillon.php';
 require __DIR__ . '/app/vitrine.php';
 require __DIR__ . '/app/icones-guide.php';
+require __DIR__ . '/app/wordpress.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
@@ -846,12 +847,21 @@ switch ($page) {
     case 'partenaires':
     case 'villes':
     case 'a-propos':
-    case 'contact':
     case 'boost-push':
     case 'boost-regie':
     case 'boost-liens':
         [$_v, $_t, $_d] = PAGES_CONTENU[$page];
         vue($_v, ['titre' => $_t . ' · ' . seo_reglage('seo_nom_site'), 'description' => $_d]);
+
+    /**
+     * Contact a son action, parce qu'il REÇOIT quelque chose.
+     *
+     * Les sept autres pages de contenu ne font que se lire ; celle-ci
+     * porte un formulaire qui écrit à l'équipe, donc un POST, un jeton et
+     * une limite de débit. Elle sort du groupe pour cela seul.
+     */
+    case 'contact':
+        require RACINE . '/app/actions/contact.php';
 
     case 'creer':
         require RACINE . '/app/actions/creer.php';

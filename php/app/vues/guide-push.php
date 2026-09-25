@@ -51,7 +51,7 @@
         <div class="why-icon"><?= icone_guide('push-notifications', 32) ?></div>
         <div class="why-title">WhatsApp</div>
         <div class="why-desc">Le canal que tout le monde ouvre. Vos messages partent par
-        l’API officielle, avec vos gabarits validés — pas depuis un téléphone qui finit
+        l’API officielle, avec vos gabarits validés, et pas depuis un téléphone qui finit
         par se faire bloquer.</div>
       </div>
       <div class="why-card">

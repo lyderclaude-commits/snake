@@ -186,8 +186,34 @@ const COLONNE_ARTICLE = 760;
 function image_article(string $url, string $legende = ''): string
 {
     $url = html_entity_decode($url, ENT_QUOTES, 'UTF-8');
-    if (!function_exists('image_reduite') || cle_image($url) === null) {
+    if (!function_exists('image_reduite')) {
         return '';
+    }
+    /**
+     * L'exception, et sa seule exception : la médiathèque du guide.
+     *
+     * Les articles repris de wakabileguide.com portent leurs images chez
+     * lui. Les rapatrier demanderait un import que personne n'a demandé,
+     * et une image manquante au milieu d'un article se voit. On les rend
+     * donc telles quelles — mais UNIQUEMENT depuis l'hôte de l'API du
+     * guide, jamais depuis une adresse quelconque : ce qu'on relâche ici,
+     * c'est la confiance en notre propre serveur, pas en le web entier.
+     *
+     * Sans vignette : le fichier n'est pas chez nous, on ne peut pas le
+     * redimensionner. `loading="lazy"` limite les dégâts sur une connexion
+     * lente, et `referrerpolicy` évite d'annoncer au guide quelle page de
+     * Boost était ouverte.
+     */
+    if (cle_image($url) === null) {
+        if (!function_exists('wp_image_permise') || !wp_image_permise($url)) {
+            return '';
+        }
+        $b = '<img src="' . e($url) . '" alt="' . e($legende) . '"'
+           . ' loading="lazy" decoding="async" referrerpolicy="no-referrer">';
+        return $legende === ''
+            ? '<figure class="image-article">' . $b . '</figure>'
+            : '<figure class="image-article">' . $b
+              . '<figcaption>' . texte_en_ligne(e($legende)) . '</figcaption></figure>';
     }
     /**
      * La largeur voulue par l'auteur décide de DEUX choses.
