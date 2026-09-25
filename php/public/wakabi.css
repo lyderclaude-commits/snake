@@ -1,151 +1,9 @@
-/* ============ la police, servie par votre serveur ============
-   Plus Jakarta Sans est auto-hébergée, pas appelée chez Google. Trois
-   raisons : elle s'affiche même si le CDN est lent ou bloqué, elle
-   n'ajoute pas un aller-retour vers un tiers sur une connexion 3G, et
-   aucune adresse IP de visiteur ne part chez un tiers.
-   `font-display: swap` : le texte s'affiche tout de suite dans la police
-   système, puis bascule — plutôt qu'un écran vide le temps du chargement. */
-
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:400;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-ext-400-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:400;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-400-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:500;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-ext-500-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:500;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-500-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:600;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-ext-600-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:600;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-600-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:700;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-ext-700-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:700;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:800;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Plus Jakarta Sans";
-  font-style:normal;
-  font-weight:800;
-  font-display:swap;
-  src:url("polices/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* ============ Bricolage Grotesque, la police des badges ============
-   Le moteur de rendu la demande pour chaque accroche — c'est la police de
-   TITRAGE du produit. Elle n'était pourtant servie nulle part : le
-   navigateur retombait en silence sur `system-ui`, et tous les badges
-   sortaient dans la police du téléphone de l'invité plutôt que dans celle
-   du décor. Un défaut qu'on ne voit pas, parce qu'il produit du texte
-   correct — simplement pas le bon. */
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:400;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-ext-400-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:400;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-400-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:700;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-ext-700-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:700;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-700-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:800;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-ext-800-normal.woff2") format("woff2");
-  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face{
-  font-family:"Bricolage Grotesque";
-  font-style:normal;
-  font-weight:800;
-  font-display:swap;
-  src:url("polices/bricolage-grotesque-latin-800-normal.woff2") format("woff2");
-  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-
-/* Charte Wakabi — valeurs réelles, extraites du site de production.
-   Seul fichier de l'application qui porte des couleurs. */
+/* ============ les polices ============
+   Elles ont DÉMÉNAGÉ dans `public/entete.css`, et c'est la fusion qui
+   l'exige : les pages venues du guide ne chargent pas cette feuille-ci.
+   Elles déclaraient donc « Plus Jakarta Sans » sans que personne ne la
+   serve, et rendaient dans la police du système. Voir le commentaire
+   là-bas. */
 
 :root{
   --primary:#2563EB; --primary-d:#1D4ED8; --primary-wash:#EFF4FE;
@@ -1833,6 +1691,31 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
    vingt fois par jour. */
 
 .bord{padding-top:26px}
+
+/* ---- le rythme vertical ----
+
+   Mesuré au navigateur : l'intertitre « LES 7 DERNIERS JOURS » touchait
+   ses cartes à dix pixels, et la rangée de cartes touchait la rangée
+   suivante à ZÉRO. Trois blocs qui parlent de trois choses différentes se
+   lisaient comme un seul.
+
+   L'espacement vit ici et non en styles écrits dans les gabarits : une
+   marge posée à la main dans une vue se perd au premier bloc qu'on
+   intercale, et c'est exactement ce qui venait d'arriver. */
+.bord > .carte,
+.bord > .grille,
+.bord > .bord-pastilles,
+.bord > .tableau{margin-bottom:24px}
+.bord > :last-child{margin-bottom:0}
+
+/* Un intertitre appartient à ce qui le SUIT : beaucoup d'air au-dessus,
+   peu en dessous. L'inverse le fait flotter entre deux blocs sans qu'on
+   sache lequel il annonce. */
+.bord > .titre-bloc,
+.bord > .bord-tete{margin:30px 0 12px}
+.bord > .bord-onglets + .titre-bloc,
+.bord > .bord-onglets + .bord-tete,
+.bord > .bord-barre + .titre-bloc{margin-top:0}
 
 /* La barre de commande : qui je suis, ce que je cherche, ce que je crée. */
 .bord-barre{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}

@@ -31,4 +31,47 @@
   Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
+# ============ ce qui décide du temps de chargement ============
+#
+# Les deux blocs qui suivent ne changent rien à ce que le produit fait ;
+# ils changent ce qu'il pèse sur la ligne. Sur une connexion de Lomé, c'est
+# la différence entre une page qui s'affiche et une page qu'on abandonne.
+#
+# Mesuré sur les fichiers de ce paquet : wakabi.css passe de 99 à 27 Ko,
+# guide.css de 80 à 16, entete.css de 21 à 5. La feuille de style est le
+# plus gros objet d'une page de décors — plus lourde que les dix-neuf
+# vignettes réunies.
+#
+# Chaque bloc est gardé par son `IfModule` : un hébergement qui n'a pas le
+# module ignore la section au lieu de rendre une erreur 500.
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+  AddOutputFilterByType DEFLATE application/json application/xml
+  AddOutputFilterByType DEFLATE image/svg+xml
+  # PAS les images ni les polices : WebP, PNG, JPEG et WOFF2 sont DÉJÀ
+  # compressés. Les repasser à gzip coûte du processeur des deux côtés et
+  # ne gagne rien — parfois, cela ajoute même quelques octets.
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # Les feuilles, les scripts et les polices portent une empreinte de
+  # version dans leur adresse (`?v=…`) : une nouvelle version est une
+  # nouvelle adresse, donc on peut garder l'ancienne pour toujours sans
+  # risquer de servir du périmé.
+  ExpiresByType text/css                "access plus 1 year"
+  ExpiresByType application/javascript  "access plus 1 year"
+  ExpiresByType font/woff2              "access plus 1 year"
+  ExpiresByType image/webp              "access plus 1 month"
+  ExpiresByType image/png               "access plus 1 month"
+  ExpiresByType image/jpeg              "access plus 1 month"
+  ExpiresByType image/svg+xml           "access plus 1 month"
+  # Le HTML, lui, ne se garde JAMAIS : c'est lui qui annonce les nouvelles
+  # adresses des autres fichiers. Mis en cache, il continuerait de désigner
+  # les anciennes, et la mise à jour n'atteindrait personne.
+  ExpiresByType text/html               "access plus 0 seconds"
+</IfModule>
+
 DirectoryIndex index.php

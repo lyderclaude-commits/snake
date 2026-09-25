@@ -97,8 +97,26 @@ $_graphe = array_values(array_filter([
 <?php if ($_index && $_graphe): ?>
 <script type="application/ld+json"><?= jsonld(['@context' => 'https://schema.org', '@graph' => $_graphe]) ?></script>
 <?php endif; ?>
-<?php $ico = logo_fichier(); ?>
-<?php if ($ico): ?><link rel="icon" href="<?= e($ico['url']) ?>" type="<?= e($ico['type']) ?>"><?php endif; ?>
+<?php
+/**
+ * Le favicon, RÉDUIT lui aussi.
+ *
+ * Il pointait sur `logo.png` : cent kilooctets téléchargés pour dessiner
+ * seize pixels de carré dans un onglet, à chaque page. Il passe par la
+ * route des vignettes, comme le logo de la barre et comme chaque décor.
+ *
+ * WebP sans repli, et c'est cohérent : toutes les images du produit sont
+ * déjà servies en WebP. Un navigateur qui ne le lit pas ne voit aucune
+ * vignette de décor — ce n'est pas le favicon qui lui manquerait d'abord.
+ */
+$ico = logo_reduit(64);
+$icoType = 'image/webp';
+if ($ico === null && ($f = logo_fichier()) !== null) {
+    $ico = $f['url'];
+    $icoType = $f['type'];
+}
+?>
+<?php if ($ico): ?><link rel="icon" href="<?= e($ico) ?>" type="<?= e($icoType) ?>" sizes="64x64"><?php endif; ?>
 <?php
 /**
  * UNE feuille par page, jamais les deux.

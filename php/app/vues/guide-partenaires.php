@@ -98,12 +98,24 @@
         <div class="tag">Questions fréquentes</div>
         <h2 class="headline">Tout ce que vous <span>voulez savoir</span></h2>
       </div>
-      <div class="faq-list fade-up" id="faqList">
-        <div class="faq-item"><div class="faq-q">Comment rejoindre la plateforme Wakabi ?<span>+</span></div><div class="faq-a">Il vous suffit de remplir le formulaire de contact en choisissant l'objet "Devenir partenaire". Notre équipe vous contacte sous 24h pour vous guider dans le processus d'inscription et la configuration de votre profil.</div></div>
-        <div class="faq-item"><div class="faq-q">Est-ce que Wakabi prend une commission sur mes ventes ?<span>+</span></div><div class="faq-a">Non, jamais. Wakabi fonctionne sur un modèle d'abonnement. Vous payez un forfait fixe et conservez 100% de vos revenus. Aucune commission, aucune surprise.</div></div>
-        <div class="faq-item"><div class="faq-q">Combien d'utilisateurs Wakabi compte actuellement ?<span>+</span></div><div class="faq-a">Wakabi compte plus de 10 000 utilisateurs actifs, avec une croissance mensuelle de 15 à 20%. L'expansion vers Cotonou est en cours, ce qui augmentera significativement la base d'utilisateurs.</div></div>
-        <div class="faq-item"><div class="faq-q">Puis-je modifier mes informations à tout moment ?<span>+</span></div><div class="faq-a">Oui, absolument. Les partenaires Pro et Premium ont accès à un dashboard complet pour modifier leurs informations, photos, horaires et offres en temps réel, directement depuis leur interface partenaire.</div></div>
-        <div class="faq-item"><div class="faq-q">Comment fonctionne le Qr Code pour mon établissement ?<span>+</span></div><div class="faq-a">Vous recevez un QR Code unique à afficher dans votre établissement. Quand un client scanne votre QR code avec l'app Wakabi, il reçoit des points et bénéficie de vos offres actives. Vous voyez toutes les statistiques dans votre dashboard.</div></div>
+      <?php
+      /**
+       * Les questions s'ouvrent SANS script, parce qu'elles ne s'ouvraient
+       * pas du tout.
+       *
+       * Le site d'origine posait un écouteur sur ces `<div>` ; il n'est pas
+       * venu avec le contenu, et cliquer ne faisait rien. Un `<details>`
+       * s'ouvre au clic ET au clavier, s'annonce correctement à un lecteur
+       * d'écran, et ne dépend d'aucun fichier qui pourrait ne pas charger —
+       * exactement la même raison qui a fait des menus des `<details>`.
+       */
+      ?>
+      <div class="faq-list fade-up">
+        <details class="faq-item"><summary class="faq-q">Comment rejoindre la plateforme Wakabi ?<span>+</span></summary><div class="faq-a">Il vous suffit de remplir le formulaire de contact en choisissant l'objet "Devenir partenaire". Notre équipe vous contacte sous 24h pour vous guider dans le processus d'inscription et la configuration de votre profil.</div></details>
+        <details class="faq-item"><summary class="faq-q">Est-ce que Wakabi prend une commission sur mes ventes ?<span>+</span></summary><div class="faq-a">Non, jamais. Wakabi fonctionne sur un modèle d'abonnement. Vous payez un forfait fixe et conservez 100% de vos revenus. Aucune commission, aucune surprise.</div></details>
+        <details class="faq-item"><summary class="faq-q">Combien d'utilisateurs Wakabi compte actuellement ?<span>+</span></summary><div class="faq-a">Wakabi compte plus de 10 000 utilisateurs actifs, avec une croissance mensuelle de 15 à 20%. L'expansion vers Cotonou est en cours, ce qui augmentera significativement la base d'utilisateurs.</div></details>
+        <details class="faq-item"><summary class="faq-q">Puis-je modifier mes informations à tout moment ?<span>+</span></summary><div class="faq-a">Oui, absolument. Les partenaires Pro et Premium ont accès à un dashboard complet pour modifier leurs informations, photos, horaires et offres en temps réel, directement depuis leur interface partenaire.</div></details>
+        <details class="faq-item"><summary class="faq-q">Comment fonctionne le Qr Code pour mon établissement ?<span>+</span></summary><div class="faq-a">Vous recevez un QR Code unique à afficher dans votre établissement. Quand un client scanne votre QR code avec l'app Wakabi, il reçoit des points et bénéficie de vos offres actives. Vous voyez toutes les statistiques dans votre dashboard.</div></details>
       </div>
     </div>
   </section>

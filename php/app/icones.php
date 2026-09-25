@@ -77,12 +77,72 @@ function logo_fichier(): ?array
     return null;
 }
 
+/**
+ * La plus grande hauteur à laquelle le logo s'affiche, et sa réserve.
+ *
+ * 34 px dans la barre d'administration, 30 px dans celle de la vitrine et
+ * dans le pied, 26 px dans le pied court. On sert 128 px de large : quatre
+ * fois la hauteur la plus grande, donc net sur un écran à quatre points
+ * par pixel, et une dizaine de kilooctets au lieu de cent.
+ */
+const LOGO_LARGEUR = 128;
+
+/**
+ * Le logo, RÉDUIT avant d'être servi.
+ *
+ * Le fichier officiel fait 896 × 943 pour cent kilooctets, et il partait
+ * tel quel dans une barre où il s'affiche haut de trente pixels — puis une
+ * seconde fois comme favicon, pour seize. Deux cents kilooctets par visite,
+ * avant le moindre décor, sur des connexions où le mégaoctet se compte.
+ *
+ * Il passe donc par la même route que les vignettes de décors : WebP, mis
+ * en cache pour de bon, fabriqué une seule fois. Remplacer `logo.png`
+ * suffit toujours à changer le logo partout — la date du fichier entre dans
+ * la clé du cache, donc la nouvelle version part dès le premier affichage.
+ *
+ * Les dimensions sont écrites dans la balise : sans elles, la barre se
+ * redessine à l'arrivée de l'image et la page saute sous les yeux.
+ */
 function logo_wakabi(string $classe = 'logo'): string
 {
     $f = logo_fichier();
-    return $f === null
-        ? '<span class="' . e($classe) . '-texte">WAKABI</span>'
-        : '<img class="' . e($classe) . '" src="' . e($f['url']) . '" alt="Wakabi Boost">';
+    if ($f === null) {
+        return '<span class="' . e($classe) . '-texte">WAKABI</span>';
+    }
+    $im = function_exists('image_reduite')
+        ? image_reduite($f['url'], LOGO_LARGEUR)
+        : ['src' => $f['url'], 'largeur' => 0, 'hauteur' => 0];
+
+    /* On vise une largeur PRÉCISE plutôt que l'échelle des vignettes : la
+       plus petite de celle-ci fait 320 px, soit dix fois ce qu'il faut. */
+    $petit = logo_reduit(LOGO_LARGEUR);
+    $src = $petit ?? $im['src'];
+    $dim = '';
+    if ($im['largeur'] > 0 && $im['hauteur'] > 0) {
+        $h = (int) round(LOGO_LARGEUR * $im['hauteur'] / $im['largeur']);
+        $dim = ' width="' . LOGO_LARGEUR . '" height="' . $h . '"';
+    }
+    return '<img class="' . e($classe) . '" src="' . e($src) . '"' . $dim
+         . ' alt="Wakabi Boost">';
+}
+
+/**
+ * L'adresse de la vignette du logo à une largeur donnée, ou `null`.
+ *
+ * `null` quand WebP manque sur l'hébergement : l'appelant retombe alors sur
+ * le fichier d'origine, qui est lourd mais qui s'affiche. Une barre sans
+ * logo serait un défaut plus visible qu'une barre lente.
+ */
+function logo_reduit(int $largeur): ?string
+{
+    $f = logo_fichier();
+    if ($f === null || !function_exists('cle_image') || !webp_disponible()) {
+        return null;
+    }
+    $cle = cle_image($f['url']);
+    return $cle === null
+        ? null
+        : url('?p=vignette&f=' . rawurlencode($cle) . '&l=' . max(16, $largeur));
 }
 
 /**

@@ -523,9 +523,71 @@ const run = async () => {
      (await p.evaluate(() => [...document.querySelectorAll('link[href]')]
         .filter((l) => (l as HTMLLinkElement).href.includes('fonts.'))
         .length)) === 0);
+
+  /**
+   * ET SUR LES PAGES VENUES DU GUIDE, qui chargent l'AUTRE feuille.
+   *
+   * C'est le défaut que ce contrôle vient fermer : les `@font-face`
+   * vivaient dans `wakabi.css`, que ces huit pages ne chargent pas. Elles
+   * demandaient donc « Plus Jakarta Sans » à un navigateur à qui personne
+   * ne l'avait donnée, et rendaient dans la police du système — sans une
+   * erreur, sans un signe, pour qui ne connaît pas le dessin attendu.
+   *
+   * On mesure la LARGEUR D'UN MOT avec la pile demandée puis avec le repli
+   * système : deux nombres égaux au dixième de pixel, c'est que la police
+   * n'est pas servie. Lire `font-family` ne l'aurait jamais dit.
+   */
+  const replis: string[] = [];
+  for (const g of ['application', 'boost-push', 'boost-regie', 'boost-liens',
+                   'partenaires', 'villes', 'a-propos', 'contact']) {
+    await p.goto(`${BASE}/index.php?p=${g}`, { waitUntil: 'domcontentloaded' });
+    await p.evaluate(() => (document as unknown as { fonts: FontFaceSet }).fonts.ready);
+    await p.waitForTimeout(150);
+    const servie = await p.evaluate(() => {
+      const d = document as unknown as { fonts: FontFaceSet & { check(f: string): boolean } };
+      const c = document.createElement('canvas').getContext('2d')!;
+      c.font = '700 32px "Plus Jakarta Sans"';
+      const avec = c.measureText('Wakabi Boost 2026').width;
+      c.font = '700 32px sans-serif';
+      return d.fonts.check('700 16px "Plus Jakarta Sans"')
+        && Math.abs(avec - c.measureText('Wakabi Boost 2026').width) > 1;
+    });
+    if (!servie) replis.push(g);
+  }
+  ok('les huit pages du guide servent la MÊME police, et non celle du système',
+     replis.length === 0, replis.join(', ') || '8 pages mesurées');
+  await p.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   ok('les canaux portent de vraies icônes',
      (await p.locator('.canal .ico svg').count()) === 6,
      `${await p.locator('.canal .ico svg').count()} icônes dessinées`);
+
+  /**
+   * LE LOGO NE PÈSE PLUS CENT KILOOCTETS.
+   *
+   * Le fichier officiel fait 896 × 943 pour cent kilooctets, et il partait
+   * tel quel : une fois dans la barre, où il s'affiche haut de trente
+   * pixels, et une seconde fois comme favicon, pour seize. Deux cents
+   * kilooctets par visite avant le moindre décor — sur une connexion de
+   * Lomé, c'est la page qu'on abandonne.
+   *
+   * On pèse ce qui part sur la ligne, pas ce qu'annonce le balisage : la
+   * même adresse peut servir cent kilooctets ou deux mille.
+   */
+  const poidsLogo = async (sel: string): Promise<number> => {
+    const u = await p.locator(sel).first().getAttribute(sel.startsWith('link') ? 'href' : 'src');
+    if (!u) return -1;
+    const r = await p.request.get(u);
+    return r.ok() ? (await r.body()).length : -1;
+  };
+  const koBarre = await poidsLogo('header img');
+  const koIcone = await poidsLogo('link[rel=icon]');
+  ok('le logo de la barre tient sous 15 Ko',
+     koBarre > 0 && koBarre < 15_000, `${Math.round(koBarre / 1024)} Ko`);
+  ok('le favicon aussi, sous 5 Ko',
+     koIcone > 0 && koIcone < 5_000, `${Math.round(koIcone / 1024)} Ko`);
+  ok('et il annonce ses dimensions, pour que la barre ne saute pas',
+     (await p.locator('header img').first().getAttribute('width')) !== null
+     && (await p.locator('header img').first().getAttribute('height')) !== null);
 
   /**
    * Trois cartes mènent quelque part, et chacune au bon endroit.
@@ -1420,9 +1482,14 @@ const run = async () => {
   await t.waitForTimeout(250);
   ok('le bouton le referme', !(await t.locator('.wk-burger .wk-volet').isVisible()));
 
+  /* Le logo passe par la route des vignettes depuis qu'il y pèse cinq
+     kilooctets au lieu de cent : ce qu'on éprouve est qu'une IMAGE du logo
+     est là, et non le mot « WAKABI » de secours. */
   ok('le logo remplace le mot WAKABI dans la barre',
      await t.evaluate(`(() => { const i = document.querySelector('.wk-tete .wk-marque img.logo');
-                                return !!i && /logo\.(svg|png)$/.test(i.getAttribute('src') || ''); })()`));
+                                const src = i && i.getAttribute('src') || '';
+                                return !!i && /logo\.(svg|png)/.test(src)
+                                  && !document.querySelector('.wk-tete .logo-texte'); })()`));
   ok('les témoignages portent un portrait, pas des initiales',
      await t.evaluate(`(() => document.querySelectorAll('.avis .qui svg.avatar').length)()`) === 3);
   await tel.close();
@@ -5200,6 +5267,35 @@ const run = async () => {
   }
   ok(`les ${faconde.length} pages de la façade portent toutes le même pied`,
      sansPied.length === 0, sansPied.join(', ') || 'aucune manquante');
+
+  /**
+   * LES QUESTIONS FRÉQUENTES S'OUVRENT, ET SANS SCRIPT.
+   *
+   * Le site d'origine posait un écouteur sur des `<div>` ; il n'est pas
+   * venu avec le contenu, et cliquer ne faisait rien — le même défaut que
+   * les quatre boutons sans lien et le formulaire de contact muet. Ce sont
+   * des `<details>` : ils s'ouvrent au clic ET au clavier.
+   *
+   * On éprouve aussi que la réponse n'est pas COUPÉE : l'ancienne
+   * animation la plafonnait à deux cents pixels, ce qui ne se voyait
+   * qu'une fois les questions rouvertes.
+   */
+  await pAnon.goto(`${BASE}/index.php?p=partenaires`, { waitUntil: 'domcontentloaded' });
+  const q1 = pAnon.locator('.faq-item').first();
+  ok('une question fréquente part fermée',
+     !(await q1.locator('.faq-a').isVisible()));
+  await q1.locator('summary').click();
+  await pAnon.waitForTimeout(200);
+  ok('elle s’ouvre au clic, sans script', await q1.locator('.faq-a').isVisible());
+  const coupee = await q1.locator('.faq-a').evaluate(
+    (e) => e.scrollHeight > e.getBoundingClientRect().height + 2);
+  ok('et la réponse n’est pas coupée', !coupee);
+
+  await pAnon.locator('.faq-item').nth(1).locator('summary').focus();
+  await pAnon.keyboard.press('Enter');
+  await pAnon.waitForTimeout(200);
+  ok('elle s’ouvre aussi au clavier',
+     await pAnon.locator('.faq-item').nth(1).locator('.faq-a').isVisible());
 
   /**
    * Un article aussi : c'est la même route, et un lecteur qui vient d'en

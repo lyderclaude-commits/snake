@@ -100,10 +100,17 @@ function largeur_de_url(?string $url): int
 /**
  * Le nom que la route `?p=vignette` sait retraduire en chemin.
  *
- * Trois origines, trois préfixes : `c:` un cadre téléversé, `p:` un cadre
- * livré avec l'application, `m:` un média (couverture d'article). Un
- * préfixe plutôt qu'un chemin, parce qu'un nom de fichier venu de la
- * requête ne désigne jamais un chemin — ici pas plus qu'ailleurs.
+ * Quatre origines, quatre préfixes : `c:` un cadre téléversé, `p:` un cadre
+ * livré avec l'application, `m:` un média (couverture d'article), `l:` le
+ * logo de la marque. Un préfixe plutôt qu'un chemin, parce qu'un nom de
+ * fichier venu de la requête ne désigne jamais un chemin — ici pas plus
+ * qu'ailleurs.
+ *
+ * Le logo est arrivé en dernier, et pour une raison mesurée : le fichier
+ * officiel fait 896 × 943 pour 100 Ko, et il était servi TEL QUEL dans une
+ * barre où il s'affiche haut de trente pixels — puis une seconde fois comme
+ * favicon, pour seize pixels. Deux cents kilooctets par visite, avant le
+ * moindre décor, sur une connexion où le mégaoctet se compte.
  */
 function cle_image(?string $url): ?string
 {
@@ -120,6 +127,9 @@ function cle_image(?string $url): ?string
     if (preg_match('~public/cadres/([a-z0-9-]+\.(?:png|webp|jpg))$~i', $url, $m)) {
         return 'p:' . $m[1];
     }
+    if (preg_match('~public/(logo\.(?:png|webp|jpg))$~i', $url, $m)) {
+        return 'l:' . strtolower($m[1]);
+    }
     return null;
 }
 
@@ -135,6 +145,7 @@ function image_de_la_cle(string $cle): ?string
         'm:' => dossier_medias(),
         'c:' => dossier_cadres(),
         'p:' => RACINE . '/public/cadres',
+        'l:' => RACINE . '/public',
         default => null,
     };
     if ($dossier === null || !preg_match('/^..([0-9a-z-]+\.(?:png|webp|jpg))$/i', $cle, $m)) {
@@ -166,6 +177,10 @@ function chemin_image(?string $url): ?string
         // pour réserver la place — sinon elle saute au chargement.
         $cadre = cadrage_de_url($url);
         return $cadre ? (image_cadree($c, $cadre) ?? $c) : $c;
+    }
+    if (preg_match('~public/(logo\.(?:png|webp|jpg))$~i', $url, $m)) {
+        $c = RACINE . '/public/' . strtolower($m[1]);
+        return is_file($c) ? $c : null;
     }
     return chemin_cadre($url);
 }

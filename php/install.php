@@ -151,6 +151,7 @@ $csrf = '';
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Installation · Wakabi Boost</title>
+<link rel="stylesheet" href="public/entete.css">
 <link rel="stylesheet" href="public/wakabi.css">
 </head>
 <body>

@@ -1,4 +1,165 @@
 /* ═══════════════════════════════════════════════════════════════════
+   LES POLICES, SERVIES PAR VOTRE SERVEUR
+
+   Elles sont ici et non dans `wakabi.css` pour la raison qui a mis la
+   barre et le pied de page ici : c'est la SEULE feuille servie sous les
+   deux dessins. Déclarées là-bas, elles n'atteignaient pas les huit pages
+   venues du guide — qui demandaient « Plus Jakarta Sans » à un navigateur
+   à qui personne ne l'avait donnée, et rendaient donc dans la police du
+   système. Mesuré au navigateur : le même mot occupait exactement la même
+   largeur avec la pile demandée et avec `sans-serif`.
+
+   Auto-hébergées, pas appelées chez Google. Trois raisons : elles
+   s'affichent même si le CDN est lent ou bloqué, elles n'ajoutent pas un
+   aller-retour vers un tiers sur une connexion 3G, et aucune adresse IP de
+   visiteur ne part chez un tiers.
+
+   `font-display: swap` : le texte s'affiche tout de suite dans la police
+   système, puis bascule — plutôt qu'un écran vide le temps du chargement.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-500-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Plus Jakarta Sans";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/plus-jakarta-sans-latin-800-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============ Bricolage Grotesque, la police des badges ============
+   Le moteur de rendu la demande pour chaque accroche — c'est la police de
+   TITRAGE du produit. Elle n'était pourtant servie nulle part : le
+   navigateur retombait en silence sur `system-ui`, et tous les badges
+   sortaient dans la police du téléphone de l'invité plutôt que dans celle
+   du décor. Un défaut qu'on ne voit pas, parce qu'il produit du texte
+   correct — simplement pas le bon. */
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-400-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-700-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face{
+  font-family:"Bricolage Grotesque";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("polices/bricolage-grotesque-latin-800-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+/* Charte Wakabi — valeurs réelles, extraites du site de production.
+   Seul fichier de l'application qui porte des couleurs. */
+
+/* ═══════════════════════════════════════════════════════════════════
    Le header partagé par le guide et par Boost.
 
    C'est la seule pièce que les deux sites ont en commun, et elle est

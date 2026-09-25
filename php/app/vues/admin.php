@@ -71,7 +71,7 @@ $onglet = 'faire';
  */
 ?>
 <?php if ($reprendre): ?>
-  <div class="bord-tete" style="margin-top:22px">
+  <div class="bord-tete">
     <h2>Reprendre</h2>
     <span class="aide">ce que vous avez touché en dernier</span>
   </div>
@@ -97,7 +97,7 @@ $onglet = 'faire';
  * « Comptes / Rôles, offres, suspensions », et tient sur une ligne.
  */
 ?>
-<div class="bord-tete" style="margin-top:22px">
+<div class="bord-tete">
   <h2>Où aller</h2>
   <span class="aide">seulement ce que votre rôle ouvre</span>
 </div>

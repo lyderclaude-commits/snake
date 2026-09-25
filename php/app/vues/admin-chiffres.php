@@ -15,7 +15,7 @@ $onglet = 'chiffres';
 <div class="contenu bord">
 <?php require __DIR__ . '/partiels/bord-barre.php'; ?>
 
-<p class="aide" style="margin:0 0 20px">
+<p class="aide">
   <?= $fr($stats['publies']) ?> décors en ligne · <?= $fr($stats['comptes']) ?> comptes ·
   <?= $fr($stats['koris']) ?> Koris distribués
 </p>
@@ -45,7 +45,7 @@ $onglet = 'chiffres';
    forme autant que par leur sujet — un tableau troué se lit comme un
    tableau cassé. */
 ?>
-<div class="grille g2" style="margin:0 0 18px;align-items:start">
+<div class="grille g2" style="align-items:start">
   <div class="carte">
     <h3>La boucle, sur 30 jours</h3>
     <p class="aide" style="margin-bottom:14px">De la page vue à la personne présente dans la salle.</p>
@@ -97,7 +97,7 @@ $onglet = 'chiffres';
 </div>
 
 <!-- ---------- l'argent et le rythme ---------- -->
-<div class="grille g2" style="margin-bottom:18px;align-items:start">
+<div class="grille g2" style="align-items:start">
   <div class="carte">
     <div class="rangee" style="justify-content:space-between">
       <h3 style="margin:0">Les offres</h3>

@@ -26,7 +26,12 @@ UN SEUL SITE.
    débordements horizontaux, un plancher de lisibilité et quatre cibles
    tactiles corrigés.
 
-6. **Le tableau de bord passe en deux onglets** : « À faire » d'abord, avec la
+6. **Les pages du guide rendaient dans la police du système**, et le logo
+   pesait 200 Ko par visite. Les deux sont corrigés, et mesurés : une page de
+   décors passe de 493 à 302 Ko sur un ordinateur, de 453 à 262 sur un
+   téléphone.
+
+7. **Le tableau de bord passe en deux onglets** : « À faire » d'abord, avec la
    file de relecture nommée objet par objet, ce qu'on a touché en dernier et
    une barre de recherche qui traverse les familles ; « Les chiffres » ensuite,
    où tout l'analytique déménage sans rien perdre.
@@ -205,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **976 scénarios
-réussis** sur une base déjà peuplée, **975 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **984 scénarios
+réussis** sur une base déjà peuplée, **983 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
@@ -299,7 +304,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 976 scénarios, dans un vrai navigateur
+npm run php:e2e          # 984 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -321,12 +326,13 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 976 scénarios
+### Les 984 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
 | Vitrine | Neuf sections, l'offre de lancement, les quatre formules, les six questions, les icônes dessinées |
-| La police | Déclarée, **chargée**, réellement utilisée au rendu, et servie par votre serveur |
+| La police | Déclarée, **chargée**, réellement utilisée au rendu, et servie par votre serveur ; les **huit pages venues du guide** passent le même contrôle, en comparant la largeur d'un mot avec la pile demandée puis avec le repli système |
+| **Ce qui part sur la ligne** | Le logo de la barre tient **sous 15 Ko** et le favicon **sous 5**, là où le fichier officiel en pesait cent et partait deux fois ; et il annonce ses dimensions, pour que la barre ne saute pas à son arrivée |
 | Sur un téléphone | **La page ne glisse pas de côté** — mesuré en tentant réellement de la déplacer, pas d'après `scrollWidth` |
 | Le Studio | Le QR **visible dans l'aperçu** (mesuré sur le canevas), le jeton émis |
 | Le téléchargement | Un **vrai fichier**, au format déclaré par le gabarit, sans repli intempestif |
@@ -406,6 +412,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Confier une campagne** | L'invité la voit à part des siennes, peut l'ouvrir, **ne peut pas inviter à son tour**, et comptes, catalogue, journal et réglages lui restent fermés |
 | **Le journal, la recherche, l'entretien** | Le journal est servi à qui gère les comptes ; le blog public se cherche et dit quand il ne trouve rien ; la maintenance des images rend un bilan ; une sauvegarde s'inspecte avant d'être restaurée, et un nom mal recopié annule la restauration |
 | **Les images allégées** | Toutes les vignettes passent par le redimensionneur, proposent plusieurs tailles, annoncent leurs dimensions et se chargent en différé ; elles sont servies en **WebP**, mises en cache pour de bon ; douze décors tiennent sous 200 Ko ; quatre clés bricolées — dont `p:../../config.php` — sont refusées |
+| **Les questions fréquentes** | Une question part **fermée**, s'ouvre au clic **et au clavier**, et sa réponse n'est **pas coupée** — l'ancienne animation la plafonnait à deux cents pixels |
 | **Le contact du guide** | Le formulaire **poste vers le serveur**, sans script ; une adresse fautive est refusée **par le serveur** et la saisie n'est pas perdue ; l'envoi redirige vers sa propre adresse (une page rechargée ne renvoie pas le message), et **l'équipe le reçoit vraiment**, avec l'adresse de réponse et le texte |
 | **Le blog fusionné** | Les articles du WordPress du guide entrent dans la liste de Boost, triés par date, cherchables dans la même recherche ; leur HTML est **traduit** et non recopié — le `<script>` de WordPress ne traverse pas et n'arrive pas à s'exécuter, un `href="javascript:"` redevient du texte, une image hébergée ailleurs disparaît, celle du guide passe ; l'adresse canonique reste celle de Boost, ces articles entrent enfin dans le plan du site, et **WordPress arrêté, le cache périmé sert encore** ; la source se débranche depuis l'écran de la rédaction |
 | **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
@@ -1836,6 +1843,79 @@ quelqu'un qui vient de mettre à jour.
 
 ---
 
+## Ce qui part sur la ligne
+
+Deux défauts mesurés au navigateur, invisibles à la lecture du code.
+
+### Les pages du guide rendaient dans la police du système
+
+Les `@font-face` de Plus Jakarta Sans vivaient dans `wakabi.css`. Les huit
+pages venues du guide chargent `guide.css` — elles demandaient donc une
+police que personne ne leur servait, et retombaient en silence sur celle du
+système. Aucune erreur, aucun signe : la page paraît correcte à qui ne
+connaît pas le dessin attendu.
+
+Les déclarations vivent maintenant dans `public/entete.css`, la seule feuille
+servie **sous les deux dessins** — la même raison qui y a mis la barre et le
+pied de page. `install.php`, qui sert `wakabi.css` seul, la charge aussi.
+
+> **« Absolut Pro » n'est pas dans ce paquet.** La feuille du guide la
+> déclarait depuis `/fonts/AbsolutPro-BoldReduced.woff2`, un fichier qui
+> n'existe pas ici : le navigateur la demandait à chaque page, échouait, et
+> rendait dans la police du système. Les titres prennent donc la même famille
+> que le reste du produit — deux pages du même site qui ne partagent pas leur
+> police se lisent comme deux sites. La marche à suivre pour la rétablir est
+> écrite dans `guide.css`.
+
+La recette mesure la **largeur d'un mot** avec la pile demandée puis avec le
+repli système, sur les huit pages : deux nombres égaux, c'est que la police
+n'est pas servie. Lire `font-family` ne l'aurait jamais dit.
+
+### Le logo pesait deux cents kilooctets par visite
+
+`public/logo.png` fait 896 × 943 pour 100 Ko, et il partait **tel quel** :
+une fois dans la barre, où il s'affiche haut de trente pixels, et une
+seconde fois comme favicon, pour seize. Sur une page de décors, c'était plus
+lourd que les dix-neuf vignettes réunies.
+
+Il passe maintenant par la route des vignettes, comme chaque décor : WebP,
+mis en cache pour de bon, fabriqué une seule fois. Remplacer `logo.png`
+suffit toujours à changer le logo partout — la date du fichier entre dans la
+clé du cache.
+
+| | Avant | Après |
+|---|---|---|
+| Logo de la barre | 100 Ko | **4,7 Ko** |
+| Favicon | 100 Ko | **1,8 Ko** |
+| `?p=decors`, bureau | 493 Ko | **302 Ko** |
+| `?p=decors`, téléphone | 453 Ko | **262 Ko** |
+
+Les dimensions sont écrites dans la balise : sans elles, la barre se
+redessinait à l'arrivée de l'image et la page sautait sous les yeux.
+
+### Compression et cache, dans le `.htaccess`
+
+La feuille de style est désormais le plus gros objet d'une page. Deux blocs
+`<IfModule>` s'en chargent — un hébergement sans le module les ignore au lieu
+de rendre une erreur :
+
+- **`mod_deflate`** sur le HTML, le CSS, le JS, le XML et le SVG. Mesuré sur
+  les fichiers du paquet : `wakabi.css` **99 → 27 Ko**, `guide.css`
+  **80 → 16 Ko**, `entete.css` **21 → 5 Ko**. Ni les images ni les polices :
+  WebP, PNG et WOFF2 sont déjà compressés, les repasser à gzip ne gagne rien.
+- **`mod_expires`** : un an pour les feuilles, les scripts et les polices —
+  ils portent une empreinte de version dans leur adresse, donc une nouvelle
+  version est une nouvelle adresse. Un mois pour les images. **Zéro seconde
+  pour le HTML**, qui annonce les adresses des autres : mis en cache, il
+  continuerait de désigner les anciennes.
+
+> Ces deux blocs n'ont pas pu être **exécutés** en recette : le serveur de
+> développement de PHP ne lit pas `.htaccess`. Les tailles ci-dessus sont
+> celles des fichiers réellement compressés en gzip ; l'effet sur Apache est
+> déduit, pas mesuré.
+
+---
+
 ## Le tableau de bord — `?p=admin`
 
 Deux onglets, et le premier est celui qu'on vient chercher.
@@ -1910,6 +1990,14 @@ l'écran du tout.
 | `coordinateur` | `?p=admin` | Sans les comptes, les offres, les réglages, les sauvegardes ni le journal — les cinq écrans qui le renvoyaient d'où il venait |
 | `editeur` | `?p=partenaire` | L'espace organisateur, inchangé |
 | `scanner` | `?p=scan` | Le contrôle d'entrée, inchangé |
+
+> **Les blocs de l'onglet « Les chiffres » se touchaient.** Mesuré :
+> l'intertitre « LES 7 DERNIERS JOURS » tenait à dix pixels de ses cartes,
+> et la rangée de cartes touchait la suivante à **zéro** — trois blocs qui
+> parlent de trois choses se lisaient comme un seul. Le rythme vertical vit
+> maintenant dans la feuille, et non en marges écrites à la main dans les
+> gabarits : une marge posée dans une vue se perd au premier bloc qu'on
+> intercale, et c'est exactement ce qui était arrivé.
 
 > **Un `order` non borné renvoyait une pastille en bas de sa carte.** La règle
 > qui réordonne une ligne de file sur téléphone était écrite sur
@@ -2016,7 +2104,7 @@ l'application, qui vivent dans sa médiathèque. Elles portent maintenant leurs
 dimensions, donc la page **réserve leur place** au lieu de sauter quand elles
 arrivent, et une légende en français au lieu de « App screen 2 ».
 
-### Cinq choses qui ne faisaient rien
+### Six choses qui ne faisaient rien
 
 Le contenu venu du guide marchait à l'oeil. Cinq gestes, pourtant, ne
 menaient nulle part, et aucun ne se voyait sans l'essayer :
@@ -2031,6 +2119,14 @@ menaient nulle part, et aucun ne se voyait sans l'essayer :
   le bouton levait une erreur JavaScript, le message n'allait nulle part, et
   le visiteur repartait convaincu d'avoir écrit. Un formulaire muet est pire
   que pas de formulaire — l'adresse e-mail juste au-dessus, elle, marchait.
+
+- **Les cinq questions fréquentes de `?p=partenaires`.** Même cause : un
+  écouteur posé sur des `<div>`, resté sur l'ancien site. Cliquer ne faisait
+  rien, et le clavier ne les atteignait même pas. Ce sont des `<details>`,
+  comme les menus : ils s'ouvrent au clic et au clavier, sans une ligne de
+  script. Leur animation plafonnait au passage la réponse à deux cents
+  pixels — les plus longues auraient été coupées net le jour où elles se
+  seraient rouvertes.
 
 `?p=contact` a donc son action (`app/actions/contact.php`) : envoi ordinaire
 de formulaire, jeton CSRF, limite de huit messages par quart d'heure et par
