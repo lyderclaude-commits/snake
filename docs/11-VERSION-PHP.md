@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **984 scénarios
-réussis** sur une base déjà peuplée, **983 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **985 scénarios
+réussis** sur une base déjà peuplée, **984 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
@@ -304,7 +304,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 984 scénarios, dans un vrai navigateur
+npm run php:e2e          # 985 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -326,7 +326,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 984 scénarios
+### Les 985 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -1892,6 +1892,12 @@ clé du cache.
 
 Les dimensions sont écrites dans la balise : sans elles, la barre se
 redessinait à l'arrivée de l'image et la page sautait sous les yeux.
+
+> **Annoncer sa largeur a un revers**, et il s'est vu dans le pied de page :
+> deux règles y fixaient la hauteur du logo sans rendre la largeur à `auto`,
+> ce qui l'aplatissait dès qu'il portait ses vraies dimensions. Cela ne se
+> lit dans aucune des deux feuilles — seul le rapport mesuré au rendu le dit,
+> et c'est ce que la recette mesure désormais.
 
 ### Compression et cache, dans le `.htaccess`
 

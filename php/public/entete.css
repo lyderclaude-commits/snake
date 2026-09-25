@@ -352,7 +352,10 @@
 .pg-grille{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:40px;
   margin-bottom:56px}
 .pg-grille>*{min-width:0}
-.pg-logo{height:30px;margin-bottom:14px;
+/* `width:auto` n'est PAS décoratif : la balise porte maintenant ses
+   dimensions réelles (128 px de large), et une hauteur fixée sans lui
+   rendre sa largeur aplatit le logo. */
+.pg-logo{height:30px;width:auto;margin-bottom:14px;
   /* Le logo est encré sombre : sur fond sombre il faut le retourner. */
   filter:brightness(0) invert(1);opacity:.95}
 .pg-accroche{font-size:.875rem;color:rgba(255,255,255,.5);line-height:1.7;

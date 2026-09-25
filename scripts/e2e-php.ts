@@ -588,6 +588,23 @@ const run = async () => {
   ok('et il annonce ses dimensions, pour que la barre ne saute pas',
      (await p.locator('header img').first().getAttribute('width')) !== null
      && (await p.locator('header img').first().getAttribute('height')) !== null);
+  /**
+   * ET IL GARDE SES PROPORTIONS.
+   *
+   * Annoncer sa largeur a un revers : une règle qui fixe la hauteur sans
+   * rendre la largeur à `auto` aplatit le logo. C'est arrivé dans le pied
+   * de page, et cela ne se lit dans aucune des deux feuilles — seul le
+   * rapport mesuré au rendu le dit. */
+  const deformes = await p.evaluate(() => Array.from(document.images)
+    .filter((im) => /logo/.test(im.className) || !!im.closest('.wk-marque, .marque'))
+    .filter((im) => {
+      const b = im.getBoundingClientRect();
+      return im.naturalWidth > 0 && b.height > 0
+        && Math.abs(im.naturalWidth / im.naturalHeight - b.width / b.height) > 0.02;
+    })
+    .map((im) => im.className || '(barre)'));
+  ok('et ses proportions, en haut comme en bas de page',
+     deformes.length === 0, deformes.join(', ') || 'tous les logos mesurés');
 
   /**
    * Trois cartes mènent quelque part, et chacune au bon endroit.

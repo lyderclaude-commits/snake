@@ -528,7 +528,7 @@ th.chiffre,td.chiffre{text-align:right}
 
 footer{border-top:1px solid var(--border);margin-top:50px;padding:22px 0;color:var(--text3);font-size:.85rem}
 .pied{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:0}
-.pied .logo{height:26px;opacity:.85}
+.pied .logo{height:26px;width:auto;opacity:.85}
 /* Le logo du pied court est un retour à l'accueil : 26 px de haut, c'est
    la hauteur de l'image, pas une cible qu'un pouce trouve. */
 .pied > a{display:inline-flex;align-items:center;padding:6px 0}
