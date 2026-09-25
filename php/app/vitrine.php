@@ -70,10 +70,12 @@ const PAGES_CONTENU = [
  * Elles complètent `PAGES_CONTENU` pour décider de la barre : un membre
  * connecté y reste devant la vitrine. Tout le reste, c'est du travail.
  *
- * `nouveau` y figure et c'est voulu : le Studio s'ouvre sans compte. Un
- * visiteur y compose son décor devant la barre de vitrine ; un
- * organisateur qui l'ouvre depuis son tableau de bord est au travail, et
- * la règle le lui sert alors dans l'autre barre.
+ * `nouveau` n'y figure PAS, et c'est voulu : le Studio s'ouvre sans
+ * compte, mais il ne se LIT pas, il s'utilise. Un visiteur anonyme y
+ * arrive quand même devant la barre de vitrine — la première règle,
+ * `$moi === null`, s'en charge, parce qu'il n'a rien d'autre à voir. Un
+ * organisateur qui l'ouvre depuis son tableau de bord, lui, est au
+ * travail : il garde sa barre et ses raccourcis.
  */
 const PAGES_VITRINE = [
     'accueil', 'decors', 'decor', 'blog', 'article', 'creer', 'lien-court',

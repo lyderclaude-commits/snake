@@ -200,8 +200,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **957 scénarios
-réussis** sur une base déjà peuplée, **956 sur une installation neuve** — un
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **956 scénarios
+réussis** sur une base déjà peuplée, **955 sur une installation neuve** — un
 scénario ne s'applique qu'à une base qui porte déjà des décors, et il ne
 s'invente pas un décor pour s'exécuter quand même. Zéro échec, zéro erreur de
 console dans les deux cas. S'y ajoutent **701 contrôles** répartis en quinze
@@ -294,7 +294,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 957 scénarios, dans un vrai navigateur
+npm run php:e2e          # 956 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -316,7 +316,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 957 scénarios
+### Les 956 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -404,7 +404,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Un article et son décor** | Le décor cité se choisit dans une liste **facultative**, apparaît en carte vivante dans l'article publié, et un décor archivé après la parution ne laisse pas de bouton mort ; les sept boutons de partage portent l'adresse de CET article, sans charger un seul script de réseau social |
 | **Ce qu'un lien montre** | Chaque page se déclare **canonique vers elle-même**, annonce un titre, une accroche d'au moins cinquante caractères et une image de partage **absolue et téléchargeable sans session** ; les paramètres de passage (`ok`, `jeton`, `v`) n'entrent pas dans la canonique ; `robots.txt` et le plan du site répondent, leurs esperluettes sont échappées, et couper l'indexation d'un seul geste ferme le site aux moteurs |
 | **Un lien déjà partagé** | Un décor **archivé** répond encore 200, garde son titre, son accroche et sa vignette, dit que la campagne est terminée et se retire des moteurs — un 404 aurait vidé l'aperçu de tous les liens déjà envoyés ; une adresse qui n'a jamais existé, elle, reste un 404 |
-| **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; le pied de page du guide couvre la vitrine, le catalogue, le blog et ses articles — **pas** le Studio, où l'on fabrique — avec ses quatre réseaux **dessinés sur place** |
+| **Les pages publiques** | Le menu public mène aux deux produits puis aux décors et au blog, « Wakabi le guide » sort avec `rel="noopener"`, et les deux entrées **disparaissent** une fois connecté ; tous les en-têtes de section de la vitrine sont centrés ; **les quinze pages de la façade portent toutes le même pied**, articles et page de décor compris, avec ses quatre réseaux **dessinés sur place** ; sur six pages on vérifie que le pied et la barre **disent la même chose**, et que les écrans de travail gardent la signature discrète |
 | **Les liens qui sortent** | Balayage **exhaustif par construction** : toutes les ancres de chaque page publique, filtrées sur l'hôte — les 53 qui quittent le site portent `target="_blank"` **et** `noopener`, et cliquer sur « Wakabi le guide » ouvre vraiment un second onglet en laissant le premier ouvert |
 | **Le retour en tête** | Éprouvé en **défilant**, pas en lisant le balisage : caché tant qu'on est en haut, présent une fois la page descendue, il ramène vraiment à zéro puis se retire — et n'existe que sur la vitrine |
 | **L'atelier d'un décor** | L'écran tient en un écran et demi, l'aperçu et le bouton se voient sans descendre, les réglages sont en trois étapes ; **tourner un curseur redessine l'aperçu pendant qu'on le voit** ; enregistrer avec un champ requis vide **ouvre l'étape fautive** au lieu de ne rien faire ; sur téléphone l'aperçu reste collé sans manger l'écran |
@@ -1865,6 +1865,41 @@ Chaque page charge donc la sienne. Seul `public/entete.css` traverse la
 frontière, d'où son préfixe `wk-` et ses couleurs écrites en clair plutôt
 qu'en variables : il est servi sous les deux feuilles et ne peut donc dépendre
 des variables d'aucune.
+
+### Un seul pied de page, et il suit la barre
+
+Le pied de page du guide — quatre colonnes de liens, la marque, les réseaux,
+les mentions — ne couvrait que trois écrans : l'accueil, les décors et le
+blog. Une page venue du guide s'ouvrait donc sous le menu complet et se
+refermait sur une ligne de logo : la coupure que la fusion venait de
+supprimer en haut revenait en bas.
+
+**La même règle décide maintenant des deux.** `barre_vitrine()` dit si l'on
+est devant la façade ou au travail ; la barre et le pied lui obéissent
+ensemble, et ne peuvent plus se contredire. Écrites séparément, les deux
+règles avaient divergé — c'est ce qui était arrivé.
+
+Ce pied n'est pas un ornement : c'est le **plan du site**. Sur un téléphone,
+menu refermé, c'est par lui qu'on retrouve « Partenaires » ou « CGU ». Le
+priver d'une page, c'est y enfermer le visiteur.
+
+Il a fallu le **déménager** pour cela. Ses règles vivaient dans
+`wakabi.css` ; les pages du guide chargent `guide.css`. Posé sur elles, il
+arrivait sans une seule de ses règles : quatre colonnes de liens nues,
+empilées sous la page. Il vit donc dans `public/entete.css`, avec la barre et
+pour la même raison — c'est la seule feuille servie **sous les deux** — et
+ses couleurs y sont écrites en clair, faute de pouvoir dépendre des variables
+de l'une ou de l'autre. Sa largeur s'aligne sur celle de la barre : le logo
+du haut et celui du bas partagent le même bord gauche, ce que l'oeil vérifie
+en premier.
+
+> **Un `<template>` mangeait le pied de page.** Quatre des pages portées
+> traînaient en fin de fichier un reste du site d'origine : un commentaire de
+> séparation et un `<template id="footerTemplate">` jamais refermé. Le
+> navigateur y avalait tout ce qui suivait — le `</main>`, le pied de page,
+> la fermeture du document. Le défaut était invisible tant que ces pages
+> n'avaient qu'une signature discrète à perdre ; il s'est vu à la seconde où
+> l'on y a posé le grand pied. Les quatre restes ont été retirés.
 
 ### Les huit pages de contenu
 

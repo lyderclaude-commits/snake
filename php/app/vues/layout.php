@@ -608,26 +608,27 @@ $ici_v = fn(string $r): bool => str_contains($r, '?p=' . $_page);
 /**
  * Deux pieds de page, et un seul par écran.
  *
- * Les pages PUBLIQUES — la vitrine, le catalogue, le blog et ses
- * articles — sont celles qu'un inconnu ouvre. Elles doivent dire qui
- * édite ce service, où le trouver ailleurs, et à quoi il s'engage :
- * c'est le pied de page du guide, celui que le reste de la maison porte
- * déjà. Un lecteur qui vient de finir un article est exactement celui à
- * qui l'on veut montrer le chemin vers la suite.
+ * LE PIED SUIT LA BARRE : la même règle décide des deux. Une page qui
+ * porte la barre de vitrine porte le pied de la vitrine, et une page de
+ * travail porte la signature discrète. Ils allaient auparavant chacun
+ * de leur côté — trois pages avaient le grand pied, toutes les autres
+ * le petit — si bien qu'une page du guide s'ouvrait sous le menu
+ * complet et se refermait sur une ligne de logo. La coupure qu'on
+ * venait de supprimer en haut revenait en bas.
  *
- * Le Studio (`?p=decor`) en est exclu, bien qu'il soit public : on n'y
- * lit pas, on y fabrique. Quatre colonnes de liens sous l'outil
- * pousseraient vers le bas la seule chose qu'on est venu y faire.
+ * Ce pied-là n'est pas un ornement : c'est le PLAN DU SITE. Sur un
+ * téléphone, menu refermé, c'est par lui qu'on retrouve « Partenaires »
+ * ou « CGU ». Le priver d'une page, c'est y enfermer le visiteur.
  *
  * Partout ailleurs on est CHEZ SOI, connecté, au travail : la signature
  * discrète suffit, et rien ne doit repousser l'écran qu'on utilise.
  */
-$_vitrine = in_array($_page, ['accueil', 'decors', 'blog'], true);
+$_vitrine = barre_vitrine($me, $_page);
 ?>
 
 <?php if ($_vitrine): ?>
 <footer class="pied-guide">
-  <div class="contenu">
+  <div class="pg-in">
     <div class="pg-grille">
       <div>
         <a href="<?= e(url('')) ?>" aria-label="Wakabi Boost, accueil"><?= logo_wakabi('logo pg-logo') ?></a>

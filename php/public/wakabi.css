@@ -1372,64 +1372,18 @@ tr.pale td a{color:inherit}
 .apercu-texte .apercu-hote{color:var(--text3);font-size:.78rem;margin-top:6px}
 
 /* ============ le pied de page de la vitrine ============
-   Repris du site principal, dont il porte l'encre sombre et la grille en
-   quatre colonnes. C'est le seul bloc du produit qui s'inverse : il
-   ferme la page publique comme une signature, et marque la frontière
-   entre ce qu'on montre et ce qu'on utilise. */
-.pied-guide{background:var(--ink);color:rgba(255,255,255,.85);
-  margin-top:70px;padding:70px 0 28px;border-top:0}
-/* La marque, puis QUATRE colonnes depuis la fusion : Boost a la sienne.
-   Une colonne de plus qu'il n'y a de pistes fait passer la dernière à la
-   ligne, seule, et le pied de page paraît cassé sans qu'on sache pourquoi. */
-.pg-grille{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:40px;margin-bottom:56px}
-.pg-logo{height:30px;margin-bottom:14px;
-  /* Le logo est encré sombre : sur fond sombre il faut le retourner. */
-  filter:brightness(0) invert(1);opacity:.95}
-.pg-accroche{font-size:.875rem;color:rgba(255,255,255,.5);line-height:1.7;
-  max-width:280px;margin:0 0 22px}
-.pg-reseaux{display:flex;gap:8px}
-.pg-soc{width:36px;height:36px;border-radius:var(--r10);background:rgba(255,255,255,.08);
-  display:inline-flex;align-items:center;justify-content:center;
-  color:rgba(255,255,255,.6);transition:background .2s,color .2s}
-.pg-soc:hover{background:rgba(255,255,255,.15);color:#fff}
-.pg-col h4{font-family:var(--display);font-size:.75rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin:0 0 16px}
-.pg-liens{display:flex;flex-direction:column;gap:9px}
-.pg-liens a{font-size:.82rem;color:rgba(255,255,255,.6);text-decoration:none;transition:color .2s}
-.pg-liens a:hover{color:#fff;text-decoration:underline}
-.pg-bas{display:flex;align-items:center;justify-content:space-between;
-  padding-top:24px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:12px}
-.pg-copy{font-size:.75rem;color:rgba(255,255,255,.35)}
-.pg-legal{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.pg-legal a{font-size:.75rem;color:rgba(255,255,255,.35);text-decoration:none}
-.pg-legal a:hover{color:rgba(255,255,255,.7);text-decoration:underline}
-.pg-version{font-size:.75rem;color:rgba(255,255,255,.25)}
+   IL A DÉMÉNAGÉ, et c'est la fusion qui l'exige.
 
-@media (max-width:900px){
-  .pg-grille{grid-template-columns:1fr 1fr;gap:32px}
-}
-@media (max-width:620px){
-  .pied-guide{margin-top:44px;padding:50px 0 22px}
-  .pg-grille{grid-template-columns:1fr;gap:30px;margin-bottom:34px}
-  .pg-accroche{max-width:100%}
-  .pg-bas{flex-direction:column;text-align:center;gap:10px}
-  .pg-legal{justify-content:center}
+   Le même pied ferme maintenant toutes les pages publiques, y compris
+   celles venues du guide — qui, elles, ne chargent pas cette feuille
+   mais `guide.css`. Ses règles étaient donc invisibles là où on venait
+   de le poser : quatre colonnes de liens sans mise en forme, empilées
+   nues sous la page.
 
-  /* Le pied de page est le plan du site sur un téléphone : c'est par
-     là qu'on retrouve « Partenaires » ou « CGU » quand le menu est
-     refermé. Mesuré : ses liens faisaient 21 px de haut pour 13 px de
-     texte — on vise à côté une fois sur trois. On leur donne de la
-     hauteur et une taille qui se lit, sans toucher au pied des grands
-     écrans, où la souris ne rate pas. */
-  .pg-col h4{font-size:.8rem}
-  .pg-liens{gap:2px}
-  .pg-liens a{font-size:.9rem;padding:8px 0;display:block}
-  .pg-legal{gap:6px 18px}
-  .pg-legal a{font-size:.8rem;padding:7px 0;display:inline-block}
-  .pg-copy,.pg-version{font-size:.8rem}
-  /* Le logo du pied est lui aussi un retour à l'accueil. */
-  .pied-guide a:has(>.pg-logo){display:inline-block;padding:5px 0}
-}
+   Il vit dans `public/entete.css`, avec la barre, pour la même raison
+   qu'elle : c'est la seule feuille servie SOUS LES DEUX. Ses couleurs y
+   sont écrites en clair, faute de pouvoir dépendre des variables de
+   l'une ou de l'autre. */
 
 /* ============ le retour en tête de page ============
    Il flotte au-dessus du contenu, mais du côté du pouce et jamais sur

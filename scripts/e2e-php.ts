@@ -5160,36 +5160,77 @@ const run = async () => {
      (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"]').count()) === 2
      && (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"][target="_blank"]').count()) === 2);
 
-  /* --- les autres pages publiques le portent aussi --- */
-  for (const p of ['decors', 'blog']) {
+  /**
+   * LE PIED SUIT LA BARRE, sur TOUTE la façade.
+   *
+   * Il ne couvrait que trois pages : l'accueil, les décors et le blog.
+   * Une page du guide s'ouvrait donc sous le menu complet et se refermait
+   * sur une ligne de logo — la coupure qu'on venait de supprimer en haut
+   * revenait en bas. Et ce pied n'est pas un ornement : c'est le plan du
+   * site, le seul chemin vers « Partenaires » ou « CGU » quand le menu
+   * d'un téléphone est refermé.
+   */
+  const faconde = ['accueil', 'decors', 'blog', 'creer', 'connexion', 'inscription',
+                   'oubli', 'application', 'boost-push', 'boost-regie', 'boost-liens',
+                   'partenaires', 'villes', 'a-propos', 'contact'];
+  const sansPied: string[] = [];
+  for (const p of faconde) {
     await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
-    ok(`« ${p} » porte le pied de page du guide`,
-       (await pAnon.locator('footer.pied-guide').count()) === 1);
+    if ((await pAnon.locator('footer.pied-guide').count()) !== 1) sansPied.push(p);
   }
+  ok(`les ${faconde.length} pages de la façade portent toutes le même pied`,
+     sansPied.length === 0, sansPied.join(', ') || 'aucune manquante');
+
   /**
    * Un article aussi : c'est la même route, et un lecteur qui vient d'en
    * finir un est précisément celui à qui montrer le chemin vers la suite.
    */
+  await pAnon.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
   const unLu = await pAnon.locator('a[href*="p=blog&a="]').first().getAttribute('href') ?? '';
   if (unLu) {
     await pAnon.goto(unLu.startsWith('http') ? unLu : `${BASE}/${unLu.replace(/^\//, '')}`,
                      { waitUntil: 'domcontentloaded' });
     ok('un article aussi', (await pAnon.locator('footer.pied-guide').count()) === 1);
   }
+  await pAnon.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
+  ok('la page d’un décor aussi',
+     (await pAnon.locator('footer.pied-guide').count()) === 1);
 
   /**
-   * Le Studio en est exclu, bien qu'il soit public : on n'y lit pas, on y
-   * fabrique. Et les écrans de travail gardent la signature discrète.
+   * LE PIED ET LA BARRE NE SE CONTREDISENT JAMAIS.
+   *
+   * C'est la règle entière, et elle se vérifie en une ligne : sur chaque
+   * page, la présence du grand pied doit valoir celle de la barre de
+   * vitrine. Deux règles écrites séparément finissent par diverger, et
+   * c'est exactement ce qui était arrivé.
    */
-  for (const p of ['connexion', 'inscription']) {
+  const accords: string[] = [];
+  for (const p of ['accueil', 'villes', 'boost-regie', 'blog', 'connexion', 'nouveau']) {
     await pAnon.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
-    ok(`« ${p} » garde la signature discrète`,
-       (await pAnon.locator('footer.pied-guide').count()) === 0
-       && (await pAnon.locator('footer .pied').count()) === 1);
+    const barre = (await pAnon.locator('header.wk-tete').count()) === 1;
+    const pied = (await pAnon.locator('footer.pied-guide').count()) === 1;
+    if (barre !== pied) accords.push(`${p} (barre ${barre}, pied ${pied})`);
   }
-  await pAnon.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
-  ok('le Studio n’est pas repoussé par quatre colonnes de liens',
-     (await pAnon.locator('footer.pied-guide').count()) === 0);
+  ok('le pied et la barre disent toujours la même chose',
+     accords.length === 0, accords.join(' ; ') || '6 pages d’accord');
+
+  /**
+   * Et les écrans de TRAVAIL gardent la signature discrète : quatre
+   * colonnes de liens sous un tableau de bord ne mènent nulle part où
+   * l'on voulait aller.
+   */
+  const pPied = await browser.newPage();
+  surveiller(pPied);
+  await connexion(pPied, ADMIN.email, ADMIN.mdp);
+  const bavards: string[] = [];
+  for (const p of ['admin', 'catalogue', 'comptes', 'reglages', 'blog-admin']) {
+    await pPied.goto(`${BASE}/index.php?p=${p}`, { waitUntil: 'domcontentloaded' });
+    if ((await pPied.locator('footer.pied-guide').count()) !== 0
+        || (await pPied.locator('footer .pied').count()) !== 1) bavards.push(p);
+  }
+  ok('les écrans de travail gardent la signature discrète',
+     bavards.length === 0, bavards.join(', ') || '5 écrans vérifiés');
+  await pPied.close();
 
   console.log('\n━━ 44. L’atelier d’un décor : régler en regardant ━━');
 

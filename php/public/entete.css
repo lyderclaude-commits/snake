@@ -157,3 +157,94 @@
 @media (prefers-reduced-motion:reduce){
   .wk-grp .wk-chev,.wk-burger>summary span,.wk-b-pri,.wk-b-out,.wk-menu a{transition:none}
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LE PIED DE PAGE DE LA VITRINE
+
+   Il vient d'ici et non de `wakabi.css`, pour exactement la raison qui
+   a mis la barre ici : c'est la seule feuille servie SOUS LES DEUX.
+
+   Le même pied ferme désormais toutes les pages publiques — celles de
+   Boost comme celles venues du guide. Tant qu'il vivait dans la feuille
+   de Boost, il arrivait sur une page du guide sans une seule de ses
+   règles : quatre colonnes de liens nues, empilées sous la page. Le
+   défaut ne se voyait que sur ces pages-là, ce qui est la pire des
+   façons de le découvrir.
+
+   Les couleurs sont donc écrites EN CLAIR, comme celles de la barre :
+   `var(--ink)` n'existe que dans une des deux feuilles, et une variable
+   absente rend un fond transparent — un pied de page noir devenu blanc,
+   avec son texte blanc dessus, donc illisible.
+
+   La largeur, elle, s'aligne sur celle de la BARRE et non sur celle du
+   contenu : le logo du haut et celui du bas partagent alors le même
+   bord gauche, ce qui est la première chose que l'oeil vérifie.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.pied-guide{background:#0F172A;color:rgba(255,255,255,.85);
+  margin-top:70px;padding:70px 24px 28px;border-top:0}
+.pg-in{max-width:1200px;margin:0 auto}
+
+/* La marque, puis QUATRE colonnes depuis la fusion : Boost a la sienne.
+   Une colonne de plus qu'il n'y a de pistes fait passer la dernière à la
+   ligne, seule, et le pied de page paraît cassé sans qu'on sache pourquoi. */
+.pg-grille{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:40px;
+  margin-bottom:56px}
+.pg-grille>*{min-width:0}
+.pg-logo{height:30px;margin-bottom:14px;
+  /* Le logo est encré sombre : sur fond sombre il faut le retourner. */
+  filter:brightness(0) invert(1);opacity:.95}
+.pg-accroche{font-size:.875rem;color:rgba(255,255,255,.5);line-height:1.7;
+  max-width:280px;margin:0 0 22px}
+.pg-reseaux{display:flex;gap:8px}
+.pg-soc{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.08);
+  display:inline-flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.6);transition:background .2s,color .2s;text-decoration:none}
+.pg-soc:hover{background:rgba(255,255,255,.15);color:#fff}
+.pg-col h4{font-family:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:rgba(255,255,255,.4);margin:0 0 16px}
+.pg-liens{display:flex;flex-direction:column;gap:9px}
+.pg-liens a{font-size:.82rem;color:rgba(255,255,255,.6);text-decoration:none;
+  transition:color .2s}
+.pg-liens a:hover{color:#fff;text-decoration:underline}
+.pg-bas{display:flex;align-items:center;justify-content:space-between;
+  padding-top:24px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:12px}
+.pg-copy{font-size:.75rem;color:rgba(255,255,255,.35)}
+.pg-legal{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.pg-legal a{font-size:.75rem;color:rgba(255,255,255,.35);text-decoration:none}
+.pg-legal a:hover{color:rgba(255,255,255,.7);text-decoration:underline}
+.pg-version{font-size:.75rem;color:rgba(255,255,255,.25)}
+
+@media (max-width:900px){
+  .pg-grille{grid-template-columns:1fr 1fr;gap:32px}
+}
+@media (max-width:620px){
+  .pied-guide{margin-top:44px;padding:50px 16px 22px}
+}
+/* La barre se resserre à 10 px sous 520 : le pied la suit, pour que le
+   logo du haut et celui du bas gardent le même bord gauche. */
+@media (max-width:520px){
+  .pied-guide{padding-left:10px;padding-right:10px}
+}
+@media (max-width:620px){
+  .pg-grille{grid-template-columns:1fr;gap:30px;margin-bottom:34px}
+  .pg-accroche{max-width:100%}
+  .pg-bas{flex-direction:column;text-align:center;gap:10px}
+  .pg-legal{justify-content:center}
+
+  /* Le pied de page est le plan du site sur un téléphone : c'est par
+     là qu'on retrouve « Partenaires » ou « CGU » quand le menu est
+     refermé. Mesuré : ses liens faisaient 21 px de haut pour 13 px de
+     texte — on vise à côté une fois sur trois. On leur donne de la
+     hauteur et une taille qui se lit, sans toucher au pied des grands
+     écrans, où la souris ne rate pas. */
+  .pg-col h4{font-size:.8rem}
+  .pg-liens{gap:2px}
+  .pg-liens a{font-size:.9rem;padding:8px 0;display:block}
+  .pg-legal{gap:6px 18px}
+  .pg-legal a{font-size:.8rem;padding:7px 0;display:inline-block}
+  .pg-copy,.pg-version{font-size:.8rem}
+  /* Le logo du pied est lui aussi un retour à l'accueil. */
+  .pied-guide a:has(>.pg-logo){display:inline-block;padding:5px 0}
+}
