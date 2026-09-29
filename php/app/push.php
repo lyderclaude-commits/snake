@@ -662,6 +662,115 @@ function push_proposable(?array $u): bool
     return in_array($u['role'] ?? '', ROLES_PUBLICS, true) || droit($u, 'push');
 }
 
+/**
+ * La même question, posée devant quelqu'un qui n'a pas de compte.
+ *
+ * `push_proposable()` raisonne sur un rôle. Un VISITEUR n'en a pas : il
+ * tomberait donc dans le « non », alors qu'il est précisément celui qui
+ * accepte le plus volontiers — il vient de voir un décor, il veut savoir
+ * quand paraît le suivant, et il n'a rien à remplir pour ça.
+ *
+ * D'où cette seconde porte, celle de la barre et de la page d'accueil :
+ * tout le monde, sauf ceux dont on a déjà décidé qu'ils n'ont rien à
+ * recevoir.
+ */
+function push_ouvert_a(?array $u): bool
+{
+    return $u === null || push_proposable($u);
+}
+
+/**
+ * La clé publique servie aux pages, ou rien du tout.
+ *
+ * Trois écrans peuvent la demander dans une même page — la barre, la
+ * page d'accueil, la carte du profil. `vapid()` relit la base et dérive
+ * la clé du PEM à chaque appel : on garde donc la réponse pour la durée
+ * de la requête.
+ *
+ * Elle rend `null` plutôt que de lever, parce qu'aucun de ces trois
+ * appelants ne peut rien faire d'une exception : ils n'affichent
+ * simplement pas de bouton.
+ */
+function push_cle_publique(): ?string
+{
+    static $cle = false;
+    if ($cle !== false) {
+        return $cle;
+    }
+    if (!push_disponible()) {
+        return $cle = null;
+    }
+    try {
+        $cle = (string) vapid()['publique'];
+    } catch (Throwable) {
+        $cle = null;
+    }
+    return $cle;
+}
+
+/**
+ * Le contexte que lit `push.js`, et le script lui-même. Une seule fois.
+ *
+ * Depuis que l'abonnement se propose à trois endroits d'une même page —
+ * la barre du compte, l'invitation de l'accueil, la carte du profil ou
+ * d'un décor — il fallait choisir : ou chaque bloc porte son contexte, et
+ * le script en trouve trois qui se contredisent, ou le contexte est posé
+ * une fois pour la page et les blocs ne portent plus que leur bouton.
+ * C'est le second, et c'est ce que cette fonction garantit : le premier
+ * appelant l'écrit, les suivants n'écrivent rien.
+ *
+ * Le décor vient donc du premier bloc rendu. Ce n'est pas un hasard :
+ * `vue()` rend le CONTENU avant le gabarit, donc la carte posée sous un
+ * décor parle avant la barre, et c'est bien son décor qui est retenu.
+ */
+/**
+ * Un bloc d'abonnement attend le script, sans pouvoir le poser lui-même.
+ *
+ * La barre et l'invitation sont rendues DANS des conteneurs qui ne
+ * souffrent pas de voisins — le volet du compte est une colonne
+ * d'entrées, pas un endroit où glisser deux balises `<script>`. Elles
+ * lèvent donc la main ici, et le gabarit pose le contexte en fin de page
+ * pour tout le monde.
+ */
+function push_contexte_attendu(bool $poser = false): bool
+{
+    static $attendu = false;
+    if ($poser) {
+        $attendu = true;
+    }
+    return $attendu;
+}
+
+function push_contexte_html(string $decor = ''): string
+{
+    static $pose = false;
+    if ($pose) {
+        return '';
+    }
+    $cle = push_cle_publique();
+    if ($cle === null) {
+        return '';
+    }
+    $pose = true;
+
+    $json = json_encode([
+        'base' => rtrim(base_url(), '/') . '/',
+        'csrf' => jeton_csrf(),
+        'cle' => $cle,
+        // Un abonnement pris AVANT la connexion est anonyme. Le signaler
+        // permet au script de le rattacher au compte, sans quoi « les
+        // invités de mes campagnes » ne verrait jamais ces gens-là.
+        'connecte' => (bool) utilisateur_courant(),
+        // Le décor sous lequel on s'abonne, quand il y en a un. C'est ce
+        // qui rattache un invité SANS COMPTE à l'organisateur qui l'a
+        // fait venir.
+        'decor' => $decor,
+    ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+
+    return '<script type="application/json" id="push-contexte">' . $json . '</script>'
+         . '<script src="' . e(actif('public/push.js')) . '" defer></script>';
+}
+
 /** Les abonnements d'un compte — pour s'envoyer un essai à soi-même. */
 function push_abonnements_de(string $utilisateur_id): array
 {

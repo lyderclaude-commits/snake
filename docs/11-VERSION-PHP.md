@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **985 scénarios
-réussis** sur une base déjà peuplée, **984 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1013 scénarios
+réussis** sur une base déjà peuplée, **1012 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
@@ -306,7 +306,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 985 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1013 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 985 scénarios
+### Les 1013 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -373,6 +373,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le QR à la caméra** | Le filtre accepte un code nu et une adresse de badge, rejette un QR étranger ; une **fausse caméra** diffuse le QR d'un badge réellement émis, l'entrée est validée, la page ne se recharge pas, le journal se met à jour |
 | **L'espace profil** | Le nom et le téléphone se corrigent sans passer par l'équipe, un numéro qui n'en est pas un est refusé, le mot de passe ne change **pas** sans l'ancien, la suppression exige de recopier son adresse exactement — et le compte supprimé ne se reconnecte plus. Un compte de l'équipe n'a pas de bouton de suppression |
 | **Les notifications push** | La clé publique VAPID est servie à la page, `sw.js` répond à la racine, un abonnement est enregistré, une adresse qui n'est pas en `https` est refusée, le désabonnement efface la ligne — et un organisateur **sans l'offre** trouve un écran d'explication au lieu d'un refus sec, avec l'offre qui l'ouvre |
+| **S'abonner sans créer de compte** | Les deux portes de la v1.6, éprouvées de bout en bout : l'entrée du volet se tient bien **sous** « Connexion » et « Créer un compte », l'invitation de l'accueil ne s'ouvre **ni au chargement** ni avant la mi-page, et **aucune permission n'est demandée sans clic** — on compte les appels réels à `requestPermission`, on ne lit pas le code. « Plus tard » la tait un mois, la croix une semaine, et elle ne revient pas à la visite suivante. Un navigateur qui a déjà refusé ne voit **rien** ; un appareil déjà abonné lit « Ne plus recevoir » partout à la fois. Les deux boîtes fixes du bas d'écran sont **mesurées** l'une par rapport à l'autre, sur ordinateur et sur téléphone |
 | **Le blog** | Un brouillon renvoie **404** à un visiteur ; publié, il se lit sans compte ; intertitres, gras, listes, citation et liens sortants sont mis en forme ; **une balise saisie reste du texte et ne s'exécute pas** ; l'adresse d'un article publié n'est plus modifiable ; un organisateur n'écrit pas sur le blog |
 | **Le blog proposé** | Un organisateur propose, l'article n'est **pas** public, il ne se modifie plus, la rédaction le renvoie avec un motif obligatoire, l'auteur le voit et re-soumet, il paraît signé de son nom — et il ne peut plus le retirer seul une fois en ligne |
 | **Le carnet d'adresses** | Un collage réaliste (tableur, `Nom <adresse>`, `adresse (Nom)`, doublon en majuscules, ligne illisible) devient des fiches ; ré-importer n'ajoute rien ; corriger une adresse corrige la campagne ; **archiver**, **sortir de la liste** et **supprimer** ont trois effets distincts et vérifiés ; supprimer une liste rend ses fiches au carnet ; le carnet d'un organisateur est invisible à l'équipe ; l'export CSV porte son BOM |
@@ -1757,11 +1758,42 @@ Le protocole tient en trois pièces, et il n'y a **pas de Composer** ici :
 
 ### S'abonner
 
-Le bouton est dans **Mon profil**, et **sous le badge** que l'invité vient de
-télécharger — c'est là qu'on accepte le plus : la personne a un lien avec
-l'événement à cet instant précis. La demande de permission part d'un **clic**,
-jamais du chargement de la page : les navigateurs pénalisent durablement un
-site qui demande sans geste, et un visiteur surpris refuse.
+Quatre endroits, une seule règle. Le bouton est dans **Mon profil**, et **sous
+le badge** que l'invité vient de télécharger — c'est là qu'on accepte le plus :
+la personne a un lien avec l'événement à cet instant précis. Depuis la v1.6 il
+est aussi **dans le volet du compte, sous « Connexion » et « Créer un
+compte »**, et **sur la page d'accueil**, dans une invitation qui monte du bas
+de l'écran.
+
+Ces deux dernières portes existent pour une raison précise : un visiteur de la
+vitrine n'avait nulle part où dire « prévenez-moi ». Il fallait créer un
+compte, c'est-à-dire beaucoup plus que ce qu'il voulait. Les deux nouvelles
+portes ne demandent rien du tout.
+
+La règle qui les gouverne toutes : la demande de permission part d'un **clic**,
+jamais du chargement de la page. Les navigateurs pénalisent durablement un site
+qui demande sans geste, un visiteur surpris refuse, et **un refus est définitif**
+— on ne redemandera jamais. L'invitation de l'accueil attend donc une douzaine
+de secondes, ou la moitié de la page ; « Plus tard » la fait taire un mois, sa
+croix une semaine, un abonnement la fait taire pour de bon.
+
+Ce que le serveur sert dans les deux cas est **caché** : c'est le navigateur qui
+révèle le bouton, et lui seul sait s'il peut recevoir quelque chose. Un
+navigateur sans notifications, ou qui a déjà refusé pour ce site, ne voit donc
+ni l'entrée du menu ni l'invitation — plutôt qu'un bouton mort. Et rien n'est
+installé chez qui n'a rien demandé : le service worker n'est enregistré qu'au
+premier clic, ou rafraîchi s'il est déjà là.
+
+> L'invitation se tient en bas **à gauche** parce que le bas à droite est déjà
+> occupé par le retour en tête de page. Sur téléphone elle prend la largeur et
+> pousse ce bouton au-dessus d'elle. Ce sont deux blocs `position:fixed` qui
+> s'ignorent : la recette les **mesure** l'un par rapport à l'autre plutôt que
+> de relire la feuille de style.
+
+Les trois blocs d'une même page partagent **un seul contexte** et **un seul
+script**, et se repeignent ensemble : on s'abonne dans l'invitation, l'entrée du
+menu bascule dans la foulée. Il n'y a qu'un abonnement par navigateur, il serait
+absurde qu'un écran dise « abonné » pendant qu'un autre propose de s'abonner.
 
 Un abonnement appartient à un **navigateur**, pas à une personne : le même
 invité sur son téléphone et sur son poste en a deux, et un poste sans compte

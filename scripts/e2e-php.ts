@@ -7812,6 +7812,288 @@ const run = async () => {
   await pCt.close();
   await pEq.close();
 
+
+  /* ================================================================== */
+  console.log('\n━━ 57. S’abonner aux notifications sans créer de compte ━━');
+
+  /**
+   * Deux portes de plus vers la même chose, et une règle qui les gouverne.
+   *
+   * Jusqu'ici l'abonnement ne se proposait qu'à qui avait DÉJÀ un compte,
+   * ou venait de faire un badge. Le visiteur de la vitrine, lui, n'avait
+   * nulle part où dire « prévenez-moi » : il fallait créer un compte pour
+   * ça, c'est-à-dire beaucoup plus que ce qu'il voulait.
+   *
+   * La règle qui gouverne les deux : ON NE DEMANDE JAMAIS LA PERMISSION
+   * SANS UN CLIC. Un navigateur qui reçoit la fenêtre sans geste la refuse,
+   * et un refus est définitif — on aura brûlé la seule occasion. C'est la
+   * vérification centrale de cette section, et elle ne se lit pas dans le
+   * balisage : on compte les appels réels à `Notification.requestPermission`.
+   */
+  const ctxPush2 = await browser.newContext({ viewport: { width: 1340, height: 900 } });
+  await ctxPush2.grantPermissions(['notifications'], { origin: BASE });
+  /**
+   * Le compteur est posé AVANT tout script de la page.
+   *
+   * En TEXTE, et non en fonction : une fonction passée ici traverse la
+   * transpilation de la recette, qui lui accroche des aides à elle
+   * (`__name`) absentes de la page visitée. Le script d'amorce lève alors
+   * une erreur au lieu de poser le compteur, et le scénario mesure une
+   * page qu'il n'a pas préparée.
+   */
+  await ctxPush2.addInitScript({ content: `
+    window.demandes = 0;
+    var vrai = Notification.requestPermission.bind(Notification);
+    Notification.requestPermission = function () {
+      window.demandes++;
+      return vrai.apply(null, arguments);
+    };
+  ` });
+  const pPu = await ctxPush2.newPage();
+  surveiller(pPu);
+
+  /* --- la source dit « caché » : c'est le script qui décide, pas le serveur --- */
+  const sourceAccueil = await (await pPu.request.get(`${BASE}/index.php?p=accueil`)).text();
+  ok('l’entrée de la barre est servie CACHÉE : seul le navigateur sait s’il peut recevoir',
+     /<button class="wk-push"[^>]*\shidden/.test(sourceAccueil));
+  ok('et l’invitation aussi', /<aside class="push-invite"[^>]*\shidden/.test(sourceAccueil));
+
+  await pPu.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pPu.waitForTimeout(1100);
+
+  /* --- la barre --- */
+  await pPu.locator('details.wk-compte > summary').click();
+  await pPu.waitForTimeout(250);
+  const entree = pPu.locator('.wk-volet-u .wk-push');
+  ok('le script révèle l’entrée d’abonnement dans le volet du compte',
+     await entree.isVisible());
+  ok('elle se tient SOUS « Connexion » et « Créer un compte »', await pPu.evaluate(() => {
+    const v = document.querySelector('.wk-volet-u')!;
+    const rangs = (Array.from(v.children) as HTMLElement[])
+      .filter((e) => e.getBoundingClientRect().height > 0);
+    const bas = rangs[rangs.length - 1];
+    const compte = Array.from(v.querySelectorAll('a'))
+      .find((a) => /Créer un compte/.test(a.textContent || '')) as HTMLElement;
+    return bas.classList.contains('wk-push')
+      && bas.getBoundingClientRect().top >= compte.getBoundingClientRect().bottom;
+  }));
+  ok('et elle dit ce qu’elle apporte, pas seulement ce qu’elle est',
+     (await entree.innerText()).includes('Recevoir les notifications')
+     && (await entree.innerText()).includes('campagnes'),
+     (await entree.innerText()).replace(/\n/g, ' · '));
+  ok('et le volet ne porte que des entrées : le contexte vit en fin de page',
+     await pPu.evaluate(() =>
+       document.querySelector('.wk-volet-u')!.querySelector('script') === null
+       && document.querySelector('#push-contexte')!.parentElement!.tagName === 'BODY'));
+  await pPu.keyboard.press('Escape');
+
+  /* --- l'invitation : jamais au chargement --- */
+  ok('l’invitation ne s’ouvre pas au chargement de la page',
+     !(await pPu.locator('#push-invite').isVisible()));
+  /**
+   * Et rien n'est installé chez quelqu'un qui n'a rien demandé.
+   *
+   * L'entrée de la barre paraît désormais sur toutes les pages : y
+   * enregistrer un service worker d'office poserait du code de fond dans
+   * le navigateur de chaque visiteur, pour la seule satisfaction de
+   * savoir qu'il n'est pas abonné.
+   */
+  ok('et aucun service worker n’est posé chez qui n’a rien demandé',
+     (await pPu.evaluate(async () =>
+       (await navigator.serviceWorker.getRegistrations()).length)) === 0);
+  ok('et aucune permission n’a été demandée au passage',
+     (await pPu.evaluate(() => (window as unknown as { demandes: number }).demandes)) === 0);
+
+  /* --- elle s'ouvre passé la moitié --- */
+  await pPu.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.55));
+  await pPu.waitForTimeout(700);
+  ok('elle s’ouvre passé la moitié de la page', await pPu.locator('#push-invite').isVisible());
+  ok('toujours sans rien demander : la fenêtre du navigateur attend un clic',
+     (await pPu.evaluate(() => (window as unknown as { demandes: number }).demandes)) === 0);
+
+  /**
+   * Les deux boîtes fixes du bas d'écran ne se marchent pas dessus.
+   *
+   * Le retour en tête occupait déjà le bas à droite. Une invitation posée
+   * au même endroit l'aurait recouvert sans que rien ne le signale : ce
+   * sont deux blocs `position:fixed` qui s'ignorent. On mesure, on ne lit
+   * pas la feuille de style.
+   */
+  await pPu.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await pPu.waitForTimeout(400);
+  const bas = await pPu.evaluate(() => {
+    const a = document.querySelector('#push-invite')!.getBoundingClientRect();
+    const b = document.getElementById('haut-de-page')!.getBoundingClientRect();
+    return { chevauche: a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom,
+             invite: Math.round(a.right), haut: Math.round(b.left) };
+  });
+  ok('elle ne recouvre pas le retour en tête de page',
+     !bas.chevauche, `invitation jusqu’à ${bas.invite} px, bouton à partir de ${bas.haut} px`);
+
+  /* --- « Plus tard » : elle se referme, et ne revient pas --- */
+  await pPu.locator('#push-invite [data-push-plus-tard]').click();
+  await pPu.waitForTimeout(500);
+  ok('« Plus tard » la referme', (await pPu.locator('#push-invite').count()) === 0);
+  const silence = await pPu.evaluate(() => Number(localStorage.getItem('wakabi-push-invite') || 0));
+  ok('et la fait taire un mois, pas une seconde',
+     silence - Date.now() > 25 * 86400000, `${Math.round((silence - Date.now()) / 86400000)} jours`);
+  await pPu.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pPu.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
+  await pPu.waitForTimeout(700);
+  ok('elle ne revient pas à la visite suivante', (await pPu.locator('#push-invite').count()) === 0);
+
+  /* --- et elle ne s'invite pas ailleurs que sur l'accueil --- */
+  const pAilleurs = await ctxPush2.newPage();
+  surveiller(pAilleurs);
+  await pAilleurs.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  ok('elle ne paraît que sur la page d’accueil',
+     (await pAilleurs.locator('#push-invite').count()) === 0);
+  await pAilleurs.waitForTimeout(800);
+  await pAilleurs.locator('details.wk-compte > summary').click();
+  await pAilleurs.waitForTimeout(250);
+  ok('l’entrée de la barre, elle, suit le visiteur partout',
+     await pAilleurs.locator('.wk-volet-u .wk-push').isVisible());
+  await pAilleurs.close();
+  await pPu.close();
+
+  /* --- la croix se tait moins longtemps que « Plus tard » --- */
+  const ctxCroix = await browser.newContext({ viewport: { width: 1340, height: 900 } });
+  await ctxCroix.grantPermissions(['notifications'], { origin: BASE });
+  const pCroix = await ctxCroix.newPage();
+  surveiller(pCroix);
+  await pCroix.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pCroix.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
+  await pCroix.waitForTimeout(700);
+  await pCroix.locator('#push-invite [data-push-fermer]').click();
+  await pCroix.waitForTimeout(400);
+  const silenceCroix = await pCroix.evaluate(() =>
+    Number(localStorage.getItem('wakabi-push-invite') || 0));
+  ok('la croix la ferme aussi, mais pour une semaine seulement',
+     (await pCroix.locator('#push-invite').count()) === 0
+     && silenceCroix - Date.now() < 10 * 86400000,
+     `${Math.round((silenceCroix - Date.now()) / 86400000)} jours`);
+  await ctxCroix.close();
+
+  /* --- un navigateur qui a déjà refusé ne voit rien du tout --- */
+  const ctxRefus = await browser.newContext({ viewport: { width: 1340, height: 900 } });
+  /* Aucune permission accordée : Chromium répond « denied » sans fenêtre. */
+  await ctxRefus.addInitScript({ content:
+    `Object.defineProperty(Notification, 'permission', { get: function () { return 'denied'; } });` });
+  const pRefus = await ctxRefus.newPage();
+  surveiller(pRefus);
+  await pRefus.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pRefus.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
+  await pRefus.waitForTimeout(900);
+  await pRefus.locator('details.wk-compte > summary').click();
+  await pRefus.waitForTimeout(250);
+  ok('un navigateur qui a déjà refusé ne voit pas l’entrée : un bouton mort n’apprend rien',
+     (await pRefus.locator('.wk-volet-u .wk-push').count()) === 0);
+  ok('ni l’invitation', (await pRefus.locator('#push-invite').count()) === 0);
+  await ctxRefus.close();
+
+  /**
+   * Un appareil DÉJÀ abonné lit l'autre état, partout à la fois.
+   *
+   * Un vrai abonnement demanderait un service de push joignable, ce qu'une
+   * recette n'a pas. On pose donc l'abonnement que le navigateur aurait
+   * rendu : ce qui est éprouvé ici est notre code de peinture — qu'il n'y
+   * ait pas un écran qui dise « abonné » pendant qu'un autre propose de
+   * s'abonner.
+   */
+  const ctxAbo = await browser.newContext({ viewport: { width: 1340, height: 900 } });
+  await ctxAbo.grantPermissions(['notifications'], { origin: BASE });
+  await ctxAbo.addInitScript({ content: `
+    var faux = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/recette-deja-abonne',
+      toJSON: function () { return { keys: { p256dh: 'p', auth: 'a' } }; },
+      getKey: function () { return null; },
+      unsubscribe: function () { return Promise.resolve(true); }
+    };
+    var inscrit = { pushManager: { getSubscription: function () { return Promise.resolve(faux); } } };
+    navigator.serviceWorker.register = function () { return Promise.resolve(inscrit); };
+    navigator.serviceWorker.getRegistration = function () { return Promise.resolve(inscrit); };
+  ` });
+  const pAbo = await ctxAbo.newPage();
+  surveiller(pAbo);
+  await pAbo.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pAbo.waitForTimeout(900);
+  await pAbo.locator('details.wk-compte > summary').click();
+  await pAbo.waitForTimeout(250);
+  ok('un appareil déjà abonné lit « Ne plus recevoir » dans la barre',
+     (await pAbo.locator('.wk-volet-u .wk-push').innerText()).includes('Ne plus recevoir'));
+  await pAbo.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
+  await pAbo.waitForTimeout(700);
+  ok('et l’invitation ne s’ouvre pas devant lui : il a déjà dit oui',
+     !(await pAbo.locator('#push-invite').isVisible()));
+  await ctxAbo.close();
+
+  /**
+   * Un seul contexte par page, même quand deux blocs cohabitent.
+   *
+   * La page d'un décor porte la carte d'abonnement ET, pour un visiteur
+   * sans compte, l'entrée de la barre. Deux contextes JSON s'y
+   * contrediraient — et le second écraserait le décor du premier, c'est-
+   * à-dire l'attache entre un invité sans compte et l'organisateur qui l'a
+   * fait venir.
+   */
+  const ctxDeux = await browser.newContext({ viewport: { width: 1340, height: 900 } });
+  await ctxDeux.grantPermissions(['notifications'], { origin: BASE });
+  const pDeux = await ctxDeux.newPage();
+  surveiller(pDeux);
+  await pDeux.goto(`${BASE}/index.php?p=decor&slug=jy-serai`, { waitUntil: 'domcontentloaded' });
+  await pDeux.waitForTimeout(1200);
+  ok('deux blocs d’abonnement sur la page du décor, et UN seul contexte',
+     (await pDeux.locator('[data-push]').count()) === 2
+     && (await pDeux.locator('#push-contexte').count()) === 1,
+     `${await pDeux.locator('[data-push]').count()} blocs`);
+  ok('et le décor y est retenu, parce que la carte parle avant la barre',
+     JSON.parse(await pDeux.locator('#push-contexte').innerText()).decor !== '');
+  ok('un seul script aussi, malgré les deux blocs',
+     (await pDeux.locator('script[src*="push.js"]').count()) === 1);
+  await ctxDeux.close();
+
+  /**
+   * L'éditeur, à qui l'on ne demande rien, ne voit pas l'invitation.
+   *
+   * C'est la règle de `push_proposable()` : ce qui le concerne lui arrive
+   * déjà dans ses notifications. Une permission système demandée pour rien
+   * est une permission refusée, et qu'on ne réaccordera pas le jour où
+   * elle servirait. La règle valait pour son profil ; elle vaut pour la
+   * page d'accueil.
+   */
+  const pEdiA = await browser.newPage();
+  surveiller(pEdiA);
+  await connexion(pEdiA, EDI.email, EDI.mdp);
+  await pEdiA.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  ok('on ne propose pas non plus à l’éditeur ce qu’il n’a pas à recevoir',
+     (await pEdiA.locator('#push-invite').count()) === 0);
+  await pEdiA.close();
+
+  /* --- sur téléphone, la carte prend la largeur et pousse le bouton --- */
+  const telPu = await browser.newContext({ viewport: { width: 390, height: 780 },
+    isMobile: true, hasTouch: true });
+  await telPu.grantPermissions(['notifications'], { origin: BASE });
+  const pTelPu = await telPu.newPage();
+  surveiller(pTelPu);
+  await pTelPu.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pTelPu.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await pTelPu.waitForTimeout(900);
+  const telBas = await pTelPu.evaluate(() => {
+    const a = document.querySelector('#push-invite')!.getBoundingClientRect();
+    const b = document.getElementById('haut-de-page')!.getBoundingClientRect();
+    const h = document.documentElement;
+    return { chevauche: b.bottom > a.top && b.top < a.bottom,
+             boutonAuDessus: b.bottom <= a.top,
+             deborde: h.scrollWidth > h.clientWidth,
+             largeur: Math.round(a.width) };
+  });
+  ok('sur téléphone l’invitation prend la largeur sans déborder',
+     telBas.largeur >= 340 && !telBas.deborde, `${telBas.largeur} px de large`);
+  ok('et elle pousse le retour en tête au-dessus d’elle plutôt que de le recouvrir',
+     telBas.boutonAuDessus && !telBas.chevauche);
+  await telPu.close();
+  await ctxPush2.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {

@@ -295,6 +295,11 @@ $ici_v = fn(string $r): bool => str_contains($r, '?p=' . $_page);
                 <line x1="21" y1="10" x2="15" y2="10"></line></svg>
               Créer un compte
             </a>
+            <?php
+            /* Et, sous les deux portes qui demandent un formulaire, celle
+               qui ne demande rien. Cf. le partiel pour le pourquoi. */
+            require RACINE . '/app/vues/partiels/push-menu.php';
+            ?>
           <?php endif; ?>
         </div>
       </details>
@@ -586,6 +591,15 @@ $ici_v = fn(string $r): bool => str_contains($r, '?p=' . $_page);
         aria-label="Revenir en haut de la page">
   <?= icone('haut') ?>
 </button>
+<?php
+/* L'invitation aux notifications partage ce bas d'écran : elle se tient à
+   gauche, lui à droite, et sur téléphone elle le pousse vers le haut. Elle
+   n'est proposée qu'à qui a quelque chose à recevoir — un éditeur n'a
+   rien à y gagner, `push_ouvert_a()` le dit pour tout le monde. */
+if (push_ouvert_a($me)) {
+    require RACINE . '/app/vues/partiels/push-invite.php';
+}
+?>
 <script>
 (function () {
   var b = document.getElementById('haut-de-page');
@@ -792,5 +806,14 @@ $_vitrine = barre_vitrine($me, $_page);
 })();
 </script>
 
+<?php
+/* Le contexte des notifications, en fin de page et une seule fois.
+   Les blocs qui vivent dans un conteneur serré — le volet du compte,
+   l'invitation — ne peuvent pas le porter eux-mêmes ; la carte du profil
+   ou d'un décor, si, et elle l'a déjà fait plus haut avec SON décor. */
+if (push_contexte_attendu()) {
+    echo push_contexte_html();
+}
+?>
 </body>
 </html>

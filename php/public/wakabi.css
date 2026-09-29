@@ -1274,6 +1274,44 @@ tr.pale td a{color:inherit}
   .haut-de-page:hover{transform:none}
 }
 
+/* ============ l'invitation aux notifications ============
+   Elle partage ce bas d'écran avec le retour en tête : elle à gauche, lui
+   à droite, et ils ne se croisent jamais sur un écran large. Sur
+   téléphone, où elle prend toute la largeur, c'est elle qui le pousse
+   vers le haut — le bouton reste atteignable au pouce, et la carte ne
+   recouvre rien de ce qu'on lisait. */
+.push-invite{position:fixed;left:18px;bottom:18px;z-index:39;width:380px;
+  max-width:calc(100vw - 36px);background:var(--paper);border:1px solid var(--border);
+  border-radius:var(--r16);padding:16px 16px 14px;
+  box-shadow:0 24px 48px rgba(15,23,42,.16),0 8px 16px rgba(15,23,42,.07);
+  opacity:0;transform:translateY(10px);transition:opacity .22s ease,transform .22s ease}
+.push-invite.vue{opacity:1;transform:none}
+.push-invite-h{display:flex;gap:12px;align-items:flex-start;padding-right:22px}
+.push-invite-ico{flex:none;width:40px;height:40px;border-radius:12px;display:grid;
+  place-items:center;background:var(--primary-wash);color:var(--primary)}
+.push-invite b{display:block;font-size:.98rem;color:var(--ink);line-height:1.3}
+.push-invite p{margin:4px 0 0;font-size:.84rem;line-height:1.5;color:var(--text2)}
+.push-invite-b{display:flex;gap:8px;margin-top:14px}
+.push-invite-b .bouton{flex:1 1 auto;justify-content:center;padding:10px 12px;
+  font-size:.86rem;white-space:nowrap}
+.push-invite-b .bouton.fant{flex:0 0 auto;padding:10px 14px}
+.push-invite-x{position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;
+  border-radius:8px;background:transparent;color:var(--text3);cursor:pointer;
+  display:grid;place-items:center;padding:0}
+.push-invite-x svg{width:16px;height:16px}
+.push-invite-x:hover{background:var(--bg2);color:var(--text2)}
+.push-invite-x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+@media (max-width:560px){
+  .push-invite{left:12px;right:12px;bottom:12px;width:auto;max-width:none}
+  /* La hauteur est posée par le script au moment où la carte s'ouvre :
+     elle dépend du texte, qui dépend de la largeur de l'écran. */
+  body.push-invite-ouverte .haut-de-page{bottom:calc(26px + var(--push-invite-h,180px))}
+}
+@media (prefers-reduced-motion:reduce){
+  .push-invite{transition:none}
+}
+
 /* ---- le panneau de calques ---- */
 .sd-calques{margin-bottom:6px}
 .sd-liste-calques{list-style:none;margin:0;padding:0;border:1px solid var(--border);

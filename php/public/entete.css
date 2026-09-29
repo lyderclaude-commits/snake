@@ -269,6 +269,21 @@
   font-size:12px;font-weight:700}
 .wk-sortir{color:#B91C1C}
 
+/* L'abonnement aux notifications, sous les deux portes du compte.
+   Le filet qui l'en sépare est SA bordure, et non un élément à part : le
+   jour où le script retire le bouton — navigateur sans notifications, ou
+   permission déjà refusée — la ligne s'en va avec lui, au lieu de rester
+   seule au bas d'un menu. */
+.wk-volet-u .wk-push{align-items:flex-start;gap:11px;margin-top:5px;padding-top:13px;
+  border-top:1px solid #F1F5F9}
+.wk-volet-u .wk-push[hidden]{display:none}
+.wk-volet-u .wk-push svg{margin-top:1px;color:#2563EB}
+.wk-volet-u .wk-push b{display:block;font-weight:600}
+.wk-volet-u .wk-push small{display:block;font-size:12px;font-weight:400;color:#475569;
+  margin-top:2px;line-height:1.4}
+/* Abonné : la cloche passe au vert de l'état acquis, comme partout ailleurs. */
+.wk-volet-u .wk-push-ok svg{color:#0D9488}
+
 /* ---------------- le hamburger, et le téléphone ---------------- */
 
 .wk-burger{display:none;flex:none;list-style:none}
