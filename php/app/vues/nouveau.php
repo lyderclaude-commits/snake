@@ -52,6 +52,55 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
     </div>
     <?php
 };
+
+/**
+ * Un choix de couleur : la charte, les teintes du cadre, et la pipette.
+ *
+ * Trois sources pour une seule valeur, et c'est voulu. La charte tient en
+ * six couleurs, ce qui suffit à un badge qui doit rester reconnaissable.
+ * Les teintes du cadre, relevées sur le fichier déposé, couvrent le cas
+ * fréquent : « la couleur de mon affiche ». La pipette couvre le reste,
+ * celui qu'aucune liste ne couvrira jamais — une charte d'entreprise, un
+ * bleu précis qu'on a dans la tête.
+ *
+ * Le `select` reste le seul champ ENVOYÉ. La pipette n'a pas de nom : elle
+ * écrit dans la liste, qui part seule. Deux champs porteurs de la même
+ * valeur finissent toujours par se contredire, et c'est celui qu'on n'a
+ * pas regardé qui gagne.
+ *
+ * Et la valeur enregistrée reparaît, même si c'est un hexadécimal : sans
+ * cette option-là, un décor rouvert retombait sur la première couleur de
+ * la liste, et le réenregistrer écrasait en silence une teinte choisie à
+ * la main.
+ */
+$couleur = function (string $nom, string $libelle, string $valeur, string $aide = '',
+                    string $vide = '') {
+    $libre = str_starts_with($valeur, '#');
+    ?>
+    <div class="champ reglage">
+      <label for="r-<?= e($nom) ?>"><?= e($libelle) ?></label>
+      <div class="couleur-duo">
+        <select id="r-<?= e($nom) ?>" name="<?= e($nom) ?>">
+          <?php if ($vide !== ''): ?>
+            <option value="" <?= $valeur === '' ? 'selected' : '' ?>><?= e($vide) ?></option>
+          <?php endif; ?>
+          <?php foreach (APPARENCE_COULEURS as $k => $v): ?>
+            <option value="<?= e((string) $k) ?>" <?= $valeur === (string) $k ? 'selected' : '' ?>><?= e($v) ?></option>
+          <?php endforeach; ?>
+          <?php if ($libre): ?>
+            <optgroup label="Ma couleur" data-libre="1">
+              <option value="<?= e($valeur) ?>" selected><?= e($valeur) ?></option>
+            </optgroup>
+          <?php endif; ?>
+        </select>
+        <input class="pipette" type="color" data-pour="r-<?= e($nom) ?>"
+               value="<?= e($libre ? $valeur : '#FFFFFF') ?>"
+               aria-label="<?= e($libelle) ?> : choisir librement">
+      </div>
+      <?php if ($aide !== ''): ?><p class="aide"><?= e($aide) ?></p><?php endif; ?>
+    </div>
+    <?php
+};
 ?>
 <div class="contenu">
   <section class="entete" style="padding-bottom:12px">
@@ -355,8 +404,28 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
 
         <div class="reglages<?= $par_fichier ? '' : ' si-vierge' ?>"<?= $par_fichier
               || $valeurs['disposition'] !== 'vierge' ? ' hidden' : '' ?>>
-          <?php $liste('fond', 'Couleur de fond', APPARENCE_COULEURS, (string) $valeurs['fond'],
-                       'Il apparaît partout où la photo ne va pas.'); ?>
+          <?php $couleur('fond', 'Couleur de fond', (string) $valeurs['fond'],
+                         'Il apparaît partout où la photo ne va pas.'); ?>
+        </div>
+
+        <?php
+        /**
+         * Recolorer le cadre, sans en redessiner un.
+         *
+         * Un organisateur qui part d'un cadre fourni tient tout, sauf la
+         * couleur : la sienne est celle de sa marque, et refaire le dessin
+         * pour ça demandait un graphiste. La règle est dite telle qu'elle
+         * s'applique, parce qu'elle surprendrait autrement : ce qui est
+         * blanc, noir ou gris — le texte du cadre, la bande du bas — ne
+         * bouge pas, seul ce qui a une couleur en prend une autre.
+         */
+        ?>
+        <div class="reglages" id="cadre-teinte-bloc">
+          <?php $couleur('cadre_teinte', 'Couleur du cadre',
+                         (string) ($valeurs['cadre_teinte'] ?? ''),
+                         'Ses clairs et ses sombres sont gardés ; ce qui est blanc, '
+                         . 'noir ou gris ne bouge pas.',
+                         'Ses couleurs d’origine'); ?>
         </div>
 
         <div class="sd-suite">
@@ -553,11 +622,15 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
             </div>
             <div class="champ reglage" id="libre-champ-couleur">
               <label for="l-couleur">Couleur</label>
-              <select id="l-couleur">
-                <?php foreach (APPARENCE_COULEURS as $k => $v): ?>
-                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
-                <?php endforeach; ?>
-              </select>
+              <div class="couleur-duo">
+                <select id="l-couleur">
+                  <?php foreach (APPARENCE_COULEURS as $k => $v): ?>
+                    <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <input class="pipette" type="color" data-pour="l-couleur" value="#FFFFFF"
+                       aria-label="Couleur du calque : choisir librement">
+              </div>
             </div>
             <div class="champ reglage" id="libre-champ-taille">
               <label for="l-taille">Taille <output id="v-l-taille"></output></label>
@@ -591,7 +664,7 @@ $liste = function (string $nom, string $libelle, array $choix, string $valeur, s
         <fieldset class="sd-groupe sd-natif">
           <legend>Le texte</legend>
           <div class="reglages">
-            <?php $liste('texte_couleur', 'Couleur', APPARENCE_COULEURS, (string) $valeurs['texte_couleur']); ?>
+            <?php $couleur('texte_couleur', 'Couleur', (string) $valeurs['texte_couleur']); ?>
             <?php $liste('texte_align', 'Alignement', APPARENCE_ALIGNEMENTS, (string) $valeurs['texte_align']); ?>
             <?php $curseur('bloc_x', 'Marge gauche', 0, 0.8, 0.01, $valeurs['bloc_x']); ?>
             <?php $curseur('bloc_y', 'Hauteur', 0.02, 0.92, 0.005, $valeurs['bloc_y']); ?>
@@ -1105,7 +1178,23 @@ window.WAKABI_APERCU = {
 
   function poser(id, v) {
     var el = document.getElementById(id);
-    if (el) { el.value = String(v); }
+    if (!el) { return; }
+    /**
+     * Une couleur libre n'est pas dans la liste : il faut l'y mettre.
+     *
+     * `el.value = '#1E88E5'` sur une liste qui ne porte pas cette option
+     * ne lève rien et ne choisit rien : la liste se vide, et la couleur du
+     * calque — qui existe pourtant dans le décor — n'est plus nulle part à
+     * l'écran. L'aperçu, lui, continuait de la dessiner. C'est le module
+     * de l'aperçu qui sait fabriquer l'option, parce que c'est lui qui
+     * connaît la charte.
+     */
+    var duo = el.parentElement && el.parentElement.classList.contains('couleur-duo');
+    if (duo && window.wakabiCouleur) {
+      window.wakabiCouleur.poser(el, String(v));
+      return;
+    }
+    el.value = String(v);
   }
 
   function montrerNombres() {

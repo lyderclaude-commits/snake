@@ -227,6 +227,14 @@ function apparence_par_defaut(string $disposition, string $format = ''): array
         'filigrane_position' => 'bottom-right',
         'format' => $effectif,
         'fond' => 'brand.ink',
+        /**
+         * La recoloration du cadre : vide veut dire « ses couleurs ».
+         *
+         * Vide et non un jeton de charte : un décor qui n'a rien demandé
+         * doit sortir exactement comme son cadre, et une valeur par défaut
+         * colorée aurait recoloré d'un coup tous les décors existants.
+         */
+        'cadre_teinte' => '',
     ];
 
     /**
@@ -566,6 +574,7 @@ function apparence_propre(string $disposition, array $saisie): array
         'texte_align' => $parmi('texte_align', APPARENCE_ALIGNEMENTS),
         'format' => $parmi('format', FORMATS),
         'fond' => couleur_propre($saisie['fond'] ?? null, (string) $d['fond']),
+        'cadre_teinte' => teinte_propre($saisie['cadre_teinte'] ?? null),
         // Bornes larges : l'ouverture d'un cadre peut être un médaillon
         // dans un coin. Les serrer reviendrait à refuser des cadres dont
         // la fenêtre est petite ou basse — et à rendre inexploitable la
@@ -828,6 +837,20 @@ function couleur_propre(mixed $saisie, string $defaut): string
         return $v;
     }
     return preg_match('/^#[0-9A-Fa-f]{6}$/', $v) ? strtoupper($v) : $defaut;
+}
+
+/**
+ * Une teinte de cadre : un hexadécimal, ou rien.
+ *
+ * Pas de jeton de charte ici, contrairement à `couleur_propre()` : une
+ * teinte n'est pas une couleur de texte, elle recolore une image entière.
+ * Et surtout, le VIDE est une valeur — « laisse le cadre tel qu'il est » —
+ * là où une couleur de texte vide n'a pas de sens.
+ */
+function teinte_propre(mixed $saisie): string
+{
+    $v = is_string($saisie) ? trim($saisie) : '';
+    return preg_match('/^#[0-9A-Fa-f]{6}$/', $v) ? strtoupper($v) : '';
 }
 
 /* ---------------- les calques libres ---------------- */
@@ -1121,7 +1144,10 @@ function construire_gabarit(array $i): array
         $calques[] = ['type' => 'image', 'id' => 'frame', 'src' => $i['cadre_url'],
                       'hidden' => false,
                       'rect' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
-                      'opacity' => 1, 'blendMode' => 'normal'];
+                      'opacity' => 1, 'blendMode' => 'normal',
+                      // Sur le calque, et non à côté : un gabarit se copie,
+                      // se restaure et s'exporte d'un bloc.
+                      'tint' => ($a['cadre_teinte'] ?? '') !== '' ? $a['cadre_teinte'] : null];
     }
 
     $gabarit = [

@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1013 scénarios
-réussis** sur une base déjà peuplée, **1012 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1038 scénarios
+réussis** sur une base déjà peuplée, **1037 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
@@ -306,7 +306,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 1013 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1038 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 1013 scénarios
+### Les 1038 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -429,6 +429,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Prendre à la main** | Glisser un objet sur l'aperçu le déplace, tirer un coin le redimensionne, et les curseurs racontent ensuite la même chose que l'image — vérifié par un vrai `pointerdown` suivi d'un déplacement |
 | **La santé du décor** | Le **pré-vol lui-même**, recalculé à chaque geste : un cadre opaque est signalé pendant qu'on règle, pas deux jours plus tard à la relecture |
 | **Modèles, palette, police** | Sept gabarits sur vignette (le `<select>` reste dessous et part avec le formulaire) ; les couleurs dominantes du cadre sont proposées ; la police de titrage est **vraiment servie** |
+| **La pipette** | Les trois listes de couleur portent une pipette, et **aucune n'est un second champ envoyé** ; la pastille traduit un jeton de charte en sa vraie teinte ; une couleur libre entre dans la liste, **et le badge est dessiné avec** (pixels du canevas comptés, pas la valeur affichée) ; elle survit à l'enregistrement et **revient** à la réouverture, calque compris ; une valeur bricolée postée à la main n'entre pas dans le décor |
+| **La couleur du cadre** | Recolorer change **vraiment** les pixels du badge, et **pas ceux de la photo** ; ce qui est blanc ou gris ne bouge pas ; revenir à « ses couleurs d'origine » rend **exactement** l'image de départ (histogramme comparé) ; la teinte survit à l'enregistrement, se retrouve sur le **badge de l'invité**, et la **vignette de partage dessinée par PHP porte la même** — deux implémentations comparées sur leurs pixels |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -832,6 +834,71 @@ prénom, coin et taille du QR, coin du filigrane. **L'aperçu suit chaque
 geste** : il est construit par le serveur, avec la fonction qui enregistre le
 décor, et dessiné par le renderer du Studio. Ce qu'on voit est ce qui sera
 enregistré.
+
+#### Les couleurs : trois sources, un seul champ
+
+Chaque couleur du formulaire — le fond, le texte, celle d'un calque libre —
+se choisit de trois façons. **La charte** en propose six : c'est ce qui garde
+un badge reconnaissable, et c'est ce qu'on choisit neuf fois sur dix.
+**Les teintes du cadre** s'y ajoutent, relevées sur le fichier déposé par un
+échantillonnage de `couleurs_du_cadre()` : personne ne connaît par cœur le
+bleu de son affiche, il est dans l'image qu'on vient de donner. Et depuis la
+v1.6, **une pipette** couvre le reste : la charte d'une entreprise, le bleu
+exact d'un logo, la teinte qu'on a dans la tête et qui n'est nulle part.
+
+La pipette **n'est pas un second champ**. Elle n'a pas de `name` : elle écrit
+dans la liste, qui reste seule à partir au serveur. Deux commandes porteuses
+de la même valeur finissent toujours par se contredire, et c'est celle qu'on
+n'a pas regardée qui l'emporte à l'enregistrement. La pastille, elle, montre
+ce qui est **vraiment sur le badge**, jeton de charte compris : `brand.accent`
+s'y lit `#F97316`, sinon une pastille blanche à côté d'un texte orange se
+lirait comme une panne.
+
+> Le serveur, lui, n'a pas changé : `couleur_propre()` acceptait déjà
+> n'importe quel `#RRGGBB` et refusait tout le reste — c'est ce qui empêche
+> `url(...)` d'entrer dans un gabarit par un champ de formulaire. Il ne
+> manquait qu'un moyen d'en poser un.
+>
+> Un défaut vivait dans ce trou : une couleur libre pouvait exister en base
+> sans que la liste de l'écran la porte en option. Rouvrir le décor la
+> faisait retomber sur la première couleur de la liste, et le réenregistrer
+> écrasait **en silence** une teinte choisie. La valeur enregistrée est
+> désormais rendue comme option, et le panneau d'un calque sait fabriquer la
+> sienne.
+
+#### Recolorer le cadre
+
+Un organisateur qui part d'un cadre fourni tient le dessin, le format et
+l'ouverture photo — tout sauf la couleur, qui est celle de Wakabi et pas la
+sienne. **« Couleur du cadre »**, à l'étape 1, la remplace sans redessiner
+quoi que ce soit.
+
+La règle est écrite sur l'écran parce qu'elle surprendrait autrement : la
+couleur choisie remplace celle des pixels **colorés**, leurs clairs et leurs
+sombres sont gardés, et ce qui est **blanc, noir ou gris ne bouge pas**.
+C'est ce qui laisse le texte du cadre lisible et le filigrane intact. La
+photo de l'invité, elle, n'est jamais touchée : la recoloration est
+appliquée **au bitmap du cadre**, pas au canevas.
+
+Le réglage vit sur le calque du cadre (`tint`), et non à côté : un gabarit se
+copie, se restaure et s'exporte d'un bloc, et un réglage rangé ailleurs se
+perdrait au premier de ces trajets.
+
+> **Trois sorties, deux implémentations, un seul résultat.** L'atelier et le
+> badge de l'invité partagent `src/core/teinte.ts` — l'image arrive déjà
+> recolorée, `renderScene` ne sait même pas qu'il y a une teinte, et reste
+> donc sans DOM et utilisable dans un worker. La **vignette de partage**,
+> elle, est dessinée par PHP avec GD et ne peut pas appeler ce module :
+> `og_teinter()` applique la même règle, en double. Ce qui tient les deux
+> d'accord n'est pas le code mais la recette, qui **compare les pixels** des
+> deux sorties sur la même teinte. Un cadre bleu dans l'aperçu WhatsApp et
+> rose sur le badge ferait douter des deux, sans moyen de savoir lequel ment.
+>
+> Côté serveur, la recoloration est une boucle sur les pixels : **680 ms**
+> pour un cadre de 1080 × 1080 sur la machine de développement, une fois par
+> modification du décor — la vignette est ensuite servie depuis
+> `donnees/og/`, dont le nom porte l'empreinte de `maj_le`. Un décor sans
+> teinte ne paie rien : la fonction rend la main sur la première ligne.
 
 Trois choses ne se retirent pas, quoi qu'on règle : **le QR, le filigrane et
 l'emplacement photo**. Ce sont eux qui distinguent un badge Wakabi d'une

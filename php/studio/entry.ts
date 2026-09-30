@@ -13,6 +13,7 @@
 import { renderScene } from '@/core/renderScene';
 import { attendrePolices } from '@/core/polices';
 import { decodePhoto, loadImage } from '@/core/imagePipeline';
+import { teinterImage } from '@/core/teinte';
 import { clampPhoto, containScale } from '@/core/fitPhoto';
 import { canShareFile, chooseRoute, shareFile, slugifyFilename, triggerDownload } from '@/lib/share';
 import type { LayerAssets, LoadedImage, PhotoState, RenderSpec } from '@/core/types';
@@ -199,10 +200,21 @@ function demarrer(ctx: Contexte) {
     const couches = (tpl.layers ?? []).filter((l: any) => l.type === 'image');
     for (const couche of couches) {
       const source = sourceDe(couche);
-      if (!source || chargees[couche.id] === source) continue;
+      /**
+       * La teinte fait partie de l'empreinte, au même titre que l'adresse.
+       *
+       * Le badge de l'invité est dessiné à partir du gabarit enregistré :
+       * si l'auteur a recoloré son cadre, c'est le cadre recoloré qu'il
+       * faut ici. Sans ce second terme, le Studio aurait servi l'original
+       * pendant que l'atelier montrait la version colorée.
+       */
+      const teinte = typeof couche.tint === 'string' ? couche.tint : '';
+      const empreinte = (source ?? '') + '|' + teinte;
+      if (!source || chargees[couche.id] === empreinte) continue;
       try {
-        assets[couche.id] = await loadImage(source);
-        chargees[couche.id] = source;
+        const brut = await loadImage(source);
+        assets[couche.id] = teinte ? teinterImage(brut, teinte) : brut;
+        chargees[couche.id] = empreinte;
       } catch {
         // Une image manquante ne doit pas empêcher d'écrire son prénom.
         delete assets[couche.id];

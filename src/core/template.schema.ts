@@ -144,6 +144,18 @@ export const ImageLayer = z.object({
   blendMode: z
     .enum(['normal', 'multiply', 'screen', 'overlay', 'soft-light'])
     .default('normal'),
+  /**
+   * Recoloration du calque, appliquée AVANT le dessin.
+   *
+   * Elle vit sur le calque et non à côté : un gabarit se copie, se
+   * restaure et s'exporte, et un réglage rangé ailleurs se perdrait au
+   * premier de ces trajets. `null` veut dire « ses couleurs d'origine ».
+   *
+   * Le moteur de rendu ne la lit pas : c'est l'image qui arrive déjà
+   * recolorée, pour que l'aperçu, le Studio et l'export ne puissent pas
+   * en donner trois versions.
+   */
+  tint: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().default(null),
 });
 
 /** Calque texte : soit figé (accroche de campagne), soit saisi par l'utilisateur. */

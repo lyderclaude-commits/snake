@@ -9,7 +9,7 @@
  * ne doit jamais faire.
  */
 
-import { renderScene } from '@/core/renderScene';
+import { renderScene, BRAND } from '@/core/renderScene';
 import { loadImage } from '@/core/imagePipeline';
 import { clampPhoto } from '@/core/fitPhoto';
 import type { LayerAssets, LoadedImage, RenderSpec } from '@/core/types';
@@ -17,6 +17,7 @@ import type { Rect } from '@/core/fitPhoto';
 import { fenetreOuverte, fenetreArrondie, formatProche } from '@/core/photoWindow';
 import type { Fenetre } from '@/core/photoWindow';
 import { attendrePolices } from '@/core/polices';
+import { teinterImage, teinteDuCadre } from '@/core/teinte';
 
 interface Contexte {
   base: string;
@@ -28,7 +29,7 @@ const CHAMPS = [
   'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
   'accroche_taille', 'champ_taille', 'qr_actif', 'qr_position', 'qr_taille', 'filigrane_position',
   'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
-  'calques',
+  'cadre_teinte', 'calques',
 ];
 
 // Les curseurs affichent une fraction de la hauteur du canevas : un
@@ -193,10 +194,20 @@ function demarrer(ctx: Contexte) {
     cadreServeur = d.cadre || '';
     const source = fichierUrl ?? cadreServeur;
 
-    if (couche && source && source !== cadreCharge) {
+    /**
+     * Le cadre est rechargé quand sa SOURCE change — ou sa teinte.
+     *
+     * La recoloration est faite sur le bitmap, une fois : sans ce second
+     * terme, changer la couleur ne rechargerait rien et l'aperçu garderait
+     * le cadre d'avant, sans que rien ne le signale.
+     */
+    const teinte = teinteDuCadre(tpl);
+    const empreinte = source + '|' + teinte;
+    if (couche && source && empreinte !== cadreCharge) {
       try {
-        assets[couche.id] = await loadImage(source);
-        cadreCharge = source;
+        const brut = await loadImage(source);
+        assets[couche.id] = teinte ? teinterImage(brut, teinte) : brut;
+        cadreCharge = empreinte;
       } catch {
         delete assets[couche.id];
         cadreCharge = '';
@@ -553,6 +564,89 @@ function demarrer(ctx: Contexte) {
       }
     }
   }
+
+  /* ---------------- la pipette ---------------- */
+
+  /**
+   * La couleur libre, à côté des couleurs proposées.
+   *
+   * La charte en offre six, le cadre en donne cinq de plus, et il reste
+   * tous les autres cas : la charte d'une entreprise, un bleu précis qu'on
+   * a dans la tête, la teinte d'un logo qui n'est pas dans le cadre. Le
+   * serveur accepte déjà n'importe quel `#RRGGBB` — `couleur_propre()` le
+   * fait depuis toujours — il ne manquait qu'un moyen d'en poser un.
+   *
+   * La pipette n'est pas un second champ : elle écrit DANS la liste, qui
+   * reste seule à partir au serveur. On évite ainsi la panne classique des
+   * deux commandes pour une valeur, où c'est celle qu'on n'a pas regardée
+   * qui l'emporte à l'enregistrement.
+   */
+  const hexDe = (v: string): string => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) return v.toUpperCase();
+    return (BRAND as Record<string, string>)[v] ?? '#FFFFFF';
+  };
+
+  /** Pose une couleur libre dans une liste, et l'y sélectionne. */
+  function couleurLibre(s: HTMLSelectElement, hex: string): void {
+    hex = hex.toUpperCase();
+    let g = s.querySelector('optgroup[data-libre]') as HTMLOptGroupElement | null;
+    if (!g) {
+      g = document.createElement('optgroup');
+      g.label = 'Ma couleur';
+      g.setAttribute('data-libre', '1');
+      s.appendChild(g);
+    }
+    // Une seule couleur libre à la fois : en garder l'historique
+    // encombrerait la liste d'essais qu'on vient justement d'abandonner.
+    g.textContent = '';
+    const o = document.createElement('option');
+    o.value = hex;
+    o.textContent = hex;
+    g.appendChild(o);
+    s.value = hex;
+  }
+
+  function brancherPipettes(): void {
+    const pipettes = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input.pipette[data-pour]'));
+    for (const pip of pipettes) {
+      const s = document.getElementById(pip.getAttribute('data-pour') || '') as HTMLSelectElement | null;
+      if (!s) continue;
+
+      /* La pastille montre ce qui est VRAIMENT sur le badge, jeton compris :
+         une pipette blanche à côté d'un texte bleu se lirait comme une panne. */
+      const suivre = () => { pip.value = hexDe(s.value); };
+      suivre();
+      s.addEventListener('input', suivre);
+      s.addEventListener('change', suivre);
+
+      /* `input` et non `change` : la pipette des navigateurs rend la teinte
+         en continu pendant qu'on la déplace, et l'aperçu suit le geste. */
+      pip.addEventListener('input', () => {
+        couleurLibre(s, pip.value);
+        s.dispatchEvent(new Event('input', { bubbles: true }));
+        s.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+  }
+  brancherPipettes();
+
+  /**
+   * Le panneau des calques pose ses valeurs par script, sans événement.
+   *
+   * Il vit dans une balise `<script>` de la vue, hors de ce module : il ne
+   * peut donc ni lire la charte ni fabriquer l'option manquante. Sans cette
+   * porte, sélectionner un calque dont la couleur est un hexadécimal vidait
+   * simplement sa liste — la couleur existait dans le décor, et plus rien
+   * ne la montrait.
+   */
+  (window as unknown as { wakabiCouleur?: unknown }).wakabiCouleur = {
+    poser(s: HTMLSelectElement, v: string) {
+      if (/^#[0-9A-Fa-f]{6}$/.test(v)) couleurLibre(s, v);
+      else s.value = v;
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+  };
 
   /** Le décor ne se laisse pas juger : on le dit, plutôt que de mentir. */
   function santeIndecise(pourquoi: string) {

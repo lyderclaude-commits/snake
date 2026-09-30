@@ -150,12 +150,135 @@ function og_badge(array $decor): ?GdImage
 
     $cadre = chemin_cadre((string) ($decor['cadre_url'] ?? '')) ;
     if ($cadre && ($img = charger_image($cadre))) {
+        /**
+         * La vignette porte la MÊME recoloration que le badge.
+         *
+         * C'est elle qui part dans WhatsApp, et c'est souvent la première
+         * image qu'on voit du décor. Un cadre bleu dans l'aperçu du lien
+         * et rose sur le badge ferait douter de l'un ou de l'autre — et la
+         * personne n'aurait aucun moyen de savoir lequel ment.
+         */
+        og_teinter($img, teinte_du_gabarit($g));
         imagecopyresampled($toile, $img, 0, 0, 0, 0, $largeur, $hauteur, imagesx($img), imagesy($img));
         imagedestroy($img);
     }
 
     og_qr($toile, $g, $decor);
     return $toile;
+}
+
+/**
+ * Recolore un cadre, avec la règle exacte de `src/core/teinte.ts`.
+ *
+ * Deux implémentations pour un même résultat, et c'est assumé : le badge
+ * est dessiné dans le navigateur, la vignette de partage l'est par PHP, et
+ * aucun des deux ne peut appeler l'autre. Ce qui garantit qu'elles ne
+ * divergent pas n'est pas le code, c'est la recette : elle compare les
+ * pixels des deux sorties sur la même teinte.
+ *
+ * La règle : la couleur choisie remplace la teinte du pixel, sa clarté est
+ * gardée, et ce qui est trop peu saturé — blanc, noir, gris — ne bouge pas.
+ */
+function og_teinter(GdImage $img, string $hex): void
+{
+    if ($hex === '' || !preg_match('/^#[0-9A-Fa-f]{6}$/', $hex)) {
+        return;
+    }
+    [$cr, $cv, $cb] = sscanf(strtoupper($hex), '#%02x%02x%02x');
+    [$ch, $cs] = og_hsl($cr, $cv, $cb);
+    if ($cs <= 0.0) {
+        return;
+    }
+
+    $l = imagesx($img);
+    $h = imagesy($img);
+    // `imagecolorat` rend un index sur une image à palette : on la convertit
+    // d'abord, sinon on recolorerait des numéros et non des couleurs.
+    if (function_exists('imagepalettetotruecolor') && !imageistruecolor($img)) {
+        imagepalettetotruecolor($img);
+    }
+    imagealphablending($img, false);
+    imagesavealpha($img, true);
+
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $l; $x++) {
+            $c = imagecolorat($img, $x, $y);
+            $a = ($c >> 24) & 0x7F;
+            if ($a === 127) {
+                continue;
+            }
+            $r = ($c >> 16) & 0xFF;
+            $v = ($c >> 8) & 0xFF;
+            $b = $c & 0xFF;
+            [, $s, $cl] = og_hsl($r, $v, $b, true);
+            if ($s < 0.15) {
+                continue;
+            }
+            [$nr, $nv, $nb] = og_rvb($ch, $cs, $cl);
+            imagesetpixel($img, $x, $y, imagecolorallocatealpha($img, $nr, $nv, $nb, $a));
+        }
+    }
+}
+
+/**
+ * Teinte, saturation et clarté d'une couleur, en 0..1.
+ *
+ * @return array{0: float, 1: float, 2: float}
+ */
+function og_hsl(int $r, int $v, int $b, bool $avecClarte = false): array
+{
+    $r /= 255; $v /= 255; $b /= 255;
+    $max = max($r, $v, $b);
+    $min = min($r, $v, $b);
+    $cl = ($max + $min) / 2;
+    if ($max === $min) {
+        return [0.0, 0.0, $cl];
+    }
+    $d = $max - $min;
+    $s = $cl > 0.5 ? $d / (2 - $max - $min) : $d / ($max + $min);
+    if ($max === $r) {
+        $t = (($v - $b) / $d + ($v < $b ? 6 : 0)) / 6;
+    } elseif ($max === $v) {
+        $t = (($b - $r) / $d + 2) / 6;
+    } else {
+        $t = (($r - $v) / $d + 4) / 6;
+    }
+    return [$t, $s, $cl];
+}
+
+/**
+ * HSL vers RVB, en 0..255.
+ *
+ * @return array{0: int, 1: int, 2: int}
+ */
+function og_rvb(float $h, float $s, float $l): array
+{
+    if ($s <= 0.0) {
+        $v = (int) round($l * 255);
+        return [$v, $v, $v];
+    }
+    $q = $l < 0.5 ? $l * (1 + $s) : $l + $s - $l * $s;
+    $p = 2 * $l - $q;
+    $canal = function (float $t) use ($p, $q): int {
+        if ($t < 0) { $t += 1; }
+        if ($t > 1) { $t -= 1; }
+        if ($t < 1 / 6) { return (int) round(($p + ($q - $p) * 6 * $t) * 255); }
+        if ($t < 1 / 2) { return (int) round($q * 255); }
+        if ($t < 2 / 3) { return (int) round(($p + ($q - $p) * (2 / 3 - $t) * 6) * 255); }
+        return (int) round($p * 255);
+    };
+    return [$canal($h + 1 / 3), $canal($h), $canal($h - 1 / 3)];
+}
+
+/** La teinte portée par le calque du cadre, ou rien. */
+function teinte_du_gabarit(array $g): string
+{
+    foreach ($g['layers'] ?? [] as $l) {
+        if (($l['type'] ?? '') === 'image' && ($l['id'] ?? '') === 'frame') {
+            return teinte_propre($l['tint'] ?? null);
+        }
+    }
+    return '';
 }
 
 /**

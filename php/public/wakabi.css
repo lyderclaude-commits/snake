@@ -1249,6 +1249,26 @@ tr.pale td a{color:inherit}
    sont écrites en clair, faute de pouvoir dépendre des variables de
    l'une ou de l'autre. */
 
+/* ============ le choix d'une couleur ============
+   Une liste et une pipette, côte à côte, pour une seule valeur : la liste
+   porte la charte et les teintes relevées sur le cadre, la pipette couvre
+   tout le reste. Seule la liste est envoyée — voir la vue. */
+.couleur-duo{display:flex;gap:8px;align-items:center}
+.couleur-duo select{flex:1;min-width:0}
+.pipette{flex:none;width:46px;height:40px;padding:0;border:1px solid var(--border);
+  border-radius:var(--r10);background:var(--paper);cursor:pointer}
+/* Sans ces trois lignes, les navigateurs cernent la pastille d'un liseré
+   gris qu'aucune autre commande du formulaire ne porte. */
+.pipette::-webkit-color-swatch-wrapper{padding:4px}
+.pipette::-webkit-color-swatch{border:0;border-radius:6px}
+.pipette::-moz-color-swatch{border:0;border-radius:6px}
+.pipette:hover{border-color:var(--primary)}
+.pipette:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media (max-width:620px){
+  /* Au pouce, et non à la souris. */
+  .pipette{width:52px;height:44px}
+}
+
 /* ============ le retour en tête de page ============
    Il flotte au-dessus du contenu, mais du côté du pouce et jamais sur
    le texte : à droite, à la hauteur où la main tient le téléphone. */

@@ -8094,6 +8094,425 @@ const run = async () => {
   await telPu.close();
   await ctxPush2.close();
 
+
+  /* ================================================================== */
+  console.log('\n━━ 58. La pipette : une couleur qui n’est dans aucune liste ━━');
+
+  /**
+   * Six couleurs de charte, cinq relevées sur le cadre, et puis le reste.
+   *
+   * Le reste, c'est la charte d'une entreprise, le bleu exact d'un logo,
+   * la teinte qu'un organisateur a dans la tête et qui n'est nulle part
+   * dans son image. Le serveur acceptait déjà n'importe quel `#RRGGBB` —
+   * `couleur_propre()` le fait depuis toujours — il ne manquait qu'un
+   * moyen d'en poser un.
+   *
+   * Et un défaut vivait dans ce trou : une couleur libre EXISTAIT en base
+   * dès qu'un gabarit importé en portait une, mais la liste de l'écran ne
+   * l'avait pas en option. Rouvrir le décor la faisait donc retomber sur
+   * la première couleur de la liste, et le réenregistrer écrasait en
+   * silence une teinte choisie. C'est le scénario « elle revient » plus
+   * bas qui ferme ça, et il échouait avant.
+   */
+  const pPip = await browser.newPage();
+  surveiller(pPip);
+  await connexion(pPip, ADMIN.email, ADMIN.mdp);
+  await pPip.setViewportSize({ width: 1440, height: 900 });
+  await pPip.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pPip.waitForTimeout(700);
+
+  /* Le fond, le texte, un calque libre, et le cadre. */
+  ok('chaque liste de couleur porte sa pipette',
+     (await pPip.locator('input.pipette[type=color]').count()) === 4,
+     (await pPip.locator('input.pipette[type=color]')
+       .evaluateAll((n) => n.map((e) => e.getAttribute('data-pour')).join(' · '))));
+
+  /**
+   * La pipette n'a pas de nom, et c'est tout le dessin.
+   *
+   * Deux champs porteurs de la même valeur finissent par se contredire, et
+   * c'est celui qu'on n'a pas regardé qui part au serveur. Ici la liste
+   * reste seule à s'appeler `texte_couleur` : la pipette écrit dedans.
+   */
+  ok('et aucune d’elles n’est un second champ envoyé',
+     (await pPip.locator('input.pipette[name]').count()) === 0);
+
+  await pPip.locator('.sd-etape[data-etape=apparence]').click();
+  await pPip.waitForTimeout(400);
+
+  const pastille = () => pPip.evaluate(() => ({
+    liste: (document.getElementById('r-texte_couleur') as HTMLSelectElement).value,
+    pastille: (document.querySelector('input.pipette[data-pour="r-texte_couleur"]') as HTMLInputElement)
+      .value.toUpperCase(),
+  }));
+
+  /**
+   * La pastille montre ce qui est SUR LE BADGE, jeton de charte compris.
+   *
+   * Une pipette blanche à côté d'un texte orange se lit comme une panne :
+   * on clique dessus pour « remettre » la couleur qu'on voit déjà, et on
+   * la perd. Elle traduit donc `brand.accent` en `#F97316`.
+   */
+  await pPip.evaluate(() => {
+    const s = document.getElementById('r-texte_couleur') as HTMLSelectElement;
+    s.value = 'brand.accent';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pPip.waitForTimeout(400);
+  const surOrange = await pastille();
+  ok('la pastille traduit un jeton de la charte en sa vraie teinte',
+     surOrange.pastille === '#F97316', `${surOrange.liste} → ${surOrange.pastille}`);
+
+  /* --- une couleur qui n'est dans aucune liste --- */
+  await pPip.evaluate(() => {
+    const pip = document.querySelector('input.pipette[data-pour="r-texte_couleur"]') as HTMLInputElement;
+    pip.value = '#1E88E5';
+    pip.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pPip.waitForTimeout(1500);
+  const libre = await pastille();
+  ok('la pipette pose sa couleur DANS la liste', libre.liste === '#1E88E5', libre.liste);
+  ok('et la range sous un intitulé qui la nomme', await pPip.evaluate(() => {
+    const g = document.querySelector('#r-texte_couleur optgroup[data-libre]');
+    return g?.getAttribute('label') === 'Ma couleur' && g.children.length === 1;
+  }));
+
+  /**
+   * Le badge est-il VRAIMENT dessiné dans cette couleur ?
+   *
+   * Une liste qui affiche `#1E88E5` ne prouve rien : c'est du texte. On
+   * compte les pixels du canevas qui portent cette teinte — c'est la seule
+   * chose que l'organisateur regardera, lui.
+   */
+  const pixelsBleus = await pPip.evaluate(() => {
+    const cv = document.querySelector('#apercu canvas, canvas') as HTMLCanvasElement | null;
+    if (!cv) return -1;
+    const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i] - 0x1e) < 26 && Math.abs(d[i + 1] - 0x88) < 26
+          && Math.abs(d[i + 2] - 0xe5) < 26) n++;
+    }
+    return n;
+  });
+  ok('et le badge est dessiné dans cette couleur, pas seulement annoncé',
+     pixelsBleus > 200, `${pixelsBleus} pixels`);
+
+  /* --- un calque libre a la sienne --- */
+  await pPip.locator('button:has-text("+ Texte")').click();
+  await pPip.waitForTimeout(600);
+  ok('le panneau d’un calque porte aussi sa pipette',
+     await pPip.locator('input.pipette[data-pour="l-couleur"]').isVisible());
+  await pPip.evaluate(() => {
+    const pip = document.querySelector('input.pipette[data-pour="l-couleur"]') as HTMLInputElement;
+    pip.value = '#E91E63';
+    pip.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pPip.waitForTimeout(700);
+  ok('et la couleur choisie entre dans le calque',
+     JSON.parse(await pPip.inputValue('#champ-calques'))[0]?.couleur === '#E91E63',
+     JSON.parse(await pPip.inputValue('#champ-calques'))[0]?.couleur ?? 'aucun calque');
+
+  /* --- elle survit à l'enregistrement, et elle revient --- */
+  const DECOR_PIP = `Pipette ${marque}`;
+  await pPip.locator('.sd-etape[data-etape=cadre]').click();
+  await pPip.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pPip.waitForTimeout(900);
+  await pPip.locator('.sd-etape[data-etape=campagne]').click();
+  await pPip.fill('#titre', DECOR_PIP);
+  await pPip.locator('.sd-enregistrer').click();
+  await pPip.waitForLoadState('domcontentloaded');
+  await pPip.waitForTimeout(500);
+  ok('le décor s’enregistre avec sa couleur libre', pPip.url().includes('p=catalogue'));
+
+  await pPip.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_PIP)}`,
+                  { waitUntil: 'domcontentloaded' });
+  const versPip = await pPip.locator(`.carte:has-text("${DECOR_PIP}") a[href*="p=modifier"]`)
+    .first().getAttribute('href') ?? '';
+  await pPip.goto(versPip.startsWith('http') ? versPip : `${BASE}/${versPip.replace(/^\//, '')}`,
+                  { waitUntil: 'domcontentloaded' });
+  await pPip.waitForTimeout(900);
+  await pPip.locator('.sd-etape[data-etape=apparence]').click();
+  await pPip.waitForTimeout(500);
+
+  const revenue = await pastille();
+  ok('rouvert, le décor RETROUVE sa couleur au lieu de retomber sur la première',
+     revenue.liste === '#1E88E5', revenue.liste);
+  ok('et la pastille la montre', revenue.pastille === '#1E88E5', revenue.pastille);
+  ok('le calque a gardé la sienne',
+     JSON.parse(await pPip.inputValue('#champ-calques'))[0]?.couleur === '#E91E63',
+     JSON.parse(await pPip.inputValue('#champ-calques'))[0]?.couleur ?? 'aucun calque');
+
+  /**
+   * Le panneau du calque la remontre, plutôt qu'une liste vide.
+   *
+   * `select.value = '#E91E63'` sur une liste qui ne porte pas l'option ne
+   * lève rien et ne choisit rien : la liste se vidait, et la couleur du
+   * calque — bien présente dans le décor, et dessinée sur l'aperçu —
+   * n'était plus nulle part à l'écran.
+   */
+  await pPip.locator('.sd-calque, [data-calque], .sd-calques li').first().click().catch(() => {});
+  await pPip.waitForTimeout(500);
+  const auCalque = await pPip.evaluate(() => ({
+    liste: (document.getElementById('l-couleur') as HTMLSelectElement).value,
+    pastille: (document.querySelector('input.pipette[data-pour="l-couleur"]') as HTMLInputElement)
+      .value.toUpperCase(),
+  }));
+  ok('et le panneau du calque l’affiche au lieu d’une liste vide',
+     auCalque.liste === '#E91E63' && auCalque.pastille === '#E91E63',
+     `liste « ${auCalque.liste} », pastille ${auCalque.pastille}`);
+
+  /**
+   * Une couleur bricolée ne devient pas une instruction.
+   *
+   * Le champ part d'un formulaire : rien n'empêche d'y poster autre chose
+   * qu'un hexadécimal. `couleur_propre()` retombe alors sur la valeur de
+   * départ — c'est ce qui empêche `url(...)` d'entrer dans un gabarit.
+   */
+  const jetonPip = await pPip.evaluate(() =>
+    (document.querySelector('input[name=csrf]') as HTMLInputElement)?.value ?? '');
+  const idPip = new URL(pPip.url()).searchParams.get('id') ?? '';
+  const bricole = await pPip.request.post(`${BASE}/index.php?p=modifier&id=${idPip}`, {
+    form: { csrf: jetonPip, titre: DECOR_PIP, texte_couleur: 'url(javascript:alert(1))',
+            fond: 'red; background:url(//x)', disposition: 'bandeau' },
+  });
+  ok('une couleur qui n’est pas une couleur est refusée par le serveur',
+     bricole.status() < 500);
+  await pPip.goto(`${BASE}/index.php?p=modifier&id=${idPip}`, { waitUntil: 'domcontentloaded' });
+  await pPip.waitForTimeout(700);
+  await pPip.locator('.sd-etape[data-etape=apparence]').click();
+  await pPip.waitForTimeout(400);
+  const apresBricole = (await pastille()).liste;
+  ok('et rien de ce qu’elle contenait n’est entré dans le décor',
+     /^(#[0-9A-F]{6}|brand\.[a-z]+)$/.test(apresBricole), apresBricole);
+
+  await pPip.close();
+
+
+  /* ================================================================== */
+  console.log('\n━━ 59. Recolorer le cadre, sans en redessiner un ━━');
+
+  /**
+   * « La même affiche, dans MA couleur. »
+   *
+   * Un organisateur qui part d'un cadre fourni tient le dessin, le format
+   * et l'ouverture photo — tout sauf la couleur, qui est celle de Wakabi
+   * et pas la sienne. Jusqu'ici il fallait un graphiste pour ça.
+   *
+   * La règle est écrite sur l'écran parce qu'elle surprendrait autrement :
+   * la couleur choisie remplace celle des pixels colorés, leurs clairs et
+   * leurs sombres sont gardés, et ce qui est blanc, noir ou gris ne bouge
+   * pas. C'est ce qui laisse le texte du cadre lisible et le filigrane
+   * intact.
+   *
+   * Ce que cette section garde surtout, c'est l'ACCORD entre les trois
+   * sorties : l'atelier, le badge de l'invité et la vignette de partage.
+   * Les deux premières partagent un module ; la troisième est écrite en
+   * PHP et ne peut pas l'appeler. Rien ne garantit qu'elles s'accordent
+   * sauf la comparaison des pixels, faite plus bas.
+   */
+  const pTe = await browser.newPage();
+  surveiller(pTe);
+  await connexion(pTe, ADMIN.email, ADMIN.mdp);
+  await pTe.setViewportSize({ width: 1440, height: 900 });
+  await pTe.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pTe.waitForTimeout(1500);
+
+  ok('l’étape du cadre porte une commande de couleur',
+     (await pTe.locator('#r-cadre_teinte').count()) === 1);
+  ok('dont le premier choix est de n’y pas toucher',
+     (await pTe.locator('#r-cadre_teinte option').first().innerText()).includes('origine'),
+     await pTe.locator('#r-cadre_teinte option').first().innerText());
+  ok('et qui a sa pipette, comme les autres couleurs',
+     (await pTe.locator('input.pipette[data-pour="r-cadre_teinte"]').count()) === 1);
+
+  /**
+   * Les couleurs dominantes du badge, relevées sur le canevas.
+   *
+   * On arrondit à 16 niveaux par canal : deux pixels d'un même aplat
+   * diffèrent d'une unité après redimensionnement, et un comptage exact
+   * rendrait mille teintes au lieu d'une.
+   */
+  const teintesCanevas = () => pTe.evaluate(() => {
+    const cv = document.querySelector('#apercu canvas, canvas') as HTMLCanvasElement;
+    const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data;
+    const n = new Map<string, number>();
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 200) continue;
+      n.set(`${d[i] >> 4},${d[i + 1] >> 4},${d[i + 2] >> 4}`,
+            (n.get(`${d[i] >> 4},${d[i + 1] >> 4},${d[i + 2] >> 4}`) || 0) + 1);
+    }
+    return [...n].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c]) => c);
+  });
+
+  /**
+   * Les tons chauds du visage, comptés avant et après.
+   *
+   * C'est la moitié du contrat : on recolore le CADRE, pas l'image de
+   * l'invité. Une teinte appliquée au canevas entier aurait rosi son
+   * visage, et personne n'aurait publié un décor pareil. Un point sondé
+   * au hasard ne l'aurait pas dit — il tombe sur le cadre une fois sur
+   * deux ; un comptage, si.
+   */
+  const peau = () => pTe.evaluate(() => {
+    const cv = document.querySelector('#apercu canvas, canvas') as HTMLCanvasElement;
+    /**
+     * On compte DANS la fenêtre photo, et en son cœur.
+     *
+     * Compter sur tout le canevas mélangeait les tons chauds du visage et
+     * l'accent orange du cadre — qui, lui, doit suivre la teinte. Le test
+     * disait alors « la photo a changé » d'un produit qui se comportait
+     * bien. La moitié centrale de la fenêtre ne contient que la photo.
+     *
+     * Aucune fonction nommée ici : ce corps traverse la transpilation de
+     * la recette, qui accroche ses aides (`__name`) aux expressions
+     * nommées — absentes de la page, où elles lèvent.
+     */
+    const v = ['photo_x', 'photo_y', 'photo_w', 'photo_h'].map(
+      (id) => Number((document.getElementById('r-' + id) as HTMLInputElement).value));
+    const [x, y, w, h] = v;
+    const d = cv.getContext('2d')!.getImageData(
+      Math.round((x + w * 0.25) * cv.width), Math.round((y + h * 0.25) * cv.height),
+      Math.max(1, Math.round(w * 0.5 * cv.width)),
+      Math.max(1, Math.round(h * 0.5 * cv.height))).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 120 && d[i + 1] > 70 && d[i + 1] < d[i] && d[i + 2] < d[i + 1]) n++;
+    }
+    return n;
+  });
+
+  const avantTe = await teintesCanevas();
+  const peauAvant = await peau();
+  await pTe.evaluate(() => {
+    const pip = document.querySelector('input.pipette[data-pour="r-cadre_teinte"]') as HTMLInputElement;
+    pip.value = '#C2185B';
+    pip.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pTe.waitForTimeout(2300);
+  const apresTe = await teintesCanevas();
+  ok('recolorer le cadre change vraiment les pixels du badge',
+     avantTe.join('|') !== apresTe.join('|'));
+
+  /**
+   * Et la photo, elle, n'a pas bougé.
+   *
+   * C'est la moitié du contrat : on recolore le CADRE, pas l'image de
+   * l'invité. Une teinte appliquée au canevas entier aurait rosi son
+   * visage, et personne n'aurait publié un décor pareil.
+   */
+  const peauApres = await peau();
+  ok('mais la photo de l’invité garde ses couleurs, au pixel près',
+     peauAvant > 1000 && peauApres === peauAvant,
+     `${peauAvant} tons chauds dans la fenêtre photo avant, ${peauApres} après`);
+
+  /* --- et l'on peut revenir en arrière --- */
+  await pTe.evaluate(() => {
+    const s = document.getElementById('r-cadre_teinte') as HTMLSelectElement;
+    s.value = '';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await pTe.waitForTimeout(2300);
+  ok('« ses couleurs d’origine » rend EXACTEMENT le cadre de départ',
+     (await teintesCanevas()).join('|') === avantTe.join('|'));
+
+  /* --- la teinte survit à l'enregistrement, et s'applique partout --- */
+  await pTe.evaluate(() => {
+    const pip = document.querySelector('input.pipette[data-pour="r-cadre_teinte"]') as HTMLInputElement;
+    pip.value = '#C2185B';
+    pip.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await pTe.waitForTimeout(1800);
+
+  const DECOR_TE = `Teinte ${marque}`;
+  await pTe.setInputFiles('input[name=cadre]', 'php/public/cadres/jy-serai.png');
+  await pTe.waitForTimeout(1200);
+  await pTe.locator('.sd-etape[data-etape=campagne]').click();
+  await pTe.fill('#titre', DECOR_TE);
+  await pTe.locator('.sd-enregistrer').click();
+  await pTe.waitForLoadState('domcontentloaded');
+  await pTe.waitForTimeout(600);
+
+  await pTe.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_TE)}`,
+                 { waitUntil: 'domcontentloaded' });
+  const versTe = await pTe.locator(`.carte:has-text("${DECOR_TE}") a[href*="p=modifier"]`)
+    .first().getAttribute('href') ?? '';
+  await pTe.goto(versTe.startsWith('http') ? versTe : `${BASE}/${versTe.replace(/^\//, '')}`,
+                 { waitUntil: 'domcontentloaded' });
+  await pTe.waitForTimeout(1200);
+  ok('rouvert, le décor a gardé la couleur de son cadre',
+     (await pTe.inputValue('#r-cadre_teinte')) === '#C2185B',
+     await pTe.inputValue('#r-cadre_teinte'));
+
+  /* --- le badge de l'invité porte la même --- */
+  await pTe.goto(`${BASE}/index.php?p=catalogue&q=${encodeURIComponent(DECOR_TE)}`,
+                 { waitUntil: 'domcontentloaded' });
+  await pTe.locator(`.carte:has-text("${DECOR_TE}") form[action*="p=statut"] button:has-text("Publier")`)
+    .first().click().catch(() => {});
+  await pTe.waitForLoadState('domcontentloaded');
+  const slugTe = `teinte-${marque}`;
+
+  const pInvTe = await browser.newPage();
+  surveiller(pInvTe);
+  await pInvTe.goto(`${BASE}/index.php?p=decor&slug=${slugTe}`, { waitUntil: 'domcontentloaded' });
+  await pInvTe.waitForTimeout(2600);
+  const badgeInvite = await pInvTe.evaluate(() => {
+    const cv = document.querySelector('canvas') as HTMLCanvasElement | null;
+    if (!cv) return null;
+    const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      /* du rose : beaucoup de rouge, peu de vert, du bleu au milieu */
+      if (d[i] > 150 && d[i + 1] < 110 && d[i + 2] > 70 && d[i + 2] < 190) n++;
+    }
+    return n;
+  });
+  ok('le badge que l’invité reçoit porte la couleur choisie, pas celle du fichier',
+     (badgeInvite ?? 0) > 500, `${badgeInvite} pixels roses`);
+
+  /**
+   * Et la vignette de partage aussi, écrite par une AUTRE implémentation.
+   *
+   * Celle-ci est en PHP et dessine avec GD : elle ne peut pas appeler le
+   * module du navigateur. On compare donc les sorties plutôt que le code —
+   * c'est la seule chose qui tienne les deux d'accord dans le temps.
+   */
+  const rosesOg = await pInvTe.evaluate(async (adresse) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = adresse; });
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    const g = cv.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 150 && d[i + 1] < 110 && d[i + 2] > 70 && d[i + 2] < 190) n++;
+    }
+    return { roses: n, total: cv.width * cv.height };
+  }, `${BASE}/index.php?p=og&slug=${slugTe}`);
+  ok('la vignette de partage, dessinée par PHP, porte la même couleur',
+     rosesOg.roses > rosesOg.total * 0.02,
+     `${rosesOg.roses} pixels roses sur ${rosesOg.total}`);
+  await pInvTe.close();
+
+  /* --- une teinte qui n'est pas une couleur n'entre pas --- */
+  const jetonTe = await pTe.evaluate(() =>
+    (document.querySelector('input[name=csrf]') as HTMLInputElement)?.value ?? '');
+  const idTe = new URL(versTe.startsWith('http') ? versTe : `${BASE}/${versTe.replace(/^\//, '')}`)
+    .searchParams.get('id') ?? '';
+  await pTe.request.post(`${BASE}/index.php?p=modifier&id=${idTe}`, {
+    form: { csrf: jetonTe, titre: DECOR_TE, cadre_teinte: 'url(//ailleurs)', disposition: 'bandeau' },
+  });
+  await pTe.goto(`${BASE}/index.php?p=modifier&id=${idTe}`, { waitUntil: 'domcontentloaded' });
+  await pTe.waitForTimeout(900);
+  const teintePost = await pTe.inputValue('#r-cadre_teinte');
+  ok('une teinte qui n’est pas une couleur retombe sur « ses couleurs d’origine »',
+     teintePost === '' || /^#[0-9A-F]{6}$/.test(teintePost), JSON.stringify(teintePost));
+  await pTe.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {

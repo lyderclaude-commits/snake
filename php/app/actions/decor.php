@@ -191,6 +191,7 @@ const CLES_APPARENCE = [
     'texte_couleur', 'texte_align', 'bloc_x', 'bloc_y', 'bloc_w',
     'accroche_taille', 'champ_taille', 'qr_actif', 'qr_position', 'qr_taille', 'filigrane_position',
     'format', 'fond', 'photo_x', 'photo_y', 'photo_w', 'photo_h', 'photo_forme',
+    'cadre_teinte',
 ];
 
 /**
@@ -260,15 +261,21 @@ if ($modifie && !$post) {
     $claim = $textes['claim'] ?? [];
     $champ = $textes['field'] ?? [];
     $photo = [];
+    /* La teinte est relue sur le calque du cadre : c'est là qu'elle vit. */
+    $cadreCalque = [];
     foreach ($g['layers'] ?? [] as $l) {
         if (($l['type'] ?? '') === 'photoSlot') {
             $photo = $l;
+        }
+        if (($l['type'] ?? '') === 'image' && ($l['id'] ?? '') === 'frame') {
+            $cadreCalque = $l;
         }
     }
 
     $valeurs = [
         // L'apparence enregistrée est relue telle quelle : rouvrir un décor
         // doit montrer le décor, pas les réglages d'usine de sa disposition.
+        'cadre_teinte' => teinte_propre($cadreCalque['tint'] ?? null),
         'texte_couleur' => (string) ($claim['color'] ?? 'brand.paper'),
         'texte_align' => (string) ($claim['align'] ?? 'left'),
         'bloc_x' => (float) ($claim['rect']['x'] ?? 0.25),
