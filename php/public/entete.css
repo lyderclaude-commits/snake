@@ -380,7 +380,7 @@
   display:inline-flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.6);transition:background .2s,color .2s;text-decoration:none}
 .pg-soc:hover{background:rgba(255,255,255,.15);color:#fff}
-.pg-col h4{font-family:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+.pg-col h2{font-family:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
   font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
   color:rgba(255,255,255,.4);margin:0 0 16px}
 .pg-liens{display:flex;flex-direction:column;gap:9px}
@@ -418,7 +418,7 @@
      texte — on vise à côté une fois sur trois. On leur donne de la
      hauteur et une taille qui se lit, sans toucher au pied des grands
      écrans, où la souris ne rate pas. */
-  .pg-col h4{font-size:.8rem}
+  .pg-col h2{font-size:.8rem}
   .pg-liens{gap:2px}
   .pg-liens a{font-size:.9rem;padding:8px 0;display:block}
   .pg-legal{gap:6px 18px}

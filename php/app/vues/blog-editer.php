@@ -161,7 +161,7 @@ Un paragraphe. Une ligne vide en sépare deux.
       <div class="champ">
         <label for="a-corps" class="sr-only">Corps de l’article</label>
         <textarea id="a-corps" name="corps" rows="22" required
-                  style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.7"><?= e($valeurs['corps']) ?></textarea>
+                  style="font-family:var(--mono);line-height:1.7"><?= e($valeurs['corps']) ?></textarea>
       </div>
 
       <div class="rangee" style="margin-top:14px;gap:10px;flex-wrap:wrap">

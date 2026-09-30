@@ -11,6 +11,10 @@
   --ink:#0F172A; --text2:#475569; --text3:#94A3B8;
   --paper:#FFFFFF; --bg:#F8FAFF; --bg2:#F1F5FC; --border:#E2E8F5;
   --r6:6px; --r10:10px; --r16:16px; --r24:24px;
+  /* Une seule pile à chasse fixe, et un seul endroit où la changer. Il y en
+     avait quatre — dont `.mono` défini DEUX fois, à onze cents lignes
+     d'écart, avec deux listes différentes. */
+  --mono:ui-monospace,SFMono-Regular,Menlo,"Liberation Mono",monospace;
   --ombre:0 1px 2px rgba(15,23,42,.05), 0 10px 24px -14px rgba(15,23,42,.2);
   /* Une seule famille pour toute l'interface. Les titres se distinguent par
      la graisse et l'approche, pas par un second caractère. */
@@ -26,13 +30,19 @@ h2{font-size:1.3rem;font-weight:700}
 h3{font-size:1rem;font-weight:700}
 p{margin:0 0 .9em}
 a{color:var(--primary-d);text-underline-offset:3px}
-.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.8rem}
 
 .contenu{max-width:1100px;margin:0 auto;padding:0 20px 80px}
 .etroit{max-width:440px;margin:0 auto;padding:48px 20px}
 .pile{display:flex;flex-direction:column;gap:18px}
 .rangee{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .grille{display:grid;gap:16px}
+/* Un enfant de grille ne descend pas sous sa largeur minimale de contenu,
+   sauf si on le lui dit. Sans cette ligne, un tableau large à l'intérieur
+   d'une carte pousse la colonne — donc la carte, donc la page — au lieu de
+   défiler dans son propre cadre : c'est ce qui faisait glisser « Les
+   offres » et « Journal » de deux cents pixels sur un téléphone. */
+.grille > *{min-width:0}
 .g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
@@ -224,6 +234,32 @@ input[type=file]{font-size:.9rem}
 input[type=range]{width:100%;accent-color:var(--primary)}
 .champ{margin-bottom:14px}
 .aide{font-size:.8rem;color:var(--text3);margin:5px 0 0}
+/* Une ligne de lecture, et pas la largeur de l'écran.
+   Sur un grand écran, ces paragraphes d'explication couraient jusqu'à 166
+   caractères par ligne : l'œil perd le début de la ligne suivante bien
+   avant, et la dernière ligne ne portait souvent qu'un mot. 75 caractères
+   est la limite admise ; dans une carte étroite la règle ne change rien.
+   Le texte centré garde son centre : la boîte est centrée avec lui. */
+p.aide{max-width:75ch}
+/* Le texte courant de l'espace de travail suit la même règle : un
+   paragraphe d'explication dans une carte, ou dans un bandeau de message,
+   se lit mal au-delà de 75 caractères par ligne. Les listes en sont
+   exclues à dessein — plusieurs d'entre elles sont des rangées, pas de la
+   prose, et une largeur maximale les écraserait. */
+.carte > p, .msg > p, .contenu > p, .aide > p{max-width:75ch}
+p.aide[style*="text-align:center"]{margin-left:auto;margin-right:auto}
+
+/* Un lien SEUL sur sa ligne est une commande, pas un mot dans une phrase.
+   « Mot de passe oublié ? » mesurait 16 px de haut, juste sous un bouton
+   de 56 : au pouce, on vise l'un et on touche l'autre. Les liens pris dans
+   une phrase — « Pas encore de compte ? En créer un » — gardent leur
+   hauteur : les agrandir casserait la ligne de texte, et la norme les
+   dispense pour cette raison même. */
+@media (max-width:620px){
+  main p > a:only-child, main .etroit p > a:only-child{
+    display:inline-block;padding:11px 8px;margin:-9px -8px;
+  }
+}
 
 .bouton{display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:0;
   border-radius:var(--r10);padding:11px 18px;font:inherit;font-weight:700;font-size:.92rem;cursor:pointer;text-decoration:none}
@@ -297,7 +333,7 @@ input[type=range]{width:100%;accent-color:var(--primary)}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{text-align:left;padding:10px 12px;border-top:1px solid var(--border)}
 thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700}
-.tableau{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r10);background:var(--paper)}
+.tableau{overflow-x:auto;min-width:0;border:1px solid var(--border);border-radius:var(--r10);background:var(--paper)}
 
 /* studio */
 .studio{display:grid;gap:22px;grid-template-columns:minmax(0,1fr) 330px;align-items:start}
@@ -359,7 +395,7 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .reglages{display:grid;gap:0 18px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .reglage{margin-bottom:12px}
 .reglage label{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.reglage output{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.78rem;
+.reglage output{font-family:var(--mono);font-size:.78rem;
   font-weight:700;color:var(--primary-d);background:var(--primary-wash);
   border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
 .reglage input[type=range]{margin-top:2px}
@@ -498,7 +534,11 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 .chercher select{width:auto;min-width:150px;flex:none}
 .chercher input[type=text],.chercher input[type=search]{width:var(--recherche)}
 @media(max-width:640px){
-  .chercher{margin-left:0;width:100%}
+  /* La rangée se replie : deux déroulants de filtre et un bouton ne
+     tiennent pas sur 390 px, et `nowrap` les poussait dehors — le journal
+     débordait de 246 px, bouton « Filtrer » compris. */
+  .chercher{margin-left:0;width:100%;flex-wrap:wrap}
+  .chercher select{flex:1 1 150px;min-width:0;width:auto}
   /* `min-width:0` et pas seulement `flex:1` : un `<input>` refuse par
      défaut de descendre sous la largeur de ses vingt caractères, si bien
      que sur un écran de 320 px le bouton « Chercher » sortait de la page
@@ -633,6 +673,14 @@ section.bloc{padding:64px 0}
 /* Si la mesure ne tient plus à côté du nom, elle passe à la ligne entière
    plutôt que de se couper en deux mots empilés. */
 .avis .qui{flex-wrap:wrap}
+
+/* L'écran des offres : la liste à gauche, l'édition à droite — mais
+   seulement quand il y a la place pour deux colonnes. En dessous, elles se
+   suivent, comme partout ailleurs dans le produit. */
+.offres-deux{align-items:start;grid-template-columns:minmax(240px,320px) 1fr}
+@media (max-width:820px){
+  .offres-deux{grid-template-columns:1fr}
+}
 
 /* Les offres ont leur propre grille : à 160 px de large, une colonne de
    prix se coupe en deux (« 6 » / « 000 ») et la liste devient illisible.
@@ -1033,7 +1081,7 @@ input[type=file].fichier-natif{
 .facture-tete{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
   padding-bottom:18px;border-bottom:2px solid var(--ink);margin-bottom:20px}
 .facture-marque{font-family:var(--display);font-weight:800;font-size:1.25rem;margin:0}
-.facture-numero{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+.facture-numero{font-family:var(--mono);
   font-size:1.05rem;font-weight:700;margin:0}
 .facture-parties{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:18px;margin-bottom:22px}
@@ -1055,7 +1103,7 @@ input[type=file].fichier-natif{
 .bloc-code{
   margin:0;padding:12px 14px;border-radius:var(--r10);overflow-x:auto;
   background:var(--bg2);border:1px solid var(--border);
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
+  font-family:var(--mono);font-size:.82rem;
   line-height:1.65;white-space:pre;color:var(--ink);
 }
 
@@ -1267,6 +1315,10 @@ tr.pale td a{color:inherit}
 @media (max-width:620px){
   /* Au pouce, et non à la souris. */
   .pipette{width:52px;height:44px}
+  /* Les puces de format et les commandes en forme de lien sont de VRAIS
+     boutons : 23 et 29 px de haut, on les rate d'un doigt. Le rembourrage
+     vertical suffit — leur dessin ne change pas. */
+  .fmt-pas,.lien-bouton{min-height:40px;padding-top:9px;padding-bottom:9px}
 }
 
 /* ============ le retour en tête de page ============
@@ -1382,11 +1434,20 @@ tr.pale td a{color:inherit}
   box-shadow:0 8px 18px -12px rgba(37,99,235,.7)}
 /* Hauteur FIXE, forme réelle à l'intérieur : les vignettes vont du carré au
    9:16, et suivre chaque ratio donnerait une grille en dents de scie. La
-   boîte est régulière, l'image y garde ses proportions. */
-.sd-modele-image{position:relative;display:grid;place-items:center;height:92px;
+   boîte est régulière, l'image y garde ses proportions. Sa hauteur est
+   nommée une fois (`--h`) parce que l'image doit la reprendre : un
+   pourcentage se résout contre la RANGÉE de la grille, qui grandit avec son
+   contenu — donc contre l'image elle-même, et la contrainte ne contraignait
+   rien. */
+.sd-modele-image{--h:92px;position:relative;display:grid;place-items:center;height:var(--h);
   border-radius:7px;overflow:hidden;background:var(--bg2)}
-.sd-modele-image img{max-width:100%;max-height:100%;width:auto;height:auto;
-  object-fit:contain;display:block}
+/* `height:100%` et non `auto` : un `max-height:100%` ne résout à rien dans
+   une zone de grille de hauteur indéfinie, si bien que l'image dépassait sa
+   boîte — 181 px dans 92 — et `overflow:hidden` la rognait. L'aperçu d'un
+   modèle 9:16 montrait donc une bande large : exactement ce qu'il devait
+   aider à distinguer. Le commentaire ci-dessus décrivait l'intention ; ces
+   deux valeurs l'appliquent. */
+.sd-modele-image img{width:100%;height:var(--h);object-fit:contain;display:block}
 .sd-modele-vide{font-size:.7rem;color:var(--text3);text-align:center;line-height:1.4}
 .sd-modele-ratio{position:absolute;right:4px;top:4px;background:rgba(15,23,42,.78);color:#fff;
   font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px}
@@ -1427,6 +1488,14 @@ tr.pale td a{color:inherit}
    personnes s'y trouvent. Le reste — brancher, vérifier — tient dans des
    formulaires ordinaires, parce que ce sont des formulaires ordinaires. */
 .cx{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+/* Deux formulaires en carte, côte à côte, n'ont pas le même contenu : la
+   grille les étire à la même hauteur, et leur bouton tombait là où leur
+   texte s'arrêtait — celui de Telegram flottait cent pixels au-dessus de
+   celui de WhatsApp, et la paire se lisait comme une erreur de mise en
+   page. Le bouton se pose donc au bas de sa carte. */
+.grille > form.carte{display:flex;flex-direction:column}
+.grille > form.carte > .bouton{margin-top:auto;align-self:flex-start}
+
 .cx-carte{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
   padding:18px;box-shadow:var(--ombre);display:flex;flex-direction:column;gap:12px}
 .cx-tete{display:flex;align-items:center;gap:11px}
@@ -1523,7 +1592,7 @@ tr.pale td a{color:inherit}
 .ech th{text-align:left;font-weight:600;color:var(--text2);padding:7px 10px;font-size:.8rem}
 .ech td{padding:10px;border-top:1px solid var(--border);vertical-align:top}
 .ech .motif{color:#B91C1C;font-size:.82rem;line-height:1.45}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem}
+/* `.mono` est défini plus haut, une seule fois. */
 
 /* ============ l'atelier d'écriture ============
    Réglages à gauche, aperçu collé à droite : on écrit en voyant ce que
@@ -1650,7 +1719,7 @@ tr.pale td a{color:inherit}
 .c-plus{background:var(--text3)}
 
 .rap-preuve{display:block;font-size:.72rem;color:var(--text3);margin-top:3px}
-.rap-brut{display:block;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.72rem;
+.rap-brut{display:block;font-family:var(--mono);font-size:.72rem;
   color:var(--text3);margin-top:2px;overflow-wrap:anywhere}
 .rap-vide{color:var(--text3)}
 .rap-mortel{color:#B91C1C;font-weight:600;font-size:.82rem}
@@ -1790,7 +1859,7 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
 }
 .bord-chercher kbd{
   position:absolute;right:10px;padding:2px 7px;border:1px solid var(--border);
-  border-radius:6px;background:var(--bg2);font-family:ui-monospace,monospace;
+  border-radius:6px;background:var(--bg2);font-family:var(--mono);
   font-size:.75rem;color:var(--text2);pointer-events:none;
 }
 /* Le raccourci ne sert plus à rien une fois le champ saisi : l'indice

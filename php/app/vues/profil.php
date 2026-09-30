@@ -146,7 +146,7 @@ $verifie = email_verifie($me);
           <div class="champ" style="margin:0">
             <label for="otp-retrait">Code actuel, pour la retirer</label>
             <input id="otp-retrait" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}"
-                   maxlength="6" required style="width:130px;font-family:ui-monospace,monospace">
+                   maxlength="6" required style="width:130px;font-family:var(--mono)">
           </div>
           <button class="bouton danger" type="submit">Retirer</button>
         </form>
@@ -170,7 +170,7 @@ $verifie = email_verifie($me);
                 <label for="otp-code">Le code affiché maintenant</label>
                 <input id="otp-code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}"
                        maxlength="6" required autocomplete="one-time-code"
-                       style="width:140px;font-family:ui-monospace,monospace;font-size:1.2rem;letter-spacing:.2em">
+                       style="width:140px;font-family:var(--mono);font-size:1.2rem;letter-spacing:.2em">
               </div>
               <button class="bouton" type="submit">Activer</button>
             </form>

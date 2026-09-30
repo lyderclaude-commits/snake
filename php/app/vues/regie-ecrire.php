@@ -233,7 +233,7 @@ $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', '
             <div class="champ">
               <label for="r-liste">Ajouter des adresses <span style="font-weight:400">(facultatif si la liste en contient déjà)</span></label>
               <textarea id="r-liste" name="liste" rows="5"
-                        style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace"
+                        style="font-family:var(--mono)"
                         placeholder="ama@exemple.tg&#10;Kossi Mensah &lt;kossi@exemple.tg&gt;"><?= e($valeurs['liste']) ?></textarea>
               <p class="aide"><strong>Elles sont enregistrées dans votre carnet</strong>, pas seulement
               utilisées une fois. Le format <code>Nom &lt;adresse&gt;</code> est accepté ; une adresse

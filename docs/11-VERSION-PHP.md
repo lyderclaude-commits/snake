@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1038 scénarios
-réussis** sur une base déjà peuplée, **1037 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1047 scénarios
+réussis** sur une base déjà peuplée, **1046 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
@@ -306,7 +306,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 1038 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1047 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 1038 scénarios
+### Les 1047 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -431,6 +431,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Modèles, palette, police** | Sept gabarits sur vignette (le `<select>` reste dessous et part avec le formulaire) ; les couleurs dominantes du cadre sont proposées ; la police de titrage est **vraiment servie** |
 | **La pipette** | Les trois listes de couleur portent une pipette, et **aucune n'est un second champ envoyé** ; la pastille traduit un jeton de charte en sa vraie teinte ; une couleur libre entre dans la liste, **et le badge est dessiné avec** (pixels du canevas comptés, pas la valeur affichée) ; elle survit à l'enregistrement et **revient** à la réouverture, calque compris ; une valeur bricolée postée à la main n'entre pas dans le décor |
 | **La couleur du cadre** | Recolorer change **vraiment** les pixels du badge, et **pas ceux de la photo** ; ce qui est blanc ou gris ne bouge pas ; revenir à « ses couleurs d'origine » rend **exactement** l'image de départ (histogramme comparé) ; la teinte survit à l'enregistrement, se retrouve sur le **badge de l'invité**, et la **vignette de partage dessinée par PHP porte la même** — deux implémentations comparées sur leurs pixels |
+| **Le dessin** | Les treize écrans les plus chargés **ne glissent pas de côté** sur un téléphone ; deux formulaires côte à côte ont leur bouton **à la même hauteur** ; « Suspendre » est rouge **sans empiler d'aplats** ; aucun paragraphe ne dépasse la ligne de lecture (caractère **mesuré dans la police**, pas estimé) ; aucune vignette de modèle ne dépasse sa boîte ; aucune page publique ne **saute un niveau de titre** ; le produit ne sert qu'**une** pile à chasse fixe |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -3262,6 +3263,46 @@ l'original est laissé intact : une image un peu lourde vaut infiniment mieux
 qu'un cadre perdu.
 
 ---
+
+## Le tour du dessin, et ce qu'il a corrigé
+
+Un tour des 44 écrans, en deux largeurs et trois audiences, où chaque
+constat est **mesuré dans la page** plutôt que lu dans la feuille de style.
+Rien de ce qui suit ne faisait échouer une recette : ce sont des défauts
+qui se voient et que rien ne signale.
+
+| Ce qui n'allait pas | Ce qui a changé |
+|---|---|
+| `?p=offres` et `?p=journal` **glissaient de côté** sur un téléphone (474 px et 246 px hors écran) | La grille des offres se replie sous 820 px ; la rangée de filtres se replie et ses déroulants se rétrécissent. Et `.grille > *{min-width:0}` : sans lui, un tableau large pousse sa colonne — donc la page — au lieu de défiler dans son propre cadre |
+| Sur `?p=canaux`, **deux boutons côte à côte à des hauteurs différentes**, avec 107 px de creux sous l'un | Un formulaire en carte est une colonne, et son bouton se pose au bas : les deux sont alignés |
+| `?p=comptes` : un **ruban rouge** continu sur trente écrans, l'action la plus dangereuse répétée 234 fois en aplat | « Suspendre » passe en contour. C'est toujours la seule commande rouge de la ligne, elle ne hurle plus |
+| Les paragraphes d'explication couraient jusqu'à **166 caractères par ligne** | 75 caractères au maximum, pour l'aide comme pour le texte courant. Le texte centré garde son centre |
+| Sur téléphone, les **liens seuls sous un formulaire** mesuraient 16 px de haut, sous un bouton de 56 | 42 px de zone sensible, sans que la ligne bouge : le rembourrage est compensé par une marge négative. Les liens **pris dans une phrase** gardent leur hauteur — la norme les en dispense, et les agrandir casserait la ligne |
+| La galerie de modèles **rognait ses vignettes** : un 9:16 s'y montrait en bande large, alors que son seul rôle est de faire distinguer les formats | Un `max-height:100%` ne contraint rien dans une rangée de grille de hauteur indéfinie : elle grandit avec son contenu. La hauteur est nommée une fois et l'image la reprend |
+| Le pied de page passait de `h1` à `h4` sur **les 44 pages**, et `?p=contact` de `h1` à `h3` | `h2` des deux côtés, à taille inchangée |
+| **Quatre piles** à chasse fixe, dont `.mono` **défini deux fois** à onze cents lignes d'écart, avec deux listes différentes | Un seul jeton `--mono`, un seul endroit où le changer |
+
+Trois familles de constats ont été **écartées après vérification**, et la
+mesure corrigée pour ne plus les signaler :
+
+- Les images **sans `width` ni `height`** de `?p=blog`, `?p=nouveau` et
+  `?p=relecture` : leur place est déjà réservée, par un `aspect-ratio` ou
+  par la hauteur de leur boîte. Aucune page ne saute.
+- Les **liens dans une phrase** trop petits au pouce : la norme les
+  dispense, précisément parce qu'on ne peut pas les agrandir sans casser
+  la ligne qui les porte.
+- Les `label.sr-only` signalés comme « texte coupé » : ils le sont
+  **exprès**, ils s'adressent aux lecteurs d'écran.
+
+> Et un faux défaut qui venait de l'appareil photo : une grande bande vide
+> sur `?p=villes`. C'était une section qui apparaît au défilement, et qui
+> n'était pas encore apparue au moment de la capture. Elle se révèle bien
+> en descendant — et **reste visible si le JavaScript ne charge pas**.
+
+Ce que le tour a éprouvé et qui tenait déjà : **aucun texte sous le seuil
+de contraste AA** sur les 44 écrans et les deux largeurs ; tout est dessiné
+en Plus Jakarta Sans, sans repli système nulle part ; le même pied de page
+sur toutes les pages publiques.
 
 ## Ce que l'audit a ajouté
 

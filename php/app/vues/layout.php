@@ -716,7 +716,12 @@ $_vitrine = barre_vitrine($me, $_page);
       ];
       foreach ($colonnes as $titre => $entrees): ?>
         <div class="pg-col">
-          <h4><?= e($titre) ?></h4>
+          <?php
+          /* `h2` et non `h4` : le pied suit le `h1` de la page, et sauter
+             deux niveaux rompt le plan que lit un lecteur d'écran. Sa
+             taille vient de `.pg-col h2`, pas de son niveau. */
+          ?>
+          <h2><?= e($titre) ?></h2>
           <div class="pg-liens">
             <?php foreach ($entrees as [$nom, $adresse]): ?>
               <a href="<?= e($adresse) ?>"<?= sortie_externe($adresse) ?>><?= e($nom) ?></a>

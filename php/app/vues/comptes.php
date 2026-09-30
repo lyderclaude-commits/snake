@@ -282,7 +282,20 @@ $ouvert = $ouvert ?? '';
               <form method="post" action="<?= e(url('?p=suspendre')) ?>">
                 <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
                 <input type="hidden" name="id" value="<?= e($c['id']) ?>">
-                <button class="bouton <?= $c['suspendu'] ? 'fant' : 'danger' ?> petit" type="submit">
+                <?php
+                /**
+                 * Rouge, mais en contour.
+                 *
+                 * Un aplat rouge par ligne faisait, sur trois cents
+                 * comptes, un ruban rouge continu du haut en bas de la
+                 * page : l'action la plus dangereuse du produit y était
+                 * l'élément le plus visible, répété trois cents fois, et
+                 * plus rien d'autre ne se voyait. Le contour dit la même
+                 * chose — c'est la seule commande rouge de la ligne — sans
+                 * hurler trois cents fois.
+                 */
+                ?>
+                <button class="bouton fant <?= $c['suspendu'] ? '' : 'danger' ?> petit" type="submit">
                   <?= $c['suspendu'] ? 'Réactiver' : 'Suspendre' ?>
                 </button>
               </form>

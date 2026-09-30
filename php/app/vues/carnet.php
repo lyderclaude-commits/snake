@@ -151,7 +151,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
     <div class="champ">
       <label for="im-adresses">Les adresses</label>
       <textarea id="im-adresses" name="adresses" rows="7" required
-                style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace"
+                style="font-family:var(--mono)"
                 placeholder="ama@exemple.tg&#10;Kossi Mensah &lt;kossi@exemple.tg&gt;&#10;afi@exemple.tg ; yao@exemple.tg"></textarea>
       <p class="aide">Une par ligne, ou séparées par des virgules ou des points-virgules.
       <code>Nom &lt;adresse&gt;</code> est reconnu. Une ligne illisible est ignorée, pas refusée :

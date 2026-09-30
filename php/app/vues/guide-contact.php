@@ -29,7 +29,7 @@
       <div class="contact-grid">
         <div class="fade-up">
           <div class="tag">Restons en contact</div>
-          <h3>Une question ? Un projet ? Écrivez-nous.</h3>
+          <h2>Une question ? Un projet ? Écrivez-nous.</h2>
           <p style="color:var(--text2);margin:14px 0 28px;line-height:1.8;">Que vous souhaitiez rejoindre la plateforme, discuter d'un partenariat stratégique ou simplement en savoir plus, notre équipe vous répond sous 24h.</p>
           <div class="contact-links">
             <a href="mailto:contact@wakabileguide.com" class="contact-link">contact@wakabileguide.com</a>

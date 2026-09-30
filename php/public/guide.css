@@ -639,6 +639,13 @@ footer { background: var(--text); color: rgba(255,255,255,0.85); padding: 70px 0
    ================================================================ */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; }
 .contact-info h3 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 14px; }
+/* Le titre du bloc de contact est passé de `h3` à `h2` : il suivait le `h1`
+   de la page et sautait un niveau. Il n'avait AUCUNE règle — sa taille
+   venait du défaut du navigateur — et le changement de niveau l'aurait donc
+   fait grossir d'un quart. On la pose ici pour que la correction reste
+   structurelle et ne redessine pas la page. */
+.contact-grid > div > h2 { font-family: var(--font-display); font-size: 1.2rem;
+  font-weight: 700; line-height: 1.35; }
 .contact-info p { color: var(--text2); margin-bottom: 28px; line-height: 1.8; }
 .contact-links { display: flex; flex-direction: column; gap: 12px; }
 .contact-link { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text2); padding: 14px 18px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md); transition: all 0.2s; }

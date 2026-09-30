@@ -5234,7 +5234,9 @@ const run = async () => {
 
   ok('la vitrine porte le pied de page du guide',
      (await pAnon.locator('footer.pied-guide').count()) === 1);
-  const colonnes = await pAnon.locator('.pg-col h4')
+  /* `h2` et non `h4` : le pied suivait le `h1` de la page en sautant deux
+     niveaux, sur les 44 pages. Sa taille n'a pas changé. */
+  const colonnes = await pAnon.locator('.pg-col h2')
     .evaluateAll((n) => n.map((x) => (x.textContent ?? '').trim()));
   ok('avec ses quatre colonnes, Boost compris',
      colonnes.join(' · ') === 'Produit · Boost · Partenaires · Wakabi',
@@ -8512,6 +8514,221 @@ const run = async () => {
   ok('une teinte qui n’est pas une couleur retombe sur « ses couleurs d’origine »',
      teintePost === '' || /^#[0-9A-F]{6}$/.test(teintePost), JSON.stringify(teintePost));
   await pTe.close();
+
+
+  /* ================================================================== */
+  console.log('\n━━ 60. Le dessin : ce qui se mesure, et qui ne doit plus bouger ━━');
+
+  /**
+   * Un tour des écrans a relevé ce qu'aucune recette ne voyait.
+   *
+   * Rien de ce qui suit ne faisait échouer un test : une page qui glisse
+   * de côté RÉPOND, deux boutons désalignés répondent, un paragraphe de
+   * 166 caractères par ligne répond. Ce sont des défauts qui se voient et
+   * que rien ne signale — donc qui reviennent.
+   *
+   * Chaque ligne d'ici est la mesure qui a servi à les corriger, gardée
+   * pour qu'ils ne reviennent pas.
+   */
+  const ctxDessin = await browser.newContext({ viewport: { width: 390, height: 780 },
+    isMobile: true, hasTouch: true });
+  const pTel = await ctxDessin.newPage();
+  surveiller(pTel);
+  await connexion(pTel, ADMIN.email, ADMIN.mdp);
+
+  /**
+   * Aucune page ne glisse de côté sur un téléphone.
+   *
+   * Mesuré sur le document, pas sur une feuille de style : c'est le seul
+   * endroit où la somme des contraintes se voit. « Les offres » sortait de
+   * 474 px et « Journal » de 246 — une grille qui ne se repliait jamais et
+   * une rangée de filtres en `nowrap`.
+   */
+  const glissent: string[] = [];
+  for (const r of ['accueil', 'decors', 'blog', 'offres', 'journal', 'comptes', 'regie',
+                   'rapports', 'reglages', 'canaux', 'diffusion', 'nouveau', 'facturation']) {
+    await pTel.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+    await pTel.waitForTimeout(450);
+    const trop = await pTel.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (trop > 1) glissent.push(`${r} +${trop}px`);
+  }
+  ok('aucun écran ne glisse de côté sur un téléphone',
+     glissent.length === 0, glissent.join(' · ') || '13 écrans mesurés');
+
+  /**
+   * Un lien seul sous un formulaire est une commande, pas un mot.
+   *
+   * Et la phrase qui en contient un garde sa hauteur : le rembourrage est
+   * compensé par une marge négative, sinon la ligne de texte enflerait.
+   */
+  await pTel.context().clearCookies();
+  await pTel.goto(`${BASE}/index.php?p=connexion`, { waitUntil: 'domcontentloaded' });
+  await pTel.waitForTimeout(500);
+  const liens = await pTel.evaluate(() => {
+    const seuls: number[] = [];
+    const phrases: number[] = [];
+    for (const a of Array.from(document.querySelectorAll('main p > a')) as HTMLElement[]) {
+      const par = a.parentElement!;
+      const h = Math.round(a.getBoundingClientRect().height);
+      /* Seul sur sa ligne, ou pris dans une phrase : la norme ne demande
+         pas la même chose des deux, et le produit non plus. */
+      if ((par.textContent || '').trim() === (a.textContent || '').trim()) seuls.push(h);
+      else phrases.push(Math.round(par.getBoundingClientRect().height));
+    }
+    return { seuls, phrases };
+  });
+  ok('un lien seul sous un formulaire se vise au pouce',
+     liens.seuls.length > 0 && liens.seuls.every((h) => h >= 40),
+     liens.seuls.join(' · ') + ' px');
+  ok('et la phrase qui en porte un n’a pas enflé pour autant',
+     liens.phrases.length > 0 && liens.phrases.every((h) => h <= 26),
+     liens.phrases.join(' · ') + ' px de ligne');
+  await ctxDessin.close();
+
+  /* --------- sur écran large --------- */
+  const pDes = await browser.newPage();
+  surveiller(pDes);
+  await connexion(pDes, ADMIN.email, ADMIN.mdp);
+  await pDes.setViewportSize({ width: 1340, height: 950 });
+
+  /**
+   * Deux formulaires côte à côte ont leur bouton à la même hauteur.
+   *
+   * La grille les étire à la même hauteur ; leur contenu diffère. Sans
+   * règle, le bouton tombe où le texte s'arrête — l'un cent pixels
+   * au-dessus de l'autre, et la paire se lit comme une erreur.
+   */
+  await pDes.goto(`${BASE}/index.php?p=canaux`, { waitUntil: 'domcontentloaded' });
+  await pDes.waitForTimeout(700);
+  const hautBoutons = await pDes.evaluate(() => Array.from(document.querySelectorAll('.grille > form.carte'))
+    .map((f) => Math.round(f.querySelector('button')!.getBoundingClientRect().top
+                           - f.getBoundingClientRect().top)));
+  ok('deux formulaires en carte ont leur bouton à la même hauteur',
+     hautBoutons.length >= 2 && new Set(hautBoutons).size === 1, hautBoutons.join(' · '));
+
+  /**
+   * La liste des comptes ne porte plus de ruban rouge.
+   *
+   * Trois cents aplats rouges empilés faisaient de l'action la plus
+   * dangereuse l'élément le plus visible de la page, et plus rien d'autre
+   * ne se voyait. Le contour dit la même chose sans le crier.
+   */
+  await pDes.goto(`${BASE}/index.php?p=comptes`, { waitUntil: 'domcontentloaded' });
+  await pDes.waitForTimeout(900);
+  const rouges = await pDes.evaluate(() => {
+    const b = Array.from(document.querySelectorAll('button'))
+      .filter((x) => /Suspendre/.test(x.textContent || ''));
+    return { total: b.length,
+             aplats: b.filter((x) => getComputedStyle(x).backgroundColor === 'rgb(220, 38, 38)').length,
+             rouge: b.length ? getComputedStyle(b[0]).color : '' };
+  });
+  ok('« Suspendre » reste rouge sans empiler des aplats',
+     rouges.total > 20 && rouges.aplats === 0 && rouges.rouge === 'rgb(220, 38, 38)',
+     `${rouges.total} boutons, ${rouges.aplats} aplats, texte ${rouges.rouge}`);
+
+  /**
+   * Une ligne de lecture, et pas la largeur de l'écran.
+   *
+   * Le caractère est MESURÉ dans la police du bloc : l'estimer à la moitié
+   * du corps donnait 166 là où il y en avait 110, et aurait fait courir
+   * après un défaut déjà corrigé.
+   */
+  const troplong: string[] = [];
+  for (const r of ['comptes', 'regie', 'reglages', 'canaux', 'journal', 'admin', 'liens']) {
+    await pDes.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+    await pDes.waitForTimeout(400);
+    const n = await pDes.evaluate(() => {
+      const regle = document.createElement('span');
+      regle.textContent = '0'.repeat(50);
+      regle.style.cssText = 'position:absolute;visibility:hidden;white-space:pre';
+      document.body.appendChild(regle);
+      let pire = 0;
+      for (const e of Array.from(document.querySelectorAll('p')) as HTMLElement[]) {
+        if (e.children.length || (e.textContent || '').trim().length < 120) continue;
+        const s = getComputedStyle(e);
+        regle.style.font = s.font;
+        const ch = regle.getBoundingClientRect().width / 50;
+        const car = ch > 0 ? e.getBoundingClientRect().width / ch : 0;
+        if (car > pire) pire = car;
+      }
+      regle.remove();
+      return Math.round(pire);
+    });
+    if (n > 85) troplong.push(`${r} : ${n}c`);
+  }
+  ok('aucun paragraphe ne dépasse la ligne de lecture',
+     troplong.length === 0, troplong.join(' · ') || 'sept écrans mesurés');
+
+  /**
+   * Une vignette de modèle tient dans sa boîte.
+   *
+   * C'est tout son travail : faire distinguer un 1:1 d'un 9:16. Rognée,
+   * elle montrait une bande large pour les deux. Un `max-height:100%` ne
+   * contraint rien dans une rangée de grille de hauteur indéfinie — elle
+   * grandit avec son contenu, donc avec l'image.
+   */
+  await pDes.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'domcontentloaded' });
+  await pDes.waitForTimeout(1500);
+  const vignettes = await pDes.evaluate(() =>
+    Array.from(document.querySelectorAll('.sd-modele-image')).map((b) => {
+      const i = b.querySelector('img');
+      if (!i) return null;
+      return { boite: Math.round(b.getBoundingClientRect().height),
+               image: Math.round(i.getBoundingClientRect().height),
+               large: Math.round(i.getBoundingClientRect().width) };
+    }).filter(Boolean) as Array<{ boite: number; image: number; large: number }>);
+  ok('aucune vignette de modèle ne dépasse sa boîte',
+     vignettes.length >= 5 && vignettes.every((v) => v.image <= v.boite + 1),
+     vignettes.map((v) => `${v.image}/${v.boite}`).join(' · '));
+
+  /**
+   * Le plan des titres ne saute pas de niveau.
+   *
+   * Le pied de page passait de `h1` à `h4`, sur les 44 pages : deux
+   * niveaux sautés, et un lecteur d'écran qui annonce une sous-section de
+   * sous-section là où il y a quatre colonnes de liens.
+   */
+  const sauts: string[] = [];
+  for (const r of ['accueil', 'decors', 'blog', 'contact', 'villes', 'connexion']) {
+    await pDes.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+    await pDes.waitForTimeout(350);
+    const s = await pDes.evaluate(() => {
+      const t = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+        .filter((e) => e.getBoundingClientRect().height > 0)
+        .map((e) => Number(e.tagName[1]));
+      for (let i = 1; i < t.length; i++) if (t[i] > t[i - 1] + 1) return `h${t[i - 1]} puis h${t[i]}`;
+      return '';
+    });
+    if (s) sauts.push(`${r} : ${s}`);
+  }
+  ok('aucune page publique ne saute un niveau de titre',
+     sauts.length === 0, sauts.join(' · ') || 'six pages mesurées');
+
+  /**
+   * Une seule pile à chasse fixe.
+   *
+   * Il y en avait quatre, dont `.mono` défini DEUX fois à onze cents
+   * lignes d'écart, avec deux listes différentes — celle du bas gagnait
+   * sans que personne l'ait décidé.
+   */
+  /* `?p=liens` plutôt que le profil : les codes courts y sont à chasse
+     fixe et VISIBLES, alors que le champ du second facteur ne paraît que
+     pendant son installation — une page sans aucune chasse fixe aurait
+     validé la règle sans rien mesurer. */
+  await pDes.goto(`${BASE}/index.php?p=liens`, { waitUntil: 'domcontentloaded' });
+  await pDes.waitForTimeout(600);
+  const piles = await pDes.evaluate(() => {
+    const vues = new Set<string>();
+    for (const e of Array.from(document.querySelectorAll('body *')) as HTMLElement[]) {
+      const f = getComputedStyle(e).fontFamily;
+      if (/mono/i.test(f)) vues.add(f.replace(/\s+/g, ' ').trim());
+    }
+    return [...vues];
+  });
+  ok('le produit ne sert qu’UNE pile à chasse fixe',
+     piles.length === 1, piles.join(' | ') || 'aucune trouvée — la mesure ne mesure rien');
+  await pDes.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

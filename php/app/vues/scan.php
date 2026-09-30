@@ -45,7 +45,7 @@
         <div class="rangee" style="flex-wrap:nowrap;gap:8px">
           <input id="jeton" name="jeton" type="text" maxlength="10" autocomplete="off" autofocus
                  value="<?= e($prerempli) ?>" placeholder="A7K2M9XQ4P"
-                 style="text-align:center;font-family:ui-monospace,monospace;font-size:1.35rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">
+                 style="text-align:center;font-family:var(--mono);font-size:1.35rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase">
           <button class="bouton" type="submit">Valider</button>
         </div>
       </form>

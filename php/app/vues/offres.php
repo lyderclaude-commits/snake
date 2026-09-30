@@ -37,7 +37,12 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>
 
-  <div class="grille g2" style="align-items:start;grid-template-columns:minmax(240px,320px) 1fr">
+  <?php
+  /* La classe plutôt qu'un style en ligne : `minmax(240px,320px) 1fr` ne se
+     repliait jamais, et sur un téléphone la colonne d'édition sortait de
+     l'écran de 474 px. Une règle a une requête média ; un attribut, non. */
+  ?>
+  <div class="grille offres-deux">
 
     <!-- ─────────── la liste ─────────── -->
     <section class="carte">

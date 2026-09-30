@@ -30,7 +30,7 @@
         <label for="code">Code à six chiffres</label>
         <input id="code" name="code" type="text" required inputmode="numeric" autocomplete="one-time-code"
                pattern="[0-9]{6}" maxlength="6" autofocus
-               style="font-family:ui-monospace,monospace;font-size:1.4rem;letter-spacing:.3em;text-align:center">
+               style="font-family:var(--mono);font-size:1.4rem;letter-spacing:.3em;text-align:center">
         <p class="aide">Il change toutes les 30 secondes.</p>
       </div>
       <button class="bouton" type="submit" style="width:100%;justify-content:center">Continuer</button>
