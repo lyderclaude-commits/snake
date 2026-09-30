@@ -895,8 +895,16 @@ input[type=file].fichier-natif{
    d'un article est un paysage, pas un badge. Sans couverture, la carte
    reste une carte de texte — et ne montre pas un trou gris. */
 .vignette.article img{aspect-ratio:16/9}
+/* Deux lignes, et pas une de plus.
+   Les articles venus du guide n'ont pas de chapô : on prend alors leur
+   début, et trois cartes côte à côte affichaient trois paragraphes de
+   longueurs différentes — la grille en devenait bancale, et le titre de
+   l'article se noyait. Deux lignes suffisent à donner envie ; la suite
+   est dans l'article. */
 .vignette.article .chapo{
-  display:block;font-size:.85rem;color:var(--text2);line-height:1.5;margin-top:8px;
+  font-size:.85rem;color:var(--text2);line-height:1.5;margin-top:8px;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow:hidden;
 }
 
 /* Visible d'un lecteur d'écran, invisible à l'œil : pour un champ dont

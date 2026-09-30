@@ -357,8 +357,14 @@
    bord gauche, ce qui est la première chose que l'oeil vérifie.
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Pas de marge au-dessus : elle se voyait en BLANC.
+   Chaque section de page finit déjà sur 48 à 96 px de rembourrage, et ces
+   70 px s'y ajoutaient — invisibles sur un fond clair, mais francs dès que
+   la dernière section porte sa couleur : une bande blanche entre le bleu
+   des témoignages et le pied de page. L'air est maintenant DANS le pied,
+   qui en a 70 de son côté. */
 .pied-guide{background:#0F172A;color:rgba(255,255,255,.85);
-  margin-top:70px;padding:70px 24px 28px;border-top:0}
+  margin-top:0;padding:70px 24px 28px;border-top:0}
 .pg-in{max-width:1200px;margin:0 auto}
 
 /* La marque, puis QUATRE colonnes depuis la fusion : Boost a la sienne.
@@ -399,7 +405,7 @@
   .pg-grille{grid-template-columns:1fr 1fr;gap:32px}
 }
 @media (max-width:620px){
-  .pied-guide{margin-top:44px;padding:50px 16px 22px}
+  .pied-guide{padding:50px 16px 22px}
 }
 /* La barre se resserre à 10 px sous 520 : le pied la suit, pour que le
    logo du haut et celui du bas gardent le même bord gauche. */

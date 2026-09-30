@@ -40,7 +40,9 @@
       </div>
       <div style="background:var(--blue-50);border:1px solid var(--blue-200);border-radius:var(--r-2xl);padding:50px;text-align:center;" class="fade-up">
         <h3 style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;margin-bottom:12px;">Votre ville n'est pas encore listée ?</h3>
-        <p style="color:var(--text2);margin-bottom:24px;">Inscrivez-vous à notre liste d'attente et bénéficiez d'un tarif de lancement préférentiel dès l'arrivée de Wakabi chez vous.</p>
+        <?php /* `max-width` : centré dans une carte de mille pixels, ce
+                 paragraphe courait sur 86 caractères par ligne. */ ?>
+        <p style="color:var(--text2);margin:0 auto 24px;max-width:62ch;">Inscrivez-vous à notre liste d'attente et bénéficiez d'un tarif de lancement préférentiel dès l'arrivée de Wakabi chez vous.</p>
         <a class="btn btn-primary btn-lg" href="<?= e(url('?p=contact')) ?>">S'inscrire sur la liste d'attente</a>
       </div>
     </div>

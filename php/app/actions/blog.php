@@ -151,7 +151,9 @@ if ($slug !== '') {
  * favori, et un moteur de recherche sait la parcourir. Un défilement
  * infini n'a rien de tout cela.
  */
-const BLOG_PAR_PAGE = 9;
+/* Douze et non neuf : la grille en compte trois par rangée, et douze
+   remplissent quatre rangées pleines plutôt que trois. */
+const BLOG_PAR_PAGE = 12;
 $page_n = max(1, (int) ($_GET['n'] ?? 1));
 $cherche = trim((string) ($_GET['q'] ?? ''));
 $fusion = blog_fusionne($page_n, BLOG_PAR_PAGE, $cherche);

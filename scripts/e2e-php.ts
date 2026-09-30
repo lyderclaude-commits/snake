@@ -8730,6 +8730,172 @@ const run = async () => {
      piles.length === 1, piles.join(' | ') || 'aucune trouvée — la mesure ne mesure rien');
   await pDes.close();
 
+
+  /* ================================================================== */
+  console.log('\n━━ 61. Le pied qui colle, le blog qui respire, les menus qui se ferment ━━');
+
+  /**
+   * Le pied de page ne laisse plus de bande blanche au-dessus de lui.
+   *
+   * Il portait 70 px de marge, invisibles tant que la dernière section du
+   * contenu n'a pas de couleur — et francs dès qu'elle en a une : une
+   * bande blanche entre le bleu des témoignages et le noir du pied. Chaque
+   * section finit déjà sur 48 à 96 px de rembourrage ; l'air est
+   * maintenant DANS le pied, qui en a 70 de son côté.
+   */
+  const pAp = await browser.newPage();
+  surveiller(pAp);
+  await pAp.setViewportSize({ width: 1340, height: 900 });
+  const bandes: string[] = [];
+  for (const r of ['partenaires', 'application', 'villes', 'a-propos', 'contact',
+                   'accueil', 'decors', 'blog', 'connexion']) {
+    await pAp.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+    await pAp.waitForTimeout(400);
+    const blanc = await pAp.evaluate(() => {
+      const m = document.querySelector('main');
+      const pied = document.querySelector('footer.pied-guide');
+      if (!m || !pied || !m.lastElementChild) return 0;
+      return Math.round(pied.getBoundingClientRect().top
+        - m.lastElementChild.getBoundingClientRect().bottom);
+    });
+    if (blanc > 2) bandes.push(`${r} +${blanc}px`);
+  }
+  ok('le pied de page colle à la dernière section, partout',
+     bandes.length === 0, bandes.join(' · ') || 'neuf pages mesurées');
+
+  /**
+   * Le blog : douze par page, et deux lignes de chapô.
+   *
+   * Les articles venus du guide n'ont pas de chapô : on prend leur début,
+   * et trois cartes côte à côte affichaient trois paragraphes de longueurs
+   * différentes. La grille en devenait bancale et le titre s'y noyait.
+   */
+  await pAp.goto(`${BASE}/index.php?p=blog`, { waitUntil: 'domcontentloaded' });
+  await pAp.evaluate(() => (document as any).fonts.ready);
+  await pAp.waitForTimeout(1100);
+  const blog = await pAp.evaluate(() => {
+    const cartes = document.querySelectorAll('.vignette.article').length;
+    const ch = Array.from(document.querySelectorAll('.vignette.article .chapo')) as HTMLElement[];
+    const lignes = ch.map((e) => Math.round(e.getBoundingClientRect().height
+      / parseFloat(getComputedStyle(e).lineHeight)));
+    return { cartes, pire: lignes.length ? Math.max(...lignes) : 0,
+             ecourtes: ch.filter((e) => e.scrollHeight > e.clientHeight + 2).length,
+             pagine: document.querySelectorAll('nav[aria-label=Pages]').length > 0 };
+  });
+  ok('le blog montre douze articles par page',
+     blog.pagine ? blog.cartes === 12 : blog.cartes <= 12,
+     `${blog.cartes} cartes${blog.pagine ? ', paginé' : ', une seule page'}`);
+  ok('et aucun chapô ne dépasse deux lignes',
+     blog.pire <= 2, `${blog.pire} ligne(s) au plus, ${blog.ecourtes} écourté(s)`);
+
+  /**
+   * « Nos villes » : le seul paragraphe du guide qui courait encore.
+   *
+   * Centré dans une carte de mille pixels, il tenait sur 86 caractères par
+   * ligne. La correction des autres écrans vit dans `wakabi.css`, que les
+   * pages du guide ne chargent pas — celle-ci est donc posée sur place.
+   */
+  await pAp.goto(`${BASE}/index.php?p=villes`, { waitUntil: 'domcontentloaded' });
+  await pAp.waitForTimeout(500);
+  const ville = await pAp.evaluate(() => {
+    const regle = document.createElement('span');
+    regle.textContent = '0'.repeat(50);
+    regle.style.cssText = 'position:absolute;visibility:hidden;white-space:pre';
+    document.body.appendChild(regle);
+    let pire = 0;
+    for (const e of Array.from(document.querySelectorAll('p,li')) as HTMLElement[]) {
+      if (e.children.length || (e.textContent || '').trim().length < 120) continue;
+      const s = getComputedStyle(e);
+      regle.style.font = s.font;
+      const c = e.getBoundingClientRect().width / (regle.getBoundingClientRect().width / 50);
+      if (c > pire) pire = c;
+    }
+    regle.remove();
+    return Math.round(pire);
+  });
+  ok('« Nos villes » tient dans la ligne de lecture', ville <= 80, `${ville} caractères`);
+
+  /**
+   * Les menus se ferment quand on va voir ailleurs.
+   *
+   * Un `<details>` ne sait pas se refermer : il reste ouvert tant qu'on ne
+   * reclique pas exactement sur son bouton. On pouvait donc laisser
+   * derrière soi deux volets dépliés, l'un par-dessus la page et l'autre
+   * par-dessus le premier.
+   */
+  const MENUS = 'details.wk-grp, details.wk-compte, details.wk-burger,'
+              + ' details.deroulant, details.menu';
+  const voletsOuverts = () => pAp.evaluate((sel) => Array.from(document.querySelectorAll(sel))
+    .filter((d) => (d as HTMLDetailsElement).open)
+    .map((d) => (d as HTMLElement).className.split(' ')[0]), MENUS);
+
+  await pAp.goto(`${BASE}/index.php?p=application`, { waitUntil: 'domcontentloaded' });
+  await pAp.waitForTimeout(700);
+  await pAp.locator('details.wk-grp > summary').first().click();
+  await pAp.waitForTimeout(200);
+  ok('un menu du haut s’ouvre au clic', (await voletsOuverts()).join() === 'wk-grp');
+
+  await pAp.locator('details.wk-compte > summary').click();
+  await pAp.waitForTimeout(250);
+  ok('en ouvrir un autre ferme le premier : jamais deux volets à la fois',
+     (await voletsOuverts()).join() === 'wk-compte', (await voletsOuverts()).join(' · '));
+
+  /* Dans le volet, et non sur un de ses liens : un lien navigue. */
+  const boite = await pAp.locator('details.wk-compte .wk-volet-u').boundingBox();
+  await pAp.mouse.click((boite?.x ?? 0) + 4, (boite?.y ?? 0) + 4);
+  await pAp.waitForTimeout(250);
+  ok('un clic DANS le volet ne le referme pas',
+     (await voletsOuverts()).join() === 'wk-compte', (await voletsOuverts()).join(' · '));
+
+  await pAp.mouse.click(670, 700);
+  await pAp.waitForTimeout(250);
+  ok('un clic ailleurs sur la page ferme le volet ouvert',
+     (await voletsOuverts()).length === 0, (await voletsOuverts()).join(' · '));
+
+  await pAp.locator('details.wk-compte > summary').click();
+  await pAp.waitForTimeout(200);
+  await pAp.keyboard.press('Escape');
+  await pAp.waitForTimeout(250);
+  ok('Échap le ferme aussi', (await voletsOuverts()).length === 0);
+  ok('et rend le clavier au bouton qui l’avait ouvert, pas au haut de la page',
+     await pAp.evaluate(() => document.activeElement?.tagName === 'SUMMARY'
+       && (document.activeElement.parentElement as HTMLElement)?.classList.contains('wk-compte')));
+
+  /**
+   * Et les `<details>` de CONTENU n'ont rien à voir là-dedans.
+   *
+   * Une question fréquente qui se refermerait parce qu'on a cliqué à côté
+   * serait une panne, pas un service : on clique justement à côté pour
+   * lire la réponse à l'aise.
+   */
+  await pAp.goto(`${BASE}/index.php?p=partenaires`, { waitUntil: 'domcontentloaded' });
+  await pAp.waitForTimeout(600);
+  await pAp.locator('.faq-item summary').first().click();
+  await pAp.waitForTimeout(200);
+  await pAp.mouse.click(30, 400);
+  await pAp.waitForTimeout(250);
+  ok('une question fréquente, elle, reste ouverte quand on clique ailleurs',
+     await pAp.evaluate(() => (document.querySelector('.faq-item') as HTMLDetailsElement).open));
+  await pAp.close();
+
+  /* --- et le même geste au doigt, sur le volet mobile --- */
+  const ctxDoigt = await browser.newContext({ viewport: { width: 390, height: 780 },
+    isMobile: true, hasTouch: true });
+  const pDoigt = await ctxDoigt.newPage();
+  surveiller(pDoigt);
+  await pDoigt.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pDoigt.waitForTimeout(700);
+  await pDoigt.locator('details.wk-burger > summary').click();
+  await pDoigt.waitForTimeout(250);
+  const burgerOuvert = await pDoigt.evaluate(() =>
+    (document.querySelector('details.wk-burger') as HTMLDetailsElement).open);
+  await pDoigt.mouse.click(195, 600);
+  await pDoigt.waitForTimeout(250);
+  ok('sur téléphone, un appui ailleurs referme le volet du menu',
+     burgerOuvert && !(await pDoigt.evaluate(() =>
+       (document.querySelector('details.wk-burger') as HTMLDetailsElement).open)));
+  await ctxDoigt.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {

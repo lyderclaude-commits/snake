@@ -139,6 +139,9 @@ if ($ico === null && ($f = logo_fichier()) !== null) {
 <?php if (page_du_guide($_page)): ?>
 <script src="<?= e(actif('public/guide.js')) ?>" defer></script>
 <?php endif; ?>
+<?php /* Les menus se referment quand on clique ailleurs. Servi partout,
+         comme `entete.css` : le header est le même des deux côtés. */ ?>
+<script src="<?= e(actif('public/entete.js')) ?>" defer></script>
 </head>
 <body>
 

@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1047 scénarios
-réussis** sur une base déjà peuplée, **1046 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1059 scénarios
+réussis** sur une base déjà peuplée, **1058 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
@@ -306,7 +306,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 1047 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1059 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 1047 scénarios
+### Les 1059 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -432,6 +432,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **La pipette** | Les trois listes de couleur portent une pipette, et **aucune n'est un second champ envoyé** ; la pastille traduit un jeton de charte en sa vraie teinte ; une couleur libre entre dans la liste, **et le badge est dessiné avec** (pixels du canevas comptés, pas la valeur affichée) ; elle survit à l'enregistrement et **revient** à la réouverture, calque compris ; une valeur bricolée postée à la main n'entre pas dans le décor |
 | **La couleur du cadre** | Recolorer change **vraiment** les pixels du badge, et **pas ceux de la photo** ; ce qui est blanc ou gris ne bouge pas ; revenir à « ses couleurs d'origine » rend **exactement** l'image de départ (histogramme comparé) ; la teinte survit à l'enregistrement, se retrouve sur le **badge de l'invité**, et la **vignette de partage dessinée par PHP porte la même** — deux implémentations comparées sur leurs pixels |
 | **Le dessin** | Les treize écrans les plus chargés **ne glissent pas de côté** sur un téléphone ; deux formulaires côte à côte ont leur bouton **à la même hauteur** ; « Suspendre » est rouge **sans empiler d'aplats** ; aucun paragraphe ne dépasse la ligne de lecture (caractère **mesuré dans la police**, pas estimé) ; aucune vignette de modèle ne dépasse sa boîte ; aucune page publique ne **saute un niveau de titre** ; le produit ne sert qu'**une** pile à chasse fixe |
+| **Le pied, le blog, les menus** | Le pied de page **colle** à la dernière section sur neuf pages (0 px) ; le blog montre **douze** articles et **aucun chapô ne dépasse deux lignes** ; « Nos villes » tient dans la ligne de lecture ; un menu ouvert se ferme **au clic ailleurs**, **à l'ouverture d'un autre** et **à Échap** — qui rend le clavier à son bouton — mais **pas** quand on clique dans son propre volet, et **une question fréquente reste ouverte** |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -3265,6 +3266,25 @@ qu'un cadre perdu.
 ---
 
 ## Le tour du dessin, et ce qu'il a corrigé
+
+### Cinq retouches demandées en regardant les écrans
+
+| Ce qui n'allait pas | Ce qui a changé |
+|---|---|
+| Une **bande blanche** entre la dernière section et le pied de page, visible sur « Partenaires » (au-dessus du bleu des témoignages) et sur « L'Application » | Le pied portait 70 px de marge en plus de son propre rembourrage de 70. La marge est partie : l'air est **dans** le pied, pas devant lui. Mesuré à 0 px sur neuf pages |
+| Sur le blog, un **chapô de longueur libre** : trois cartes côte à côte portaient trois paragraphes différents, la grille devenait bancale et le titre s'y noyait | Deux lignes, écourtées au-delà. Les articles venus du guide n'ont pas de chapô — on prend leur début, et c'est là que les longueurs divergeaient |
+| Le blog affichait **neuf articles** par page, soit trois rangées de trois dans une grille qui en tient quatre | **Douze** : quatre rangées pleines |
+| « Nos villes » : un paragraphe centré dans une carte de mille pixels, **86 caractères par ligne** | La correction des autres écrans vit dans `wakabi.css`, que les pages du guide ne chargent pas : celle-ci est posée sur place |
+| **Deux menus déroulants ouverts en même temps**, et aucun qui se referme quand on clique ailleurs | `public/entete.js` : un clic hors d'un menu le ferme, en ouvrir un ferme les autres, Échap ferme et rend le clavier à son bouton |
+
+> Les menus sont des `<details>`, délibérément : ils s'ouvrent au clic et au
+> clavier sans une ligne de script. Mais un `<details>` ne sait pas se
+> refermer — il reste ouvert tant qu'on ne reclique pas exactement sur son
+> bouton. Le script ne touche QUE les menus, nommés un par un : les
+> `<details>` de contenu, comme les questions fréquentes, n'y sont pas. Se
+> refermer parce qu'on a cliqué à côté serait pour eux une panne, pas un
+> service — on clique justement à côté pour lire la réponse à l'aise.
+
 
 Un tour des 44 écrans, en deux largeurs et trois audiences, où chaque
 constat est **mesuré dans la page** plutôt que lu dans la feuille de style.
