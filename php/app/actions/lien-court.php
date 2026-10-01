@@ -42,6 +42,27 @@ if ($avant) {
     $valeurs['titre'] = (string) ($avant['charge']['titre'] ?? '');
 }
 
+/**
+ * L'adresse tapée sur la page de présentation arrive ici, déjà posée.
+ *
+ * La page « Liens courts » de la vitrine porte le champ dans son
+ * bandeau : le composeur est public, autant le donner tout de suite. Ce
+ * qui y est tapé voyage en clair dans l'adresse et se retrouve dans ce
+ * champ, sans qu'on ait à le retaper — un formulaire qui redemande ce
+ * qu'on vient d'écrire est un formulaire qu'on abandonne.
+ *
+ * Elle PASSE APRÈS le brouillon, et c'est l'ordre qui compte : ce qu'on
+ * vient de taper vaut mieux que ce qu'on avait laissé la semaine
+ * dernière. Rien n'est enregistré à ce stade, et la cible repasse de
+ * toute façon par le même filtre à l'envoi.
+ */
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['cible'])) {
+    $_g = trim((string) $_GET['cible']);
+    if ($_g !== '') {
+        $valeurs['cible'] = $_g;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifier_csrf();
     $valeurs['cible'] = trim((string) ($_POST['cible'] ?? ''));

@@ -51,6 +51,28 @@ const TRACES_GUIDE = [
     'cocktail'      => '<path d="M4 5h16l-8 8z"></path><line x1="12" y1="13" x2="12" y2="20"></line><line x1="8.5" y1="20" x2="15.5" y2="20"></line>',
     'monde'         => '<circle cx="12" cy="12" r="9"></circle><ellipse cx="12" cy="12" rx="3.8" ry="9"></ellipse><line x1="3.2" y1="9" x2="20.8" y2="9"></line><line x1="3.2" y1="15" x2="20.8" y2="15"></line>',
     'recompense'    => '<circle cx="12" cy="9" r="5.5"></circle><polyline points="8.5 13.5 7 21.5 12 19 17 21.5 15.5 13.5"></polyline>',
+
+    /**
+     * Ce que les trois pages Boost avaient besoin de montrer.
+     *
+     * Les deux premières sont des MARQUES, et c'est le seul endroit de
+     * cette table où le tracé doit rester reconnaissable : une bulle de
+     * discussion générique ne dit pas « WhatsApp » à quelqu'un qui
+     * cherche justement ce canal-là. Elles suivent quand même la couleur
+     * du texte, comme les autres — un logo en couleur au milieu d'une
+     * grille monochrome se lirait comme une publicité.
+     */
+    'whatsapp'      => '<path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 20.5l1.7-5.5A8.4 8.4 0 1 1 21 11.5z"></path><path d="M8.9 9.2c0 3 2.4 5.4 5.4 5.4"></path>',
+    'telegram'      => '<path d="M21.5 4.3 2.9 11.2l5.4 1.8 1.9 5.9 2.9-3.7 5 3.6z"></path><path d="M8.3 13 19 6.2"></path>',
+    'rubrique'      => '<line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line>',
+    'coche'         => '<circle cx="12" cy="12" r="9"></circle><polyline points="8 12.2 11 15.2 16 9.6"></polyline>',
+    'carnet'        => '<circle cx="9" cy="8" r="3.2"></circle><path d="M3 20a6 6 0 0 1 12 0"></path><line x1="18.5" y1="9" x2="18.5" y2="14"></line><line x1="16" y1="11.5" x2="21" y2="11.5"></line>',
+    'affiche'       => '<rect x="4" y="3" width="16" height="18" rx="2"></rect><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line>',
+    'radio'         => '<path d="M3 12a9 9 0 0 1 18 0"></path><path d="M6.5 12a5.5 5.5 0 0 1 11 0"></path><circle cx="12" cy="12.5" r="1.6"></circle><path d="M12 14v7"></path>',
+    'flyer'         => '<path d="M4 7l8-4 8 4-8 4z"></path><path d="M4 12l8 4 8-4"></path><path d="M4 17l8 4 8-4"></path>',
+    'lien'          => '<path d="M10 13.5a4 4 0 0 0 5.7.4l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7"></path><path d="M14 10.5a4 4 0 0 0-5.7-.4l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"></path>',
+    'enveloppe'     => '<rect x="3" y="5" width="18" height="14" rx="2.5"></rect><polyline points="3.6 6.5 12 13 20.4 6.5"></polyline>',
+    'horloge'       => '<circle cx="12" cy="12" r="9"></circle><polyline points="12 6.8 12 12.3 15.8 14.2"></polyline>',
 ];
 
 /**

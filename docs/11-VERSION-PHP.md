@@ -210,13 +210,13 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1072 scénarios
-réussis** sur une base déjà peuplée, **1071 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1104 scénarios
+réussis** sur une base déjà peuplée, **1103 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
-zéro erreur de console dans les deux cas. S'y ajoutent **701 contrôles**
-répartis en quinze vérifieurs, qui éprouvent ce qu'aucun navigateur ne peut
+zéro erreur de console dans les deux cas. S'y ajoutent **724 contrôles**
+répartis en seize vérifieurs, qui éprouvent ce qu'aucun navigateur ne peut
 voir.
 
 La montée de version d'une installation déjà en service a été vérifiée elle
@@ -436,6 +436,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le catalogue par page** | `?p=decors` montre **douze** décors par page et porte une **zone de recherche** ; on y cherche par **ville** autant que par titre ; la page 2 montre d'**autres** décors et porte **son propre titre** ; une page au-delà de la dernière rend **la dernière** et l'annonce comme telle ; une recherche sans réponse le dit ; et elle **suit** quand on tourne la page |
 | **La porte des deux chemins** | « Un décor » depuis le tableau de bord, le catalogue ou l'espace de l'organisateur mène à `?p=creer` et non droit au formulaire ; l'écran montre bien les deux départs, et « J'ai déjà mon décor » ouvre le **dépôt de fichier**, pas la galerie |
 | **Les adresses lisibles** | Une adresse lisible répond **avant** d'être activée, et le site écrit pourtant toujours la forme simple : la règle entière du réglage tient là ; deux préfixes identiques sont refusés avec le motif ; l'activation passe par un **essai réel** (le serveur se répond à lui-même) ; ensuite les liens du catalogue, le **lien canonique** et le plan du site disent la même adresse, l'ancienne **redirige définitivement**, l'accueil **ne se redirige pas vers lui-même**, la recherche traverse sans champ caché, et un code de lien court reste un **code de lien court** ; revenu à la forme simple, une adresse déjà partagée répond encore |
+| **Les trois pages Boost** | Chacune garde son titre, explique en quatre étapes numérotées, répond à ses questions fréquentes et annonce son offre **lue dans les offres** ; les icônes sont **dessinées sur place** et aucune n'est chargée ; la rangée de réassurance est **vue**, pas seulement présente (`.trust-item` est masqué d'un `!important` par le bloc « EDIT » du guide) ; **aucun chiffre d'exemple n'est montré sans sa légende** ; le champ du bandeau des liens courts ouvre le composeur **avec l'adresse déjà posée**, son QR est dessiné ici, et les trois tiennent dans la largeur d'un téléphone |
 | **Les conditions et la confidentialité** | Les liens légaux du pied **restent sur le site**, en haut comme en bas ; les deux pages s'ouvrent avec le dessin du guide, disent qui édite le site et comment écrire, annoncent leur date de révision et entrent dans le **plan du site** ; la confidentialité promet que la **photo ne quitte pas l'appareil** et dit où tout emporter ou tout effacer ; ce qu'on renseigne dans l'identité légale s'y affiche, et ce qu'on laisse vide **ne laisse aucun trou visible** |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
@@ -4152,6 +4153,75 @@ peut vérifier ce qui a changé, ni depuis quand.
 > quiconque, et l'écran des réglages le dit. Les références aux textes — la
 > loi togolaise n° 2019-014, les autorités du Bénin et de la Côte d'Ivoire —
 > sont le seul endroit que le code ne peut pas vérifier à votre place.
+
+---
+
+## Les trois pages Boost — `?p=boost-push`, `?p=boost-regie`, `?p=boost-liens`
+
+Elles existent parce que le menu public mène à Push, à la Régie et aux Liens
+courts : y envoyer un visiteur directement l'aurait jeté contre un mur de
+connexion au moment précis où il cherchait à comprendre ce qu'on vend.
+
+Mais elles répondaient à **une seule question**, « qu'est-ce que c'est », et
+s'arrêtaient là : trois cartes, cinq lignes de liste, un bouton. Quelqu'un qui
+hésite s'en pose trois de plus, et toujours dans le même ordre :
+
+1. **Comment ça marche ?** Quatre étapes numérotées, de l'idée de message à ce
+   qui est vraiment arrivé.
+2. **Qu'est-ce qu'il me faut pour commencer ?** Chaque canal dit ce qu'il
+   demande : un numéro vérifié pour WhatsApp, un jeton de bot pour Telegram,
+   rien du tout pour les notifications du navigateur. Écrit ici plutôt que
+   découvert le soir de la campagne.
+3. **Qu'est-ce que ça donne ?** Un tableau de bord, les échecs avec leur motif,
+   un comparatif, et six questions fréquentes.
+
+### Ce que ces pages ne font pas
+
+**Elles n'écrivent aucun prix.** Le bandeau vient de `partiels/offre-ligne.php`,
+qui lit l'offre : trois pages de vitrine qui annonceraient un chiffre en dur
+mentiraient dès la première modification, sans que personne ne pense à les
+rouvrir.
+
+**Elles ne font pas passer un exemple pour une mesure.** Les tableaux de bord
+et les compteurs de clics sont là pour qu'on voie ce qu'on lira dans l'écran,
+et chacun porte sa ligne « chiffres d'illustration ». La recette le vérifie :
+un bloc de chiffres sans sa légende fait échouer le scénario. C'est la seule
+assertion de la recette qui porte sur une question d'honnêteté plutôt que de
+fonctionnement, et c'est aussi la plus facile à laisser filer un jour de
+pressé.
+
+**Elles ne chargent pas d'icône.** Les onze tracés nouveaux (WhatsApp,
+Telegram, la rubrique, la coche, le carnet, l'affiche, la radio, le flyer, le
+lien, l'enveloppe, l'horloge) vivent dans `app/icones-guide.php`, comme les
+vingt-huit autres.
+
+### Le champ qui emmène ce qu'on y tape
+
+La page des liens courts a une chance que les deux autres n'ont pas : **le
+composeur est déjà public**. Son bandeau porte donc le champ, et ce qu'on y
+écrit arrive dans `?p=lien-court` déjà posé. Un champ qui obligerait à retaper
+l'adresse à l'écran suivant serait pire que pas de champ du tout.
+
+C'est un `method="get"` et non un POST : l'écran suivant n'écrit rien encore,
+il ouvre le composeur. Un POST aurait demandé un jeton anti-CSRF pour une
+navigation qui ne modifie rien, et cassé le retour arrière du navigateur.
+
+Le QR de cette page est un **vrai QR**, dessiné par le même code que celui des
+badges, et il ouvre le composeur. Un damier d'illustration aurait suffi à
+l'oeil et menti à qui sort son téléphone pour l'essayer, c'est-à-dire
+exactement la personne qu'on cherche à convaincre.
+
+### Le piège de `.trust-item`
+
+Le bloc « EDIT » en tête de `guide.css` — celui que le propriétaire du site a
+écrit pour masquer ce qui ne lui servait pas — porte
+`.trust-item { display: none !important }`. Écrire la rangée de réassurance du
+bandeau avec cette classe donnait **trois phrases dans le HTML et rien à
+l'écran** : un compte d'éléments l'aurait trouvée, un oeil ne l'aurait pas vue.
+
+D'où `.rassure`, et d'où la forme de l'assertion : la recette demande
+`isVisible()`, pas un compte. La leçon vaut au-delà de ce cas : dans ce
+fichier, une classe qui existe n'est pas une classe qui s'affiche.
 
 ---
 

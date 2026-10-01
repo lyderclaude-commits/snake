@@ -1669,3 +1669,132 @@ img, video, iframe { max-width: 100%; height: auto; }
 .steps-grid > *, .cities-grid > *, .team-grid > *, .pricing-grid > *,
 .partner-testimonials > *, .stats-grid > *, .testi-grid > *,
 .form-row > *, .footer-grid > * { min-width: 0; }
+
+/* ================================================================
+   LES TROIS PAGES BOOST — PUSH, RÉGIE, LIENS COURTS
+   ================================================================
+
+   Elles répondaient à « qu'est-ce que c'est » et s'arrêtaient là. En
+   répondant aussi à « comment ça marche », « qu'est-ce qu'il me faut » et
+   « qu'est-ce que ça donne », elles ont eu besoin de quelques dispositions
+   que le guide n'avait pas : une rangée de quatre étapes, un panneau posé
+   dans le flux, une légende sous un chiffre d'illustration.
+
+   Tout est NOMMÉ plutôt qu'écrit en style dans la page : les trois pages
+   partagent ces blocs, et trois copies d'une même largeur de colonne,
+   c'est deux qu'on oubliera le jour d'un ajustement.
+
+   Ces règles sont EN FIN DE FICHIER, après les media queries du guide,
+   et portent les leurs : une largeur de colonne posée ici serait sinon
+   reprise par une media query écrite plus haut. */
+
+/* La rangée de réassurance du bandeau bleu.
+   PAS `.trust-item` : le bloc « EDIT » en tête de ce fichier le masque
+   partout (`display:none !important`), et l'y ajouter rendrait une
+   rangée invisible que personne ne saurait expliquer. */
+.rassure { display: flex; align-items: center; justify-content: center; gap: 22px;
+  flex-wrap: wrap; font-size: 13.5px; color: rgba(255,255,255,0.82); }
+.rassure-item { display: flex; align-items: center; gap: 7px; }
+.rassure-item::before { content: '✓'; font-weight: 700; color: rgba(255,255,255,0.65); }
+
+/* Un bouton d'appoint SUR le bandeau bleu : `.btn-outline` y serait bleu
+   sur bleu foncé, donc illisible. */
+.btn-sur-bleu { color: #fff; border-color: rgba(255,255,255,0.45); background: transparent; }
+.btn-sur-bleu:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.75); }
+
+/* Une section sur fond gris : c'est ce qui sépare deux idées sur une page
+   longue, mieux qu'un filet. */
+.section-grise { background: var(--bg2); }
+
+/* Les largeurs de lecture, nommées une fois. */
+.colonne-lecture { max-width: 900px; margin: 0 auto; }
+.colonne-large   { max-width: 940px; margin: 0 auto; }
+.colonne-etroite { max-width: 680px; margin: 0 auto; }
+
+/* Quatre étapes plutôt que trois, et quatre cartes plutôt que trois. */
+.steps-grid.steps-quatre { grid-template-columns: repeat(4,1fr); }
+.why-grid.why-quatre { grid-template-columns: repeat(4,1fr); }
+
+/* Un panneau du bandeau, posé dans le flux : `.hero-float-card` est en
+   position absolue, ce qui n'a de sens que sur l'illustration du héros. */
+.carte-posee { position: static; transform: none; width: auto; margin: 0 0 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+
+.dash-stats.dash-deux { grid-template-columns: repeat(2,1fr); }
+.dash-stats.dash-cinq { grid-template-columns: repeat(5,1fr); }
+
+/* La seconde ligne d'un `.kb-item`.
+   `.kb-item .kb-sous` et non `.kb-sous` seule : `.kb-text span` plus haut
+   dans ce fichier vaut une classe ET un élément, donc l'emporterait sur
+   une classe seule, et la ligne repartirait à 12 px en gris clair. */
+.kb-item .kb-sous { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
+
+/* La légende d'un chiffre d'illustration.
+   Elle n'est pas décorative : un tableau de bord d'exemple sans elle se
+   lit comme une mesure, et ce serait faux. */
+.legende { color: var(--text3); font-size: 12.5px; margin-top: 12px; text-align: center; }
+
+/* Le composeur de lien court, posé dans le bandeau bleu. */
+.composeur { max-width: 620px; margin: 28px auto 0; background: #fff;
+  border-radius: var(--r-lg); padding: 10px; box-shadow: 0 18px 40px rgba(15,23,42,0.22);
+  display: flex; gap: 8px; flex-wrap: wrap; }
+.composeur input { flex: 1 1 260px; min-width: 0; margin: 0; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px 14px;
+  font-size: 14px; color: var(--text); outline: none; }
+.composeur input:focus { border-color: var(--primary); }
+.composeur button { flex: 0 0 auto; }
+
+/* L'anatomie d'une adresse courte : avant, après. */
+.anatomie { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.anatomie-bloc { background: #fff; border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 20px; }
+.anatomie-bloc.apres { border-color: var(--blue-200); background: var(--blue-50); }
+.anatomie-quoi { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text3); margin-bottom: 6px; font-weight: 700; }
+.anatomie-adresse { font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 12.5px; color: var(--text2); word-break: break-all; line-height: 1.7; }
+.anatomie-bloc.apres .anatomie-quoi { color: var(--primary); }
+.anatomie-bloc.apres .anatomie-adresse { color: var(--text); }
+.anatomie-compte { font-size: 12px; margin-top: 8px; color: var(--text3); }
+.anatomie-bloc.apres .anatomie-compte { color: var(--primary); font-weight: 600; }
+
+/* L'adresse courte en grand, découpée par ses trois morceaux. */
+.adresse-geante { font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(1.4rem, 3.4vw, 2.3rem); letter-spacing: -0.02em;
+  color: var(--text); word-break: break-all; }
+.adresse-geante .domaine { color: var(--text3); }
+.adresse-geante .barre { color: var(--border2, var(--border)); }
+.adresse-geante .code { color: var(--primary); }
+
+/* Un encart de mise au point, sans la famille « admin ». */
+.encart { background: #fff; border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 24px; }
+.encart-titre { font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--text); margin-bottom: 12px; }
+.encart.appui { border-left: 4px solid var(--primary); }
+/* `max-width` en `ch` et non en pixels : la ligne de lecture se compte en
+   caractères, et c'est la règle que la recette mesure dans la police
+   réelle depuis le tour du dessin. Un encart posé dans une colonne de
+   900 px donnait 83 caractères par ligne. */
+.encart p { color: var(--text2); line-height: 1.8; margin: 0; max-width: 75ch; }
+
+@media (max-width: 1000px) {
+  .steps-grid.steps-quatre, .why-grid.why-quatre { grid-template-columns: repeat(2,1fr); }
+  .dash-stats.dash-cinq { grid-template-columns: repeat(3,1fr); }
+}
+@media (max-width: 700px) {
+  .steps-grid.steps-quatre, .why-grid.why-quatre,
+  .dash-stats.dash-deux, .dash-stats.dash-cinq,
+  .anatomie { grid-template-columns: 1fr; }
+  .composeur { padding: 8px; }
+  /* Un tableau de comparaison ne se replie pas : il se fait défiler,
+     parce que la colonne de gauche n'a de sens qu'en face des autres. */
+  .admin-table-wrap { overflow-x: auto; }
+  .admin-table { min-width: 560px; }
+}
+
+/* Les pastilles d'état d'un relevé : vert quand c'est posé, orange quand
+   il manque. Elles portent un signe ET une couleur, parce qu'une couleur
+   seule ne dit rien à qui ne la distingue pas. */
+.kb-icon.kb-vert   { background: #DCFCE7; color: #15803D; font-weight: 700; }
+.kb-icon.kb-orange { background: #FEF3C7; color: #B45309; font-weight: 700; }

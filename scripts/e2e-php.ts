@@ -9301,6 +9301,149 @@ const run = async () => {
      !/\[|à compléter|RCCM/i.test(sansId) && sansId.includes('Ce site est édité par'));
   await pId.close();
 
+
+  /* ======================================================================
+     64. Les trois pages Boost, enfin complètes
+     ====================================================================== */
+  console.log('\n━━ 64. Push, Régie, Liens courts ━━');
+
+  /**
+   * Elles répondaient à « qu'est-ce que c'est », et s'arrêtaient là.
+   *
+   * Trois cartes, cinq lignes de liste, un bouton. Quelqu'un qui hésite se
+   * pose trois questions de plus, dans cet ordre : comment ça marche,
+   * qu'est-ce qu'il me faut pour commencer, et qu'est-ce que ça donne
+   * vraiment. Les sections suivent cet ordre, et ces scénarios vérifient
+   * qu'elles y sont toutes.
+   */
+  const pBoost = await browser.newPage();
+  surveiller(pBoost);
+
+  for (const [route, titre, etapes, questions, rassure] of [
+    ['boost-push', 'Parler à ceux qui sont déjà venus', 4, 6, 3],
+    ['boost-regie', 'Vos invités vous appartiennent', 4, 6, 3],
+    /**
+     * Zéro rangée de réassurance sur les liens courts, et c'est voulu :
+     * son bandeau porte DÉJÀ le composeur, donc un champ qu'on remplit.
+     * Trois promesses de plus repousseraient d'autant la seule chose
+     * qu'on veut faire là, qui est d'essayer.
+     */
+    ['boost-liens', 'Une adresse courte, et ce qu’elle rapporte', 0, 5, 0],
+  ] as const) {
+    const r = await pBoost.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
+    ok(`${route} répond et garde son titre`,
+       r?.status() === 200 && (await pBoost.locator('h1').innerText()) === titre,
+       await pBoost.locator('h1').innerText().catch(() => ''));
+
+    if (etapes > 0) {
+      ok(`  ${route} explique en ${etapes} étapes numérotées`,
+         (await pBoost.locator('.steps-grid .step-card').count()) === etapes);
+    }
+    ok(`  ${route} répond à ${questions} questions fréquentes`,
+       (await pBoost.locator('.faq-item').count()) === questions,
+       `${await pBoost.locator('.faq-item').count()}`);
+
+    /**
+     * Le bandeau de prix VIENT DES OFFRES, il n'est pas écrit dans la page.
+     *
+     * Trois pages de vitrine qui annonceraient un chiffre en dur
+     * mentiraient dès la première modification des offres, sans que
+     * personne ne pense à les rouvrir.
+     */
+    ok(`  ${route} annonce l’offre, et la lit dans les offres`,
+       (await pBoost.locator('.pricing-note').count()) === 1
+       && /offre|compris/i.test(await pBoost.locator('.pricing-note').innerText()));
+
+    /**
+     * La rangée de réassurance est VISIBLE, pas seulement présente.
+     *
+     * Le piège est réel et il a servi : le bloc « EDIT » en tête de
+     * `guide.css` masque `.trust-item` partout d'un `!important`. Écrire
+     * la rangée avec cette classe-là donnait trois phrases dans le HTML
+     * et rien à l'écran — ce qu'un compte d'éléments n'aurait jamais dit.
+     */
+    const _rass = await pBoost.locator('.rassure .rassure-item').count();
+    ok(`  ${route} montre ${rassure === 0 ? 'son bandeau sans promesses en file' : 'vraiment sa rangée de réassurance'}`,
+       _rass === rassure
+       && (rassure === 0 || await pBoost.locator('.rassure .rassure-item').first().isVisible()),
+       `${_rass} promesse(s)`);
+
+    /* Les icônes sont dessinées ici, pas chargées ailleurs : la règle de
+       toute la fusion, et elle vaut pour les pages neuves aussi. */
+    const dessinees = await pBoost.locator('.why-icon svg, .value-icon svg').count();
+    const chargees = await pBoost.locator('.why-icon img, .value-icon img').count();
+    ok(`  ${route} dessine ses icônes au lieu de les charger`,
+       dessinees >= 3 && chargees === 0, `${dessinees} tracés, ${chargees} images`);
+
+    /**
+     * Un tableau de bord d'exemple PORTE SA LÉGENDE.
+     *
+     * Ces pages montrent des chiffres pour qu'on voie ce qu'on lira dans
+     * l'écran. Sans la ligne qui dit « chiffres d'illustration », ils se
+     * lisent comme une mesure, et une page de vente qui laisse croire ça
+     * ment. C'est la seule assertion de ce fichier qui porte sur une
+     * question d'honnêteté plutôt que de fonctionnement.
+     */
+    const sansLegende = await pBoost.evaluate(() => {
+      const out: string[] = [];
+      for (const b of document.querySelectorAll('.dash-stats, .stats-grid')) {
+        /* La légende suit le bloc, ou suit son parent quand le bloc est
+           enveloppé dans une colonne de lecture. */
+        const apres = b.nextElementSibling?.classList.contains('legende')
+          || b.parentElement?.querySelector(':scope > .legende') !== null;
+        if (!apres) out.push(b.className);
+      }
+      return out;
+    });
+    ok(`  ${route} ne montre aucun chiffre d’exemple sans le dire`,
+       sansLegende.length === 0, sansLegende.join(' · '));
+  }
+
+  /**
+   * Le composeur du bandeau EMMÈNE ce qu'on y tape.
+   *
+   * C'est ce qui sépare un champ utile d'une décoration : la page des
+   * liens courts a cette chance que les deux autres n'ont pas, le
+   * composeur est déjà public. Un champ qui obligerait à retaper
+   * l'adresse à l'écran suivant serait pire que pas de champ du tout.
+   */
+  await pBoost.goto(`${BASE}/index.php?p=boost-liens`, { waitUntil: 'domcontentloaded' });
+  await pBoost.fill('.composeur input[name=cible]', 'https://billetterie.exemple.tg/soiree-du-12');
+  await pBoost.click('.composeur button[type=submit]');
+  await pBoost.waitForLoadState('domcontentloaded');
+  ok('le champ du bandeau ouvre le composeur avec l’adresse déjà posée',
+     pBoost.url().includes('p=lien-court')
+     && (await pBoost.locator('#cible').inputValue()) === 'https://billetterie.exemple.tg/soiree-du-12',
+     await pBoost.locator('#cible').inputValue().catch(() => pBoost.url()));
+
+  /**
+   * Et le QR de cette page est un VRAI QR, dessiné par la maison.
+   *
+   * Un damier d'illustration aurait suffi à l'oeil et menti à qui sort son
+   * téléphone pour l'essayer, c'est-à-dire exactement la personne qu'on
+   * cherche à convaincre.
+   */
+  await pBoost.goto(`${BASE}/index.php?p=boost-liens`, { waitUntil: 'domcontentloaded' });
+  const srcQr = await pBoost.locator('img[alt*="QR"]').first().getAttribute('src') ?? '';
+  ok('le QR de la page est dessiné ici, et ne vient d’aucun serveur',
+     srcQr.startsWith('data:image/') && srcQr.length > 500,
+     `${srcQr.slice(0, 22)}… ${srcQr.length} octets`);
+
+  /* Sur un téléphone, aucune des trois ne glisse de côté : la mesure se
+     fait sur le document, pas sur une impression. */
+  await pBoost.setViewportSize({ width: 390, height: 844 });
+  const debordent: string[] = [];
+  for (const route of ['boost-push', 'boost-regie', 'boost-liens']) {
+    await pBoost.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
+    await pBoost.waitForTimeout(200);
+    const trop = await pBoost.evaluate(() =>
+      document.documentElement.scrollWidth > window.innerWidth + 1);
+    if (trop) debordent.push(route);
+  }
+  ok('les trois tiennent dans la largeur d’un téléphone', debordent.length === 0,
+     debordent.join(' · ') || '390 px, trois pages');
+  await pBoost.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {
