@@ -289,7 +289,11 @@ function bord_ou_aller(?array $u, array $stats): array
 function bord_nouveau(?array $u): array
 {
     $tout = [
-        ['?p=nouveau', 'Un décor', 'decors_siens'],
+        // Par l'écran des deux chemins, et non droit dans le formulaire :
+        // celui-ci s'ouvre sur le Studio par défaut, et quelqu'un dont le
+        // graphiste a rendu un PNG se retrouvait devant une galerie de
+        // modèles sans voir où déposer son fichier.
+        ['?p=creer', 'Un décor', 'decors_siens'],
         ['?p=blog-editer', 'Un article', 'articles'],
         ['?p=regie-ecrire', 'Une campagne e-mail', 'regie'],
         ['?p=liens', 'Un lien court', 'liens'],

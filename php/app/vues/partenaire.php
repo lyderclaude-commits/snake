@@ -20,7 +20,7 @@
         <?php if (droit($me, 'regie')): ?>
           <a class="bouton fant" href="<?= e(url('?p=rapports')) ?>">Mon rapport</a>
         <?php endif; ?>
-        <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">Nouveau décor</a>
+        <a class="bouton" href="<?= e(url('?p=creer')) ?>">Nouveau décor</a>
       </div>
     </div>
   </section>
@@ -327,7 +327,7 @@
    * son écran d'accueil, deux portes qui se referment au clic.
    */
   $raccourcis = array_filter([
-      ['?p=nouveau', 'Nouveau décor', 'Créer une campagne', 'decors_siens'],
+      ['?p=creer', 'Nouveau décor', 'Créer une campagne', 'decors_siens'],
       ['?p=liens', 'Liens courts', 'Adresses traçables, clics comptés', 'liens'],
       ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', 'regie'],
       ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', 'push'],

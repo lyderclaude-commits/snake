@@ -25,6 +25,69 @@ function decors_publies(int $limite = 60): array
 }
 
 /**
+ * Douze décors par page : la grille en tient quatre par rangée, et douze
+ * remplissent trois rangées pleines. Le même nombre que le blog, pour que
+ * les deux listes du site se feuillettent pareil.
+ */
+const DECORS_PAR_PAGE = 12;
+
+/**
+ * Le catalogue par page, et ce qu'on y cherche.
+ *
+ * `decors_publies()` rend les soixante derniers et rien d'autre : au
+ * soixante-et-unième décor, le plus ancien disparaissait de la vitrine
+ * sans que rien ne le dise — et c'est souvent lui qu'on cherche, des mois
+ * après la soirée. Une page numérotée a une adresse : elle se partage,
+ * elle se met en favori, un moteur sait la parcourir.
+ *
+ * La recherche porte sur le titre, le sous-titre et la ville. On se
+ * souvient rarement d'un titre exact, mais très bien de « Lomé » ou d'un
+ * mot lu dessus.
+ *
+ * Le COMPTE est fait par une requête à part plutôt qu'en ramenant tout
+ * pour compter : la table porte le gabarit de chaque décor, soit plusieurs
+ * kilo-octets de JSON par ligne, et `STATS_SQL` ajoute deux sous-requêtes.
+ * Compter en mémoire aurait coûté le catalogue entier à chaque page.
+ *
+ * La page RENDUE est rendue avec : demander la page 999 d'un catalogue qui
+ * en a dix-huit ramène la dix-huitième, et l'écran doit annoncer celle-là
+ * plutôt que « page 999 sur 18 ».
+ *
+ * @return array{liste: array<int, array<string, mixed>>, total: int, pages: int, page: int}
+ */
+function decors_page(int $page, int $par_page, string $cherche = ''): array
+{
+    $par_page = max(1, $par_page);
+    $page = max(1, $page);
+
+    $ou = "d.statut = 'publie' AND (d.expire_le IS NULL OR d.expire_le > ?)";
+    $args = [maintenant()];
+    $q = trim($cherche);
+    if ($q !== '') {
+        $ou .= ' AND (d.titre LIKE ? OR d.sous_titre LIKE ? OR d.ville LIKE ?)';
+        $m = '%' . $q . '%';
+        array_push($args, $m, $m, $m);
+    }
+
+    $c = db()->prepare("SELECT COUNT(*) n FROM decors d WHERE $ou");
+    $c->execute($args);
+    $total = (int) ($c->fetch()['n'] ?? 0);
+    $pages = max(1, (int) ceil($total / $par_page));
+    // Une page demandée au-delà de la dernière rend la dernière, et non
+    // une grille vide : on arrive là par un lien vieilli, pas par erreur.
+    $page = min($page, $pages);
+    $debut = ($page - 1) * $par_page;
+
+    $s = db()->prepare("SELECT d.*, " . STATS_SQL . "
+        FROM decors d
+        WHERE $ou
+        ORDER BY d.publie_le DESC
+        LIMIT $par_page OFFSET $debut");
+    $s->execute($args);
+    return ['liste' => $s->fetchAll(), 'total' => $total, 'pages' => $pages, 'page' => $page];
+}
+
+/**
  * Les seules colonnes dont un plan de site a besoin.
  *
  * `decors_publies()` rapporte la ligne ENTIÈRE — gabarit compris, soit

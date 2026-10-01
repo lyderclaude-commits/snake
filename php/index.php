@@ -177,9 +177,32 @@ switch ($page) {
         exit;
 
     case 'decors':
-        $_liste = decors_publies();
+        /**
+         * Douze par page, comme le blog, et une recherche.
+         *
+         * La vitrine en montrait soixante d'un bloc, puis plus rien : au
+         * soixante-et-unième décor, le plus ancien sortait du site sans
+         * qu'une page le reprenne. Et une grille de soixante vignettes se
+         * parcourt mal — on y cherche un nom, on ne le feuillette pas.
+         */
+        $_page_n = max(1, (int) ($_GET['n'] ?? 1));
+        $_cherche = trim((string) ($_GET['q'] ?? ''));
+        $_cat = decors_page($_page_n, DECORS_PAR_PAGE, $_cherche);
+        $_liste = $_cat['liste'];
+        // Celle qui a VRAIMENT été servie : un lien vieilli vers la page 40
+        // d'un catalogue qui en a dix-huit ramène la dernière, et l'écran
+        // doit dire « page 18 sur 18 ».
+        $_page_n = $_cat['page'];
         vue('decors', [
-            'titre' => 'Les décors · ' . seo_reglage('seo_nom_site'),
+            'titre' => $_cherche !== ''
+                ? 'Recherche « ' . $_cherche . ' » · Les décors'
+                : ($_page_n > 1
+                    ? 'Les décors, page ' . $_page_n . ' · ' . seo_reglage('seo_nom_site')
+                    : 'Les décors · ' . seo_reglage('seo_nom_site')),
+            'page_n' => $_page_n,
+            'cherche' => $_cherche,
+            'pages' => $_cat['pages'],
+            'total' => $_cat['total'],
             'description' => 'Choisissez un décor, ajoutez votre photo, partagez votre badge. '
                 . 'Sans compte, en trente secondes. Lomé, Cotonou, Abidjan.',
             'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],

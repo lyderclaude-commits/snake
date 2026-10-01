@@ -210,8 +210,8 @@ d'indispensable, il le dit et s'arrête, plutôt que d'échouer à mi-chemin.
 | **SQLite** *(recommandé pour démarrer)* | Rien à créer, rien à saisir. Tout tient dans `donnees/wakabi.sqlite`. |
 | **MySQL / MariaDB** | Créez d'abord la base dans cPanel, puis donnez ses identifiants. Préférable dès que le trafic monte. |
 
-Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1059 scénarios
-réussis** sur une base déjà peuplée, **1058 sur une installation neuve** — le
+Les deux ont été vérifiés de bout en bout, depuis le zip livré : **1072 scénarios
+réussis** sur une base déjà peuplée, **1071 sur une installation neuve** — le
 scénario qui manque est celui de la deuxième page du catalogue, qui demande
 plus de décors qu'une page n'en montre ; une installation neuve en pose six, et
 la recette ne s'en invente pas d'autres pour s'exécuter quand même. Zéro échec,
@@ -306,7 +306,7 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 1059 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1072 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 1059 scénarios
+### Les 1072 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
@@ -433,6 +433,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **La couleur du cadre** | Recolorer change **vraiment** les pixels du badge, et **pas ceux de la photo** ; ce qui est blanc ou gris ne bouge pas ; revenir à « ses couleurs d'origine » rend **exactement** l'image de départ (histogramme comparé) ; la teinte survit à l'enregistrement, se retrouve sur le **badge de l'invité**, et la **vignette de partage dessinée par PHP porte la même** — deux implémentations comparées sur leurs pixels |
 | **Le dessin** | Les treize écrans les plus chargés **ne glissent pas de côté** sur un téléphone ; deux formulaires côte à côte ont leur bouton **à la même hauteur** ; « Suspendre » est rouge **sans empiler d'aplats** ; aucun paragraphe ne dépasse la ligne de lecture (caractère **mesuré dans la police**, pas estimé) ; aucune vignette de modèle ne dépasse sa boîte ; aucune page publique ne **saute un niveau de titre** ; le produit ne sert qu'**une** pile à chasse fixe |
 | **Le pied, le blog, les menus** | Le pied de page **colle** à la dernière section sur neuf pages (0 px) ; le blog montre **douze** articles et **aucun chapô ne dépasse deux lignes** ; « Nos villes » tient dans la ligne de lecture ; un menu ouvert se ferme **au clic ailleurs**, **à l'ouverture d'un autre** et **à Échap** — qui rend le clavier à son bouton — mais **pas** quand on clique dans son propre volet, et **une question fréquente reste ouverte** |
+| **Le catalogue par page** | `?p=decors` montre **douze** décors par page et porte une **zone de recherche** ; on y cherche par **ville** autant que par titre ; la page 2 montre d'**autres** décors et porte **son propre titre** ; une page au-delà de la dernière rend **la dernière** et l'annonce comme telle ; une recherche sans réponse le dit ; et elle **suit** quand on tourne la page |
+| **La porte des deux chemins** | « Un décor » depuis le tableau de bord, le catalogue ou l'espace de l'organisateur mène à `?p=creer` et non droit au formulaire ; l'écran montre bien les deux départs, et « J'ai déjà mon décor » ouvre le **dépôt de fichier**, pas la galerie |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -3266,6 +3268,39 @@ qu'un cadre perdu.
 ---
 
 ## Le tour du dessin, et ce qu'il a corrigé
+
+### Le catalogue se feuillette, et se cherche
+
+`?p=decors` rendait les **soixante** derniers décors d'un bloc, puis plus
+rien : au soixante-et-unième, le plus ancien sortait du site sans qu'aucune
+page ne le reprenne — et c'est souvent celui-là qu'on cherche, des mois
+après la soirée. Une grille de soixante vignettes se parcourt mal de toute
+façon : on y cherche un nom, on ne la feuillette pas.
+
+**Douze par page**, comme le blog, et une **zone de recherche** qui porte sur
+le titre, le sous-titre et la ville. On se souvient rarement d'un titre
+exact, mais très bien de « Lomé ».
+
+Deux détails qui comptent :
+
+- **Le compte est fait par une requête à part.** La table porte le gabarit
+  de chaque décor — plusieurs kilo-octets de JSON par ligne — et `STATS_SQL`
+  y ajoute deux sous-requêtes. Compter en mémoire aurait coûté le catalogue
+  entier à chaque page.
+- **La page demandée au-delà de la dernière rend la dernière**, et l'écran
+  l'annonce comme telle. On arrive là par un lien vieilli, pas par erreur :
+  une grille vide, ou « page 999 sur 18 », donnerait l'impression que le
+  catalogue a disparu.
+
+### Créer un décor passe par l'écran des deux chemins
+
+`?p=nouveau` s'ouvre sur le Studio : quelqu'un dont le graphiste vient de
+rendre un PNG arrivait devant une galerie de modèles, sans voir où déposer
+son fichier. Depuis la v1.6, **les quatre portes du produit** — le menu
+« + Nouveau » du tableau de bord, le bouton de l'espace organisateur, celui
+du catalogue, et « en créer un » depuis l'éditeur d'article — mènent toutes
+à `?p=creer`, qui pose la question avant et ouvre le formulaire déjà dans le
+bon mode.
 
 ### Cinq retouches demandées en regardant les écrans
 

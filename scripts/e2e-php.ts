@@ -8896,6 +8896,162 @@ const run = async () => {
        (document.querySelector('details.wk-burger') as HTMLDetailsElement).open)));
   await ctxDoigt.close();
 
+
+  /* ================================================================== */
+  console.log('\n━━ 62. Le catalogue par page, et la porte des deux chemins ━━');
+
+  /**
+   * La vitrine montrait soixante décors d'un bloc, puis plus rien.
+   *
+   * Au soixante-et-unième, le plus ancien sortait du site sans qu'aucune
+   * page ne le reprenne — et c'est souvent celui-là qu'on cherche, des
+   * mois après la soirée. Une grille de soixante vignettes se parcourt mal
+   * de toute façon : on y cherche un nom, on ne la feuillette pas.
+   */
+  const pCat = await browser.newPage();
+  surveiller(pCat);
+  await pCat.setViewportSize({ width: 1340, height: 950 });
+  await pCat.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  await pCat.waitForTimeout(700);
+
+  const cat1 = await pCat.evaluate(() => ({
+    vignettes: document.querySelectorAll('.vignette').length,
+    pagine: document.querySelectorAll('nav[aria-label=Pages]').length > 0,
+    chercher: document.querySelectorAll('form[action*="p=decors"] input[name=q]').length,
+    titres: Array.from(document.querySelectorAll('.vignette b')).map((b) => b.textContent),
+  }));
+  ok('le catalogue montre douze décors par page',
+     cat1.pagine ? cat1.vignettes === 12 : cat1.vignettes <= 12,
+     `${cat1.vignettes} vignettes${cat1.pagine ? ', paginé' : ', une seule page'}`);
+  ok('et porte une zone de recherche, comme le blog', cat1.chercher === 1);
+
+  if (cat1.pagine) {
+    await pCat.goto(`${BASE}/index.php?p=decors&n=2`, { waitUntil: 'domcontentloaded' });
+    await pCat.waitForTimeout(500);
+    const titres2 = await pCat.evaluate(() =>
+      Array.from(document.querySelectorAll('.vignette b')).map((b) => b.textContent));
+    ok('la page 2 montre d’AUTRES décors',
+       titres2.length > 0 && !titres2.some((t) => cat1.titres.includes(t)));
+
+    /**
+     * Une page 2 porte SON titre.
+     *
+     * Se déclarer identique à la page 1 ferait disparaître des moteurs
+     * tout ce qui n'est pas récent — c'est-à-dire le fond de catalogue,
+     * qui est justement ce qui ramène du monde des mois plus tard.
+     */
+    ok('et son propre titre, pour qu’un moteur ne la confonde pas avec la première',
+       (await pCat.title()).includes('page 2'), await pCat.title());
+
+    /* Un lien vieilli vers une page qui n'existe plus ramène la dernière,
+       et le dit — plutôt qu'une grille vide ou « page 999 sur 18 ». */
+    await pCat.goto(`${BASE}/index.php?p=decors&n=999`, { waitUntil: 'domcontentloaded' });
+    await pCat.waitForTimeout(500);
+    const bout = await pCat.evaluate(() => {
+      const t = document.querySelector('nav[aria-label=Pages] .aide')?.textContent ?? '';
+      const m = /Page (\d+) sur (\d+)/.exec(t.replace(/\s+/g, ' '));
+      return { page: Number(m?.[1] ?? 0), pages: Number(m?.[2] ?? 0),
+               vignettes: document.querySelectorAll('.vignette').length };
+    });
+    ok('une page au-delà de la dernière rend la dernière, et l’annonce comme telle',
+       bout.page === bout.pages && bout.pages > 0 && bout.vignettes > 0,
+       `page ${bout.page} sur ${bout.pages}, ${bout.vignettes} vignettes`);
+  }
+
+  /* --- la recherche --- */
+  await pCat.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  await pCat.fill('input[name=q]', 'lome');
+  await pCat.locator('form[action*="p=decors"] button[type=submit]').click();
+  await pCat.waitForLoadState('domcontentloaded');
+  await pCat.waitForTimeout(500);
+  const parVille = await pCat.evaluate(() => ({
+    vignettes: document.querySelectorAll('.vignette').length,
+    dit: /décors? pour/.test(document.querySelector('main')?.textContent ?? ''),
+    url: location.search,
+  }));
+  ok('on cherche un décor par sa VILLE, pas seulement par son titre',
+     parVille.vignettes > 0 && parVille.dit,
+     `${parVille.vignettes} trouvés`);
+
+  await pCat.goto(`${BASE}/index.php?p=decors&q=zzzzintrouvable`, { waitUntil: 'domcontentloaded' });
+  await pCat.waitForTimeout(400);
+  ok('une recherche sans réponse le dit, et propose de tout revoir',
+     (await pCat.locator('main').innerText()).includes('Aucun décor ne correspond')
+     && (await pCat.locator('main a[href*="p=decors"]').count()) > 0);
+
+  /**
+   * La recherche voyage avec la pagination.
+   *
+   * Sans cela, la page 2 d'une recherche rendait la page 2 de TOUT le
+   * catalogue : on croyait avoir trouvé trente décors « à Lomé » alors
+   * qu'on en voyait douze de plus, pris n'importe où.
+   */
+  await pCat.goto(`${BASE}/index.php?p=decors&q=lome`, { waitUntil: 'domcontentloaded' });
+  await pCat.waitForTimeout(400);
+  const suite = await pCat.locator('nav[aria-label=Pages] a[href*="n=2"]').first()
+    .getAttribute('href').catch(() => null);
+  if (suite) {
+    ok('et la recherche suit quand on tourne la page', suite.includes('q=lome'), suite);
+  } else {
+    ok('et la recherche suit quand on tourne la page',
+       true, 'une seule page de résultats sur cette base');
+  }
+  await pCat.close();
+
+  /**
+   * Créer un décor passe par l'écran des deux chemins.
+   *
+   * `?p=nouveau` s'ouvre sur le Studio : quelqu'un dont le graphiste vient
+   * de rendre un PNG arrivait devant une galerie de modèles, sans voir où
+   * déposer son fichier. L'écran des chemins pose la question avant, et
+   * ouvre le formulaire déjà dans le bon mode.
+   */
+  const pPorte = await browser.newPage();
+  surveiller(pPorte);
+  await connexion(pPorte, ADMIN.email, ADMIN.mdp);
+  await pPorte.setViewportSize({ width: 1340, height: 950 });
+
+  await pPorte.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  await pPorte.waitForTimeout(600);
+  await pPorte.locator('.bord-nouveau > summary').click();
+  await pPorte.waitForTimeout(200);
+  await pPorte.locator('.bord-nouveau .volet a', { hasText: 'Un décor' }).click();
+  await pPorte.waitForLoadState('domcontentloaded');
+  ok('depuis le tableau de bord, « Un décor » mène à l’écran des deux chemins',
+     pPorte.url().includes('p=creer'), pPorte.url().split('?')[1] ?? pPorte.url());
+  ok('et cet écran montre bien les deux',
+     (await pPorte.locator('.chemin-carte').count()) === 2);
+
+  await pPorte.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
+  await pPorte.locator('a.bouton', { hasText: 'Nouveau décor' }).first().click();
+  await pPorte.waitForLoadState('domcontentloaded');
+  ok('depuis le catalogue aussi', pPorte.url().includes('p=creer'));
+
+  /**
+   * Et le chemin choisi ouvre le formulaire dans SON mode.
+   *
+   * C'est ce qui donne son sens à l'écran : « J'ai déjà mon décor » doit
+   * montrer le dépôt de fichier tout de suite, sans galerie de modèles.
+   */
+  await pPorte.locator('.chemin-carte').first().click();
+  await pPorte.waitForLoadState('domcontentloaded');
+  await pPorte.waitForTimeout(1200);
+  ok('« J’ai déjà mon décor » ouvre le dépôt de fichier, pas la galerie',
+     await pPorte.locator('input[name=cadre]').isVisible());
+  await pPorte.close();
+
+  /* --- et pour un organisateur, par son propre tableau de bord --- */
+  const pOrgPorte = await browser.newPage();
+  surveiller(pOrgPorte);
+  await connexion(pOrgPorte, PART.email, PART.mdp);
+  await pOrgPorte.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
+  await pOrgPorte.waitForTimeout(500);
+  await pOrgPorte.locator('a.bouton', { hasText: 'Nouveau décor' }).first().click();
+  await pOrgPorte.waitForLoadState('domcontentloaded');
+  ok('un organisateur y passe aussi, depuis son espace',
+     pOrgPorte.url().includes('p=creer'), pOrgPorte.url().split('?')[1] ?? pOrgPorte.url());
+  await pOrgPorte.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {

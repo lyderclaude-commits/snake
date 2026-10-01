@@ -115,7 +115,7 @@ $etats = [
         </select>
         <?php if (!$liables): ?>
           <p class="aide">Vous n’avez encore aucun décor, et aucun n’est publié.
-          <a href="<?= e(url('?p=nouveau')) ?>">En créer un</a>.</p>
+          <a href="<?= e(url('?p=creer')) ?>">En créer un</a>.</p>
         <?php else: ?>
           <p class="aide">Un décor pas encore publié peut être choisi : la carte n’apparaîtra
           au lecteur qu’une fois le décor en ligne.</p>

@@ -25,7 +25,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
           à ce que vous regardez.</span>
         <?php endif; ?></p>
       </div>
-      <a class="bouton" href="<?= e(url('?p=nouveau')) ?>">+ Nouveau décor</a>
+      <a class="bouton" href="<?= e(url('?p=creer')) ?>">+ Nouveau décor</a>
     </div>
   </section>
 
