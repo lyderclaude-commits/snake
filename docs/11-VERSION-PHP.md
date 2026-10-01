@@ -306,11 +306,11 @@ npm run php:serve        # http://127.0.0.1:3600
 Ouvrez `install.php`, installez, puis :
 
 ```bash
-npm run php:e2e          # 1072 scénarios, dans un vrai navigateur
+npm run php:e2e          # 1104 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
-                         # brouillons et offres
+                         # brouillons, offres et adresses
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -328,7 +328,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 > les colonnes que crée l'installateur et celles qu'ajouteraient les
 > migrations : la liste doit être vide.
 
-### Les 1072 scénarios
+### Les 1104 scénarios
 
 | Groupe | Ce qui est vérifié |
 |---|---|
