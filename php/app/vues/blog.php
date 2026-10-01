@@ -13,7 +13,7 @@
      rarement d'un titre, mais très bien d'un mot lu dedans. */
   ?>
   <form method="get" action="<?= e(url('?p=blog')) ?>" class="rangee chercher chercher-comptes">
-    <input type="hidden" name="p" value="blog">
+    <?= permaliens_champ_page('blog') ?>
     <input type="search" name="q" value="<?= e($cherche) ?>" placeholder="Chercher dans le blog"
            aria-label="Chercher dans le blog">
     <button class="bouton fant petit" type="submit">Chercher</button>

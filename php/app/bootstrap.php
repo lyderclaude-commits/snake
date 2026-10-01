@@ -70,9 +70,20 @@ function base_url(): string
     return ($https ? 'https://' : 'http://') . $hote . $base;
 }
 
+/**
+ * L'adresse d'une page de cette installation.
+ *
+ * Elle passe par `permaliens_jolie()`, qui rend la forme lisible quand
+ * les réglages la demandent et que l'hébergement a prouvé qu'il la
+ * servait — et `null` partout ailleurs. C'est ce détour, et non une
+ * liste de liens convertis un par un, qui met tout le site sous la même
+ * forme : une page qu'on aurait oubliée garderait la forme simple, qui
+ * marche, au lieu de garder une forme cassée qu'on ne verrait pas.
+ */
 function url(string $chemin = ''): string
 {
-    return base_url() . '/' . ltrim($chemin, '/');
+    $joli = permaliens_jolie($chemin);
+    return base_url() . '/' . ltrim($joli ?? $chemin, '/');
 }
 
 /**
@@ -350,3 +361,13 @@ function verifier_csrf(): void
         exit('Requête invalide. Rechargez la page et réessayez.');
     }
 }
+
+/**
+ * La forme des adresses, chargée ICI et non par le routeur.
+ *
+ * `url()` est définie au-dessus et appelée par tout le monde, y compris
+ * par l'installateur, qui ne charge rien d'autre que ce socle. Si la
+ * traduction vivait dans un module requis plus loin, le même lien
+ * s'écrirait de deux façons selon le fichier qui l'a demandé.
+ */
+require_once __DIR__ . '/permaliens.php';

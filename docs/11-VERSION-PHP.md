@@ -435,6 +435,8 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le pied, le blog, les menus** | Le pied de page **colle** à la dernière section sur neuf pages (0 px) ; le blog montre **douze** articles et **aucun chapô ne dépasse deux lignes** ; « Nos villes » tient dans la ligne de lecture ; un menu ouvert se ferme **au clic ailleurs**, **à l'ouverture d'un autre** et **à Échap** — qui rend le clavier à son bouton — mais **pas** quand on clique dans son propre volet, et **une question fréquente reste ouverte** |
 | **Le catalogue par page** | `?p=decors` montre **douze** décors par page et porte une **zone de recherche** ; on y cherche par **ville** autant que par titre ; la page 2 montre d'**autres** décors et porte **son propre titre** ; une page au-delà de la dernière rend **la dernière** et l'annonce comme telle ; une recherche sans réponse le dit ; et elle **suit** quand on tourne la page |
 | **La porte des deux chemins** | « Un décor » depuis le tableau de bord, le catalogue ou l'espace de l'organisateur mène à `?p=creer` et non droit au formulaire ; l'écran montre bien les deux départs, et « J'ai déjà mon décor » ouvre le **dépôt de fichier**, pas la galerie |
+| **Les adresses lisibles** | Une adresse lisible répond **avant** d'être activée, et le site écrit pourtant toujours la forme simple : la règle entière du réglage tient là ; deux préfixes identiques sont refusés avec le motif ; l'activation passe par un **essai réel** (le serveur se répond à lui-même) ; ensuite les liens du catalogue, le **lien canonique** et le plan du site disent la même adresse, l'ancienne **redirige définitivement**, l'accueil **ne se redirige pas vers lui-même**, la recherche traverse sans champ caché, et un code de lien court reste un **code de lien court** ; revenu à la forme simple, une adresse déjà partagée répond encore |
+| **Les conditions et la confidentialité** | Les liens légaux du pied **restent sur le site**, en haut comme en bas ; les deux pages s'ouvrent avec le dessin du guide, disent qui édite le site et comment écrire, annoncent leur date de révision et entrent dans le **plan du site** ; la confidentialité promet que la **photo ne quitte pas l'appareil** et dit où tout emporter ou tout effacer ; ce qu'on renseigne dans l'identité légale s'y affiche, et ce qu'on laisse vide **ne laisse aucun trou visible** |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
 
 > **La recette est rejouable.** Elle crée ses propres comptes et sa propre
@@ -3986,6 +3988,170 @@ donc que chez les nouveaux. Le numéro de version du schéma est gardé dans
 `donnees/version-schema.txt`, et la première requête après la mise à jour
 ajoute ce qui manque. Rien à lancer à la main, rien à exécuter dans
 phpMyAdmin.
+
+---
+
+## La forme des adresses — `?p=reglages-permaliens`
+
+`?p=decors` marche partout, sans réécriture à configurer : c'est pour cette
+raison que le produit a commencé ainsi, et c'est pourquoi cette forme reste
+**le défaut**. Mais elle coûte deux choses, et ce sont justement les deux
+usages du produit.
+
+Ce qui se **partage** : une adresse collée dans un groupe WhatsApp est lue
+avant d'être cliquée. `/decors/soiree-blanche-lome` dit ce qu'il y a au bout ;
+`?p=decor&slug=soiree-blanche-lome` dit qu'on s'y connaît en informatique. Et
+ce qui se **recopie** : une adresse lue à la radio ou imprimée sur une affiche
+doit se taper sans expliquer le point d'interrogation, l'égal et l'esperluette.
+
+L'écran a l'air de famille de celui de WordPress : on choisit une forme, on
+nomme les deux préfixes, et le site s'en sert.
+
+### La règle qui tient tout le reste
+
+> **Résoudre est permanent, écrire est un réglage.**
+
+Une adresse lisible est **toujours comprise**, même quand le site est réglé
+sur la forme simple. Seule la *fabrication* des liens dépend du réglage.
+
+Sans cette asymétrie, revenir en arrière — ou un hébergeur qui perd
+`mod_rewrite` au détour d'une migration — casserait d'un coup toutes les
+adresses déjà parties dans des messageries, des QR imprimés et l'index de
+Google. Ici, elles continuent de répondre. C'est aussi ce qui rend la
+redirection permanente (`301`) tenable : sa cible ne peut pas mourir.
+
+Et dans l'autre sens : **la forme lisible ne s'active que si le site a réussi
+à se répondre à lui-même** sur une adresse lisible. C'est le seul moyen de
+savoir que l'hébergement lit bien `.htaccess` et que `mod_rewrite` y est
+actif. Un essai qui échoue laisse les adresses telles qu'elles étaient, et
+l'écran affiche le bloc à recoller. Activer d'abord et vérifier ensuite
+distribuerait, le temps d'un aller-retour, un site entier d'adresses mortes :
+le menu, le pied de page, le plan du site et les liens de chaque vignette.
+
+### Ce que ça donne
+
+| | Forme simple | Forme lisible |
+|---|---|---|
+| Le catalogue | `index.php?p=decors` | `/decors` |
+| Sa page 2 | `index.php?p=decors&n=2` | `/decors/page/2` |
+| Un décor | `index.php?p=decor&slug=soiree-blanche` | `/decors/soiree-blanche` |
+| Un article | `index.php?p=blog&a=mon-article` | `/blog/mon-article` |
+| Un article du guide | `index.php?p=blog&g=mon-article` | `/blog/guide/mon-article` |
+| Push | `index.php?p=boost-push` | `/push` |
+
+Deux préfixes se règlent (`blog`, `decors`), et une case termine les adresses
+par une barre oblique — à cocher quand le site remplace un WordPress qui les
+écrivait ainsi : les deux formes répondent de toute façon, mais celle qu'on
+*écrit* doit être celle que Google a déjà indexée.
+
+### Trois décisions qui expliquent le reste
+
+**La traduction est branchée dans `url()`**, et non écrite lien par lien. Les
+quelques centaines de liens du site n'ont pas eu à changer, et c'est voulu :
+une page qu'on aurait oubliée garde la forme simple, qui marche, au lieu de
+garder une forme cassée que personne ne verrait. `url_canonique()` passe par
+la même fonction, si bien que le lien canonique, le plan du site, le fil
+d'Ariane et les données structurées ne peuvent pas se contredire.
+
+**Seule la vitrine est traduite.** L'espace de travail, l'API, les vignettes
+de partage et les liens courts gardent leur forme : ils ne se partagent pas,
+ne s'impriment pas, et certains sont déjà dans des caches de messageries
+qu'on ne peut pas invalider. Chaque adresse réécrite est par ailleurs une
+occasion de casser un formulaire.
+
+**Un mot de six caractères ne peut pas être une adresse de page.** La règle
+des liens courts passe avant la règle attrape-tout dans le `.htaccess` : un
+segment unique de six caractères de l'alphabet des codes serait détourné, et
+la page répondrait « lien introuvable ». Plutôt que de se fier à une liste
+relue à la main, `permaliens_jolie()` le vérifie à chaque lien et retombe sur
+la forme simple.
+
+### La boucle que l'accueil a vraiment provoquée
+
+La première version de la redirection demandait « la requête est-elle arrivée
+sous la forme lisible ? ». L'accueil arrive par `/`, sans chemin réécrit, et
+sa forme lisible **est** `/` : il se redirigeait donc vers lui-même sans fin,
+et la page d'accueil du site ne s'ouvrait plus.
+
+La correction n'est pas un cas de plus, c'est une comparaison : on compare
+l'adresse visée à l'adresse courante, et l'on ne redirige que si elles
+diffèrent. Ce qui ferme du même coup la barre finale en trop, celle qui
+manque, `index.php` écrit à la main et une majuscule dans un slug.
+
+### Le bouton « Vérifier la forme courte » plantait
+
+`chemin_court_marche()` était **appelée et nulle part définie** : le clic
+rendait une erreur fatale au lieu d'une réponse. Aucun scénario de la recette
+ne touchait ce bouton, et personne ne l'avait cliqué sur une installation
+neuve. Elle délègue désormais à l'essai des permaliens, et c'est fondé plutôt
+que commode : les deux règles vivent dans le même `.htaccess`, sous le même
+`<IfModule mod_rewrite.c>`, avec les deux mêmes gardes `!-f !-d`. Ce qu'on
+cherche à savoir est l'unique chose qui peut manquer sur un mutualisé.
+
+> **La recette tourne désormais derrière un routeur.** `php -S` ne lit aucun
+> `.htaccess` : les adresses lisibles, les liens courts, `robots.txt` et
+> `sitemap.xml` n'étaient éprouvables par rien. `scripts/routeur-php.php`
+> rejoue les mêmes règles, dans le même ordre, et `npm run php:serve` passe
+> par lui. Ce qui est éprouvé reste l'application, pas Apache : sur
+> l'hébergement réel, c'est l'essai de l'écran qui tranche.
+
+---
+
+## Les conditions et la confidentialité — `?p=cgu`, `?p=confidentialite`
+
+C'étaient les deux dernières sorties du pied de page. On cliquait « CGU », on
+changeait de site, on arrivait sous un autre header, et il fallait revenir à
+la main. Pour deux pages qu'on ouvre **au moment précis où l'on hésite à créer
+un compte ou à payer**, c'est la pire sortie possible.
+
+Elles sont maintenant des routes d'ici, dans `PAGES_CONTENU` comme les huit
+autres : elles en héritent le dessin du guide, la barre de vitrine, le pied
+complet et leur ligne dans le plan du site. Plus rien du pied ne renvoie à
+l'ancien domaine.
+
+### Écrites depuis le code, pas depuis un modèle
+
+Chaque affirmation a été vérifiée dans le logiciel avant d'être écrite, parce
+qu'une clause qui décrirait autre chose que le produit serait fausse le jour
+où quelqu'un la lit en détail — et ce jour-là, c'est toujours qu'il y a un
+litige.
+
+- **« Votre photo ne quitte pas votre appareil »** : le badge est composé sur
+  un canevas dans le navigateur (`php/studio/entry.ts`, `toBlob`), et les
+  seuls téléversements du produit sont le cadre d'un décor, le logo d'un
+  sponsor et les images d'un article. Chercher `$_FILES` dans le code en donne
+  la liste entière.
+- **« Aucun mouchard »** : pas une balise d'analyse, pas un pixel, et les
+  polices sont servies depuis ce serveur. D'où l'absence de bandeau de
+  cookies, qui n'aurait rien à proposer.
+- **Ce que la suppression d'un compte efface, détache ou garde** est la liste
+  exacte de `supprimer_compte()` : les identifiants, les liens, les
+  notifications, les abonnements push et les koris partent ; les décors et les
+  badges déjà émis sont *détachés* — un badge qu'un invité garde doit rester
+  vérifiable à l'entrée — et le journal garde la trace des actes, avec le nom
+  recopié au moment de l'acte.
+
+### Ce que le code ne peut pas inventer
+
+La raison sociale, la forme juridique, l'immatriculation et le siège ne se
+devinent pas, et surtout ne doivent pas s'inventer : un numéro faux sur une
+page de conditions est un faux, pas un défaut d'affichage. Ces quatre champs
+vivent dans Réglages → L'identité légale, vides au départ, et **les pages
+n'écrivent que ce qui est renseigné**.
+
+Une page qui afficherait « [à compléter] » en public serait pire qu'une page
+qui n'en parle pas ; une page qui afficherait un numéro inventé serait pire
+que les deux. Tant que rien n'est rempli, le paragraphe se contente du nom et
+de l'adresse de contact, ce qui est vrai.
+
+La **date de révision** est un réglage, et non `date('d/m/Y')`. Une page de
+conditions qui se déclare à jour chaque matin est une page dont personne ne
+peut vérifier ce qui a changé, ni depuis quand.
+
+> **Les deux pages restent à relire par un juriste** avant d'être opposées à
+> quiconque, et l'écran des réglages le dit. Les références aux textes — la
+> loi togolaise n° 2019-014, les autorités du Bénin et de la Côte d'Ivoire —
+> sont le seul endroit que le code ne peut pas vérifier à votre place.
 
 ---
 

@@ -592,6 +592,31 @@ function lien_court_url(string $code): string
     return base_url() . '/index.php?p=l&c=' . rawurlencode($code);
 }
 
+/**
+ * La forme courte répond-elle vraiment ?
+ *
+ * Cette fonction MANQUAIT : l'écran des réglages l'appelait depuis le
+ * bouton « Vérifier la forme courte », et le clic rendait une erreur
+ * fatale au lieu d'une réponse. Le bouton n'était éprouvé par aucun
+ * scénario de la recette, et personne ne l'avait cliqué sur une
+ * installation neuve.
+ *
+ * Elle délègue à l'essai des permaliens, et c'est fondé plutôt que
+ * commode : les deux règles vivent dans le MÊME `.htaccess`, sous le même
+ * `<IfModule mod_rewrite.c>`, avec les deux mêmes gardes `!-f !-d`. Ce
+ * qu'on cherche à savoir est l'unique chose qui peut manquer sur un
+ * mutualisé — le fichier est-il lu, et le module est-il là. Une réponse
+ * sur l'une vaut pour l'autre.
+ *
+ * Éprouver la règle des liens courts directement demanderait de réserver
+ * un code de six caractères qui ne désigne aucun lien : un concept de
+ * plus dans la table des liens, pour une information qu'on a déjà.
+ */
+function chemin_court_marche(): bool
+{
+    return permaliens_essai()['ok'];
+}
+
 function liens_de(string $auteur_id, int $limite = 200): array
 {
     $s = db()->prepare("SELECT l.*, d.titre AS decor_titre FROM liens l

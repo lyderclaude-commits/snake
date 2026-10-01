@@ -46,7 +46,56 @@ require __DIR__ . '/app/bord.php';
 require __DIR__ . '/app/api.php';
 
 assurer_schema();
+
+/**
+ * Une adresse lisible devient des paramètres, avant tout le reste.
+ *
+ * Le `.htaccess` dépose le chemin dans `wk` ; cette ligne le traduit en
+ * `p`, en `slug`, en `n`. Tout ce qui suit — le routeur, les actions, les
+ * vues — ne voit donc aucune différence entre `/decors/soiree-blanche` et
+ * `?p=decor&slug=soiree-blanche`, et c'est exactement ce qu'on veut : une
+ * route nouvelle marche sous les deux formes sans qu'on y pense.
+ */
+$_lisible = permaliens_entrer();
+
+/**
+ * L'essai des permaliens, AVANT la session.
+ *
+ * Le site se demande cette adresse à lui-même pour savoir si
+ * `mod_rewrite` répond. Démarrer une session ici n'apporterait rien et
+ * coûterait un fichier de session par clic ; plus bas, ce serait pire —
+ * sur certains hébergements la requête d'essai attendrait un verrou que
+ * détient la requête qui l'a lancée.
+ *
+ * L'arrivée est NOTÉE, et seulement si elle s'est faite par la réécriture.
+ * C'est la deuxième preuve, celle des hébergements qui ne savent pas
+ * s'appeler eux-mêmes : quelqu'un ouvre l'adresse dans un onglet, le
+ * serveur la sert, et l'écran des réglages le constate. Une requête
+ * écrite à la main en `?p=permaliens-essai` ne prouve rien et n'est donc
+ * pas notée.
+ */
+if (($_GET['p'] ?? '') === 'permaliens-essai') {
+    if ($_lisible) {
+        permaliens_constater();
+    }
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo PERMALIENS_ESSAI_JETON;
+    exit;
+}
+
 demarrer_session();
+
+/**
+ * Une seule adresse par page : la forme simple redirige vers la jolie.
+ *
+ * Sans cela, chaque page du site répondrait à deux adresses — un moteur
+ * les compte comme deux pages et les note deux fois moins bien, et les
+ * partages se répartissent entre les deux. Ne concerne que la vitrine :
+ * l'espace de travail, l'API et les vignettes n'ont pas de forme lisible,
+ * donc rien à canoniser.
+ */
+permaliens_canoniser();
 
 $page = (string) ($_GET['p'] ?? 'accueil');
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
@@ -874,6 +923,8 @@ switch ($page) {
     case 'boost-push':
     case 'boost-regie':
     case 'boost-liens':
+    case 'cgu':
+    case 'confidentialite':
         [$_v, $_t, $_d] = PAGES_CONTENU[$page];
         vue($_v, ['titre' => $_t . ' · ' . seo_reglage('seo_nom_site'), 'description' => $_d]);
 
@@ -1154,6 +1205,18 @@ switch ($page) {
 
     case 'reglages-seo':
         require RACINE . '/app/actions/seo.php';
+
+    /**
+     * La forme des adresses publiques, sous Réglages comme le reste.
+     *
+     * Elle touche au référencement, donc elle aurait pu vivre là-bas ;
+     * elle touche surtout à `.htaccess` et à ce que l'hébergement sait
+     * faire, ce qui est un réglage d'installation. Et le menu tient en
+     * trois groupes de quatre destinations : cette règle vaut mieux
+     * qu'une entrée de plus.
+     */
+    case 'reglages-permaliens':
+        require RACINE . '/app/actions/permaliens.php';
 
     case 'reglages':
         require RACINE . '/app/actions/reglages.php';

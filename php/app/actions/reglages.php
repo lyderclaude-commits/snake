@@ -66,6 +66,31 @@ if ($post) {
         $saisie['domaine_liens'] = $domaine;
     }
 
+    /**
+     * L'identité légale, sous la même règle que le domaine des liens.
+     *
+     * Un champ ABSENT n'est pas un champ vidé : les quatre formulaires de
+     * cette page enregistrent par le même chemin, et sans ce garde,
+     * cliquer « Enregistrer » sous le transport e-mail effacerait la
+     * raison sociale qui s'affiche sur deux pages publiques.
+     */
+    foreach (array_keys(LEGAL_DEFAUTS) as $cle) {
+        if (isset($_POST[$cle])) {
+            $saisie[$cle] = trim((string) $_POST[$cle]);
+        }
+    }
+    if (isset($saisie['legal_courriel']) && $saisie['legal_courriel'] !== ''
+        && !filter_var($saisie['legal_courriel'], FILTER_VALIDATE_EMAIL)) {
+        $erreur = 'L’adresse pour les demandes de données n’est pas une adresse valide.';
+    }
+    /* Une date illisible vaut mieux refusée qu'affichée de travers : elle
+       figure en tête des deux pages légales, où une date fantaisiste fait
+       douter du reste du texte. */
+    if (isset($saisie['legal_maj']) && $saisie['legal_maj'] !== ''
+        && !preg_match('~^\d{4}-\d{2}-\d{2}$~', $saisie['legal_maj'])) {
+        $erreur = 'La date de révision s’écrit comme une date (année, mois, jour).';
+    }
+
     $vers = trim((string) ($_POST['essai_vers'] ?? ''));
     $essai = ($_POST['action'] ?? '') === 'essai';
     $tester_liens = ($_POST['action'] ?? '') === 'liens';
@@ -159,6 +184,12 @@ vue('reglages', [
     'valeurs' => $valeurs,
     'domaine_liens' => (string) ($liens['domaine_liens'] ?? ''),
     'chemin_court' => ($liens['liens_chemin_court'] ?? '') === '1',
+    /* Les valeurs BRUTES, et non celles de `identite_legale()` : cette
+       dernière comble les vides (le siège prend la ville du
+       référencement), ce qui est bon pour une page publique et trompeur
+       dans un formulaire — on croirait avoir renseigné un champ qu'on
+       n'a pas touché. */
+    'legal' => identite_legale_brute(),
     'exemple_lien' => lien_court_url('AbC123'),
     'a_mot_de_passe' => (reglages_bdd(['smtp_motdepasse'])['smtp_motdepasse'] ?? '') !== '',
     'message' => $message,

@@ -24,6 +24,34 @@
   # absolue — or le même zip se décompresse sur des domaines différents.
   RewriteRule ^robots\.txt$ index.php?p=robots [L]
   RewriteRule ^sitemap\.xml$ index.php?p=sitemap [L]
+
+  # Les adresses lisibles : /decors/soiree-blanche plutôt que
+  # ?p=decor&slug=soiree-blanche.
+  #
+  # EN DERNIER, et ce n'est pas un détail : la règle attrape tout ce qui
+  # reste, donc tout ce qui la précède doit avoir été servi avant. Les
+  # deux gardes `!-f !-d` laissent passer les fichiers et les dossiers
+  # réels — la feuille de style, les cadres, les polices, l'installateur.
+  #
+  # Le chemin arrive dans `wk`, et c'est PHP qui décide ce qu'il désigne
+  # (app/permaliens.php). Une règle par famille d'adresses aurait mis la
+  # moitié du routage dans un fichier qu'on ne peut ni lire ni éprouver
+  # depuis l'application.
+  #
+  # Cette règle ne fait rien de visible tant que les réglages sont sur la
+  # forme simple : elle sert alors à répondre aux adresses lisibles déjà
+  # parties dans des messageries, et à l'essai qui prouve qu'elle marche.
+  #
+  # `B` échappe le chemin capturé avant de le recoller dans la requête.
+  # Sans lui, une adresse contenant une esperluette ferait passer la suite
+  # pour des paramètres : `/decors&n=9` deviendrait `wk=decors` ET `n=9`.
+  # Rien de dangereux (le routeur réécrit `p` depuis le chemin, et l'on
+  # peut déjà poser n'importe quel paramètre avec un `?`), mais une même
+  # page répondrait à deux adresses de plus, ce que tout le reste de ce
+  # réglage s'emploie à éviter.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.+)$ index.php?wk=$1 [B,L,QSA]
 </IfModule>
 
 <IfModule mod_headers.c>

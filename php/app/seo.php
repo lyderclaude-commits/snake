@@ -85,6 +85,12 @@ function seo_reglage(string $cle): string
  * Une seule forme, toujours : `base/index.php?p=…`. Le menu écrit `/?p=…`,
  * ce qui est la même page ; deux formes pour une page, c'est un doublon
  * qu'un moteur compte deux fois et note deux fois moins bien.
+ *
+ * Et quand les permaliens lisibles sont en service, cette forme-là EST la
+ * jolie. C'est le point unique par où passent le lien canonique, le plan
+ * du site, le fil d'Ariane et les données structurées : si l'une des
+ * quatre annonçait l'autre forme, on aurait rétabli d'une main le doublon
+ * qu'on supprime de l'autre.
  */
 function url_canonique(?array $params = null): string
 {
@@ -105,7 +111,8 @@ function url_canonique(?array $params = null): string
         }
         $suite .= '&' . rawurlencode((string) $cle) . '=' . rawurlencode((string) $valeur);
     }
-    return base_url() . '/index.php?p=' . rawurlencode($p) . $suite;
+    $requete = '?p=' . rawurlencode($p) . $suite;
+    return base_url() . '/' . (permaliens_jolie($requete) ?? 'index.php' . $requete);
 }
 
 /**
@@ -137,7 +144,12 @@ const SEO_PAGES_PUBLIQUES = ['accueil', 'decors', 'decor', 'blog', 'inscription'
      * dans les résultats, et `seo.php` ne doit pas dépendre de `vitrine.php`.
      */
     'application', 'partenaires', 'villes', 'a-propos', 'contact',
-    'boost-push', 'boost-regie', 'boost-liens'];
+    'boost-push', 'boost-regie', 'boost-liens',
+    /* Les deux pages légales s'indexent, elles aussi : c'est ce qu'un
+       visiteur cherche nommément (« wakabi cgu », « wakabi données
+       personnelles »), et une page de conditions introuvable fait douter
+       qu'elle existe. */
+    'cgu', 'confidentialite'];
 
 function seo_indexable(string $page): bool
 {

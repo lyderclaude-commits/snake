@@ -20,6 +20,7 @@ $branche = courriel_branche();
       <div class="rangee" style="gap:8px">
         <a class="bouton fant" href="<?= e(url('?p=offres')) ?>">Les offres</a>
         <a class="bouton fant" href="<?= e(url('?p=reglages-seo')) ?>">Référencement</a>
+        <a class="bouton fant" href="<?= e(url('?p=reglages-permaliens')) ?>">Les adresses</a>
       </div>
     </div>
   </section>
@@ -249,6 +250,81 @@ $branche = courriel_branche();
     mutualisé coupe un script au bout de trente secondes. Relancez jusqu’à ce que le message
     dise que c’est terminé. L’opération ne touche jamais à un fichier qu’elle ne saurait pas
     rendre plus léger : en cas de doute, l’original est gardé tel quel.</p>
+  </div>
+
+  <?php
+  /**
+   * L'identité légale, parce que deux pages publiques en dépendent.
+   *
+   * Les CGU et la politique de confidentialité doivent dire QUI édite le
+   * site. Le code ne peut pas le deviner, et surtout ne doit pas
+   * l'inventer : un numéro d'immatriculation faux sur une page de
+   * conditions est un faux, pas un défaut d'affichage. Tant que ces
+   * champs sont vides, les deux pages se contentent du nom et de
+   * l'adresse de contact, ce qui est vrai — elles n'écrivent jamais
+   * « à compléter » en public.
+   */
+  ?>
+  <div class="carte" style="margin-top:16px">
+    <h3 style="margin:0 0 4px">L’identité légale</h3>
+    <p class="aide" style="margin:0 0 12px">Ce que les
+    <a href="<?= e(url('?p=cgu')) ?>">conditions d’utilisation</a> et la
+    <a href="<?= e(url('?p=confidentialite')) ?>">politique de confidentialité</a> annoncent
+    au public. Un champ vide n’est pas affiché : les deux pages disent alors moins de
+    choses, mais rien de faux.</p>
+
+    <form method="post" action="<?= e(url('?p=reglages')) ?>">
+      <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+      <?php foreach (array_keys(COURRIEL_DEFAUTS) as $cle):
+          if ($cle === 'smtp_motdepasse') { continue; } ?>
+        <input type="hidden" name="<?= e($cle) ?>" value="<?= e((string) $valeurs[$cle]) ?>">
+      <?php endforeach; ?>
+
+      <div class="grille g2">
+        <div class="champ">
+          <label for="legal_forme">Forme juridique</label>
+          <input id="legal_forme" name="legal_forme" type="text"
+                 placeholder="SARL au capital de 1 000 000 FCFA"
+                 value="<?= e($legal['forme']) ?>">
+        </div>
+        <div class="champ">
+          <label for="legal_registre">Immatriculation</label>
+          <input id="legal_registre" name="legal_registre" type="text"
+                 placeholder="RCCM TG-LOM-01-2024-B12-00000"
+                 value="<?= e($legal['registre']) ?>">
+        </div>
+        <div class="champ">
+          <label for="legal_siege">Siège</label>
+          <input id="legal_siege" name="legal_siege" type="text"
+                 placeholder="Boulevard du 13 janvier, Lomé, Togo"
+                 value="<?= e($legal['siege']) ?>">
+          <p class="aide">Vide, la ville du référencement est utilisée.</p>
+        </div>
+        <div class="champ">
+          <label for="legal_courriel">Adresse pour les demandes</label>
+          <input id="legal_courriel" name="legal_courriel" type="email"
+                 placeholder="contact@wakabileguide.com"
+                 value="<?= e($legal['courriel']) ?>">
+          <p class="aide">Là où arrivent les questions sur les données personnelles.</p>
+        </div>
+        <div class="champ" style="grid-column:1/-1">
+          <label for="legal_maj">Date de la dernière révision des textes</label>
+          <input id="legal_maj" name="legal_maj" type="date" value="<?= e($legal['maj']) ?>">
+          <p class="aide">Affichée en haut des deux pages. À changer quand les TEXTES
+          changent, pas à chaque passage : une page de conditions qui se déclare à jour
+          chaque matin est une page dont personne ne peut vérifier ce qui a bougé.</p>
+        </div>
+      </div>
+
+      <div class="rangee" style="margin-top:14px">
+        <button class="bouton" type="submit" name="action" value="enregistrer">Enregistrer</button>
+      </div>
+    </form>
+
+    <p class="aide" style="margin:14px 0 0">Les deux pages sont écrites à partir de ce que
+    le logiciel fait réellement, et non d’un modèle. Elles restent à relire par un juriste
+    avant d’être opposées à quiconque : c’est le seul point que le code ne peut pas
+    vérifier à votre place.</p>
   </div>
 
   <div class="carte" style="margin-top:16px">

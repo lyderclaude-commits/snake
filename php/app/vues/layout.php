@@ -687,10 +687,13 @@ $_vitrine = barre_vitrine($me, $_page);
        * son ancien header, et il faudrait qu'il revienne à la main —
        * c'est-à-dire exactement la coupure que la fusion supprime.
        *
-       * Trois restent dehors, et pour trois raisons différentes :
-       * « Télécharger » va au magasin d'applications ; la confidentialité
-       * et les CGU n'ont pas encore été portées et vivent toujours
-       * là-bas. Le jour où elles le seront, ces deux lignes suivront.
+       * Une seule reste dehors, et pour une bonne raison :
+       * « Télécharger » va au magasin d'applications. Les CGU et la
+       * confidentialité, elles, sont rentrées : elles sont désormais des
+       * routes d'ici (`?p=cgu`, `?p=confidentialite`), et ce sont les
+       * deux liens du pied qu'on ouvre au moment précis où l'on hésite à
+       * créer un compte. Les envoyer sur l'ancien site statique, c'était
+       * perdre la page qu'on lisait juste avant de décider.
        */
       $colonnes = [
         'Produit' => [
@@ -713,8 +716,8 @@ $_vitrine = barre_vitrine($me, $_page);
         'Wakabi' => [
           ['À propos',        url('?p=a-propos')],
           ['Contact',         url('?p=contact')],
-          ['Confidentialité', GUIDE_URL . '/confidentialite.html'],
-          ['CGU',             GUIDE_URL . '/cgu.html'],
+          ['Confidentialité', url('?p=confidentialite')],
+          ['CGU',             url('?p=cgu')],
         ],
       ];
       foreach ($colonnes as $titre => $entrees): ?>
@@ -738,8 +741,8 @@ $_vitrine = barre_vitrine($me, $_page);
       <span class="pg-copy">© <?= date('Y') ?> Wakabileguide.com · Tous droits réservés.
       Fait avec amour.</span>
       <div class="pg-legal">
-        <a href="<?= e(GUIDE_URL) ?>/confidentialite.html"<?= sortie_externe(GUIDE_URL) ?>>Politique de confidentialité</a>
-        <a href="<?= e(GUIDE_URL) ?>/cgu.html"<?= sortie_externe(GUIDE_URL) ?>>CGU</a>
+        <a href="<?= e(url('?p=confidentialite')) ?>">Politique de confidentialité</a>
+        <a href="<?= e(url('?p=cgu')) ?>">CGU</a>
         <span class="pg-version">v<?= e(VERSION) ?></span>
       </div>
     </div>

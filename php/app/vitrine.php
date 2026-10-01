@@ -62,6 +62,24 @@ const PAGES_CONTENU = [
         'Chaque badge laisse une adresse. La régie en fait une audience, et elle reste la vôtre.'],
     'boost-liens' => ['guide-liens', 'Liens courts',
         'Une adresse courte à mettre sur une affiche, et le nombre de personnes qui l’ont suivie.'],
+    /**
+     * Les deux pages légales, ici et non plus chez le guide.
+     *
+     * Elles vivaient sur wakabileguide.com/cgu.html et /confidentialite.html,
+     * les deux dernières sorties du pied de page : on cliquait « CGU », on
+     * changeait de site, on arrivait sous un autre header, et il fallait
+     * revenir à la main. C'est la coupure que la fusion supprime partout
+     * ailleurs, et ces deux liens-là s'ouvrent précisément au moment où
+     * l'on hésite à créer un compte ou à payer.
+     *
+     * Elles figurent dans cette table comme les autres, et en héritent
+     * tout : le dessin du guide, la barre de vitrine, le pied complet, et
+     * leur ligne dans le plan du site.
+     */
+    'cgu'             => ['guide-cgu', 'Conditions d’utilisation',
+        'Ce que vous pouvez attendre du service, ce qu’il attend de vous, et ce qui se passe quand ça ne va pas.'],
+    'confidentialite' => ['guide-confidentialite', 'Politique de confidentialité',
+        'Ce que nous collectons, pourquoi, combien de temps, et comment tout emporter ou tout effacer vous-même.'],
 ];
 
 /**
@@ -207,4 +225,103 @@ function initiales(string $nom): string
     }
     $p = mb_strtoupper(mb_substr($mots[0], 0, 1));
     return count($mots) > 1 ? $p . mb_strtoupper(mb_substr($mots[1], 0, 1)) : $p;
+}
+
+/* ------------------------------------------------------------------ */
+/* L'identité légale, pour les deux pages de conditions                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ce que seule l'équipe peut renseigner, et le reste qu'on sait déjà.
+ *
+ * Les CGU et la politique de confidentialité doivent dire QUI édite le
+ * site et qui répond des données. Le code ne peut ni deviner une raison
+ * sociale, ni un numéro d'immatriculation, ni un siège, et surtout ne
+ * doit pas les inventer : un numéro faux sur une page de conditions est
+ * un faux, pas un défaut d'affichage. Ces quatre champs vivent donc dans
+ * les réglages, vides au départ, et les pages n'écrivent que ce qui est
+ * là.
+ *
+ * `legal_maj` est la date de la dernière révision des TEXTES, et non la
+ * date du jour. `date('d/m/Y')` aurait été plus simple et aurait menti :
+ * une page de conditions qui se déclare à jour chaque matin est une page
+ * dont personne ne peut vérifier ce qui a changé, ni depuis quand.
+ */
+const LEGAL_DEFAUTS = [
+    'legal_forme'    => '',
+    'legal_registre' => '',
+    'legal_siege'    => '',
+    'legal_courriel' => 'contact@wakabileguide.com',
+    'legal_maj'      => '2026-10-01',
+];
+
+function identite_legale(): array
+{
+    static $cache = null;
+    static $version = -1;
+    if ($cache !== null && $version === reglages_version()) {
+        return $cache;
+    }
+
+    $lus = reglages_bdd(array_keys(LEGAL_DEFAUTS));
+    $r = [];
+    foreach (LEGAL_DEFAUTS as $cle => $defaut) {
+        $v = trim((string) ($lus[$cle] ?? ''));
+        $r[substr($cle, 6)] = $v !== '' ? $v : $defaut;
+    }
+
+    /* Le nom, la ville et le téléphone sont DÉJÀ des réglages : ceux du
+       référencement. Les redemander ici en aurait fait deux copies à
+       tenir d'accord, et c'est toujours la seconde qu'on oublie. */
+    $r['nom'] = seo_reglage('seo_organisation') ?: 'Wakabi';
+    $r['ville'] = seo_reglage('seo_ville');
+    $r['telephone'] = seo_reglage('seo_telephone');
+
+    /* Un siège vide se rabat sur la ville du référencement : « dont le
+       siège est à Lomé » est moins précis qu'une adresse, et bien plus
+       utile que rien. */
+    if ($r['siege'] === '' && $r['ville'] !== '') {
+        $r['siege'] = $r['ville'];
+    }
+
+    $version = reglages_version();
+    return $cache = $r;
+}
+
+/** La date de révision des textes légaux, telle qu'on l'affiche. */
+function legal_date(): string
+{
+    $d = identite_legale()['maj'];
+    $t = strtotime($d) ?: time();
+    // Écrite en clair plutôt qu'en chiffres : « 1er octobre 2026 » ne se
+    // lit pas à l'envers, « 01/10/2026 » si.
+    $mois = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+             'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    $j = (int) date('j', $t);
+    return ($j === 1 ? '1er' : (string) $j) . ' ' . $mois[(int) date('n', $t)]
+        . ' ' . date('Y', $t);
+}
+
+/**
+ * Les mêmes valeurs, BRUTES, pour le formulaire des réglages.
+ *
+ * `identite_legale()` comble les vides : un siège non renseigné prend la
+ * ville du référencement, et une adresse de contact absente prend celle
+ * de la maison. C'est ce qu'il faut pour une page publique, et c'est
+ * trompeur dans un champ de saisie : on croirait avoir renseigné quelque
+ * chose qu'on n'a pas touché, et le jour où la ville change, le siège
+ * changerait avec elle sans qu'on l'ait voulu.
+ */
+function identite_legale_brute(): array
+{
+    $lus = reglages_bdd(array_keys(LEGAL_DEFAUTS));
+    $r = [];
+    foreach (LEGAL_DEFAUTS as $cle => $defaut) {
+        $r[substr($cle, 6)] = trim((string) ($lus[$cle] ?? ''));
+    }
+    // Deux exceptions, et seulement parce que le défaut est vrai sans
+    // réglage : l'adresse de la maison et la date d'écriture des textes.
+    $r['courriel'] = $r['courriel'] ?: LEGAL_DEFAUTS['legal_courriel'];
+    $r['maj'] = $r['maj'] ?: LEGAL_DEFAUTS['legal_maj'];
+    return $r;
 }

@@ -11,7 +11,7 @@
      les deux listes du site se cherchent pareil. */
   ?>
   <form method="get" action="<?= e(url('?p=decors')) ?>" class="rangee chercher chercher-comptes">
-    <input type="hidden" name="p" value="decors">
+    <?= permaliens_champ_page('decors') ?>
     <input type="search" name="q" value="<?= e($cherche) ?>" placeholder="Chercher un décor"
            aria-label="Chercher un décor">
     <button class="bouton fant petit" type="submit">Chercher</button>

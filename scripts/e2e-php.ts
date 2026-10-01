@@ -4514,6 +4514,10 @@ const run = async () => {
     // page À Propos.
     'application', 'partenaires', 'villes', 'a-propos', 'contact',
     'boost-push', 'boost-regie', 'boost-liens',
+    // Les conditions et la confidentialité : publiques par nature, et
+    // c'est leur raison d'être. Les refuser à un éditeur voudrait dire
+    // qu'on les cache à un visiteur.
+    'cgu', 'confidentialite',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
     // Son compte.
@@ -5251,20 +5255,31 @@ const run = async () => {
      (await pAnon.locator('.pg-soc svg').count()) === 4
      && (await pAnon.locator('.pg-soc img').count()) === 0);
   /**
-   * Le pied de page pointe désormais vers l'INTÉRIEUR.
+   * Le pied de page pointe désormais vers l'INTÉRIEUR, entièrement.
    *
    * Ses colonnes sortaient vers wakabileguide.com ; ces pages sont
-   * maintenant des routes d'ici. Ne restent dehors que la
-   * confidentialité et les CGU, pas encore portées — et elles doivent
-   * continuer de s'ouvrir à part, comme toute sortie.
+   * maintenant des routes d'ici. Les deux dernières à sortir étaient les
+   * CGU et la confidentialité : elles sont portées à leur tour, et plus
+   * rien de ce pied ne renvoie à l'ancien site.
    */
   ok('le pied de page mène aux pages du site, et non à l’ancien domaine',
      (await pAnon.locator('.pg-col a[href*="p=application"]').count()) === 1
      && (await pAnon.locator('.pg-col a[href*="p=villes"]').count()) === 1
      && (await pAnon.locator('.pg-col a[href*="p=a-propos"]').count()) === 1);
-  ok('ce qui sort encore s’ouvre à part',
-     (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"]').count()) === 2
-     && (await pAnon.locator('.pg-col a[href^="https://wakabileguide.com"][target="_blank"]').count()) === 2);
+  ok('les conditions et la confidentialité sont ici, haut et bas du pied',
+     (await pAnon.locator('.pg-col a[href*="p=cgu"]').count()) === 1
+     && (await pAnon.locator('.pg-col a[href*="p=confidentialite"]').count()) === 1
+     && (await pAnon.locator('.pg-legal a[href*="p=cgu"]').count()) === 1
+     && (await pAnon.locator('.pg-legal a[href*="p=confidentialite"]').count()) === 1);
+  ok('plus rien du pied ne renvoie à l’ancien domaine',
+     (await pAnon.locator('footer.pied-guide a[href*="wakabileguide.com"]').count()) === 0,
+     (await pAnon.locator('footer.pied-guide a[href*="wakabileguide.com"]')
+        .evaluateAll((n) => n.map((e) => (e as HTMLAnchorElement).href))).join(' · '));
+  /* La seule sortie qui reste, et elle s'ouvre toujours à part : le
+     magasin d'applications. Un visiteur qui part l'installer ne doit pas
+     perdre la page qu'il lisait. */
+  ok('la seule sortie restante s’ouvre à part',
+     (await pAnon.locator('.pg-col a[href*="play.google.com"][target="_blank"]').count()) === 1);
 
   /**
    * LE PIED SUIT LA BARRE, sur TOUTE la façade.
@@ -6277,6 +6292,9 @@ const run = async () => {
                      règle que le reste de la maison. */
                   'application', 'boost-push', 'boost-regie', 'boost-liens',
                   'partenaires', 'villes', 'a-propos', 'contact',
+                  /* Les deux pages légales et l'écran des adresses : trois écrans
+                     de plus, et c'est exactement ce que cette règle redoutait. */
+                  'cgu', 'confidentialite', 'reglages-permaliens',
                   'sondage&j=PAS-UN-JETON',
                   ...(slugTypo
                     ? [`segments&decor=${encodeURIComponent(slugTypo)}`,
@@ -9051,6 +9069,237 @@ const run = async () => {
   ok('un organisateur y passe aussi, depuis son espace',
      pOrgPorte.url().includes('p=creer'), pOrgPorte.url().split('?')[1] ?? pOrgPorte.url());
   await pOrgPorte.close();
+
+
+  /* ======================================================================
+     63. Les adresses lisibles, et les deux pages de conditions
+     ====================================================================== */
+  console.log('\n━━ 63. Les adresses, et les conditions ━━');
+
+  /**
+   * Ce qui rend ce réglage sans danger, et qu'il faut donc éprouver.
+   *
+   * La règle tient en une phrase : RÉSOUDRE est permanent, ÉCRIRE est un
+   * réglage. Une adresse lisible répond même quand le site est réglé sur
+   * la forme simple, et c'est ce qui fait qu'on peut revenir en arrière
+   * sans casser ce qui est déjà parti dans des messageries. Si cette
+   * propriété se perdait un jour, rien ne le dirait : le site marcherait
+   * parfaitement pour qui n'a jamais partagé d'adresse.
+   *
+   * Le serveur de recette est le serveur intégré de PHP, qui ne lit aucun
+   * `.htaccess` : `scripts/routeur-php.php` rejoue les mêmes règles, dans
+   * le même ordre. Ce qui est éprouvé ici, c'est donc l'application, pas
+   * Apache. Sur l'hébergement réel, c'est l'essai de l'écran des réglages
+   * qui tranche, en demandant au vrai serveur de se répondre.
+   */
+  const pAdr = await browser.newPage();
+  surveiller(pAdr);
+  await connexion(pAdr, ADMIN.email, ADMIN.mdp);
+
+  await pAdr.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  ok('les réglages mènent aux adresses',
+     await pAdr.locator('a[href*="p=reglages-permaliens"]').first().isVisible());
+
+  /* --- la forme lisible répond AVANT d'être activée --- */
+  const avantPerma = await pAdr.goto(`${BASE}/decors`, { waitUntil: 'domcontentloaded' });
+  ok('une adresse lisible répond déjà, réglage sur la forme simple',
+     avantPerma?.status() === 200 && (await pAdr.locator('.vignette').count()) > 0,
+     `${avantPerma?.status()} · ${await pAdr.locator('.vignette').count()} vignettes`);
+  ok('et le site écrit pourtant toujours la forme simple',
+     (await pAdr.locator('.vignette').first().getAttribute('href') ?? '').includes('p=decor&slug='));
+
+  /**
+   * L'adresse d'essai répond exactement ce qu'on dit à l'équipe.
+   *
+   * Quand l'hébergement ne sait pas s'appeler lui-même, l'écran demande
+   * d'ouvrir cette adresse à la main et d'y lire un mot précis. Si ce mot
+   * changeait, la consigne enverrait quelqu'un vérifier quelque chose qui
+   * n'arrive jamais.
+   */
+  const sonde = await pAdr.request.get(`${BASE}/wk-permaliens-essai`);
+  ok('l’adresse d’essai répond le mot attendu, et rien d’autre',
+     sonde.status() === 200 && (await sonde.text()).trim() === 'permaliens-ok',
+     `${sonde.status()} · ${(await sonde.text()).trim().slice(0, 30)}`);
+
+  /* --- deux préfixes identiques sont refusés, avec le motif --- */
+  await pAdr.goto(`${BASE}/index.php?p=reglages-permaliens`, { waitUntil: 'domcontentloaded' });
+  await pAdr.fill('#permaliens_decors', 'blog');
+  await pAdr.click('button[value=enregistrer]');
+  await pAdr.waitForLoadState('domcontentloaded');
+  ok('deux préfixes identiques sont refusés',
+     (await pAdr.locator('.msg.err').innerText()).includes('différer'),
+     (await pAdr.locator('.msg.err').innerText().catch(() => '')).slice(0, 60));
+
+  /* --- l'activation passe par l'essai, et l'essai est une vraie requête --- */
+  await pAdr.fill('#permaliens_decors', 'decors');
+  await pAdr.check('input[value=lisible]');
+  await pAdr.click('button[value=enregistrer]');
+  await pAdr.waitForLoadState('domcontentloaded');
+  ok('la forme lisible s’active quand le serveur se répond à lui-même',
+     (await pAdr.locator('.msg.ok').first().innerText()).includes('lisibles en service'),
+     (await pAdr.locator('.msg').first().innerText().catch(() => '')).slice(0, 80));
+
+  /* --- ce que le site ÉCRIT a changé --- */
+  await pAdr.goto(`${BASE}/decors`, { waitUntil: 'domcontentloaded' });
+  const premierLien = await pAdr.locator('.vignette').first().getAttribute('href') ?? '';
+  ok('les liens du catalogue s’écrivent en clair',
+     /\/decors\/[a-z0-9-]+$/.test(premierLien), premierLien.replace(BASE, ''));
+  ok('le lien canonique dit la même adresse que les liens de la page',
+     (await pAdr.locator('link[rel=canonical]').getAttribute('href') ?? '').endsWith('/decors'),
+     await pAdr.locator('link[rel=canonical]').getAttribute('href') ?? '');
+
+  /* --- et l'ancienne adresse redirige, une fois, vers la nouvelle --- */
+  const redPerma = await pAdr.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
+  ok('l’ancienne adresse redirige vers la nouvelle, définitivement',
+     pAdr.url() === `${BASE}/decors` && redPerma?.status() === 200, pAdr.url());
+
+  /**
+   * L'accueil, et la boucle qu'il a vraiment provoquée.
+   *
+   * La première version demandait « la requête est-elle arrivée sous la
+   * forme lisible ? » pour décider de rediriger. L'accueil arrive par `/`,
+   * sans chemin réécrit, et sa forme lisible EST `/` : il se redirigeait
+   * donc vers lui-même sans fin, et la page d'accueil du site ne s'ouvrait
+   * plus. Un scénario de moins, et c'était livré.
+   */
+  const accPerma = await pAdr.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  ok('l’accueil ne se redirige pas vers lui-même', accPerma?.status() === 200, String(accPerma?.status()));
+
+  /* --- la recherche traverse, sans le champ caché devenu inutile --- */
+  await pAdr.goto(`${BASE}/decors`, { waitUntil: 'domcontentloaded' });
+  ok('le formulaire de recherche ne porte plus de page cachée',
+     (await pAdr.locator('form.chercher input[name=p]').count()) === 0);
+  await pAdr.fill('form.chercher input[name=q]', 'lome');
+  await pAdr.press('form.chercher input[name=q]', 'Enter');
+  await pAdr.waitForLoadState('domcontentloaded');
+  ok('et la recherche répond quand même', pAdr.url().includes('q=lome')
+     && (await pAdr.locator('.vignette').count()) > 0, pAdr.url().replace(BASE, ''));
+
+  const page2Perma = await pAdr.goto(`${BASE}/decors/page/2`, { waitUntil: 'domcontentloaded' });
+  ok('la deuxième page a son adresse, elle aussi',
+     page2Perma?.status() === 200 && (await pAdr.title()).includes('page 2'), await pAdr.title());
+
+  /**
+   * Le lien courtPerma n'a pas bougé, et c'est un engagement imprimé.
+   *
+   * Un code à six caractères de l'alphabet des liens est attrapé par une
+   * règle qui passe AVANT la règle attrape-tout. Si une adresse de page
+   * venait à prendre cette forme, elle serait détournée sans un mot.
+   */
+  /* `PASUNE` : six caractères de l'alphabet des codes, donc attrapé par la
+     règle des liens courts et non par la règle attrape-tout. Les deux
+     rendent un 404 ; seul le TITRE dit laquelle a répondu, et c'est
+     exactement ce qu'on veut savoir. */
+  const courtPerma = await pAdr.request.get(`${BASE}/PASUNE`, { maxRedirects: 0 });
+  const titreCourt = /<title>([^<]*)<\/title>/.exec(await courtPerma.text())?.[1] ?? '';
+  ok('un code de lien court reste un code de lien court, et ne devient pas une page',
+     courtPerma.status() === 404 && titreCourt.includes('Lien introuvable'),
+     `${courtPerma.status()} · ${titreCourt}`);
+
+  /* --- retour en arrière : ce qui est parti continue de répondre --- */
+  await pAdr.goto(`${BASE}/index.php?p=reglages-permaliens`, { waitUntil: 'domcontentloaded' });
+  await pAdr.check('input[value=simple]');
+  await pAdr.click('button[value=enregistrer]');
+  await pAdr.waitForLoadState('domcontentloaded');
+  const apresPerma = await pAdr.goto(`${BASE}/decors/page/2`, { waitUntil: 'domcontentloaded' });
+  ok('revenu à la forme simple, une adresse lisible déjà partagée répond toujours',
+     apresPerma?.status() === 200 && (await pAdr.locator('.vignette').count()) > 0,
+     `${apresPerma?.status()} · ${await pAdr.locator('.vignette').count()} vignettes`);
+  ok('et le site réécrit ses liens sous la forme simple',
+     ((await pAdr.locator('.vignette').first().getAttribute('href')) ?? '').includes('p=decor&slug='));
+  await pAdr.close();
+
+  /* ---------- les deux pages de conditions ---------- */
+
+  /**
+   * Les deux dernières sorties du pied de page.
+   *
+   * « CGU » et « Confidentialité » envoyaient sur wakabileguide.com : on
+   * changeait de site, on arrivait sous un autre header, et il fallait
+   * revenir à la main. Pour deux pages qu'on ouvre au moment précis où
+   * l'on hésite à créer un compte, c'est la pire sortie possible.
+   */
+  const pLeg = await browser.newPage();
+  surveiller(pLeg);
+  await pLeg.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const legaux = await pLeg.locator('.pg-legal a').evaluateAll(
+    (n) => n.map((e) => (e as HTMLAnchorElement).href));
+  ok('les liens légaux du pied restent sur le site',
+     legaux.length >= 2 && legaux.every((h) => h.startsWith(BASE)), legaux.join(' · '));
+
+  for (const [quoi, route, marque] of [
+    ['les conditions d’utilisation', 'cgu', 'Conditions générales'],
+    ['la politique de confidentialité', 'confidentialite', 'Politique de confidentialité'],
+  ] as const) {
+    const r = await pLeg.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
+    ok(`${quoi} s’ouvre ici`, r?.status() === 200 && (await pLeg.locator('h1').innerText()).includes(marque),
+       await pLeg.locator('h1').innerText().catch(() => ''));
+    ok(`  ${quoi} porte le dessin du guide`,
+       (await pLeg.locator('link[href*="guide.css"]').count()) === 1
+       && (await pLeg.locator('.legal-content').count()) === 1);
+    /* Le nom de l'éditeur et l'adresse de contact : le minimum qu'une
+       page de conditions doit porter pour valoir quelque chose. */
+    const corps = await pLeg.locator('.legal-content').innerText();
+    ok(`  ${quoi} dit qui édite le site et comment écrire`,
+       corps.includes('Ce site est édité par') && /@/.test(corps));
+    ok(`  ${quoi} annonce la date de sa dernière révision`,
+       /\b20\d\d\b/.test(await pLeg.locator('.page-header-inner p').innerText()));
+  }
+
+  /**
+   * Ce que la page de confidentialité PROMET, vérifié dans le produit.
+   *
+   * La phrase « votre photo ne quitte pas votre appareil » est la plus
+   * forte de la page, et ce serait la pire à laisser mentir le jour où
+   * quelqu'un ajouterait un téléversement de photo. Le scénario regarde
+   * donc les deux bouts : la promesse est écrite, et aucun écran public
+   * ne propose d'envoyer une photo au serveur.
+   */
+  await pLeg.goto(`${BASE}/index.php?p=confidentialite`, { waitUntil: 'domcontentloaded' });
+  ok('la confidentialité promet que la photo reste sur l’appareil',
+     (await pLeg.locator('.legal-content').innerText()).includes('ne quitte pas votre appareil'));
+  ok('et dit où emporter et effacer ses données soi-même',
+     (await pLeg.locator('.legal-content').innerText()).includes('Supprimer mon compte'));
+
+  /* Les deux pages entrent dans le planSite du site : une page de conditions
+     qu'un moteur ne trouve pas fait douter qu'elle existe. */
+  await pLeg.goto(`${BASE}/index.php?p=sitemap`, { waitUntil: 'domcontentloaded' });
+  const planSite = await pLeg.content();
+  ok('les deux pages figurent dans le plan du site',
+     planSite.includes('p=cgu') && planSite.includes('p=confidentialite'));
+  await pLeg.close();
+
+  /**
+   * L'identité légale se règle, et ce qui n'est pas réglé ne s'affiche pas.
+   *
+   * Une page de conditions qui porterait « [à compléter] » en public
+   * serait pire qu'une page qui n'en parle pas, et une page qui porterait
+   * un numéro inventé serait pire que les deux.
+   */
+  const pId = await browser.newPage();
+  surveiller(pId);
+  await connexion(pId, ADMIN.email, ADMIN.mdp);
+  await pId.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pId.fill('#legal_registre', 'RCCM TG-LOM-RECETTE-0001');
+  await pId.fill('#legal_forme', 'société de recette');
+  await pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit());
+  await pId.waitForLoadState('domcontentloaded');
+
+  await pId.goto(`${BASE}/index.php?p=cgu`, { waitUntil: 'domcontentloaded' });
+  const avecId = await pId.locator('.legal-content').innerText();
+  ok('ce qu’on renseigne s’affiche sur les deux pages',
+     avecId.includes('RCCM TG-LOM-RECETTE-0001') && avecId.includes('société de recette'));
+
+  await pId.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
+  await pId.fill('#legal_registre', '');
+  await pId.fill('#legal_forme', '');
+  await pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit());
+  await pId.waitForLoadState('domcontentloaded');
+  await pId.goto(`${BASE}/index.php?p=cgu`, { waitUntil: 'domcontentloaded' });
+  const sansId = await pId.locator('.legal-content').innerText();
+  ok('et ce qui n’est pas renseigné ne laisse aucun trou visible',
+     !/\[|à compléter|RCCM/i.test(sansId) && sansId.includes('Ce site est édité par'));
+  await pId.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
