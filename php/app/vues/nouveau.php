@@ -254,10 +254,30 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
                 <button type="button" class="sd-modele<?= $valeurs['disposition'] === $id ? ' actif' : '' ?>"
                         role="radio" aria-checked="<?= $valeurs['disposition'] === $id ? 'true' : 'false' ?>"
                         data-modele="<?= e($id) ?>" title="<?= e($d['aide']) ?>">
-                  <?php $vign = $id === 'vierge' ? '' : cadre_du_format($id); ?>
+                  <?php
+                  /**
+                   * La vignette passe par le réducteur, comme celles du catalogue.
+                   *
+                   * Elle montrait le cadre ENTIER : un PNG de 1080 x 1920 pour
+                   * une image affichée en 102 x 92. Six modèles, et trois cent
+                   * trente kilooctets téléchargés avant que le Studio ne soit
+                   * utilisable — sur une connexion de Lomé, sept secondes où il
+                   * ne se passe rien. Les mêmes six en 320 px font cinquante-cinq
+                   * kilooctets.
+                   *
+                   * Rien de neuf n'a été écrit pour cela : `image_reduite()` sert
+                   * déjà le logo et les vignettes du catalogue, et `cle_image()`
+                   * connaissait déjà le dossier `public/cadres`. Il manquait
+                   * seulement l'appel.
+                   */
+                  $vign = $id === 'vierge' ? '' : cadre_du_format($id);
+                  $_v = $vign ? image_reduite($vign, 110) : null;
+                  ?>
                   <span class="sd-modele-image">
-                    <?php if ($vign): ?>
-                      <img src="<?= e($vign) ?>" alt="" loading="lazy" decoding="async">
+                    <?php if ($_v): ?>
+                      <img src="<?= e($_v['src']) ?>"
+                           <?= $_v['srcset'] ? 'srcset="' . e($_v['srcset']) . '" sizes="110px"' : '' ?>
+                           alt="" loading="lazy" decoding="async">
                     <?php else: ?><span class="sd-modele-vide">Page<br>blanche</span><?php endif; ?>
                     <span class="sd-modele-ratio"><?= e(canevas($id)['ratio']) ?></span>
                   </span>

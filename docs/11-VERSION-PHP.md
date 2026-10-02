@@ -310,7 +310,7 @@ npm run php:e2e          # 1127 scénarios, dans un vrai navigateur
 npm run php:verifier     # QR, gabarit, SMTP, sauvegarde, restauration, push,
                          # éditeur, TOTP, carnet, canaux, référencement,
                          # facture, rapport, segments/sponsor/sondage,
-                         # brouillons, offres et adresses
+                         # brouillons, offres, adresses et cadres
 ```
 
 Contre le paquet livré plutôt que le dépôt — décompressé, installé, servi
@@ -436,6 +436,7 @@ BASE_URL=http://127.0.0.1:3800 npm run php:e2e   # le zip, en MySQL
 | **Le catalogue par page** | `?p=decors` montre **douze** décors par page et porte une **zone de recherche** ; on y cherche par **ville** autant que par titre ; la page 2 montre d'**autres** décors et porte **son propre titre** ; une page au-delà de la dernière rend **la dernière** et l'annonce comme telle ; une recherche sans réponse le dit ; et elle **suit** quand on tourne la page |
 | **La porte des deux chemins** | « Un décor » depuis le tableau de bord, le catalogue ou l'espace de l'organisateur mène à `?p=creer` et non droit au formulaire ; l'écran montre bien les deux départs, et « J'ai déjà mon décor » ouvre le **dépôt de fichier**, pas la galerie |
 | **Les adresses lisibles** | Une adresse lisible répond **avant** d'être activée, et le site écrit pourtant toujours la forme simple : la règle entière du réglage tient là ; deux préfixes identiques sont refusés avec le motif ; l'activation passe par un **essai réel** (le serveur se répond à lui-même) ; ensuite les liens du catalogue, le **lien canonique** et le plan du site disent la même adresse, l'ancienne **redirige définitivement**, l'accueil **ne se redirige pas vers lui-même**, la recherche traverse sans champ caché, et un code de lien court reste un **code de lien court** ; revenu à la forme simple, une adresse déjà partagée répond encore |
+| **Le poids du Studio** | La galerie de modèles ne télécharge pas plus de 200 Ko d'images pour s'ouvrir, **aucune vignette n'arrive en taille réelle**, et chacune reste assez grande pour l'écran qui la montre (comparaison en pixels CSS des deux côtés : avec un `srcset` en `w`, `naturalWidth` est déjà corrigé par la densité) |
 | **Les trois pages Boost** | Chacune garde son titre, explique en quatre étapes numérotées, répond à ses questions fréquentes et annonce son offre **lue dans les offres** ; les icônes sont **dessinées sur place** et aucune n'est chargée ; la rangée de réassurance est **vue**, pas seulement présente (`.trust-item` est masqué d'un `!important` par le bloc « EDIT » du guide) ; **aucun chiffre d'exemple n'est montré sans sa légende** ; le champ du bandeau des liens courts ouvre le composeur **avec l'adresse déjà posée**, son QR est dessiné ici, et les trois tiennent dans la largeur d'un téléphone |
 | **Les conditions et la confidentialité** | Les liens légaux du pied **restent sur le site**, en haut comme en bas ; les deux pages s'ouvrent avec le dessin du guide, disent qui édite le site et comment écrire, annoncent leur date de révision et entrent dans le **plan du site** ; la confidentialité promet que la **photo ne quitte pas l'appareil** et dit où tout emporter ou tout effacer ; ce qu'on renseigne dans l'identité légale s'y affiche, et ce qu'on laisse vide **ne laisse aucun trou visible** |
 | **Les déclinaisons** | Un décor porte plusieurs formats, chacun avec son cadre ; la page publique bascule de l'un à l'autre, la canonique reste celle du décor, et le quota n'en compte **qu'une** |
@@ -4222,6 +4223,89 @@ l'écran** : un compte d'éléments l'aurait trouvée, un oeil ne l'aurait pas v
 D'où `.rassure`, et d'où la forme de l'assertion : la recette demande
 `isVisible()`, pas un compte. La leçon vaut au-delà de ce cas : dans ce
 fichier, une classe qui existe n'est pas une classe qui s'affiche.
+
+---
+
+## Deux secondes rendues au Studio
+
+Le Studio mettait du temps à s'ouvrir, et davantage encore quand on y
+déposait un cadre. Deux causes, trouvées en mesurant plutôt qu'en lisant,
+et toutes deux invisibles à l'écran : la page finissait par s'afficher,
+simplement plus tard.
+
+### La galerie montrait les cadres entiers
+
+Les vignettes de modèles affichent **102 x 92 pixels**. Elles servaient des
+PNG de **1080 x 1920** : six modèles, **330 Ko**, et sur une connexion de
+Lomé sept secondes où il ne se passe rien avant que le Studio ne serve à
+quelque chose.
+
+Rien de neuf n'a été écrit pour le réparer. `image_reduite()` sert déjà le
+logo et les vignettes du catalogue, et `cle_image()` connaissait déjà le
+dossier `public/cadres` sous le préfixe `p:`. Il manquait l'appel. Les
+mêmes six vignettes pèsent maintenant **83 Ko**, déclinaisons comprises, et
+le `srcset` monte à 640 px sur un écran à trois fois la densité.
+
+### Réduire un cadre le rendait plus lourd
+
+`compresser_cadre()` ramenait tout ce qui dépasse 1600 px à cette taille.
+Un cadre 9:16 fait 1080 x 1920 : il passait donc à 900 x 1600. Or
+rééchantillonner un graphisme à bords nets en bicubique transforme chaque
+arête en dégradé, et le compresseur n'a plus rien à factoriser :
+
+| Cadre | Tel quel | Ramené à 1600 |
+|---|---|---|
+| `story.png` | **23 Ko** | 107 Ko |
+| `tiktok.png` | **20 Ko** | 133 Ko |
+| `228-playground-story.png` | **60 Ko** | 128 Ko |
+
+Quatre à six fois plus lourd pour 17 % de pixels en moins. Et comme la
+fonction garde le plus léger, original compris, deux de ces trois cadres
+ressortaient **identiques au fichier reçu** : trois secondes de calcul
+pour rien.
+
+S'y ajoutait un second encodage inutile. La fonction calculait un PNG en
+niveau 9, le réglage le plus lent de GD, **puis** un WebP, puis jetait le
+perdant. Sur dix cadres mesurés, dont les huit livrés, le WebP a gagné dix
+fois.
+
+Les deux seuils se lisent désormais **sans rien encoder** : l'un compare
+des côtés (on ne réduit qu'à partir d'une fois et demie la taille
+maximale), l'autre compare un poids déjà obtenu à celui du fichier reçu
+(le PNG n'est tenté que si le WebP n'a presque rien gagné, c'est-à-dire sur
+le cadre très plat, le seul genre où un PNG ait jamais fait mieux).
+
+> La première version de cette correction pesait un essai en plein format
+> pour décider s'il fallait réduire. Elle accélérait les cadres de 4,3 fois
+> et ralentissait les photos d'articles de 480 ms : le remède coûtait une
+> part de ce qu'il faisait gagner. C'est en mesurant la photo, et non le
+> cadre, qu'on l'a vu.
+
+### Ce que ça donne
+
+| | Avant | Après |
+|---|---|---|
+| Les huit cadres livrés, recompressés | 11,7 s | **2,7 s** |
+| ce qu'ils pèsent une fois servis | 412 Ko | **250 Ko** |
+| `story.png`, le pire cas | 4,1 s pour 107 Ko | **0,5 s pour 23 Ko** |
+| Une photo d'article de 3000 x 2000 | 1,3 s, réduite à 1600 | **0,9 s, réduite à 1600** |
+| Images chargées à l'ouverture du Studio | 338 Ko | **83 Ko** |
+
+La photo donne le même résultat au pixel près, en moins de temps : c'était
+la condition pour que la correction en soit une.
+
+### Ce qui n'était PAS en cause
+
+Trois soupçons écartés par la mesure, et notés ici pour qu'on ne les
+retraverse pas : la page du Studio elle-même répond en 16 ms ; l'aperçu est
+déjà temporisé à 220 ms, donc ce n'est pas un aller-retour par pixel de
+curseur ; le cadre déposé s'affiche déjà depuis le fichier local avant
+d'être envoyé.
+
+Reste le coût qu'aucun code ne réduit : un PNG de graphiste fait 1 à 2 Mo,
+et il part depuis un téléphone. Le serveur ne met que 160 ms à le
+recompresser ; la montée, elle, prend une minute. Le réduire **dans le
+navigateur avant de l'envoyer** est le seul remède, et il reste à faire.
 
 ---
 

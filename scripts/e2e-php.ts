@@ -9444,6 +9444,81 @@ const run = async () => {
      debordent.join(' · ') || '390 px, trois pages');
   await pBoost.close();
 
+
+  /* ======================================================================
+     65. Ce que le Studio télécharge avant d'être utilisable
+     ====================================================================== */
+  console.log('\n━━ 65. Le poids du Studio ━━');
+
+  /**
+   * La galerie de modèles montrait les cadres ENTIERS.
+   *
+   * Des PNG de 1080 x 1920 pour des images affichées en 102 x 92 : six
+   * modèles, trois cent trente kilooctets, et sur une connexion de Lomé
+   * sept secondes où il ne se passe rien avant que le Studio ne serve à
+   * quelque chose. Rien ne le disait à l'écran — la page finissait par
+   * s'afficher, simplement plus tard.
+   *
+   * On mesure donc ce qui PART SUR LA LIGNE, pas ce que le balisage
+   * annonce : c'est la seule façon de voir revenir ce défaut-là.
+   */
+  const pPoids = await browser.newPage();
+  surveiller(pPoids);
+  const recu: { url: string; octets: number }[] = [];
+  pPoids.on('response', async (r) => {
+    let n = 0;
+    try { n = (await r.body()).length; } catch { /* corps déjà consommé */ }
+    recu.push({ url: r.url(), octets: n });
+  });
+  await pPoids.goto(`${BASE}/index.php?p=nouveau`, { waitUntil: 'load' });
+  await pPoids.waitForTimeout(1800);
+
+  const images = recu.filter((r) => /cadres\/|p=cadre|p=vignette|p=media/.test(r.url));
+  const octetsImages = images.reduce((s, r) => s + r.octets, 0);
+  /* 200 Ko et non 150 : sur un écran à trois fois la densité, le
+     navigateur prend la déclinaison 640 et la page monte à 148 Ko. Le
+     seuil doit attraper la régression (338 Ko avant la correction) sans
+     dépendre de l'écran sur lequel tourne la recette. */
+  ok('le Studio ne télécharge pas plus de 200 Ko d’images pour s’ouvrir',
+     octetsImages < 200 * 1024,
+     `${Math.round(octetsImages / 1024)} Ko en ${images.length} requêtes`);
+
+  /**
+   * Et aucun cadre fourni n'arrive en taille réelle pour une vignette.
+   *
+   * L'assertion vise le CHEMIN, parce que c'est lui qui distingue les
+   * deux : `public/cadres/x.png` est le fichier entier, `?p=vignette`
+   * passe par le réducteur. Le cadre SÉLECTIONNÉ, lui, a le droit
+   * d'arriver entier : c'est lui qu'on dessine sur la toile.
+   */
+  const entiers = await pPoids.evaluate(() =>
+    [...document.querySelectorAll('.sd-modele-image img')]
+      .map((i) => (i as HTMLImageElement).currentSrc)
+      .filter((u) => /public\/cadres\//.test(u)));
+  ok('les vignettes de modèles passent toutes par le réducteur',
+     entiers.length === 0, entiers.map((u) => u.split('/').pop()).join(' · '));
+
+  /**
+   * Elles restent nettes : un gain de poids payé en bouillie n'en est pas un.
+   *
+   * La comparaison se fait en pixels CSS des DEUX côtés, et c'est le piège
+   * de cette mesure : avec un `srcset` en descripteurs `w`, `naturalWidth`
+   * ne rend pas la largeur du fichier mais sa largeur CORRIGÉE PAR LA
+   * DENSITÉ. Multiplier la largeur affichée par `devicePixelRatio` compte
+   * donc la densité deux fois, et l'assertion échouerait sur un écran
+   * retina alors que le navigateur a choisi la bonne image. Ce qu'on
+   * vérifie ici, c'est précisément que ce choix suffit.
+   */
+  const nettete = await pPoids.evaluate(() =>
+    [...document.querySelectorAll('.sd-modele-image img')].map((i) => {
+      const img = i as HTMLImageElement;
+      return { fichier: img.naturalWidth, besoin: Math.round(img.getBoundingClientRect().width) };
+    }));
+  ok('et restent assez grandes pour l’écran qui les montre',
+     nettete.length > 0 && nettete.every((n) => n.fichier >= n.besoin),
+     nettete.slice(0, 3).map((n) => `${n.fichier}px pour ${n.besoin}px`).join(' · '));
+  await pPoids.close();
+
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);
   if (errs.length) {
