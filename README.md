@@ -9,6 +9,9 @@ pour la plateforme **Wakabi Le Guide** — le guide des bons coins de Lomé, Cot
 >
 > Recette : **25 scénarios, 25 réussis, aucune erreur console.**
 
+> **Aussi dans ce dépôt :** [`dream/`](dream/README.md) — le site de l'agence Live Y Dream
+> (PHP + SQLite), dont l'administration reprend le langage visuel de celle de Wakabi.
+
 ## Démarrer
 
 ```bash

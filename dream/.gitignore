@@ -1,0 +1,6 @@
+site/donnees/*
+!site/donnees/.htaccess
+site/uploads/*
+!site/uploads/.htaccess
+site/config.php
+dream-site.zip
