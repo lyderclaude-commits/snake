@@ -5,7 +5,7 @@ vivait dans le `localStorage` du navigateur à un vrai site **PHP + SQLite** : c
 rendu par le serveur, administration réelle, articles importés de l'ancien WordPress
 avec **toutes leurs images** copiées sur le serveur.
 
-> Recette : **57 scénarios, 57 réussis, aucune erreur console** — `node dream/outils/recette.mjs`
+> Recette : **62 scénarios, 62 réussis, aucune erreur console** — `node dream/outils/recette.mjs`
 
 ## Ce qui a changé par rapport à la maquette
 
@@ -14,7 +14,7 @@ avec **toutes leurs images** copiées sur le serveur.
 | Articles, campagnes et réglages dans le `localStorage` : chaque visiteur voyait les données **de démonstration**, l'équipe modifiait seulement **son propre navigateur** | Base SQLite sur le serveur, la même pour tous |
 | Mot de passe admin `lyd2024admin` écrit dans le JavaScript et affiché sur la page de connexion | Comptes hachés (`password_hash`), sessions, jeton anti-falsification, frein après 8 essais |
 | Articles ouverts dans une fenêtre : aucune adresse, rien qu'un moteur puisse lire | Une page par article (`/blog/mon-article`), pagination, catégories, tags, recherche, flux RSS, plan du site, données structurées |
-| Le formulaire de contact affichait « Message envoyé ! » **sans rien envoyer** | Demandes enregistrées dans *Messages* et envoyées par e-mail, champ piège anti-robots |
+| Le formulaire de contact affichait « Message envoyé ! » **sans rien envoyer** | Demandes enregistrées dans *Messages* **et envoyées par e-mail à `contact@liveydream.com`** (destinataire fixe, copies possibles), champ piège anti-robots |
 | Images chargées depuis `dream.loremcommunication.com`, icônes depuis icons8, polices depuis Google | Tout est servi par le site : photos recompressées (3,7 Mo → 0,7 Mo), pictogrammes dessinés en SVG, polices auto-hébergées |
 | Liens `mentions-legales.html` et `confidentialite.html` en 404 | Pages présentes, texte réglable dans l'administration |
 | Chiffres clés à « 0 » sans JavaScript | Chiffres écrits dans la page, animés ensuite |
@@ -37,7 +37,10 @@ avec `mod_rewrite`. **Aucun terminal, aucun Composer.**
 3. Ouvrez `/admin` : créez le compte administrateur.
 4. Vous arrivez sur **Import WordPress** → *Tester la connexion* → *Importer les articles*.
    Puis *Rapatrier les images* pour les photos de démonstration des campagnes.
-5. Réglages → Référencement : indiquez `https://liveydream.com`. Réglages → Pages légales :
+5. Réglages → L’agence → *Les e-mails du formulaire de contact* : renseignez le serveur SMTP
+   de la boîte `contact@liveydream.com` (espace client de l’hébergeur), puis *Enregistrer et
+   envoyer un e-mail de test*. Voir plus bas.
+6. Réglages → Référencement : indiquez `https://liveydream.com`. Réglages → Pages légales :
    complétez l'hébergeur et le responsable de publication.
 
 ### L'ordre compte : importer AVANT de basculer le domaine
@@ -65,6 +68,24 @@ Après la bascule, les anciennes adresses des articles (`/mon-article/`,
 - Relancer l'import met à jour sans dupliquer, **sauf** les articles retouchés depuis
   l'administration (une case permet de forcer).
 
+### Les e-mails des demandes de contact
+
+Chaque demande est envoyée à **`contact@liveydream.com`**, toujours : l’adresse est fixée dans
+`site/app/courriel.php` (constante `CONTACT_EMAIL`, ou `contact_email` dans `config.php`), pas
+dans un réglage qu’on pourrait vider. Les réglages permettent seulement d’ajouter des copies.
+L’e-mail reprend toute la demande, avec des boutons « Répondre sur WhatsApp » et « Ouvrir
+dans l’administration » ; *Répondre* dans la messagerie répond directement au client.
+
+- **Sans réglage**, l’envoi passe par `mail()`, le serveur de l’hébergeur. Ça marche, mais ces
+  messages tombent souvent dans les indésirables.
+- **Avec un serveur SMTP** (recommandé) — souvent `mail.liveydream.com`, port 587 STARTTLS,
+  identifiant et mot de passe de la boîte contact@ — les messages partent signés par le vrai
+  serveur du domaine.
+
+Le résultat de chaque envoi est noté sur la demande (*Messages* signale « E-mail non parti »),
+et un bouton *Renvoyer par e-mail* permet de réessayer. Le visiteur, lui, voit toujours sa
+demande acceptée : elle est enregistrée avant l’envoi.
+
 ## Développer, tester
 
 ```bash
@@ -87,7 +108,7 @@ site/                 ← ce qui part chez l'hébergeur
   assets/             css (site.css = global.css d'origine, admin.css), js, polices, images
   uploads/            images téléversées et importées (PHP n'y s'exécute jamais)
   donnees/            base SQLite et sessions (interdit au web)
-outils/               routeur de développement, faux WordPress, recette, paquet
+outils/               routeur de développement, faux WordPress, faux sendmail, recette, paquet
 ```
 
 Sauvegarde : Réglages → *Télécharger une sauvegarde* (la base). Pensez aussi à garder une

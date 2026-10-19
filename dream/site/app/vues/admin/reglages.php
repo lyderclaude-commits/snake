@@ -37,8 +37,27 @@ $champ = function (string $k, string $label, string $aide = '', string $type = '
   <div class="carte"><h2>Réseaux sociaux</h2><p class="aide">Vide : l’icône disparaît du pied de page.</p>
     <div class="champs"><?= $champ('facebook', 'Facebook', '', 'url') ?><?= $champ('instagram', 'Instagram', '', 'url') ?><?= $champ('linkedin', 'LinkedIn', '', 'url') ?><?= $champ('tiktok', 'TikTok', '', 'url') ?></div>
   </div>
-  <div class="carte"><h2>Formulaire de contact</h2>
-    <?= $champ('contact_destinataire', 'Recevoir les demandes à', 'Chaque demande est enregistrée dans « Messages » et envoyée à cette adresse. Si les e-mails n’arrivent pas, vérifiez les indésirables : l’envoi passe par le serveur de l’hébergeur.', 'email') ?>
+  <div class="carte"><h2>Les e-mails du formulaire de contact</h2>
+    <p class="aide">Chaque demande est enregistrée dans « Messages » <b>et</b> envoyée par e-mail à <b><?= e(CONTACT_EMAIL) ?></b> — toujours, ce destinataire ne se retire pas. Répondre à l’e-mail répond directement au client.</p>
+    <?= $champ('contact_copies', 'Envoyer aussi une copie à', 'Facultatif. Plusieurs adresses séparées par des virgules.') ?>
+    <?= $champ('courriel_expediteur', 'Adresse d’expédition', 'Doit appartenir au domaine du site (par exemple <code>site@liveydream.com</code>). Vide : l’identifiant SMTP, sinon <code>' . e(courriel_expediteur()) . '</code>.', 'email') ?>
+    <h3 style="margin:18px 0 4px">Serveur d’envoi (SMTP) — recommandé</h3>
+    <p class="aide" style="margin:0 0 14px">Sans lui, le site passe par la fonction <code>mail()</code> de l’hébergeur : ça marche, mais ces messages tombent souvent dans les indésirables. Avec les identifiants de la boîte <?= e(CONTACT_EMAIL) ?> (espace client de l’hébergeur, rubrique e-mails), ils arrivent signés par le vrai serveur du domaine.</p>
+    <div class="champs">
+      <?= $champ('smtp_hote', 'Serveur SMTP', 'Souvent <code>mail.liveydream.com</code>. Vide : <code>mail()</code>.') ?>
+      <?= $champ('smtp_port', 'Port', '587 (STARTTLS) ou 465 (SSL).', 'number') ?>
+      <div class="champ"><label for="r-smtp_chiffrement">Chiffrement</label>
+        <select id="r-smtp_chiffrement" name="smtp_chiffrement">
+          <?php foreach (['tls' => 'STARTTLS (port 587, recommandé)', 'ssl' => 'SSL (port 465)', 'aucun' => 'Aucun'] as $k => $l): ?>
+            <option value="<?= $k ?>"<?= ($r['smtp_chiffrement'] ?: 'tls') === $k ? ' selected' : '' ?>><?= e($l) ?></option>
+          <?php endforeach; ?>
+        </select></div>
+      <?= $champ('smtp_utilisateur', 'Identifiant', 'Le plus souvent l’adresse e-mail elle-même.') ?>
+      <div class="champ"><label for="r-smtp_mdp">Mot de passe</label>
+        <input id="r-smtp_mdp" name="smtp_mdp" type="password" autocomplete="new-password" value="" placeholder="<?= $r['smtp_mdp'] !== '' ? 'enregistré — laissez vide pour le garder' : 'aucun enregistré' ?>">
+        <p class="aide">Jamais réaffiché.</p></div>
+    </div>
+    <div class="rangee"><button class="bouton fant" type="submit" name="tester" value="1">Enregistrer et envoyer un e-mail de test</button></div>
   </div>
 <?php elseif ($onglet === 'accueil'): ?>
   <div class="carte"><h2>Le grand titre</h2>

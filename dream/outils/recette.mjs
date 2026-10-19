@@ -7,7 +7,8 @@
 // chaque scénario. Rien n'est écrit dans le dépôt.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,12 +20,46 @@ const B = `http://127.0.0.1:${PORT}`, WP = `http://127.0.0.1:${PORT_WP}/wp-json/
 const CAPTURES = process.env.CAPTURES || '';
 
 const tmp = mkdtempSync(join(tmpdir(), 'lyd-recette-'));
+// Les e-mails remis par mail() (faux sendmail) et ceux reçus par le faux serveur SMTP.
+const COURRIELS = mkdtempSync(join(tmpdir(), 'lyd-courriels-'));
+const lettres = () => readdirSync(COURRIELS).sort().map((f) => readFileSync(join(COURRIELS, f), 'utf8'));
+const decoder = (eml) => eml.replace(/=\?UTF-8\?B\?([^?]+)\?=/g, (_, b) => Buffer.from(b, 'base64').toString())
+  + '\n' + [...eml.matchAll(/base64\r?\n\r?\n([A-Za-z0-9+/=\r\n]+)/g)].map((m) => Buffer.from(m[1].replace(/\s/g, ''), 'base64').toString()).join('\n');
+const PORT_SMTP = 8125;
+const smtp = [];
+const serveurSmtp = createServer((c) => {
+  const lettre = { de: '', a: [], auth: '', donnees: '' };
+  let enDonnees = false, tampon = '', etape = '';
+  c.write('220 faux-smtp ESMTP\r\n');
+  c.on('data', (d) => {
+    tampon += d.toString();
+    let i;
+    while ((i = tampon.indexOf('\r\n')) >= 0) {
+      const l = tampon.slice(0, i); tampon = tampon.slice(i + 2);
+      if (enDonnees) {
+        if (l === '.') { enDonnees = false; smtp.push(lettre); c.write('250 2.0.0 accepté\r\n'); }
+        else lettre.donnees += l + '\n';
+        continue;
+      }
+      if (etape === 'u') { lettre.auth = Buffer.from(l, 'base64').toString(); etape = 'p'; c.write('334 UGFzc3dvcmQ6\r\n'); continue; }
+      if (etape === 'p') { etape = ''; c.write(Buffer.from(l, 'base64').toString() === 'bon-mdp' ? '235 ok\r\n' : '535 identifiants refusés\r\n'); continue; }
+      if (/^EHLO/i.test(l)) c.write('250-faux-smtp\r\n250 AUTH LOGIN\r\n');
+      else if (/^AUTH LOGIN/i.test(l)) { etape = 'u'; c.write('334 VXNlcm5hbWU6\r\n'); }
+      else if (/^MAIL FROM:/i.test(l)) { lettre.de = l.slice(10); c.write('250 ok\r\n'); }
+      else if (/^RCPT TO:/i.test(l)) { lettre.a.push(l.slice(8).replace(/[<>]/g, '')); c.write('250 ok\r\n'); }
+      else if (/^DATA/i.test(l)) { enDonnees = true; c.write('354 go\r\n'); }
+      else if (/^QUIT/i.test(l)) { c.end('221 bye\r\n'); }
+      else c.write('250 ok\r\n');
+    }
+  });
+}).listen(PORT_SMTP, '127.0.0.1');
 cpSync(SITE, tmp, { recursive: true, filter: (s) => !/donnees\/(lyd\.sqlite|sessions)|uploads\/\d{4}/.test(s) });
 const serveurs = [
-  spawn('php', ['-S', `127.0.0.1:${PORT}`, '-t', tmp, join(ICI, 'routeur-dev.php')], { stdio: 'ignore', env: { ...process.env, PHP_CLI_SERVER_WORKERS: '4' } }),
+  spawn('php', ['-d', `sendmail_path=php ${join(ICI, 'capture-mail.php')}`, '-S', `127.0.0.1:${PORT}`, '-t', tmp, join(ICI, 'routeur-dev.php')],
+    { stdio: 'ignore', env: { ...process.env, PHP_CLI_SERVER_WORKERS: '4', LYD_COURRIELS: COURRIELS } }),
   spawn('php', ['-S', `127.0.0.1:${PORT_WP}`, join(ICI, 'faux-wordpress', 'index.php')], { stdio: 'ignore' }),
 ];
-const fin = () => { serveurs.forEach((s) => s.kill()); rmSync(tmp, { recursive: true, force: true }); };
+const fin = () => { serveurs.forEach((s) => s.kill()); serveurSmtp.close(); rmSync(tmp, { recursive: true, force: true }); rmSync(COURRIELS, { recursive: true, force: true }); };
 process.on('exit', fin);
 await new Promise((r) => setTimeout(r, 900));
 
@@ -224,6 +259,16 @@ await scenario('une demande valide est enregistrée et confirmée', async () => 
   await soumettre('.form-submit-btn');
   verifier(await p.isVisible('#formSuccess'), 'confirmation');
 });
+await scenario('la demande part par e-mail à contact@liveydream.com, réponse vers le client', async () => {
+  const l = lettres();
+  verifier(l.length === 1, l.length + ' e-mail(s) remis');
+  const m = decoder(l[0]);
+  verifier(/^To: contact@liveydream\.com$/m.test(l[0]), 'destinataire : ' + (l[0].match(/^To: .*/m) || ['aucun'])[0]);
+  verifier(/^Reply-To: afi@boutique\.tg$/m.test(l[0]), 'Reply-To');
+  verifier(m.includes('Nouvelle demande : Afi Mensah — Community Management'), 'sujet');
+  verifier(m.includes('Nous lançons une boutique.') && m.includes('+228 90 00 00 00') && m.includes('/admin/messages/1'), 'contenu');
+  verifier(/-f\S+@/.test(l[0]), 'expéditeur d’enveloppe absent');
+});
 await scenario('un robot qui remplit le champ piège est ignoré en silence', async () => {
   const h = await (await brut('/contact', { headers: { Cookie: '' } })).text();
   verifier(h.includes('name="site_web"'), 'champ piège absent');
@@ -236,6 +281,7 @@ await scenario('la demande apparaît dans l’administration, marquée non lue',
   await p.goto(B + '/admin/messages'); await cliquer('text=Afi Mensah');
   verifier((await p.textContent('.fiche')).includes('afi@boutique.tg'), 'fiche');
   verifier(await p.locator('a:has-text("Répondre sur WhatsApp")').count() === 1, 'bouton WhatsApp');
+  verifier((await p.textContent('.msg.ok')).includes('envoyé') && (await p.textContent('.msg.ok')).includes('contact@liveydream.com'), 'statut d’envoi');
   await p.goto(B + '/admin');
   verifier(!(await p.textContent('.barre')).includes('Messages1'), 'devrait être lu');
 });
@@ -337,6 +383,69 @@ await scenario('l’éditeur écrit mais ne règle pas le site', async () => {
   verifier(p.url().endsWith('/admin') && (await p.textContent('.msg.err')).includes('réservé'), 'accès aux réglages');
   await p.goto(B + '/admin/articles');
   verifier(await p.locator('text=Écrire un article').count() === 1, 'articles inaccessibles');
+});
+
+console.log('E-mails par SMTP');
+await scenario('le destinataire contact@ est affiché comme fixe, les copies s’ajoutent', async () => {
+  await p.click('.menu button:has-text("Déconnexion")'); await p.waitForURL(/connexion/);
+  await p.fill('#email', 'admin@liveydream.com'); await p.fill('#mdp', 'motdepasse-solide');
+  await soumettre('button[type=submit]');
+  await p.goto(B + '/admin/reglages');
+  verifier((await p.textContent('main')).includes('contact@liveydream.com — toujours'), 'mention du destinataire fixe');
+  await p.fill('#r-contact_copies', 'direction@liveydream.com, pas-une-adresse');
+  await p.fill('#r-smtp_hote', '127.0.0.1'); await p.fill('#r-smtp_port', String(PORT_SMTP));
+  await p.selectOption('#r-smtp_chiffrement', 'aucun');
+  await p.fill('#r-smtp_utilisateur', 'contact@liveydream.com'); await p.fill('#r-smtp_mdp', 'bon-mdp');
+  await soumettre('button[name=tester]');
+  verifier((await p.textContent('.msg.ok')).includes('E-mail de test envoyé'), await p.textContent('.msg'));
+  const l = smtp.at(-1);
+  verifier(l && l.a.join() === 'contact@liveydream.com,direction@liveydream.com', 'destinataires SMTP : ' + (l && l.a.join()));
+  verifier(l.auth === 'contact@liveydream.com' && l.de === '<contact@liveydream.com>', 'authentification ou expéditeur');
+  await capture('admin-reglages-courriel');
+});
+await scenario('le mot de passe SMTP n’est jamais réaffiché et reste gardé', async () => {
+  verifier(await p.inputValue('#r-smtp_mdp') === '', 'mot de passe réaffiché');
+  verifier(!(await p.content()).includes('bon-mdp'), 'mot de passe dans la page');
+  await soumettre('button[name=tester]');
+  verifier((await p.textContent('.msg.ok')).includes('E-mail de test envoyé'), 'mot de passe perdu');
+});
+await scenario('une nouvelle demande part par SMTP à contact@ et aux copies', async () => {
+  const avant = smtp.length;
+  const page = await ctx.newPage();
+  await page.goto(B + '/contact');
+  await page.fill('#c-nom', 'Kodjo Agbeko'); await page.fill('#c-mail', 'kodjo@exemple.tg');
+  await page.fill('#c-wa', '+228 91 11 11 11'); await page.fill('#c-msg', 'Un devis pour un lancement.\n.Ligne qui commence par un point.');
+  await Promise.all([page.waitForNavigation(), page.click('.form-submit-btn')]);
+  await page.close();
+  verifier(smtp.length === avant + 1, 'aucun e-mail SMTP');
+  const l = smtp.at(-1), m = decoder(l.donnees);
+  verifier(l.a.includes('contact@liveydream.com') && l.a.includes('direction@liveydream.com'), 'destinataires');
+  verifier(/^Reply-To: kodjo@exemple\.tg$/m.test(l.donnees) && m.includes('Kodjo Agbeko'), 'contenu');
+  verifier(m.includes('\n.Ligne qui commence par un point.'), 'la ligne commençant par un point est abîmée');
+});
+await scenario('un échec d’envoi est noté sur la demande, et se renvoie', async () => {
+  await p.goto(B + '/admin/reglages');
+  await p.fill('#r-smtp_mdp', 'mauvais-mdp');
+  await soumettre('button[name=tester]');
+  verifier((await p.textContent('.msg.err')).includes('identifiants refusés'), 'échec attendu');
+  verifier(!(await p.textContent('.msg.err')).includes('mauvais-mdp'), 'le mot de passe apparaît dans l’erreur');
+  const page = await ctx.newPage();
+  await page.goto(B + '/contact');
+  await page.fill('#c-nom', 'Essai Échec'); await page.fill('#c-mail', 'echec@exemple.tg'); await page.fill('#c-wa', '+228 92 22 22 22');
+  await Promise.all([page.waitForNavigation(), page.click('.form-submit-btn')]);
+  verifier(await page.isVisible('#formSuccess'), 'le visiteur doit voir sa demande acceptée même si l’e-mail échoue');
+  await page.close();
+  await p.goto(B + '/admin/messages');
+  verifier((await p.textContent('tr:has-text("Essai Échec")')).includes('E-mail non parti'), 'pastille d’échec');
+  await p.goto(B + '/admin/reglages');
+  await p.fill('#r-smtp_mdp', 'bon-mdp');
+  await soumettre('button:has-text("Enregistrer"):not([name])');
+  await p.goto(B + '/admin/messages'); await cliquer('text=Essai Échec');
+  verifier((await p.textContent('.msg.err')).includes('échec'), 'statut d’échec');
+  const avant = smtp.length;
+  await soumettre('button:has-text("Renvoyer par e-mail")');
+  verifier((await p.textContent('.msg.ok')).includes('renvoyée') && smtp.length === avant + 1, 'renvoi');
+  verifier((await p.textContent('.carte .msg.ok')).includes('envoyé'), 'statut mis à jour');
 });
 
 console.log('Sécurité');

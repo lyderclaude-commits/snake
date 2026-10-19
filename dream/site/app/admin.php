@@ -248,6 +248,11 @@ function admin_router(array $s, string $methode): void
                 flash('ok', 'Message supprimé.');
                 rediriger('admin/messages');
             }
+            if ($post && $r2 === 'renvoyer') {
+                $res = courriel_demande($m);
+                flash($res['ok'] ? 'ok' : 'err', $res['ok'] ? 'Demande renvoyée à ' . implode(', ', courriel_destinataires()) . '.' : 'Échec de l’envoi : ' . $res['detail']);
+                rediriger('admin/messages/' . $m['id']);
+            }
             if ($post && $r2 === 'non-lu') {
                 q('UPDATE messages SET lu = 0 WHERE id = ?', [$m['id']]);
                 rediriger('admin/messages');
@@ -343,7 +348,32 @@ function admin_router(array $s, string $methode): void
                 if (isset($v['site_url'])) {
                     $v['site_url'] = rtrim($v['site_url'], '/');
                 }
+                // Le mot de passe SMTP n'est jamais réaffiché : un champ vide le garde.
+                if (($v['smtp_mdp'] ?? '') === '' && !isset($_POST['smtp_mdp_effacer'])) {
+                    unset($v['smtp_mdp']);
+                }
+                foreach (['courriel_expediteur'] as $k) {
+                    if (isset($v[$k]) && $v[$k] !== '' && !filter_var($v[$k], FILTER_VALIDATE_EMAIL)) {
+                        flash('err', 'L’adresse d’expédition n’est pas valide.');
+                        rediriger('admin/reglages/' . $onglet);
+                    }
+                }
+                if (isset($v['smtp_port'])) {
+                    $v['smtp_port'] = (string) max(1, min(65535, (int) $v['smtp_port'] ?: 587));
+                }
+                if (isset($v['smtp_chiffrement']) && !in_array($v['smtp_chiffrement'], ['tls', 'ssl', 'aucun'], true)) {
+                    $v['smtp_chiffrement'] = 'tls';
+                }
                 reglages_enregistrer($v);
+                if (isset($_POST['tester'])) {
+                    $res = courriel_envoyer(courriel_destinataires(), 'Test d’envoi — ' . reglage('nom_site'),
+                        "Ce message confirme que le site sait envoyer des e-mails.\nLes demandes de contact arriveront de la même façon.\n",
+                        '<p>Ce message confirme que le site sait envoyer des e-mails.</p><p>Les demandes de contact arriveront de la même façon.</p>');
+                    flash($res['ok'] ? 'ok' : 'err', $res['ok']
+                        ? 'E-mail de test envoyé à ' . implode(', ', courriel_destinataires()) . ' (' . $res['detail'] . '). Vérifiez la boîte, et les indésirables.'
+                        : 'Échec de l’e-mail de test : ' . $res['detail']);
+                    rediriger('admin/reglages/' . $onglet);
+                }
                 flash('ok', 'Réglages enregistrés.');
                 rediriger('admin/reglages/' . $onglet);
             }

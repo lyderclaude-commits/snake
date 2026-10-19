@@ -14,6 +14,7 @@ require __DIR__ . '/app/html.php';
 require __DIR__ . '/app/medias.php';
 require __DIR__ . '/app/contenu.php';
 require __DIR__ . '/app/wordpress.php';
+require __DIR__ . '/app/courriel.php';
 require __DIR__ . '/app/site.php';
 
 header('X-Content-Type-Options: nosniff');

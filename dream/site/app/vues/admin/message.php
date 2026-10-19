@@ -17,9 +17,14 @@ $wa = preg_replace('/\D+/', '', (string) $m['whatsapp']);
     <dt>Besoin</dt><dd><?= e($m['besoin'] ?: '—') ?></dd>
     <dt>Budget</dt><dd><?= e($m['budget'] ?: '—') ?></dd>
   </dl>
+  <?php $envoi = (string) $m['courriel']; ?>
+  <div class="msg <?= str_starts_with($envoi, 'envoyé') ? 'ok' : ($envoi === '' ? 'info' : 'err') ?>" style="margin:16px 0 0">
+    <b>Copie par e-mail :</b> <?= $envoi !== '' ? e($envoi) : 'pas encore envoyée (demande reçue avant la mise en place de l’envoi).' ?>
+  </div>
   <div class="corps-message"><?= $m['message'] !== '' ? e($m['message']) : '<span class="aide">Pas de message.</span>' ?></div>
 </div>
 <div class="rangee" style="margin-top:18px">
+  <form method="post" action="<?= url('admin/messages/' . (int) $m['id'] . '/renvoyer') ?>"><?= csrf_champ() ?><button class="bouton fant" type="submit">Renvoyer par e-mail</button></form>
   <form method="post" action="<?= url('admin/messages/' . (int) $m['id'] . '/non-lu') ?>"><?= csrf_champ() ?><button class="bouton fant" type="submit">Marquer comme non lu</button></form>
   <form method="post" action="<?= url('admin/messages/' . (int) $m['id'] . '/supprimer') ?>" data-confirmer="Supprimer ce message ?"><?= csrf_champ() ?><button class="bouton danger fant" type="submit">Supprimer</button></form>
 </div>

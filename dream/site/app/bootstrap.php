@@ -94,13 +94,21 @@ function maintenant(?int $t = null): string
 function assurer_schema(PDO $pdo): void
 {
     $v = (int) $pdo->query('PRAGMA user_version')->fetchColumn();
-    if ($v >= 2) {
+    if ($v >= 3) {
         return;
     }
-    if ($v === 1) {
-        // v2 : un article importé puis retouché ici le dit explicitement.
-        $pdo->exec('ALTER TABLE articles ADD COLUMN retouche INTEGER NOT NULL DEFAULT 0');
-        $pdo->exec('PRAGMA user_version = 2');
+    if ($v >= 1) {
+        if ($v < 2) {
+            // v2 : un article importé puis retouché ici le dit explicitement.
+            $pdo->exec('ALTER TABLE articles ADD COLUMN retouche INTEGER NOT NULL DEFAULT 0');
+        }
+        // v3 : chaque demande garde le résultat de son envoi par e-mail.
+        $pdo->exec("ALTER TABLE messages ADD COLUMN courriel TEXT NOT NULL DEFAULT ''");
+        // L'ancien réglage « destinataire » devient une copie : contact@ est désormais fixe.
+        $pdo->exec("INSERT OR IGNORE INTO reglages (cle, valeur) SELECT 'contact_copies', valeur FROM reglages
+            WHERE cle = 'contact_destinataire' AND lower(valeur) <> 'contact@liveydream.com'");
+        $pdo->exec("DELETE FROM reglages WHERE cle = 'contact_destinataire'");
+        $pdo->exec('PRAGMA user_version = 3');
         return;
     }
     $pdo->exec(<<<SQL
@@ -176,6 +184,7 @@ function assurer_schema(PDO $pdo): void
         message TEXT NOT NULL DEFAULT '',
         ip TEXT NOT NULL DEFAULT '',
         lu INTEGER NOT NULL DEFAULT 0,
+        courriel TEXT NOT NULL DEFAULT '',
         cree_le TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS reglages (
@@ -188,7 +197,7 @@ function assurer_schema(PDO $pdo): void
     );
     CREATE INDEX IF NOT EXISTS tentatives_cle ON tentatives(cle, quand);
     SQL);
-    $pdo->exec('PRAGMA user_version = 2');
+    $pdo->exec('PRAGMA user_version = 3');
 }
 
 /* ------------------------------------------------------------------ */
@@ -224,7 +233,14 @@ function reglages_defaut(): array
         'site_url' => '',
         'meta_description' => "Depuis 2013, Live Y Dream est l'agence de communication de référence à Lomé, Togo. Marketing digital, création graphique, production vidéo, événementiel, community management.",
         'verif_google' => '',
-        'contact_destinataire' => 'contact@liveydream.com',
+        // Les demandes partent toujours à contact@liveydream.com (app/courriel.php) ; ceci ajoute des copies.
+        'contact_copies' => '',
+        'courriel_expediteur' => '',
+        'smtp_hote' => '',
+        'smtp_port' => '587',
+        'smtp_chiffrement' => 'tls',
+        'smtp_utilisateur' => '',
+        'smtp_mdp' => '',
         'wp_racine' => 'https://liveydream.com/wp-json/wp/v2',
         'mentions_legales' => '',
         'confidentialite' => '',

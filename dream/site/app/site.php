@@ -143,27 +143,6 @@ function contact_recevoir(array $v): ?string
     tentative_noter($cle);
     q('INSERT INTO messages (nom, entreprise, email, whatsapp, besoin, budget, message, ip, cree_le) VALUES (?,?,?,?,?,?,?,?,?)',
         [$d['nom'], $d['entreprise'], $d['email'], $d['whatsapp'], $d['besoin'], $d['budget'], $d['message'], ip_client(), maintenant()]);
-    contact_notifier($d, (int) db()->lastInsertId());
+    courriel_demande(un('SELECT * FROM messages WHERE id = ?', [(int) db()->lastInsertId()]));
     return null;
-}
-
-function contact_notifier(array $d, int $id): void
-{
-    $a = trim(reglage('contact_destinataire'));
-    if ($a === '' || !filter_var($a, FILTER_VALIDATE_EMAIL) || !function_exists('mail')) {
-        return;
-    }
-    $hote = (string) parse_url(base_url(), PHP_URL_HOST);
-    $sujet = '=?UTF-8?B?' . base64_encode('Nouvelle demande : ' . $d['nom'] . ($d['besoin'] ? ' — ' . $d['besoin'] : '')) . '?=';
-    $corps = "Nouvelle demande reçue sur le site.\n\n"
-        . "Nom : {$d['nom']}\nEntreprise : {$d['entreprise']}\nE-mail : {$d['email']}\nWhatsApp : {$d['whatsapp']}\n"
-        . "Besoin : {$d['besoin']}\nBudget : {$d['budget']}\n\n{$d['message']}\n\n"
-        . 'Voir dans l’administration : ' . url_absolue('admin/messages/' . $id) . "\n";
-    $entetes = [
-        'From: ' . reglage('nom_site') . ' <ne-pas-repondre@' . ($hote ?: 'localhost') . '>',
-        'Reply-To: ' . str_replace(["\r", "\n"], '', $d['email']),
-        'Content-Type: text/plain; charset=UTF-8',
-        'MIME-Version: 1.0',
-    ];
-    @mail($a, $sujet, $corps, implode("\r\n", $entetes));
 }
