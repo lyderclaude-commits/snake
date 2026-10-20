@@ -29,10 +29,12 @@ $champ = function (string $k, string $label, string $aide = '', string $type = '
       <?= $champ('email2', 'Second e-mail', '', 'email') ?>
       <?= $champ('adresse', 'Adresse') ?>
       <?= $champ('adresse2', 'Ville, repère') ?>
+      <?= $champ('adresse2_en', 'Ville, repère — anglais', 'Vide : le français s’affiche aussi sur le site anglais.') ?>
     </div>
   </div>
   <div class="carte"><h2>Horaires</h2>
     <div class="champs"><?= $champ('horaires_semaine', 'Lundi — Vendredi') ?><?= $champ('horaires_samedi', 'Samedi') ?><?= $champ('horaires_dimanche', 'Dimanche') ?></div>
+    <div class="champs"><?= $champ('horaires_semaine_en', 'Monday — Friday (anglais)') ?><?= $champ('horaires_samedi_en', 'Saturday (anglais)') ?><?= $champ('horaires_dimanche_en', 'Sunday (anglais)') ?></div>
   </div>
   <div class="carte"><h2>Réseaux sociaux</h2><p class="aide">Vide : l’icône disparaît du pied de page.</p>
     <div class="champs"><?= $champ('facebook', 'Facebook', '', 'url') ?><?= $champ('instagram', 'Instagram', '', 'url') ?><?= $champ('linkedin', 'LinkedIn', '', 'url') ?><?= $champ('tiktok', 'TikTok', '', 'url') ?></div>
@@ -62,27 +64,37 @@ $champ = function (string $k, string $label, string $aide = '', string $type = '
 <?php elseif ($onglet === 'accueil'): ?>
   <div class="carte"><h2>Le grand titre</h2>
     <p class="aide">Une ligne par retour à la ligne. <code>*mots*</code> s’affichent en couleur, <code>_mots_</code> en contour, <code>**mots**</code> en gras.</p>
-    <?= $champ('hero_titre', 'Titre', '', 'textarea') ?>
-    <?= $champ('hero_sous_titre', 'Sous-titre', '', 'textarea') ?>
+    <div class="champs">
+      <?= $champ('hero_titre', 'Titre — français', '', 'textarea') ?>
+      <?= $champ('hero_titre_en', 'Titre — anglais', '', 'textarea') ?>
+      <?= $champ('hero_sous_titre', 'Sous-titre — français', '', 'textarea') ?>
+      <?= $champ('hero_sous_titre_en', 'Sous-titre — anglais', '', 'textarea') ?>
+    </div>
   </div>
-  <div class="carte"><h2>Les chiffres clés</h2><p class="aide">Repris sur l’accueil et la page À propos. Écrivez « 200+ » : le nombre s’anime, le signe reste.</p>
-    <?php for ($i = 1; $i <= 4; $i++): ?><div class="champs"><?= $champ('stat' . $i, 'Chiffre ' . $i) ?><?= $champ('stat' . $i . '_libelle', 'Libellé') ?></div><?php endfor; ?>
+  <div class="carte"><h2>Les chiffres clés</h2><p class="aide">Repris sur l’accueil et la page À propos. Écrivez « 200+ » : le nombre s’anime, le signe reste. Le chiffre est le même dans les deux langues, seul le libellé se traduit.</p>
+    <?php for ($i = 1; $i <= 4; $i++): ?><div class="champs"><?= $champ('stat' . $i, 'Chiffre ' . $i) ?><?= $champ('stat' . $i . '_libelle', 'Libellé — français') ?><?= $champ('stat' . $i . '_libelle_en', 'Libellé — anglais') ?></div><?php endfor; ?>
   </div>
 <?php elseif ($onglet === 'referencement'): ?>
   <div class="carte"><h2>Adresse du site</h2>
     <?= $champ('site_url', 'Adresse publique', 'Par exemple <code>https://liveydream.com</code>. Elle sert aux liens de partage, au plan du site et à Google. Vide : déduite de la visite.', 'url') ?>
   </div>
   <div class="carte"><h2>Description</h2>
-    <?= $champ('meta_description', 'Description par défaut', 'Ce que Google affiche sous le nom du site. 150 caractères environ.', 'textarea') ?>
+    <?= $champ('meta_description', 'Description par défaut — français', 'Ce que Google affiche sous le nom du site. 150 caractères environ.', 'textarea') ?>
+    <?= $champ('meta_description_en', 'Description par défaut — anglais', 'Pour les pages /en du site.', 'textarea') ?>
     <?= $champ('verif_google', 'Code de vérification Google Search Console', 'Le contenu de la balise <code>google-site-verification</code>.') ?>
     <p class="aide">Plan du site à déclarer dans Search Console : <a href="<?= url('sitemap.xml') ?>" target="_blank"><?= e(url_absolue('sitemap.xml')) ?></a></p>
   </div>
 <?php else: ?>
   <div class="carte"><h2>Mentions légales</h2><p class="aide">Vide : un texte type est affiché, construit avec vos coordonnées. Indiquez au moins l’hébergeur et le responsable de publication. HTML simple accepté (&lt;h2&gt;, &lt;p&gt;, &lt;a&gt;…).</p>
     <textarea name="mentions_legales" rows="12" aria-label="Mentions légales"><?= e($r['mentions_legales']) ?></textarea>
+    <label for="r-mentions_en" style="margin-top:14px">Legal notice — anglais</label>
+    <textarea id="r-mentions_en" name="mentions_legales_en" rows="8"><?= e($r['mentions_legales_en']) ?></textarea>
+    <p class="aide">Vide : le texte type, traduit, s’affiche sur le site anglais.</p>
   </div>
   <div class="carte"><h2>Politique de confidentialité</h2>
     <textarea name="confidentialite" rows="12" aria-label="Politique de confidentialité"><?= e($r['confidentialite']) ?></textarea>
+    <label for="r-confidentialite_en" style="margin-top:14px">Privacy policy — anglais</label>
+    <textarea id="r-confidentialite_en" name="confidentialite_en" rows="8"><?= e($r['confidentialite_en']) ?></textarea>
   </div>
 <?php endif; ?>
   <div><button class="bouton" type="submit">Enregistrer</button></div>

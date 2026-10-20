@@ -16,6 +16,7 @@ $wa = preg_replace('/\D+/', '', (string) $m['whatsapp']);
     <dt>Entreprise</dt><dd><?= e($m['entreprise'] ?: '—') ?></dd>
     <dt>Besoin</dt><dd><?= e($m['besoin'] ?: '—') ?></dd>
     <dt>Budget</dt><dd><?= e($m['budget'] ?: '—') ?></dd>
+    <dt>Langue</dt><dd><?= ($m['langue'] ?? 'fr') === 'en' ? '<span class="drapeau">EN</span> Site anglais — répondez en anglais' : 'Français' ?></dd>
   </dl>
   <?php $envoi = (string) $m['courriel']; ?>
   <div class="msg <?= str_starts_with($envoi, 'envoyé') ? 'ok' : ($envoi === '' ? 'info' : 'err') ?>" style="margin:16px 0 0">

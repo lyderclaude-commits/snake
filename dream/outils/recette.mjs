@@ -9,6 +9,8 @@ import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { cpSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { createServer as serveurHttp } from 'node:http';
+import { createECDH, createDecipheriv, createPublicKey, hkdfSync, randomBytes, verify } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,13 +66,14 @@ process.on('exit', fin);
 await new Promise((r) => setTimeout(r, 900));
 
 const navigateur = await chromium.launch(existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {});
-const ctx = await navigateur.newContext({ viewport: { width: 1360, height: 900 } });
+// Un navigateur réglé en français : sinon l'accueil, qui suit la langue du navigateur, partirait vers /en.
+const ctx = await navigateur.newContext({ viewport: { width: 1360, height: 900 }, locale: 'fr-FR' });
 const p = await ctx.newPage();
 const erreurs = [];
 // Les ressources de tiers (YouTube, Unsplash) peuvent manquer selon le réseau : ce n'est pas une erreur du site.
 const tiers = /youtube|unsplash|ERR_TUNNEL|ERR_NAME|ERR_CONNECTION|ERR_INTERNET|net::ERR_FAILED/;
 p.on('pageerror', (e) => erreurs.push(p.url() + ' — ' + e));
-p.on('console', (m) => { if (m.type() === 'error' && !tiers.test(m.text()) && !/status of 40[34]/.test(m.text())) erreurs.push(p.url() + ' — ' + m.text()); });
+p.on('console', (m) => { if (m.type() === 'error' && !tiers.test(m.text()) && !/status of (40[34]|422)/.test(m.text())) erreurs.push(p.url() + ' — ' + m.text()); });
 p.on('dialog', (d) => d.accept(d.type() === 'prompt' ? (d.message().includes('Légende') ? 'Une légende' : 'https://exemple.tg') : undefined));
 
 let ok = 0, ko = 0;
@@ -203,7 +206,7 @@ await scenario('les anciennes adresses WordPress redirigent en 301', async () =>
 });
 await scenario('plan du site, robots.txt et flux RSS', async () => {
   const s = await (await brut('/sitemap.xml')).text();
-  verifier((s.match(/<loc>/g) || []).length === 6 + 23, 'sitemap : ' + (s.match(/<loc>/g) || []).length);
+  verifier((s.match(/<loc>/g) || []).length === 6 * 2 + 23, 'sitemap : ' + (s.match(/<loc>/g) || []).length);
   verifier((await (await brut('/robots.txt')).text()).includes('Disallow: /admin/'), 'robots');
   verifier(((await (await brut('/blog/flux.xml')).text()).match(/<item>/g) || []).length === 20, 'rss');
 });
@@ -225,7 +228,7 @@ for (const [chemin, attendu] of [['/', 'VOS CLIENTS NE PEUVENT PAS VOUS IGNORER'
 await scenario('l’accueil montre les chiffres sans JavaScript et 4 campagnes', async () => {
   const h = await (await brut('/')).text();
   verifier(h.includes('>10+<') && h.includes('>200+<'), 'chiffres absents du HTML');
-  verifier((h.match(/class="pg-item/g) || []).length === 4, 'campagnes : ' + (h.match(/class="pg-item/g) || []).length);
+  verifier((h.match(/class="pg-item/g) || []).length === 5, 'campagnes : ' + (h.match(/class="pg-item/g) || []).length);
   await p.goto(B + '/'); await capture('public-accueil');
 });
 await scenario('les filtres et la fiche des campagnes marchent', async () => {
@@ -448,6 +451,260 @@ await scenario('un échec d’envoi est noté sur la demande, et se renvoie', as
   verifier((await p.textContent('.carte .msg.ok')).includes('envoyé'), 'statut mis à jour');
 });
 
+console.log('Bilingue');
+const ROUTES_EN = { '/en': 'YOUR CLIENTS CAN', '/en/services': 'We don\'t sell', '/en/campaigns': 'Woodin Togo — Digital Domination',
+  '/en/blog': 'Tips & strategies', '/en/about': 'Built to make others win', '/en/contact': 'Let\'s talk about your project',
+  '/en/legal-notice': 'Website publisher', '/en/privacy': 'Your rights' };
+for (const [chemin, attendu] of Object.entries(ROUTES_EN)) {
+  await scenario(`${chemin} est en anglais, avec ses adresses jumelles`, async () => {
+    const r = await brut(chemin);
+    const h = (await r.text()).replace(/&#039;/g, "'").replace(/&amp;/g, '&');
+    verifier(r.status === 200, 'statut ' + r.status);
+    verifier(h.includes('<html lang="en"'), 'lang');
+    verifier(h.includes(attendu), 'texte attendu : ' + attendu);
+    verifier(h.includes('hreflang="fr"') && h.includes('hreflang="en"'), 'hreflang');
+    verifier(!/>(Accueil|Campagnes|À Propos|Devis Gratuit|Demander un devis|Envoyer ma demande)</.test(h), 'reste du français : ' + (h.match(/>(Accueil|Campagnes|À Propos|Devis Gratuit|Demander un devis|Envoyer ma demande)</) || [])[0]);
+    verifier(!/href="\/(services|campagnes|blog|a-propos|contact)["#?]/.test(h.split('<footer')[0].split('nav-langues')[0]), 'un lien de la page anglaise repart vers le français');
+  });
+}
+await scenario('les adresses mal formées redirigent vers la bonne langue', async () => {
+  for (const [de, vers] of [['/en/campagnes', '/en/campaigns'], ['/campaigns', '/en/campaigns'], ['/about', '/en/about'], ['/en/a-propos', '/en/about']]) {
+    const r = await brut(de);
+    verifier(r.status === 301 && r.headers.get('location').endsWith(vers), de + ' → ' + r.status + ' ' + r.headers.get('location'));
+  }
+});
+await scenario('un navigateur anglais arrive sur /en ; le choix du français est ensuite retenu', async () => {
+  const c = await navigateur.newContext({ locale: 'en-US' });
+  const q = await c.newPage();
+  await q.goto(B + '/');
+  verifier(q.url() === B + '/en', 'obtenu ' + q.url());
+  await Promise.all([q.waitForNavigation(), q.click('.nav-langues a[hreflang=fr]')]);
+  verifier(q.url() === B + '/', 'le sélecteur doit mener au français : ' + q.url());
+  await q.goto(B + '/');
+  verifier(q.url() === B + '/' && await q.getAttribute('html', 'lang') === 'fr', 'le choix du français n’est pas retenu');
+  await c.close();
+});
+await scenario('le sélecteur garde la page et ses paramètres', async () => {
+  const c = await navigateur.newContext({ locale: 'fr-FR' });
+  const q = await c.newPage();
+  await q.goto(B + '/blog?categorie=Strat%C3%A9gie');
+  await Promise.all([q.waitForNavigation(), q.click('.nav-langues a[hreflang=en]')]);
+  verifier(q.url() === B + '/en/blog?categorie=Strat%C3%A9gie', 'obtenu ' + q.url());
+  verifier((await q.textContent('.blog-filtre')).includes('in “Strategy”'), 'filtre en anglais');
+  await c.close();
+});
+await scenario('un article non traduit s’affiche en français sur /en, et renvoie à l’original', async () => {
+  const h = await (await brut('/en/blog/article-numero-3')).text();
+  verifier(h.includes('This article is only available in French.'), 'mention absente');
+  verifier(h.includes(`<link rel="canonical" href="${B}/blog/article-numero-3"`), 'canonique vers le français');
+  verifier(!h.includes('hreflang="en"'), 'une page non traduite ne doit pas s’annoncer en anglais');
+  verifier(/(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, 20\d\d/.test(h), 'date en anglais');
+});
+await scenario('traduire un article dans l’admin le publie en anglais', async () => {
+  await p.goto(B + '/admin/articles?q=article-numero-3'); await cliquer('a.titre-ligne:text-is("Article n°3 – l’exemple")');
+  await p.click('details.version-en > summary');
+  await p.fill('#titre_en', 'Article 3 — the example');
+  await p.fill('#extrait_en', 'The English summary.');
+  await p.click('details.version-en .editeur-zone');
+  await p.keyboard.type('The English text of the article.');
+  await soumettre('form#form-article button[type=submit]');
+  const en = await (await brut('/en/blog/article-numero-3')).text();
+  verifier(en.includes('<h1 class="am-title">Article 3 — the example</h1>') && en.includes('The English text of the article.'), 'version anglaise');
+  verifier(en.includes('hreflang="en"') && !en.includes('only available in French'), 'alternatives');
+  const fr = await (await brut('/blog/article-numero-3')).text();
+  verifier(fr.includes('Article n°3 – l’exemple') && !fr.includes('The English text'), 'le français a changé');
+  verifier((await (await brut('/sitemap.xml')).text()).includes(`${B}/en/blog/article-numero-3`), 'plan du site');
+});
+await scenario('les campagnes ont leur anglais, filtres et fiche compris', async () => {
+  const c = await navigateur.newContext({ locale: 'en-US' });
+  const q = await c.newPage();
+  await q.goto(B + '/en/campaigns');
+  await q.click('.filter-btn[data-filter=event]');
+  await q.click('#campaignGrid .cg-item >> nth=0');
+  await q.waitForSelector('#caseModal.open');
+  verifier((await q.textContent('#caseCat')) === 'Events' && (await q.textContent('#caseResults')).includes('Participants'), 'fiche');
+  verifier((await q.textContent('#caseTitle')).includes('Battle Arena — International Competition'), 'titre : ' + await q.textContent('#caseTitle'));
+  await c.close();
+});
+await scenario('le formulaire anglais répond en anglais et marque la demande EN', async () => {
+  const c = await navigateur.newContext({ locale: 'en-US' });
+  const q = await c.newPage();
+  await q.goto(B + '/en/contact');
+  await q.fill('#c-nom', 'John Smith'); await q.fill('#c-mail', 'pas-valide@x'); await q.fill('#c-wa', '+44 7700 900000');
+  await q.evaluate(() => document.getElementById('c-mail').type = 'text');
+  await Promise.all([q.waitForNavigation(), q.click('.form-submit-btn')]);
+  verifier((await q.textContent('.form-erreur')).includes('does not look valid'), 'erreur en anglais');
+  await q.fill('#c-mail', 'john@example.com');
+  await q.selectOption('#c-besoin', 'Event Management');
+  const avant = smtp.length;
+  await Promise.all([q.waitForNavigation(), q.click('.form-submit-btn')]);
+  verifier(q.url().startsWith(B + '/en/contact') && (await q.textContent('#formSuccess')).includes('Message sent!'), 'confirmation : ' + q.url());
+  await c.close();
+  verifier(smtp.length === avant + 1 && decoder(smtp.at(-1).donnees).includes('anglais'), 'l’e-mail doit dire que la demande vient du site anglais');
+  await p.goto(B + '/admin/messages');
+  verifier((await p.textContent('tr:has-text("John Smith")')).includes('EN'), 'pastille EN');
+});
+
+console.log('Accueil réglable');
+await scenario('modifier un service change l’accueil, la page Services et le pied, en deux langues', async () => {
+  await p.goto(B + '/admin/services'); await cliquer('a.titre-ligne:text-is("Production Vidéo & Photo")');
+  await p.fill('#s-fr-titre', 'Production Vidéo Premium');
+  await p.fill('#s-en-titre', 'Premium Video Production');
+  await p.fill('[name="fr[livrables][titre][]"] >> nth=4', 'Drone');
+  await p.fill('[name="fr[livrables][texte][]"] >> nth=4', 'Prises de vue aériennes');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier((await p.textContent('.msg.ok')).includes('enregistré'), 'enregistrement');
+  const fr = await (await brut('/')).text(), en = await (await brut('/en')).text();
+  verifier(fr.includes('<h3>Production Vidéo Premium</h3>') && en.includes('<h3>Premium Video Production</h3>'), 'carte de l’accueil');
+  const sv = await (await brut('/services')).text();
+  verifier(sv.includes('<h5>Drone</h5>') && sv.includes('>Production Vidéo Premium</a></li>'), 'section détaillée ou pied');
+});
+await scenario('masquer un service le retire partout', async () => {
+  await p.goto(B + '/admin/services'); await cliquer('a.titre-ligne:text-is("Production Vidéo Premium")');
+  await p.uncheck('input[name=visible]');
+  await soumettre('button:has-text("Enregistrer")');
+  for (const u of ['/', '/services', '/en']) verifier(!/Production Vidéo Premium|Premium Video Production/.test(await (await brut(u)).text()), u);
+  await p.check('input[name=visible]');
+  await soumettre('button:has-text("Enregistrer")');
+});
+await scenario('un témoignage ajouté paraît sur l’accueil, traduit ; masqué, il disparaît', async () => {
+  await p.goto(B + '/admin/temoignages/nouveau');
+  await p.fill('#entreprise', 'Banque Exemple');
+  await p.fill('#t-fr', 'Une équipe qui livre à l’heure.'); await p.fill('#t-en', 'A team that delivers on time.');
+  await p.fill('#a-fr', 'Directrice'); await p.fill('#a-en', 'Director');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier((await (await brut('/')).text()).includes('Une équipe qui livre à l’heure.'), 'français');
+  verifier((await (await brut('/en')).text()).includes('A team that delivers on time.'), 'anglais');
+  await p.uncheck('input[name=visible]');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier(!(await (await brut('/')).text()).includes('Banque Exemple'), 'toujours visible');
+});
+await scenario('un logo client s’ajoute depuis la médiathèque', async () => {
+  await p.goto(B + '/admin/clients');
+  await p.click('summary:has-text("Ajouter un client")');
+  await p.fill('#c-nom', 'NOUVEAU CLIENT');
+  await p.click('[data-choisir-couverture]');
+  await p.waitForSelector('#selecteur-medias [data-grille] .media');
+  await p.click('#selecteur-medias [data-grille] button.choisir >> nth=0');
+  await soumettre('button:has-text("Ajouter")');
+  verifier((await p.textContent('.msg.ok')).includes('NOUVEAU CLIENT'), 'ajout');
+  const h = await (await brut('/')).text();
+  verifier(/<img src="\/uploads\/[^"]+" alt="Logo NOUVEAU CLIENT"/.test(h), 'logo absent de l’accueil');
+  verifier(h.includes('>UBA<'), 'un client sans logo garde son nom');
+});
+await scenario('le titre anglais de l’accueil se règle', async () => {
+  await p.goto(B + '/admin/reglages/accueil');
+  await p.fill('#r-hero_titre_en', 'BE SEEN\n*EVERYWHERE*');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier(/BE SEEN<br>\s*<span class="gold">EVERYWHERE<\/span>/.test(await (await brut('/en')).text()), 'titre anglais');
+});
+
+console.log('Lectures');
+const lectures = async (slug) => {
+  await p.goto(B + '/admin/articles?q=' + slug);
+  return parseInt(await p.textContent(`tr:has(.sous:text-is("${slug}")) td.chiffre`), 10);
+};
+await scenario('une lecture compte une fois par onglet, équipe connectée comprise', async () => {
+  const avant = await lectures('article-numero-4');
+  await p.goto(B + '/blog/article-numero-4'); await p.waitForTimeout(1600);
+  await p.reload(); await p.waitForTimeout(1600);
+  const onglet = await ctx.newPage();
+  await onglet.goto(B + '/en/blog/article-numero-4'); await onglet.waitForTimeout(1600);
+  await onglet.close();
+  const apres = await lectures('article-numero-4');
+  verifier(apres === avant + 2, `attendu ${avant + 2}, obtenu ${apres}`);
+});
+await scenario('les robots et les aperçus de liens ne comptent pas', async () => {
+  const avant = await lectures('article-numero-4');
+  for (const ua of ['Googlebot/2.1', 'facebookexternalhit/1.1', 'WhatsApp/2.23']) {
+    const r = await brut('/blog/article-numero-4/vue', { method: 'POST', headers: { 'User-Agent': ua } });
+    verifier(r.status === 204, 'statut ' + r.status);
+  }
+  verifier(await lectures('article-numero-4') === avant, 'un robot a été compté');
+});
+
+console.log('Notifications push');
+const PORT_PUSH = 8126, recus = [];
+const serveurPush = serveurHttp((req, res) => {
+  const morceaux = [];
+  req.on('data', (d) => morceaux.push(d));
+  req.on('end', () => {
+    recus.push({ chemin: req.url, entetes: req.headers, corps: Buffer.concat(morceaux) });
+    res.statusCode = req.url.includes('mort') ? 410 : 201;
+    res.end();
+  });
+}).listen(PORT_PUSH, '127.0.0.1');
+// Un « navigateur » abonné : sa paire de clés et son secret, comme les fabrique pushManager.subscribe().
+const nav = createECDH('prime256v1'); nav.generateKeys();
+const navAuth = randomBytes(16);
+const dechiffrer = (corps) => {
+  const sel = corps.subarray(0, 16), lg = corps[20], cleServeur = corps.subarray(21, 21 + lg), bloc = corps.subarray(21 + lg);
+  const partage = nav.computeSecret(cleServeur);
+  const info = Buffer.concat([Buffer.from('WebPush: info\0'), nav.getPublicKey(), cleServeur]);
+  const prk = Buffer.from(hkdfSync('sha256', partage, navAuth, info, 32));
+  const cek = Buffer.from(hkdfSync('sha256', prk, sel, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
+  const nonce = Buffer.from(hkdfSync('sha256', prk, sel, Buffer.from('Content-Encoding: nonce\0'), 12));
+  const d = createDecipheriv('aes-128-gcm', cek, nonce);
+  d.setAuthTag(bloc.subarray(bloc.length - 16));
+  const clair = Buffer.concat([d.update(bloc.subarray(0, bloc.length - 16)), d.final()]);
+  return JSON.parse(clair.subarray(0, clair.lastIndexOf(2)).toString());
+};
+const abonner = (endpoint, cle) => p.evaluate(async ([endpoint, p256dh, auth]) => {
+  const f = new FormData(); f.append('endpoint', endpoint); f.append('p256dh', p256dh); f.append('auth', auth); f.append('_csrf', document.body.dataset.csrf);
+  return (await fetch('/admin/push/abonner', { method: 'POST', body: f })).json();
+}, [endpoint, cle, navAuth.toString('base64url')]);
+await scenario('le service worker et la clé VAPID sont servis, la clé ne change pas', async () => {
+  const sw = await brut('/sw.js');
+  verifier(sw.status === 200 && /javascript/.test(sw.headers.get('content-type')), 'sw.js');
+  await p.goto(B + '/admin/profil');
+  verifier(await p.locator('[data-push]').count() === 1, 'carte Notifications absente du profil');
+  const cle = () => p.evaluate(async () => (await (await fetch('/admin/push/cle')).json()).cle);
+  const a = await cle(), b = await cle();
+  verifier(a && a === b && Buffer.from(a, 'base64url').length === 65, 'clé VAPID');
+});
+await scenario('une nouvelle demande arrive, chiffrée, sur l’appareil abonné', async () => {
+  const r = await abonner(`http://127.0.0.1:${PORT_PUSH}/push/ok`, nav.getPublicKey().toString('base64url'));
+  verifier(r.ok, JSON.stringify(r));
+  const avant = recus.length;
+  const q = await ctx.newPage();
+  await q.goto(B + '/contact');
+  await q.fill('#c-nom', 'Push Testeur'); await q.fill('#c-mail', 'push@exemple.tg'); await q.fill('#c-wa', '+228 93 33 33 33');
+  await q.selectOption('#c-besoin', 'Régie Publicitaire'); await q.fill('#c-msg', 'Notification attendue.');
+  await Promise.all([q.waitForNavigation(), q.click('.form-submit-btn')]);
+  await q.close();
+  verifier(recus.length === avant + 1, (recus.length - avant) + ' notification(s) reçue(s)');
+  const m = recus.at(-1);
+  verifier(m.entetes['content-encoding'] === 'aes128gcm' && m.entetes.urgency === 'high', 'en-têtes');
+  const charge = dechiffrer(m.corps);
+  verifier(charge.titre === 'Nouvelle demande : Push Testeur', 'titre : ' + charge.titre);
+  verifier(charge.corps.includes('Régie Publicitaire') && /^\/admin\/messages\/\d+$/.test(charge.lien), 'contenu : ' + JSON.stringify(charge));
+  // Le jeton VAPID : signé par la clé annoncée, pour l'origine du service de push.
+  const [, jeton, k] = /vapid t=([^,]+), k=(\S+)/.exec(m.entetes.authorization);
+  const [e64, c64, s64] = jeton.split('.');
+  const pub = Buffer.from(k, 'base64url');
+  const cle = createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: pub.subarray(1, 33).toString('base64url'), y: pub.subarray(33).toString('base64url') }, format: 'jwk' });
+  verifier(verify('sha256', Buffer.from(e64 + '.' + c64), { key: cle, dsaEncoding: 'ieee-p1363' }, Buffer.from(s64, 'base64url')), 'signature VAPID invalide');
+  verifier(JSON.parse(Buffer.from(c64, 'base64url')).aud === `http://127.0.0.1:${PORT_PUSH}`, 'audience');
+});
+await scenario('un appareil disparu (410) est retiré, le test le dit', async () => {
+  const autre = createECDH('prime256v1'); autre.generateKeys();
+  verifier((await abonner(`http://127.0.0.1:${PORT_PUSH}/push/mort`, autre.getPublicKey().toString('base64url'))).ok, 'abonnement');
+  await p.goto(B + '/admin/profil');
+  verifier(await p.locator('.appareils li').count() === 2, 'deux appareils attendus');
+  await soumettre('button:has-text("Envoyer une notification de test")');
+  verifier((await p.textContent('.msg.ok')).includes('1 notification(s) envoyée(s)') && (await p.textContent('.msg.ok')).includes('retiré'), await p.textContent('.msg'));
+  verifier(await p.locator('.appareils li').count() === 1, 'l’appareil mort est resté');
+  verifier((await p.textContent('.appareils')).includes('reçu par le service'), 'dernier résultat');
+});
+await scenario('un abonnement incomplet est refusé', async () => {
+  const r = await p.evaluate(async () => {
+    const f = new FormData(); f.append('endpoint', 'https://exemple.tg/x'); f.append('p256dh', 'abc'); f.append('auth', 'abc'); f.append('_csrf', document.body.dataset.csrf);
+    return (await fetch('/admin/push/abonner', { method: 'POST', body: f })).status;
+  });
+  verifier(r === 422, 'statut ' + r);
+  serveurPush.close();
+});
+
 console.log('Sécurité');
 await scenario('le code et la base ne sont jamais servis', async () => {
   for (const u of ['/app/bootstrap.php', '/donnees/lyd.sqlite', '/app/vues/site/blog.php', '/.htaccess']) {
@@ -466,7 +723,8 @@ await scenario('l’administration exige une connexion', async () => {
 console.log('Téléphone');
 const tel = await ctx.newPage();
 await tel.setViewportSize({ width: 380, height: 800 });
-for (const chemin of ['/', '/services', '/campagnes', '/blog', '/blog/article-numero-3', '/a-propos', '/contact', '/admin', '/admin/articles']) {
+for (const chemin of ['/', '/services', '/campagnes', '/blog', '/blog/article-numero-3', '/a-propos', '/contact', '/en', '/en/services', '/en/contact',
+  '/admin', '/admin/articles', '/admin/services/1', '/admin/clients', '/admin/profil']) {
   await scenario(`${chemin} tient dans 380 px sans défilement horizontal`, async () => {
     await tel.goto(B + chemin, { waitUntil: 'load' });
     const debord = await tel.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -477,6 +735,7 @@ await scenario('le menu du téléphone s’ouvre et se referme', async () => {
   await tel.goto(B + '/');
   await tel.click('#navToggle');
   verifier(await tel.isVisible('#navMenu a[href="/blog"]'), 'menu fermé');
+  verifier(await tel.isVisible('#navMenu .nav-langues a[hreflang=en]'), 'le sélecteur de langue manque au menu du téléphone');
   await tel.keyboard.press('Escape');
   verifier(!(await tel.isVisible('#navMenu a[href="/blog"]')), 'menu resté ouvert');
   await capture('mobile-accueil', tel);

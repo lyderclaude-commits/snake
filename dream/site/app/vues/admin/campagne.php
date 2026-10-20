@@ -3,6 +3,10 @@ $nouveau = !$c || empty($c['id']);
 $titre = $nouveau ? 'Nouvelle campagne' : 'Modifier la campagne';
 $r = $c['resultats'] ?? [];
 $image = (string) ($c['image'] ?? '');
+// `en` arrive en JSON depuis la base, ou en tableau quand un formulaire refusé est réaffiché.
+$en = is_array($c['en'] ?? null) ? $c['en'] : (json_decode((string) ($c['en'] ?? '{}'), true) ?: []);
+$en_libelles = $en['libelles'] ?? array_values(array_filter((array) ($en['resultats'] ?? []), fn($k) => $k % 2 === 1, ARRAY_FILTER_USE_KEY));
+$en_tags = is_array($en['tags'] ?? null) ? implode(', ', $en['tags']) : (string) ($en['tags'] ?? '');
 ?>
 <a class="retour" href="<?= url('admin/campagnes') ?>"><i>←</i>Les campagnes</a>
 <div class="entete"><div><h1><?= e($titre) ?></h1><p>Une réalisation du portfolio : ce qui a été fait, pour qui, et les chiffres qui le prouvent.</p></div></div>
@@ -34,6 +38,22 @@ $image = (string) ($c['image'] ?? '');
       <?php endfor; ?>
       <div class="champ" style="margin:0"><label for="tags">Tags</label><input id="tags" name="tags" value="<?= e(implode(', ', $c['tags'] ?? [])) ?>" placeholder="Community Management, Contenu"><p class="aide">Séparés par des virgules.</p></div>
     </div>
+    <details class="carte version-en"<?= ($en['titre'] ?? '') !== '' ? ' open' : '' ?>>
+      <summary><span class="drapeau">EN</span> <b>Version anglaise</b>
+        <span class="pastille <?= ($en['titre'] ?? '') !== '' ? 'publie' : 'brouillon' ?>"><?= ($en['titre'] ?? '') !== '' ? 'Traduite' : 'Pas encore traduite' ?></span></summary>
+      <p class="aide">Ce qui s’affiche sur <code>/en/campaigns</code>. Un champ vide reprend le français.</p>
+      <div class="champ"><label for="en-titre">Title</label><input id="en-titre" name="en[titre]" value="<?= e((string) ($en['titre'] ?? '')) ?>" lang="en"></div>
+      <div class="champ"><label for="en-extrait">Summary</label><textarea id="en-extrait" name="en[extrait]" rows="2" maxlength="300" lang="en"><?= e((string) ($en['extrait'] ?? '')) ?></textarea></div>
+      <div class="champ"><label for="en-description">Full description</label><textarea id="en-description" name="en[description]" rows="6" lang="en"><?= e((string) ($en['description'] ?? '')) ?></textarea></div>
+      <p class="aide" style="margin:0 0 8px">Les libellés des résultats — les chiffres restent ceux du français.</p>
+      <div class="champs">
+        <?php for ($i = 0; $i < 4; $i++): ?>
+          <div class="champ"><label for="en-l<?= $i ?>">Libellé <?= $i + 1 ?><?= ($r[$i * 2] ?? '') !== '' ? ' (' . e((string) $r[$i * 2]) . ')' : '' ?></label>
+            <input id="en-l<?= $i ?>" name="en[libelles][]" value="<?= e((string) ($en_libelles[$i] ?? '')) ?>" maxlength="40" placeholder="<?= e((string) ($r[$i * 2 + 1] ?? '')) ?>" lang="en"></div>
+        <?php endfor; ?>
+      </div>
+      <div class="champ" style="margin:0"><label for="en-tags">Tags</label><input id="en-tags" name="en[tags]" value="<?= e($en_tags) ?>" lang="en"></div>
+    </details>
   </div>
   <aside class="edition-cote">
     <div class="carte">

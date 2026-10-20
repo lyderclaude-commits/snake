@@ -143,4 +143,20 @@
     window.addEventListener('hashchange', depuisAncre);
     depuisAncre();
   }
+
+  /* ---- une lecture d'article : un signal par onglet et par article ---- */
+  var lecture = document.querySelector('[data-lecture]');
+  if (lecture) {
+    var cle = 'lyd-lu-' + lecture.dataset.article, deja = false;
+    try { deja = sessionStorage.getItem(cle) === '1'; } catch (e) { /* navigation privée : on compte quand même */ }
+    if (!deja) {
+      // Après une seconde à l'écran : un aller-retour immédiat (clic par erreur) ne compte pas.
+      setTimeout(function () {
+        var ok = false;
+        if (navigator.sendBeacon) ok = navigator.sendBeacon(lecture.dataset.lecture, '');
+        if (!ok && window.fetch) fetch(lecture.dataset.lecture, { method: 'POST', keepalive: true, credentials: 'omit' });
+        try { sessionStorage.setItem(cle, '1'); } catch (e) { /* idem */ }
+      }, 1000);
+    }
+  }
 })();

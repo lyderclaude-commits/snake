@@ -19,6 +19,9 @@ $_nonlus = $me ? messages_non_lus() : 0;
 <title><?= e(($titre ?? 'Administration') . ' · ' . reglage('nom_site')) ?></title>
 <link rel="icon" href="<?= e(actif('assets/images/favicon.svg')) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?= e(actif('assets/css/admin.css')) ?>">
+<?php /* Le manifeste : sur iPhone, les notifications n'existent que pour un site ajouté à l'écran d'accueil. */ ?>
+<link rel="manifest" href="<?= e(url('assets/manifest-admin.json')) ?>">
+<link rel="apple-touch-icon" href="<?= e(url('assets/images/icone-notification.png')) ?>">
 <script src="<?= e(actif('assets/js/admin.js')) ?>" defer></script>
 </head>
 <body data-csrf="<?= e(csrf_jeton()) ?>" data-base="<?= e(base_chemin()) ?>">
@@ -37,10 +40,13 @@ $_nonlus = $me ? messages_non_lus() : 0;
       <nav>
         <a href="<?= url('admin') ?>"<?= $_cour('admin') ?>>Tableau de bord</a>
         <details class="deroulant">
-          <summary<?= $_est('admin/articles') || $_est('admin/campagnes') || $_est('admin/medias') ? ' aria-current="true"' : '' ?>>Contenus<?= $_chev ?></summary>
+          <summary<?= $_est('admin/articles') || $_est('admin/campagnes') || $_est('admin/medias') || $_est('admin/services') || $_est('admin/temoignages') || $_est('admin/clients') ? ' aria-current="true"' : '' ?>>Contenus<?= $_chev ?></summary>
           <div class="volet">
             <a href="<?= url('admin/articles') ?>"<?= $_cour('admin/articles') ?>>Articles<small>Le blog</small></a>
             <a href="<?= url('admin/campagnes') ?>"<?= $_cour('admin/campagnes') ?>>Campagnes<small>Le portfolio</small></a>
+            <a href="<?= url('admin/services') ?>"<?= $_cour('admin/services') ?>>Services<small>Accueil et page Services</small></a>
+            <a href="<?= url('admin/temoignages') ?>"<?= $_cour('admin/temoignages') ?>>Témoignages<small>Ce que disent les clients</small></a>
+            <a href="<?= url('admin/clients') ?>"<?= $_cour('admin/clients') ?>>Logos clients<small>Ils nous font confiance</small></a>
             <a href="<?= url('admin/medias') ?>"<?= $_cour('admin/medias') ?>>Médiathèque<small>Toutes les images</small></a>
           </div>
         </details>

@@ -37,31 +37,22 @@ $image = (string) ($a['image'] ?? '');
 
     <div>
       <label>Le texte</label>
-      <div class="editeur" data-editeur>
-        <div class="editeur-barre" role="toolbar" aria-label="Mise en forme">
-          <button type="button" class="editeur-outil" data-cmd="formatBlock" data-val="H2" title="Intertitre">Titre</button>
-          <button type="button" class="editeur-outil" data-cmd="formatBlock" data-val="H3" title="Sous-titre">Sous-titre</button>
-          <button type="button" class="editeur-outil" data-cmd="formatBlock" data-val="P" title="Paragraphe">¶</button>
-          <span class="sep"></span>
-          <button type="button" class="editeur-outil" data-cmd="bold" title="Gras (Ctrl+B)"><b>G</b></button>
-          <button type="button" class="editeur-outil" data-cmd="italic" title="Italique (Ctrl+I)"><i>I</i></button>
-          <button type="button" class="editeur-outil" data-cmd="insertUnorderedList" title="Liste à puces">• Liste</button>
-          <button type="button" class="editeur-outil" data-cmd="insertOrderedList" title="Liste numérotée">1. Liste</button>
-          <button type="button" class="editeur-outil" data-cmd="formatBlock" data-val="BLOCKQUOTE" title="Citation">« »</button>
-          <span class="sep"></span>
-          <button type="button" class="editeur-outil" data-action="lien" title="Lien">Lien</button>
-          <button type="button" class="editeur-outil" data-action="image" title="Image de la médiathèque">Image</button>
-          <button type="button" class="editeur-outil" data-action="video" title="Vidéo YouTube ou Vimeo">Vidéo</button>
-          <span class="sep"></span>
-          <button type="button" class="editeur-outil" data-cmd="removeFormat" title="Effacer la mise en forme">Effacer</button>
-          <button type="button" class="editeur-outil" data-action="source" title="Voir le HTML" aria-pressed="false">HTML</button>
-        </div>
-        <div class="editeur-zone" contenteditable="true" data-invite="Racontez : le constat, ce que vous conseillez, un exemple concret." aria-label="Texte de l’article"><?= contenu_afficher((string) ($a['contenu'] ?? '')) ?></div>
-        <textarea class="editeur-source" aria-label="HTML de l’article"></textarea>
-        <input type="hidden" name="contenu" value="">
-      </div>
+      <?php $ed_nom = 'contenu'; $ed_html = (string) ($a['contenu'] ?? ''); $ed_label = 'Texte de l’article';
+            $ed_invite = 'Racontez : le constat, ce que vous conseillez, un exemple concret.'; require __DIR__ . '/_editeur.php'; ?>
       <p class="aide">Collez depuis Word ou Google Docs : la mise en forme est nettoyée à l’enregistrement. Les scripts et styles ne passent pas.</p>
     </div>
+
+    <?php $traduit = trim((string) ($a['titre_en'] ?? '')) !== '' && trim((string) ($a['contenu_en'] ?? '')) !== ''; ?>
+    <details class="carte version-en"<?= $traduit || trim((string) ($a['titre_en'] ?? '')) !== '' ? ' open' : '' ?>>
+      <summary><span class="drapeau">EN</span> <b>Version anglaise</b>
+        <span class="pastille <?= $traduit ? 'publie' : 'brouillon' ?>"><?= $traduit ? 'Traduit' : 'Pas encore traduit' ?></span></summary>
+      <p class="aide">Remplissez au moins le titre et le texte : la page anglaise (<code>/en/blog/…</code>) affiche alors cette version. Sinon, le site anglais montre l’article en français, avec la mention « disponible uniquement en français ».</p>
+      <div class="champ"><label for="titre_en">Title</label><input id="titre_en" name="titre_en" maxlength="240" value="<?= e((string) ($a['titre_en'] ?? '')) ?>" lang="en"></div>
+      <div class="champ"><label for="extrait_en">Excerpt <span class="aide" style="display:inline">(facultatif)</span></label><textarea id="extrait_en" name="extrait_en" rows="2" maxlength="600" lang="en"><?= e((string) ($a['extrait_en'] ?? '')) ?></textarea></div>
+      <label>Text</label>
+      <?php $ed_nom = 'contenu_en'; $ed_html = (string) ($a['contenu_en'] ?? ''); $ed_label = 'Texte anglais de l’article';
+            $ed_invite = 'The English version of the article.'; require __DIR__ . '/_editeur.php'; ?>
+    </details>
   </div>
 
   <aside class="edition-cote">

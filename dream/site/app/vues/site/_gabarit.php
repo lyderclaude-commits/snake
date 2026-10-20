@@ -5,7 +5,7 @@
  * JavaScript, et un moteur de recherche voit enfin les liens du site.
  */
 $_titre = $titre ?? reglage('nom_site');
-$_desc = trim((string) ($description ?? '')) ?: reglage('meta_description');
+$_desc = trim((string) ($description ?? '')) ?: reglage_l('meta_description');
 $_canon = $canonique ?? url_absolue(chemin_demande());
 $_image = absolu($og_image ?? url('assets/images/site/background.jpg'));
 $_actif = $page ?? '';
@@ -17,8 +17,13 @@ $_menu = [
     'contact' => 'Contact',
 ];
 $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
+$_interne = (string) ($GLOBALS['page_interne'] ?? chemin_demande());
+// Les langues où cette page existe vraiment (un article non traduit n'existe qu'en français).
+$_langues = $langues ?? array_keys(LANGUES);
+$_alternatives = adresses_alternatives($_interne);
+$_services_pied = function_exists('services_visibles') ? services_visibles() : [];
 ?><!DOCTYPE html>
-<html lang="fr" class="no-js">
+<html lang="<?= e(langue()) ?>" class="no-js">
 <head>
 <meta charset="UTF-8"/>
 <script>document.documentElement.className = "js";</script>
@@ -28,7 +33,12 @@ $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
 <link rel="canonical" href="<?= e($_canon) ?>"/>
 <?php if (!empty($noindex)): ?><meta name="robots" content="noindex, follow"/><?php endif; ?>
 <meta property="og:site_name" content="<?= e(reglage('nom_site')) ?>"/>
-<meta property="og:locale" content="fr_FR"/>
+<meta property="og:locale" content="<?= langue() === 'en' ? 'en_US' : 'fr_FR' ?>"/>
+<?php if (count($_langues) > 1): foreach ($_alternatives as $_code => $_adr): ?>
+<link rel="alternate" hreflang="<?= e($_code) ?>" href="<?= e($_adr) ?>"/>
+<?php endforeach; ?>
+<link rel="alternate" hreflang="x-default" href="<?= e($_alternatives['fr']) ?>"/>
+<?php endif; ?>
 <meta property="og:type" content="<?= e($og_type ?? 'website') ?>"/>
 <meta property="og:title" content="<?= e($og_titre ?? $_titre) ?>"/>
 <meta property="og:description" content="<?= e($_desc) ?>"/>
@@ -38,7 +48,7 @@ $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
 <?php if (reglage('verif_google') !== ''): ?><meta name="google-site-verification" content="<?= e(reglage('verif_google')) ?>"/><?php endif; ?>
 <meta name="theme-color" content="#000000"/>
 <link rel="icon" href="<?= e(actif('assets/images/favicon.svg')) ?>" type="image/svg+xml"/>
-<link rel="alternate" type="application/rss+xml" title="<?= e(reglage('nom_site')) ?> — Blog" href="<?= e(url('blog/flux.xml')) ?>"/>
+<link rel="alternate" type="application/rss+xml" title="<?= e(reglage('nom_site')) ?> — Blog" href="<?= e(url_langue('blog/flux.xml', 'fr')) ?>"/>
 <link rel="preload" href="<?= e(url('assets/polices/bebas-neue-latin-400-normal.woff2')) ?>" as="font" type="font/woff2" crossorigin/>
 <link rel="stylesheet" href="<?= e(actif('assets/css/site.css')) ?>"/>
 <script type="application/ld+json"><?= jsonld(['@context' => 'https://schema.org', '@graph' => $_graphe]) ?></script>
@@ -57,6 +67,15 @@ $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
       <?php foreach ($_menu as $_r => $_l): ?>
         <li><a href="<?= url($_r) ?>"<?= $_actif === $_r || ($_r === 'blog' && $_actif === 'article') ? ' class="active" aria-current="page"' : '' ?>><?= e($_l) ?></a></li>
       <?php endforeach; ?>
+      <li class="nav-langues" aria-label="Langue / Language">
+        <?php foreach (LANGUES as $_code => $_nom): ?>
+          <?php if ($_code === langue()): ?>
+            <span class="nav-langue ici" aria-current="true" title="<?= e($_nom) ?>"><?= strtoupper($_code) ?></span>
+          <?php else: ?>
+            <a class="nav-langue" href="<?= e(url_langue($_interne, $_code) . (str_contains($_interne, '?') ? '&' : '?') . 'langue=' . $_code) ?>" hreflang="<?= e($_code) ?>" lang="<?= e($_code) ?>" title="<?= e($_nom) ?>"><?= strtoupper($_code) ?></a>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </li>
       <li><a href="<?= e(wa_lien()) ?>" class="nav-cta" target="_blank" rel="noopener">Devis Gratuit</a></li>
     </ul>
   </div>
@@ -100,12 +119,9 @@ $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
     <div class="footer-col">
       <h5>Services</h5>
       <ul>
-        <li><a href="<?= url('services#community') ?>">Community Management</a></li>
-        <li><a href="<?= url('services#video') ?>">Production Vidéo & Photo</a></li>
-        <li><a href="<?= url('services#graphisme') ?>">Conception Graphique</a></li>
-        <li><a href="<?= url('services#evenement') ?>">Événementiel</a></li>
-        <li><a href="<?= url('services#regie') ?>">Régie Publicitaire</a></li>
-        <li><a href="<?= url('services#abonnement') ?>">Abonnement PME</a></li>
+        <?php foreach ($_services_pied as $_s): ?>
+          <li><a href="<?= url('services#' . $_s['ancre']) ?>"><?= e((string) texte_l($_s, 'titre')) ?></a></li>
+        <?php endforeach; ?>
       </ul>
     </div>
     <div class="footer-col">
@@ -129,14 +145,14 @@ $_graphe = array_values(array_filter([jsonld_organisation(), $jsonld ?? null]));
     </div>
   </div>
   <div class="footer-bottom">
-    <span>© <?= date('Y') ?> <?= e(reglage('nom_site')) ?> — Tous droits réservés — Lomé, Togo</span>
+    <span><?= e(t('© %s %s — Tous droits réservés — Lomé, Togo', date('Y'), reglage('nom_site'))) ?></span>
     <div style="display:flex;gap:20px">
       <a href="<?= url('mentions-legales') ?>">Mentions légales</a>
       <a href="<?= url('confidentialite') ?>">Confidentialité</a>
     </div>
   </div>
 </footer>
-<a href="<?= e(wa_lien('Bonjour Live Y Dream, je souhaite un devis.')) ?>" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">
+<a href="<?= e(wa_lien(t('Bonjour Live Y Dream, je souhaite un devis.'))) ?>" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
 </a>
 <script src="<?= e(actif('assets/js/site.js')) ?>" defer></script>

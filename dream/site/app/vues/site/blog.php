@@ -78,7 +78,8 @@ a.article-card { color: inherit; }
 .sw-search { display: flex; gap: 0; }
 .sw-search input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid var(--border); font-size: 14px; background: var(--bg); }
 .sw-search button { padding: 0 16px; border: 0; background: var(--navy); color: #fff; font-weight: 700; }
-.blog-vide { background: var(--bg-card); border: 1px solid var(--border); padding: 48px 32px; text-align: center; color: var(--text-soft); }
+.article-lang { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 7px; border: 1px solid var(--border); color: var(--text-soft); }
+.blog-vide {background: var(--bg-card); border: 1px solid var(--border); padding: 48px 32px; text-align: center; color: var(--text-soft); }
 </style>
 <?php $tete = ob_get_clean(); ?>
 <header class="page-header">
@@ -95,24 +96,26 @@ a.article-card { color: inherit; }
     <div class="blog-grid" id="articleGrid">
       <?php if ($categorie !== '' || $tag !== '' || $recherche !== ''): ?>
         <div class="blog-filtre">
-          <span><?= (int) $liste['total'] ?> article(s)
-            <?php if ($categorie !== ''): ?>dans « <?= e($categorie) ?> »<?php endif; ?>
-            <?php if ($tag !== ''): ?>avec le tag « <?= e($tag) ?> »<?php endif; ?>
-            <?php if ($recherche !== ''): ?>pour « <?= e($recherche) ?> »<?php endif; ?></span>
+          <span><?= e(trim(t('%s article(s)', (int) $liste['total'])
+              . ($categorie !== '' ? ' ' . t('dans « %s »', t($categorie)) : '')
+              . ($tag !== '' ? ' ' . t('avec le tag « %s »', $tag) : '')
+              . ($recherche !== '' ? ' ' . t('pour « %s »', $recherche) : ''))) ?></span>
           <a href="<?= url('blog') ?>">Tout afficher</a>
         </div>
       <?php endif; ?>
 
       <?php foreach ($liste['articles'] as $i => $a): ?>
       <a class="article-card<?= $i === 0 && $liste['page'] === 1 && $categorie . $tag . $recherche === '' ? ' featured-post' : '' ?>" href="<?= url('blog/' . rawurlencode($a['slug'])) ?>">
-        <img src="<?= e(article_image($a)) ?>" alt="<?= e($a['titre']) ?>" class="article-img" loading="<?= $i < 2 ? 'eager' : 'lazy' ?>"/>
+        <?php $vf = langue() === 'en' && !article_traduit($a); ?>
+        <img src="<?= e(article_image($a)) ?>" alt="<?= e(article_l($a, 'titre')) ?>" class="article-img" loading="<?= $i < 2 ? 'eager' : 'lazy' ?>"/>
         <div class="article-body">
           <div class="article-meta">
-            <?php if ($a['categorie'] !== ''): ?><span class="article-cat"><?= e($a['categorie']) ?></span><?php endif; ?>
-            <span class="article-date"><?= e(date_fr($a['publie_le'])) ?></span>
-            <span class="article-read"><?= e(temps_lecture($a['contenu'])) ?></span>
+            <?php if ($a['categorie'] !== ''): ?><span class="article-cat"><?= e(t($a['categorie'])) ?></span><?php endif; ?>
+            <span class="article-date"><?= e(date_lang($a['publie_le'])) ?></span>
+            <span class="article-read"><?= e(temps_lecture(article_l($a, 'contenu'))) ?></span>
+            <?php if ($vf): ?><span class="article-lang" title="<?= e(t('En français')) ?>">FR</span><?php endif; ?>
           </div>
-          <h2 class="article-title"><?= e($a['titre']) ?></h2>
+          <h2 class="article-title"<?= $vf ? ' lang="fr"' : '' ?>><?= e(article_l($a, 'titre')) ?></h2>
           <p class="article-excerpt"><?= e(article_extrait($a)) ?></p>
           <div class="article-footer">
             <div class="article-author"><div class="article-av"><?= e(initiales($a['auteur'] ?: 'L')) ?></div><div class="article-author-name"><?= e($a['auteur']) ?></div></div>

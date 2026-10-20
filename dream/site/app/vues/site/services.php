@@ -433,147 +433,53 @@ html,body{
       </div>
     </div>
     <div class="si-right reveal">
-      <div class="si-card"><div class="si-card-num">01</div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px">Community Management</h4><p>Stratégie, création et gestion de vos réseaux sociaux.</p></div>
-      <div class="si-card"><div class="si-card-num">02</div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px">Production Vidéo & Photo</h4><p>Studio broadcast, direction artistique, post-production.</p></div>
-      <div class="si-card"><div class="si-card-num">03</div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px">Conception Graphique</h4><p>Identité visuelle, logo, charte graphique, packaging.</p></div>
-      <div class="si-card"><div class="si-card-num">04</div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px">Événementiel</h4><p>Organisation et communication de vos événements.</p></div>
-      <div class="si-card"><div class="si-card-num">05</div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px">Régie Publicitaire</h4><p>Affichage, Facebook Ads, Google Ads, billboards.</p></div>
-      <div class="si-card"><div class="si-card-num">★</div><h4 style="font-family:var(--font-serif);font-size:15px;color:#000000 !important; margin-bottom:8px">Abonnement PME</h4><p>Tout-en-un à partir de 200€/mois.</p></div>
+      <?php foreach ($services as $sv): ?>
+      <a class="si-card" href="#<?= e($sv['ancre']) ?>"><div class="si-card-num"><?= e($sv['numero']) ?></div><h4 style="font-family:var(--font-serif);font-size:15px;color:var(--navy);margin-bottom:8px"><?= e((string) texte_l($sv, 'titre')) ?></h4><p><?= e((string) texte_l($sv, 'resume_court')) ?></p></a>
+      <?php endforeach; ?>
     </div>
   </div>
 </section>
 
-<!-- SERVICE 1: COMMUNITY MANAGEMENT -->
-<section class="service-section" id="community">
+<?php
+/* Les services détaillés : un sur deux a son image à gauche, comme la maquette. */
+$rang = 0;
+foreach ($services as $sv):
+    if (!(int) $sv['detail']) {
+        continue;
+    }
+    $gauche = $rang++ % 2 === 0;
+    $image = $sv['image'] !== '' ? image_url($sv['image']) : '';
+    ob_start(); ?>
+      <div class="ss-visual <?= $gauche ? 'reveal-l' : 'reveal-r' ?>">
+        <?php if ($image !== ''): ?><img src="<?= e($image) ?>" alt="<?= e((string) texte_l($sv, 'titre')) ?>" class="ss-img" loading="lazy"/><?php endif; ?>
+        <?php if (texte_l($sv, 'etiquette') !== ''): ?><div class="ss-img-tag"><?= e((string) texte_l($sv, 'etiquette')) ?></div><?php endif; ?>
+      </div>
+    <?php $visuel = ob_get_clean(); ?>
+<section class="service-section" id="<?= e($sv['ancre']) ?>">
   <div class="ss-inner">
     <div class="ss-grid">
-      <div class="ss-visual reveal-l">
-        <img src="<?= actif('assets/images/site/strategie.jpg') ?>" alt="Community Management" class="ss-img"/>
-        <div class="ss-img-tag">Community Management</div>
-      </div>
-      <div class="ss-content reveal-r">
-        <h2 class="section-title">Stratégie & <em>Community Management</em></h2>
-        <p class="section-sub" style="font-size:15px">Vos réseaux sociaux transformés en machines à attirer des clients. Chaque publication, chaque interaction est pensée pour convertir.</p>
+      <?= $gauche ? $visuel : '' ?>
+      <div class="ss-content <?= $gauche ? 'reveal-r' : 'reveal-l' ?>">
+        <h2 class="section-title"><?= titre_service((string) (texte_l($sv, 'titre_detail') ?: texte_l($sv, 'titre'))) ?></h2>
+        <?php if (texte_l($sv, 'description') !== ''): ?><p class="section-sub" style="font-size:15px"><?= e((string) texte_l($sv, 'description')) ?></p><?php endif; ?>
+        <?php if ($livrables = (array) texte_l($sv, 'livrables')): ?>
         <div class="ss-deliverables">
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Stratégie de contenu mensuelle</h5><p>Calendrier éditorial complet, thématiques, angles de communication</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Création de contenus quotidiens</h5><p>Posts, stories, reels, carrousels, créés par nos experts certifiés</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Modération & engagement</h5><p>Réponse aux commentaires et messages, gestion de la communauté</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Reporting mensuel</h5><p>Rapport détaillé avec KPIs, analyses et recommandations</p></div></div>
+          <?php foreach ($livrables as $lv): ?>
+          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5><?= e((string) ($lv['titre'] ?? '')) ?></h5><p><?= e((string) ($lv['texte'] ?? '')) ?></p></div></div>
+          <?php endforeach; ?>
         </div>
+        <?php endif; ?>
         <div class="ss-pricing">
-          <div><div class="ss-price-label">À partir de</div><div class="ss-price-val">75 000 FCFA/mois</div></div>
-          <a href="<?= url('contact') ?>" class="btn btn-gold">Demander un devis</a>
+          <div><?php if (texte_l($sv, 'prix_libelle') !== ''): ?><div class="ss-price-label"><?= e((string) texte_l($sv, 'prix_libelle')) ?></div><?php endif; ?><?php if (texte_l($sv, 'prix_valeur') !== ''): ?><div class="ss-price-val"><?= e((string) texte_l($sv, 'prix_valeur')) ?></div><?php endif; ?></div>
+          <a href="<?= url('contact') ?>" class="btn btn-gold"><?= e((string) (texte_l($sv, 'bouton') ?: t('Demander un devis'))) ?></a>
         </div>
       </div>
+      <?= $gauche ? '' : $visuel ?>
     </div>
   </div>
 </section>
+<?php endforeach; ?>
 
-<!-- SERVICE 2: VIDEO -->
-<section class="service-section" id="video">
-  <div class="ss-inner">
-    <div class="ss-grid">
-      <div class="ss-content reveal-l">
-        <h2 class="section-title">Production <em>Vidéo & Photo</em></h2>
-        <p class="section-sub" style="font-size:15px">Des images qui arrêtent le scroll et des vidéos qui font vendre. Studio équipé broadcast, équipe créative, direction artistique maîtrisée.</p>
-        <div class="ss-deliverables">
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Spots publicitaires TV & réseaux</h5><p>Production complète : script, tournage, montage, étalonnage</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Shooting produit & corporate</h5><p>Photos professionnelles pour vos supports de communication</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Reels & contenus courts</h5><p>Formats optimisés pour Instagram, TikTok et Facebook</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Motion design</h5><p>Animations et vidéos infographiques pour vos présentations</p></div></div>
-        </div>
-        <div class="ss-pricing">
-          <div><div class="ss-price-label">Sur devis selon projet</div><div class="ss-price-val">Dès 100€</div></div>
-          <a href="<?= url('contact') ?>" class="btn btn-gold">Obtenir un devis</a>
-        </div>
-      </div>
-      <div class="ss-visual reveal-r">
-        <img src="<?= actif('assets/images/site/production.jpg') ?>" alt="Production Vidéo" class="ss-img"/>
-        <div class="ss-img-tag">Studio Broadcast</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SERVICE 3: GRAPHISME -->
-<section class="service-section" id="graphisme">
-  <div class="ss-inner">
-    <div class="ss-grid">
-      <div class="ss-visual reveal-l">
-        <img src="<?= actif('assets/images/site/conception.jpg') ?>" alt="Conception Graphique" class="ss-img"/>
-        <div class="ss-img-tag">Identité Visuelle</div>
-      </div>
-      <div class="ss-content reveal-r">
-        <h2 class="section-title">Conception Graphique<br/>& <em>Identité Visuelle</em></h2>
-        <p class="section-sub" style="font-size:15px">Un logo que vos clients reconnaissent au premier coup d'œil, une identité qui inspire confiance et fait la différence avec vos concurrents.</p>
-        <div class="ss-deliverables">
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Création de logo</h5><p>3 propositions créatives, 2 tours de modifications inclus</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Charte graphique complète</h5><p>Couleurs, typographies, règles d'usage, exemples d'application</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Supports imprimés</h5><p>Cartes de visite, flyers, affiches, roll-up, packaging</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Habillage digital</h5><p>Templates réseaux sociaux, bannières web, présentations</p></div></div>
-        </div>
-        <div class="ss-pricing">
-          <div><div class="ss-price-label">Logo complet à partir de</div><div class="ss-price-val">50€</div></div>
-          <a href="<?= url('contact') ?>" class="btn btn-gold">Demander un devis</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SERVICE 4: ÉVÉNEMENTIEL -->
-<section class="service-section" id="evenement">
-  <div class="ss-inner">
-    <div class="ss-grid">
-      <div class="ss-content reveal-l">
-        <h2 class="section-title">Organisation<br/><em>Événementielle</em></h2>
-        <p class="section-sub" style="font-size:15px">Vos événements transformés en expériences mémorables. De la conception au jour J, nous gérons tout pour que vous soyez présent à 100%.</p>
-        <div class="ss-deliverables">
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Conception scénographique</h5><p>Direction artistique, décoration, ambiance visuelle complète</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Communication événement</h5><p>Campagne digitale, invitations, affiches, relations presse</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Coordination jour J</h5><p>Équipe dédiée sur place, logistique, gestion des imprévus</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Couverture audiovisuelle</h5><p>Photo et vidéo live, montage post-événement, restitution</p></div></div>
-        </div>
-        <div class="ss-pricing">
-          <div><div class="ss-price-label">Sur devis selon envergure</div><div class="ss-price-val">Dès 300€</div></div>
-          <a href="<?= url('contact') ?>" class="btn btn-gold">Obtenir un devis</a>
-        </div>
-      </div>
-      <div class="ss-visual reveal-r">
-        <img src="<?= actif('assets/images/site/organisation.jpg') ?>" alt="Événementiel" class="ss-img"/>
-        <div class="ss-img-tag">Activation de Marque</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SERVICE 5: RÉGIE -->
-<section class="service-section" id="regie">
-  <div class="ss-inner">
-    <div class="ss-grid">
-      <div class="ss-visual reveal-l">
-        <img src="<?= actif('assets/images/site/regie.jpg') ?>" alt="Régie Publicitaire" class="ss-img"/>
-        <div class="ss-img-tag">Régie Publicitaire</div>
-      </div>
-      <div class="ss-content reveal-r">
-        <h2 class="section-title">Régie Publicitaire<br/>& <em>Affichage</em></h2>
-        <p class="section-sub" style="font-size:15px">Panneaux, affichage digital, pub Facebook/Google, nous gérons vos investissements publicitaires pour maximiser chaque FCFA dépensé.</p>
-        <div class="ss-deliverables">
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Affichage extérieur & billboards</h5><p>Sélection des emplacements, création des visuels, gestion des droits</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Facebook & Instagram Ads</h5><p>Ciblage précis, création des publicités, optimisation quotidienne</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Google Ads & SEA</h5><p>Campagnes de recherche et display, mots-clés optimisés</p></div></div>
-          <div class="ss-deliverable"><div class="ss-deliverable-check">✓</div><div class="ss-deliverable-text"><h5>Suivi & optimisation</h5><p>Reporting détaillé, ajustements en temps réel, recommandations</p></div></div>
-        </div>
-        <div class="ss-pricing">
-          <div><div class="ss-price-label">Gestion à partir de</div><div class="ss-price-val">100€/mois</div></div>
-          <a href="<?= url('contact') ?>" class="btn btn-gold">Demander un devis</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SERVICE 6: ABONNEMENT -->
 <section class="service-section" id="abonnement" style="background:var(--bg)!important">
   <div class="ss-inner">
     <div style="text-align:center;max-width:680px;margin:0 auto" class="reveal">

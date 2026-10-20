@@ -9,7 +9,9 @@
 
 declare(strict_types=1);
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
+/** La version du schéma de la base ; `assurer_schema()` rejoue les étapes qui manquent. */
+const SCHEMA_VERSION = 4;
 define('RACINE', dirname(__DIR__));
 
 /**
@@ -94,110 +96,167 @@ function maintenant(?int $t = null): string
 function assurer_schema(PDO $pdo): void
 {
     $v = (int) $pdo->query('PRAGMA user_version')->fetchColumn();
-    if ($v >= 3) {
+    if ($v >= SCHEMA_VERSION) {
         return;
     }
-    if ($v >= 1) {
-        if ($v < 2) {
-            // v2 : un article importé puis retouché ici le dit explicitement.
-            $pdo->exec('ALTER TABLE articles ADD COLUMN retouche INTEGER NOT NULL DEFAULT 0');
-        }
+    if ($v === 0) {
+        // Une base neuve : le schéma v3 d'un bloc, les étapes suivantes complètent.
+        $pdo->exec(<<<SQL
+        CREATE TABLE IF NOT EXISTS utilisateurs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            mdp TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'editeur',
+            actif INTEGER NOT NULL DEFAULT 1,
+            cree_le TEXT NOT NULL,
+            vu_le TEXT
+        );
+        CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT NOT NULL UNIQUE,
+            titre TEXT NOT NULL,
+            extrait TEXT NOT NULL DEFAULT '',
+            contenu TEXT NOT NULL DEFAULT '',
+            image TEXT NOT NULL DEFAULT '',
+            categorie TEXT NOT NULL DEFAULT '',
+            tags TEXT NOT NULL DEFAULT '[]',
+            auteur TEXT NOT NULL DEFAULT '',
+            statut TEXT NOT NULL DEFAULT 'brouillon',
+            publie_le TEXT,
+            cree_le TEXT NOT NULL,
+            modifie_le TEXT NOT NULL,
+            wp_id INTEGER UNIQUE,
+            wp_lien TEXT,
+            wp_chemin TEXT,
+            importe_le TEXT,
+            retouche INTEGER NOT NULL DEFAULT 0,
+            lectures INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS articles_publies ON articles(statut, publie_le);
+        CREATE INDEX IF NOT EXISTS articles_wp_chemin ON articles(wp_chemin);
+        CREATE TABLE IF NOT EXISTS campagnes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titre TEXT NOT NULL,
+            client TEXT NOT NULL DEFAULT '',
+            categorie TEXT NOT NULL DEFAULT 'digital',
+            annee TEXT NOT NULL DEFAULT '',
+            extrait TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            image TEXT NOT NULL DEFAULT '',
+            vedette INTEGER NOT NULL DEFAULT 0,
+            resultats TEXT NOT NULL DEFAULT '[]',
+            tags TEXT NOT NULL DEFAULT '[]',
+            publie INTEGER NOT NULL DEFAULT 1,
+            ordre INTEGER NOT NULL DEFAULT 0,
+            cree_le TEXT NOT NULL,
+            modifie_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS medias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chemin TEXT NOT NULL UNIQUE,
+            nom TEXT NOT NULL,
+            type TEXT NOT NULL,
+            taille INTEGER NOT NULL DEFAULT 0,
+            largeur INTEGER NOT NULL DEFAULT 0,
+            hauteur INTEGER NOT NULL DEFAULT 0,
+            source_url TEXT UNIQUE,
+            cree_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL,
+            entreprise TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL,
+            whatsapp TEXT NOT NULL DEFAULT '',
+            besoin TEXT NOT NULL DEFAULT '',
+            budget TEXT NOT NULL DEFAULT '',
+            message TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '',
+            lu INTEGER NOT NULL DEFAULT 0,
+            courriel TEXT NOT NULL DEFAULT '',
+            cree_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS reglages (
+            cle TEXT PRIMARY KEY,
+            valeur TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS tentatives (
+            cle TEXT NOT NULL,
+            quand INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS tentatives_cle ON tentatives(cle, quand);
+        SQL);
+        $v = 3;
+    }
+    if ($v < 2) {
+        // v2 : un article importé puis retouché ici le dit explicitement.
+        $pdo->exec('ALTER TABLE articles ADD COLUMN retouche INTEGER NOT NULL DEFAULT 0');
+    }
+    if ($v < 3) {
         // v3 : chaque demande garde le résultat de son envoi par e-mail.
         $pdo->exec("ALTER TABLE messages ADD COLUMN courriel TEXT NOT NULL DEFAULT ''");
         // L'ancien réglage « destinataire » devient une copie : contact@ est désormais fixe.
         $pdo->exec("INSERT OR IGNORE INTO reglages (cle, valeur) SELECT 'contact_copies', valeur FROM reglages
             WHERE cle = 'contact_destinataire' AND lower(valeur) <> 'contact@liveydream.com'");
         $pdo->exec("DELETE FROM reglages WHERE cle = 'contact_destinataire'");
-        $pdo->exec('PRAGMA user_version = 3');
-        return;
     }
-    $pdo->exec(<<<SQL
-    CREATE TABLE IF NOT EXISTS utilisateurs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        mdp TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'editeur',
-        actif INTEGER NOT NULL DEFAULT 1,
-        cree_le TEXT NOT NULL,
-        vu_le TEXT
-    );
-    CREATE TABLE IF NOT EXISTS articles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        slug TEXT NOT NULL UNIQUE,
-        titre TEXT NOT NULL,
-        extrait TEXT NOT NULL DEFAULT '',
-        contenu TEXT NOT NULL DEFAULT '',
-        image TEXT NOT NULL DEFAULT '',
-        categorie TEXT NOT NULL DEFAULT '',
-        tags TEXT NOT NULL DEFAULT '[]',
-        auteur TEXT NOT NULL DEFAULT '',
-        statut TEXT NOT NULL DEFAULT 'brouillon',
-        publie_le TEXT,
-        cree_le TEXT NOT NULL,
-        modifie_le TEXT NOT NULL,
-        wp_id INTEGER UNIQUE,
-        wp_lien TEXT,
-        wp_chemin TEXT,
-        importe_le TEXT,
-        retouche INTEGER NOT NULL DEFAULT 0,
-        lectures INTEGER NOT NULL DEFAULT 0
-    );
-    CREATE INDEX IF NOT EXISTS articles_publies ON articles(statut, publie_le);
-    CREATE INDEX IF NOT EXISTS articles_wp_chemin ON articles(wp_chemin);
-    CREATE TABLE IF NOT EXISTS campagnes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titre TEXT NOT NULL,
-        client TEXT NOT NULL DEFAULT '',
-        categorie TEXT NOT NULL DEFAULT 'digital',
-        annee TEXT NOT NULL DEFAULT '',
-        extrait TEXT NOT NULL DEFAULT '',
-        description TEXT NOT NULL DEFAULT '',
-        image TEXT NOT NULL DEFAULT '',
-        vedette INTEGER NOT NULL DEFAULT 0,
-        resultats TEXT NOT NULL DEFAULT '[]',
-        tags TEXT NOT NULL DEFAULT '[]',
-        publie INTEGER NOT NULL DEFAULT 1,
-        ordre INTEGER NOT NULL DEFAULT 0,
-        cree_le TEXT NOT NULL,
-        modifie_le TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS medias (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chemin TEXT NOT NULL UNIQUE,
-        nom TEXT NOT NULL,
-        type TEXT NOT NULL,
-        taille INTEGER NOT NULL DEFAULT 0,
-        largeur INTEGER NOT NULL DEFAULT 0,
-        hauteur INTEGER NOT NULL DEFAULT 0,
-        source_url TEXT UNIQUE,
-        cree_le TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom TEXT NOT NULL,
-        entreprise TEXT NOT NULL DEFAULT '',
-        email TEXT NOT NULL,
-        whatsapp TEXT NOT NULL DEFAULT '',
-        besoin TEXT NOT NULL DEFAULT '',
-        budget TEXT NOT NULL DEFAULT '',
-        message TEXT NOT NULL DEFAULT '',
-        ip TEXT NOT NULL DEFAULT '',
-        lu INTEGER NOT NULL DEFAULT 0,
-        courriel TEXT NOT NULL DEFAULT '',
-        cree_le TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS reglages (
-        cle TEXT PRIMARY KEY,
-        valeur TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS tentatives (
-        cle TEXT NOT NULL,
-        quand INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS tentatives_cle ON tentatives(cle, quand);
-    SQL);
-    $pdo->exec('PRAGMA user_version = 3');
+    if ($v < 4) {
+        // v4 : le site parle anglais, et l'accueil se règle (services, témoignages, clients),
+        // et l'équipe reçoit une notification push à chaque demande.
+        $pdo->exec(<<<SQL
+        ALTER TABLE articles ADD COLUMN titre_en TEXT NOT NULL DEFAULT '';
+        ALTER TABLE articles ADD COLUMN extrait_en TEXT NOT NULL DEFAULT '';
+        ALTER TABLE articles ADD COLUMN contenu_en TEXT NOT NULL DEFAULT '';
+        ALTER TABLE campagnes ADD COLUMN en TEXT NOT NULL DEFAULT '{}';
+        ALTER TABLE messages ADD COLUMN langue TEXT NOT NULL DEFAULT 'fr';
+        CREATE TABLE IF NOT EXISTS services (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ancre TEXT NOT NULL UNIQUE,
+            numero TEXT NOT NULL DEFAULT '',
+            icone TEXT NOT NULL DEFAULT 'cible',
+            image TEXT NOT NULL DEFAULT '',
+            vedette INTEGER NOT NULL DEFAULT 0,
+            detail INTEGER NOT NULL DEFAULT 1,
+            fr TEXT NOT NULL DEFAULT '{}',
+            en TEXT NOT NULL DEFAULT '{}',
+            ordre INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1,
+            modifie_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS temoignages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entreprise TEXT NOT NULL DEFAULT '',
+            note INTEGER NOT NULL DEFAULT 5,
+            fr TEXT NOT NULL DEFAULT '{}',
+            en TEXT NOT NULL DEFAULT '{}',
+            ordre INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1,
+            modifie_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL,
+            logo TEXT NOT NULL DEFAULT '',
+            lien TEXT NOT NULL DEFAULT '',
+            ordre INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1,
+            modifie_le TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS push_abonnements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            appareil TEXT NOT NULL DEFAULT '',
+            cree_le TEXT NOT NULL,
+            dernier_envoi TEXT,
+            dernier_resultat TEXT NOT NULL DEFAULT ''
+        );
+        SQL);
+    }
+    $pdo->exec('PRAGMA user_version = ' . SCHEMA_VERSION);
 }
 
 /* ------------------------------------------------------------------ */
@@ -244,6 +303,20 @@ function reglages_defaut(): array
         'wp_racine' => 'https://liveydream.com/wp-json/wp/v2',
         'mentions_legales' => '',
         'confidentialite' => '',
+        // L'anglais des réglages affichés sur le site (`reglage_l()` retombe sur le français si vide).
+        'hero_titre_en' => 'YOUR CLIENTS CAN\'T IGNORE YOU',
+        'hero_sous_titre_en' => 'In Africa, visibility is real power. We turn your brand into a force that can\'t be ignored.',
+        'stat1_libelle_en' => 'Years of expertise',
+        'stat2_libelle_en' => 'Brands supported',
+        'stat3_libelle_en' => 'Countries',
+        'stat4_libelle_en' => 'Experts on the team',
+        'adresse2_en' => 'Lomé, Togo (near STEA)',
+        'horaires_semaine_en' => '8:30 am — 6:00 pm',
+        'horaires_samedi_en' => '9:00 am — 2:00 pm',
+        'horaires_dimanche_en' => 'Closed',
+        'meta_description_en' => 'Since 2013, Live Y Dream has been the leading communication agency in Lomé, Togo. Digital marketing, graphic design, video production, events, community management.',
+        'mentions_legales_en' => '',
+        'confidentialite_en' => '',
     ];
 }
 
@@ -301,14 +374,65 @@ function base_url(): string
     return ($https ? 'https' : 'http') . '://' . $hote . base_chemin();
 }
 
-function url(string $chemin = ''): string
+/* ------------------------------------------------------------------ */
+/* Langue                                                              */
+/* ------------------------------------------------------------------ */
+
+const LANGUES = ['fr' => 'Français', 'en' => 'English'];
+
+/**
+ * Les pages publiques et leur adresse anglaise.
+ *
+ * Le code parle toujours français (`url('campagnes')`) : c'est `url()` qui
+ * traduit l'adresse quand la page est servie en anglais. Une vue écrite une
+ * fois sert donc les deux langues, et aucun lien ne part dans la mauvaise.
+ */
+const ROUTES_EN = [
+    '' => '', 'services' => 'services', 'campagnes' => 'campaigns', 'blog' => 'blog', 'a-propos' => 'about',
+    'contact' => 'contact', 'mentions-legales' => 'legal-notice', 'confidentialite' => 'privacy',
+];
+
+function langue(?string $poser = null): string
 {
-    return base_chemin() . '/' . ltrim($chemin, '/');
+    static $l = 'fr';
+    if ($poser !== null && isset(LANGUES[$poser])) {
+        $l = $poser;
+    }
+    return $l;
 }
 
-function url_absolue(string $chemin = ''): string
+/** Un chemin interne (français) écrit pour une langue donnée : `campagnes#x` → `en/campaigns#x`. */
+function chemin_en_langue(string $chemin, string $l): string
 {
-    return base_url() . '/' . ltrim($chemin, '/');
+    $chemin = ltrim($chemin, '/');
+    if ($l === 'fr') {
+        return $chemin;
+    }
+    if (!preg_match('~^([^/?#]*)(.*)$~s', $chemin, $m) || !array_key_exists($m[1], ROUTES_EN)) {
+        return $chemin; // l'administration, les fichiers, les images : une seule adresse
+    }
+    $reste = $m[2];
+    $tete = ROUTES_EN[$m[1]];
+    if ($tete === '') {
+        // L'accueil : `en`, puis `?…` ou `#…` collés, jamais `en/`.
+        return 'en' . $reste;
+    }
+    return 'en/' . $tete . $reste;
+}
+
+function url_langue(string $chemin, string $l): string
+{
+    return base_chemin() . '/' . chemin_en_langue($chemin, $l);
+}
+
+function url(string $chemin = ''): string
+{
+    return url_langue($chemin, langue());
+}
+
+function url_absolue(string $chemin = '', ?string $l = null): string
+{
+    return base_url() . '/' . chemin_en_langue($chemin, $l ?? langue());
 }
 
 /** Un fichier statique, avec sa date en paramètre pour casser le cache à chaque mise à jour. */

@@ -94,6 +94,9 @@ $n = [
 <div class="bord-pastilles">
   <a href="<?= url('admin/articles') ?>">Articles <span><?= $n['articles'] + $n['brouillons'] ?></span></a>
   <a href="<?= url('admin/campagnes') ?>">Campagnes <span><?= $n['campagnes'] ?></span></a>
+  <a href="<?= url('admin/services') ?>">Services <span><?= (int) valeur('SELECT COUNT(*) FROM services') ?></span></a>
+  <a href="<?= url('admin/temoignages') ?>">Témoignages <span><?= (int) valeur('SELECT COUNT(*) FROM temoignages') ?></span></a>
+  <a href="<?= url('admin/clients') ?>">Logos clients <span><?= (int) valeur('SELECT COUNT(*) FROM clients') ?></span></a>
   <a href="<?= url('admin/medias') ?>">Médiathèque <span><?= $n['medias'] ?></span></a>
   <a href="<?= url('admin/messages') ?>">Messages <span><?= $n['messages'] ?></span></a>
   <?php if (est_admin($me)): ?>

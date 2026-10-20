@@ -20,7 +20,11 @@ function vue_site(string $nom, array $donnees = [], int $code = 200): never
     ob_start();
     require RACINE . '/app/vues/site/' . $nom . '.php';
     $contenu = ob_get_clean();
+    ob_start();
     require RACINE . '/app/vues/site/_gabarit.php';
+    $page_html = (string) ob_get_clean();
+    // La page anglaise : les textes écrits dans les vues passent au dictionnaire.
+    echo langue() === 'fr' ? $page_html : traduire_html($page_html, langue());
     exit;
 }
 
@@ -66,6 +70,10 @@ function icone(string $nom, int $taille = 40): string
         'lieu' => '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
         'telephone' => '<path d="M5 3h3.5l1.5 4.5-2 1.5a12 12 0 0 0 7 7l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
         'courriel' => '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3.5 6l8.5 7 8.5-7"/>',
+        'abonnement' => '<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/>',
+        'video' => '<rect x="3" y="6" width="13" height="12" rx="1.5"/><path d="M16 10l5-3v10l-5-3z"/>',
+        'web' => '<rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M8 21h8M12 17v4M3 8h18"/>',
+        'graphique' => '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/><path d="M16 7h4v4"/>',
     ];
     return '<svg width="' . $taille . '" height="' . $taille . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         . 'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($traits[$nom] ?? '') . '</svg>';
@@ -95,7 +103,7 @@ function jsonld_organisation(): array
         '@type' => 'LocalBusiness',
         '@id' => url_absolue('') . '#organisation',
         'name' => reglage('nom_site'),
-        'description' => 'Agence de communication et marketing digital à Lomé, Togo',
+        'description' => langue() === 'en' ? 'Communication and digital marketing agency in Lomé, Togo' : 'Agence de communication et marketing digital à Lomé, Togo',
         'url' => url_absolue(''),
         'telephone' => preg_replace('/[^\d+]/', '', reglage('telephone')),
         'email' => reglage('email'),
@@ -106,22 +114,41 @@ function jsonld_organisation(): array
     ];
 }
 
-/** Le plan du site pour les moteurs. */
+/**
+ * Le plan du site pour les moteurs, dans les deux langues.
+ *
+ * Chaque page annonce sa jumelle (`xhtml:link hreflang`) : Google sert
+ * alors la bonne langue à chacun au lieu de les compter comme deux pages
+ * concurrentes. Un article non traduit n'a qu'une adresse, la française.
+ */
 function sitemap(): string
 {
-    $x = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    $x = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
+        . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' . "\n";
+    $entree = static function (string $p, array $langues, string $lastmod = '') {
+        $s = '';
+        foreach ($langues as $l) {
+            $s .= '  <url><loc>' . e(url_absolue($p, $l)) . '</loc>' . ($lastmod !== '' ? '<lastmod>' . e($lastmod) . '</lastmod>' : '');
+            if (count($langues) > 1) {
+                foreach ($langues as $autre) {
+                    $s .= '<xhtml:link rel="alternate" hreflang="' . $autre . '" href="' . e(url_absolue($p, $autre)) . '"/>';
+                }
+            }
+            $s .= "</url>\n";
+        }
+        return $s;
+    };
     foreach (['', 'services', 'campagnes', 'blog', 'a-propos', 'contact'] as $p) {
-        $x .= '  <url><loc>' . e(url_absolue($p)) . "</loc></url>\n";
+        $x .= $entree($p, array_keys(LANGUES));
     }
-    foreach (tous('SELECT slug, modifie_le FROM articles WHERE ' . sql_article_en_ligne() . ' ORDER BY publie_le DESC') as $a) {
-        $x .= '  <url><loc>' . e(url_absolue('blog/' . rawurlencode($a['slug']))) . '</loc><lastmod>'
-            . e(substr((string) $a['modifie_le'], 0, 10)) . "</lastmod></url>\n";
+    foreach (tous('SELECT slug, modifie_le, titre_en, contenu_en FROM articles WHERE ' . sql_article_en_ligne() . ' ORDER BY publie_le DESC') as $a) {
+        $x .= $entree('blog/' . rawurlencode($a['slug']), article_traduit($a) ? array_keys(LANGUES) : ['fr'], substr((string) $a['modifie_le'], 0, 10));
     }
     return $x . "</urlset>\n";
 }
 
 /** Une demande de contact : enregistrée, puis signalée par e-mail. */
-function contact_recevoir(array $v): ?string
+function contact_recevoir(array $v, ?int &$id = null): ?string
 {
     if (trim((string) ($v['site_web'] ?? '')) !== '') {
         return null; // le champ piège : un robot l'a rempli, on fait semblant d'accepter
@@ -131,18 +158,45 @@ function contact_recevoir(array $v): ?string
         $d[$k] = mb_substr(trim((string) ($v[$k] ?? '')), 0, $max);
     }
     if ($d['nom'] === '' || $d['whatsapp'] === '') {
-        return 'Indiquez votre nom et votre numéro WhatsApp.';
+        return t('Indiquez votre nom et votre numéro WhatsApp.');
     }
     if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) {
-        return 'Cette adresse e-mail ne semble pas valide.';
+        return t('Cette adresse e-mail ne semble pas valide.');
     }
     $cle = 'contact:' . ip_client();
-    if (tentatives_recentes($cle, 3600) >= 5) {
-        return 'Vous avez déjà envoyé plusieurs demandes. Pour aller plus vite, écrivez-nous sur WhatsApp.';
+    // Huit par heure et par adresse : assez pour une équipe derrière une même box, trop peu pour un robot.
+    if (tentatives_recentes($cle, 3600) >= 8) {
+        return t('Vous avez déjà envoyé plusieurs demandes. Pour aller plus vite, écrivez-nous sur WhatsApp.');
     }
     tentative_noter($cle);
-    q('INSERT INTO messages (nom, entreprise, email, whatsapp, besoin, budget, message, ip, cree_le) VALUES (?,?,?,?,?,?,?,?,?)',
-        [$d['nom'], $d['entreprise'], $d['email'], $d['whatsapp'], $d['besoin'], $d['budget'], $d['message'], ip_client(), maintenant()]);
-    courriel_demande(un('SELECT * FROM messages WHERE id = ?', [(int) db()->lastInsertId()]));
+    q('INSERT INTO messages (nom, entreprise, email, whatsapp, besoin, budget, message, ip, langue, cree_le) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        [$d['nom'], $d['entreprise'], $d['email'], $d['whatsapp'], $d['besoin'], $d['budget'], $d['message'], ip_client(), langue(), maintenant()]);
+    $id = (int) db()->lastInsertId();
     return null;
+}
+
+/** Prévient l'équipe d'une demande : e-mail à contact@, notification push aux appareils abonnés. */
+function contact_notifier(int $id): void
+{
+    @set_time_limit(90);
+    ignore_user_abort(true);
+    $m = un('SELECT * FROM messages WHERE id = ?', [$id]);
+    if (!$m) {
+        return;
+    }
+    courriel_demande($m);
+    push_nouveau_message($m);
+}
+
+/** Le titre d'un service : `*mots*` en italique doré, une ligne par retour à la ligne. */
+function titre_service(string $s): string
+{
+    return nl2br((string) preg_replace('/\*(.+?)\*/u', '<em>$1</em>', e($s)), false);
+}
+
+/** Les robots, aperçus de liens et outils de mesure : ils ne lisent pas, ils ne comptent pas. */
+function est_robot(): bool
+{
+    $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    return $ua === '' || (bool) preg_match('/bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|curl|wget|python|headless(?!chrome)|lighthouse|pingdom/', $ua);
 }

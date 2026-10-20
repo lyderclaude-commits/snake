@@ -171,7 +171,8 @@ function smtp_envoyer(string $de, array $a, array $entetes, string $corps): arra
 function courriel_demande(array $m): array
 {
     $champs = ['Nom' => $m['nom'], 'Entreprise' => $m['entreprise'], 'E-mail' => $m['email'],
-        'WhatsApp' => $m['whatsapp'], 'Besoin' => $m['besoin'], 'Budget' => $m['budget']];
+        'WhatsApp' => $m['whatsapp'], 'Besoin' => $m['besoin'], 'Budget' => $m['budget'],
+        'Langue' => ($m['langue'] ?? 'fr') === 'en' ? 'anglais (site /en) — répondre en anglais' : 'français'];
     $lien = url_absolue('admin/messages/' . (int) $m['id']);
     $wa = preg_replace('/\D+/', '', (string) $m['whatsapp']);
 

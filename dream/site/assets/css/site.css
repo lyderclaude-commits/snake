@@ -375,7 +375,9 @@ input, textarea, select { font-family: var(--font-body); }
   
 /* ========== AJOUTS DE LA MISE EN PRODUCTION ========== */
 .nav-cta { white-space: nowrap; }
-a.pg-item, a.cg-item { display: block; color: inherit; }
+a.pg-item, a.cg-item, a.service-card, a.client-cell, a.si-card { display: block; color: inherit; }
+a.client-cell { display: flex; }
+.service-card.featured-service .s-tag { color: #fff !important; }
 .s-icon svg, .cd-icon svg { display: block; color: var(--navy); }
 .service-card.featured-service .s-icon svg { color: #fff; }
 .page-404 { padding: 180px var(--gutter) 120px; text-align: center; background: var(--bg); }
@@ -388,3 +390,16 @@ a.pg-item, a.cg-item { display: block; color: inherit; }
 .page-legale p, .page-legale li { color: var(--text-mid); line-height: 1.8; margin-bottom: 12px; }
 .page-legale ul { list-style: disc; margin-left: 1.3em; }
 .page-legale a { color: var(--gold-dark); text-decoration: underline; }
+
+/* ========== SÉLECTEUR DE LANGUE ========== */
+.nav-langues { display: flex; align-items: center; gap: 2px; margin-left: 4px; }
+.nav-langue { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; padding: 6px 8px; color: var(--text-soft); border: 1px solid transparent; line-height: 1; }
+a.nav-langue:hover { color: var(--navy); border-color: var(--border); }
+.nav-langue.ici { color: var(--navy); border-color: var(--navy); }
+.nav-menu a.nav-langue::after { display: none !important; }
+@media (max-width: 1024px) {
+  nav.site-nav ul.nav-menu.open li.nav-langues { display: flex !important; gap: 10px; padding: 18px 4px; margin: 0 !important; }
+  nav.site-nav ul.nav-menu.open li.nav-langues .nav-langue { display: inline-block !important; width: auto !important; padding: 10px 14px !important; font-size: 13px !important; border: 1px solid #E5E7EB !important; }
+  nav.site-nav ul.nav-menu.open li.nav-langues .nav-langue.ici { border-color: #0A1628 !important; color: #0A1628 !important; }
+  nav.site-nav ul.nav-menu.open li.nav-langues a.nav-langue:hover { padding-left: 14px !important; }
+}

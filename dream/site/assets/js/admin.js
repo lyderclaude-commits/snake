@@ -127,7 +127,7 @@
 
   /* ---- l'éditeur ---- */
   document.querySelectorAll('[data-editeur]').forEach(function (ed) {
-    var zone = ed.querySelector('.editeur-zone'), source = ed.querySelector('.editeur-source'), cache = ed.querySelector('input[name=contenu]');
+    var zone = ed.querySelector('.editeur-zone'), source = ed.querySelector('.editeur-source'), cache = ed.querySelector('[data-editeur-champ]');
     var form = ed.closest('form');
     var enSource = false;
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) { /* ancien navigateur */ }
@@ -233,6 +233,63 @@
     form.addEventListener('submit', function () { sale = false; });
     window.addEventListener('beforeunload', function (e) { if (sale) { e.preventDefault(); e.returnValue = ''; } });
   });
+
+  /* ---- notifications push de cet appareil ---- */
+  var push = document.querySelector('[data-push]');
+  if (push) {
+    var etatP = push.querySelector('[data-push-etat]'), bOn = push.querySelector('[data-push-activer]'), bOff = push.querySelector('[data-push-couper]');
+    var dire = function (t, genre) { etatP.hidden = false; etatP.className = 'msg ' + (genre || 'info'); etatP.textContent = t; };
+    var b64 = function (s) {
+      var p = '='.repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), u = new Uint8Array(b.length);
+      for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+      return u;
+    };
+    var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      if (ios) push.querySelector('[data-push-ios]').hidden = false;
+      else dire('Ce navigateur ne sait pas recevoir de notifications. Essayez Chrome, Edge ou Firefox.', 'attention');
+    } else if (!window.isSecureContext) {
+      dire('Les notifications exigent une adresse en https://. Elles s’activeront une fois le site en ligne avec son certificat.', 'attention');
+    } else {
+      var enregistrement = navigator.serviceWorker.register(base + '/sw.js', { scope: base + '/' });
+      var montrer = function () {
+        enregistrement.then(function (r) { return r.pushManager.getSubscription(); }).then(function (ab) {
+          bOn.hidden = !!ab; bOff.hidden = !ab;
+          if (Notification.permission === 'denied') {
+            bOn.hidden = true;
+            dire('Les notifications sont bloquées pour ce site dans les réglages du navigateur. Autorisez-les (icône du cadenas, à gauche de l’adresse), puis rechargez la page.', 'attention');
+          } else if (ab) {
+            dire('Cet appareil reçoit les notifications des nouvelles demandes.', 'ok');
+          }
+        });
+      };
+      montrer();
+      bOn.addEventListener('click', function () {
+        bOn.disabled = true;
+        fetch(base + '/admin/push/cle', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (c) {
+          if (!c.ok) throw new Error('Le serveur ne peut pas envoyer de notifications' + (c.manque && c.manque.length ? ' (il manque : ' + c.manque.join(', ') + ')' : '') + '.');
+          return Notification.requestPermission().then(function (perm) {
+            if (perm !== 'granted') throw new Error('Vous n’avez pas autorisé les notifications.');
+            return enregistrement;
+          }).then(function (r) {
+            return r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(c.cle) });
+          });
+        }).then(function (ab) {
+          var j = ab.toJSON();
+          return poster('admin/push/abonner', { endpoint: ab.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+        }).then(function (d) {
+          if (!d.ok) throw new Error(d.erreur || 'L’abonnement a été refusé.');
+          location.reload();
+        }).catch(function (e) { dire(e.message, 'err'); }).then(function () { bOn.disabled = false; });
+      });
+      bOff.addEventListener('click', function () {
+        enregistrement.then(function (r) { return r.pushManager.getSubscription(); }).then(function (ab) {
+          if (!ab) return null;
+          return poster('admin/push/desabonner', { endpoint: ab.endpoint, format: 'json' }).then(function () { return ab.unsubscribe(); });
+        }).then(function () { location.reload(); });
+      });
+    }
+  }
 
   /* ---- import WordPress ---- */
   var imp = document.querySelector('[data-import]');

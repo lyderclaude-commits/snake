@@ -528,16 +528,16 @@ html,body{
 <section class="hero" id="hero">
   <div class="hero-left">
     <div class="hero-badge"><div class="badge-dot"></div>Agence N°1 à Lomé depuis 2013</div>
-    <h1 class="hero-headline" id="heroTitle"><?= texte_marque(reglage('hero_titre')) ?></h1>
-    <p class="hero-tagline" id="heroSub"><?= texte_marque(reglage('hero_sous_titre')) ?></p>
+    <h1 class="hero-headline" id="heroTitle"><?= texte_marque(reglage_l('hero_titre')) ?></h1>
+    <p class="hero-tagline" id="heroSub"><?= texte_marque(reglage_l('hero_sous_titre')) ?></p>
     <div class="hero-actions">
       <a href="<?= url('contact') ?>" class="btn btn-gold"><span>Audit gratuit</span> </a>
       <a href="<?= url('campagnes') ?>" class="btn btn-outline">Voir nos campagnes</a>
     </div>
     <div class="hero-stats">
-      <div><?= compteur(reglage('stat1'), 'stat-num') ?><div class="stat-label"><?= e(reglage('stat1_libelle')) ?></div></div>
-      <div><?= compteur(reglage('stat2'), 'stat-num') ?><div class="stat-label"><?= e(reglage('stat2_libelle')) ?></div></div>
-      <div><?= compteur(reglage('stat3'), 'stat-num') ?><div class="stat-label"><?= e(reglage('stat3_libelle')) ?></div></div>
+      <div><?= compteur(reglage('stat1'), 'stat-num') ?><div class="stat-label"><?= e(reglage_l('stat1_libelle')) ?></div></div>
+      <div><?= compteur(reglage('stat2'), 'stat-num') ?><div class="stat-label"><?= e(reglage_l('stat2_libelle')) ?></div></div>
+      <div><?= compteur(reglage('stat3'), 'stat-num') ?><div class="stat-label"><?= e(reglage_l('stat3_libelle')) ?></div></div>
     </div>
   </div>
   <div class="hero-right">
@@ -593,54 +593,16 @@ html,body{
       </div>
     </div>
     <div class="services-grid reveal">
-      <div class="service-card" onclick="location.href='<?= url('services#community') ?>'">
-        <div class="s-num">01</div>
-        <div class="s-icon"><?= icone('cible') ?></div>
-        <h3>Stratégie & Community Management</h3>
-        <p>Vos réseaux sociaux transformés en machines à attirer des clients. Contenus, calendriers, interactions, on gère tout.</p>
-        <div class="s-tags"><span class="s-tag">Facebook</span><span class="s-tag">Instagram</span><span class="s-tag">TikTok</span><span class="s-tag">LinkedIn</span></div>
-        <a href="<?= url('services#community') ?>" class="s-link">En savoir plus →</a>
-      </div>
-      <div class="service-card" onclick="location.href='<?= url('services#video') ?>'">
-        <div class="s-num">02</div>
-        <div class="s-icon"><?= icone('photos') ?></div>
-        <h3>Production Vidéo & Photo</h3>
-        <p>Des images qui arrêtent le scroll et des vidéos qui font vendre. Studio équipé, équipe créative, direction artistique.</p>
-        <div class="s-tags"><span class="s-tag">Publicités</span><span class="s-tag">Corporate</span><span class="s-tag">Shooting</span></div>
-        <a href="<?= url('services#video') ?>" class="s-link">En savoir plus →</a>
-      </div>
-      <div class="service-card" onclick="location.href='<?= url('services#graphisme') ?>'">
-        <div class="s-num">03</div>
-        <div class="s-icon"><?= icone('design') ?></div>
-        <h3>Conception Graphique & Identité</h3>
-        <p>Un logo reconnaissable, une identité qui inspire confiance et fait la différence avec vos concurrents.</p>
-        <div class="s-tags"><span class="s-tag">Logo</span><span class="s-tag">Charte</span><span class="s-tag">Packaging</span></div>
-        <a href="<?= url('services#graphisme') ?>" class="s-link">En savoir plus →</a>
-      </div>
-      <div class="service-card" onclick="location.href='<?= url('services#evenement') ?>'">
-        <div class="s-num">04</div>
-        <div class="s-icon"><?= icone('evenement') ?></div>
-        <h3>Organisation Événementielle</h3>
-        <p>Vos événements transformés en expériences mémorables. De la conception au jour J, on gère tout.</p>
-        <div class="s-tags"><span class="s-tag">Lancement</span><span class="s-tag">Corporate</span><span class="s-tag">Activation</span></div>
-        <a href="<?= url('services#evenement') ?>" class="s-link">En savoir plus →</a>
-      </div>
-      <div class="service-card" onclick="location.href='<?= url('services#regie') ?>'">
-        <div class="s-num">05</div>
-        <div class="s-icon"><?= icone('regie') ?></div>
-        <h3>Régie Publicitaire & Affichage</h3>
-        <p>Panneaux, affichage digital, pub Facebook/Google, chaque FCFA investi maximisé.</p>
-        <div class="s-tags"><span class="s-tag">Billboards</span><span class="s-tag">Facebook Ads</span><span class="s-tag">Google Ads</span></div>
-        <a href="<?= url('services#regie') ?>" class="s-link">En savoir plus →</a>
-      </div>
-      <div class="service-card featured-service" onclick="location.href='<?= url('services#abonnement') ?>'">
-        <div class="s-num">★</div>
-        <div class="s-icon"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEjklEQVR4nO2Ze2hWZRzHT877LeZ0U+lCLTXzQqZ2sUgopSKKQqOSkCAoJdL/lhaJiJRYUIZ/pJZd/ijKKCX6IyovJUbUbCUk2ip0qVnpZHNbNvMjv73fA0/b+573nJ3nbCP2hRf27jzn+31+z+V3e4OgF73oOQCGA/cBLwE7gTqggRxOA0eAL4D1wINAadCTANwMbAFaSIYzwFZgTncbMBX4zJnYv8A3wLPAHcAUYDTQF6gAJgNzgZXAHuCs867t1PSuNuAC4GmtqKEReAEYm5BnFLAaOCWeVmAVUJLd7AVgEPChs5KvAGVBCgAXAi8C58T5MTAkDWckgIHOUToJzAs8ArgT+FP8u4DBPvnd4/S2RP6y8x5kAGAccFw675pu4FngMceNzvJKnt+J2I4bFvkkrnDiwUJvxNGaC6RnuhW+SC3AoSDXYavxgAK6n+vxOh9GDHN2Y1qBMVkZcrUeN9g8fG1xTSqizuv/IP0H0hK9IaJl3maXTH+59DenJaoR0bXeZpdM/wbpV6clqhfRiIgxmdwRcZdpyIm0hlj+Y+jbTYb005DWtIY0ich/uhA/hhka0xL92kYDV3ibXTL9a6T/c1oiy0QN873NLpn+Q9L/SN+vA1YA5UmJqkS0KWJMIiTUD0uGxfr+pL43q0AbFJdovOqE+kI1QlaGACNVPp8N8y1ghsrjsHY5AEyKSxjWIE8FXQg1KQzb8jyb5UR9q1DnxiGcrnrcPNhlWU08T57Vqs/EiELvTRljc7sxDvFGvWC70y+LyTta1rA4JL2XYxR8Vm4bfosK3G6ErdUL7wB9fBsgnXLgW+nsBgbEeKePSmPDq3HL0LCmfs13Gar2URi3bNFG6f+PFnMWQCXwjz6Xxm0QGP7waMBgtYHCBt8ex0vN1uSKej3gLQ1ZHkfU+lmGDzwYMMY8IXBYnOZSN9kl7iTfPeLZUWxgpdMUuKXAmKHAw1rJ0VrtEp39iepArlIZGyakqEN5fWcMCAFcLK66oBCAq4CfNPD9PM9two+rUR0X1ql8T23U1M4DGCLe04Xamuuc87vLrZ+1ys87TsBQDXyl/lSTIrP9/aNtO7AGuNvtUComLAV+L2Z9EO2MDLX5HoZuzY7BWqUsc9So3ttOw47HvCTeDLgSeA44Gncbg8Jcd2nIp/ke7i/C26zoelOe7stFmfZw20HxzVCV7+FMucMGucE6fV+vFRgaEZ2blNrMDjIGuYt+Rsd4rG9yOzIo3bjEK3nHyL5dWq8HvgH01+61XUDzfN5FgjYdu7uGY0VzrRQidsS+k5AdtSW+kk5y8SlMZs2r3uqDN0pwWLsfh2pl0AhP9UoLcLu/GRcXnu+k5+hy7lQNfq9VesqyByo9LwUmyKl06OIAj4hnf+recCeMsR9G71dgdFOUYvikvTGW4ivIompxZpca40ykVEatVbfmgCK7xaa/dXltovXOyv+npDVv6Bhjrn5DZhc+LcilHvuc3fkeeMbuhZXeWpDNMsTwddBTQe4YPWGNuhjH8GDQ00HO5d6mxPNL1TLNchy/WEAELu/uefbif4/zfOq6jb24SJIAAAAASUVORK5CYII=" alt="communication--v1"></div>
-        <h3>Abonnement Communication PME</h3>
-        <p>La solution tout-en-un pour les PME. Visibilité garantie, résultats mesurés, sans se prendre la tête.</p>
-        <div class="s-tags"><span class="s-tag" style="color: #ffffff !important;">Dès 200€/mois</span></div>
-        <a href="<?= url('services#abonnement') ?>" class="s-link">Découvrir l'offre</a>
-      </div>
+      <?php foreach ($services as $sv): $lien = url('services#' . $sv['ancre']); ?>
+      <a class="service-card<?= (int) $sv['vedette'] ? ' featured-service' : '' ?>" href="<?= e($lien) ?>">
+        <div class="s-num"><?= e($sv['numero']) ?></div>
+        <div class="s-icon"><?= icone($sv['icone']) ?></div>
+        <h3><?= e((string) texte_l($sv, 'titre')) ?></h3>
+        <p><?= e((string) texte_l($sv, 'resume')) ?></p>
+        <div class="s-tags"><?php foreach ((array) texte_l($sv, 'tags') as $tg): ?><span class="s-tag"><?= e((string) $tg) ?></span><?php endforeach; ?></div>
+        <span class="s-link"><?= e((int) $sv['vedette'] && texte_l($sv, 'bouton') !== '' ? (string) texte_l($sv, 'bouton') : t('En savoir plus →')) ?></span>
+      </a>
+      <?php endforeach; ?>
     </div>
   </div>
 </section>
@@ -657,7 +619,7 @@ html,body{
     </div>
     <div class="portfolio-grid" id="homePortfolio">
       <?php foreach (array_values($campagnes) as $i => $c): ?>
-      <a class="pg-item <?= ['feat', 'sm', 'third', 'third'][$i] ?? 'third' ?>" href="<?= url('campagnes#campagne-' . (int) $c['id']) ?>">
+      <a class="pg-item <?= ['feat', 'sm', 'third', 'third', 'third'][$i] ?? 'third' ?>" href="<?= url('campagnes#campagne-' . (int) $c['id']) ?>">
         <img src="<?= e(image_url($c['image'])) ?>" alt="<?= e($c['titre']) ?>" class="pg-thumb" loading="lazy"/>
         <div class="pg-overlay">
           <span class="pg-cat"><?= e(categorie_campagne($c['categorie'])) ?></span>
@@ -677,33 +639,36 @@ html,body{
       <div class="proof-num-card"><?= compteur(reglage('stat2'), 'proof-number') ?><div class="proof-lbl">Marques accompagnées</div></div>
       <div class="proof-num-card"><?= compteur(reglage('stat1'), 'proof-number') ?><div class="proof-lbl">Années d'expérience</div></div>
       <div class="proof-num-card"><?= compteur(reglage('stat3'), 'proof-number') ?><div class="proof-lbl">Pays couverts</div></div>
-      <div class="proof-num-card"><?= compteur(reglage('stat4'), 'proof-number') ?><div class="proof-lbl">Experts dans l'équipe</div></div>
+      <div class="proof-num-card"><?= compteur(reglage('stat4'), 'proof-number') ?><div class="proof-lbl"><?= e(reglage_l('stat4_libelle')) ?></div></div>
     </div>
+    <?php if ($clients): ?>
     <div style="text-align:center;margin-bottom:36px" class="reveal">
       <div class="section-label" style="justify-content:center">Ils nous font confiance</div>
     </div>
     <div class="clients-logos reveal">
-      <div class="client-cell"><img src="<?= actif('assets/images/clients/unicef-1.svg') ?>" alt="Logo UNICEF"/></div><div class="client-cell">UBA</div><div class="client-cell"><img src="<?= actif('assets/images/clients/Ecobank.svg') ?>" alt="Logo ECOBANK"/></div>
-      <div class="client-cell">WOODIN</div><div class="client-cell">GIZ</div><div class="client-cell"><img src="<?= actif('assets/images/clients/MSC.svg') ?>" alt="Logo MSC"/></div>
-      <div class="client-cell">GROUPE KIK</div><div class="client-cell">KRYSTAL</div><div class="client-cell">KRAMEL</div>
-      <div class="client-cell">MANTA HUB</div><div class="client-cell">ABISCREAM</div><div class="client-cell">LDM</div>
+      <?php foreach ($clients as $cl): $cellule = $cl['logo'] !== '' ? '<img src="' . e(image_url($cl['logo'])) . '" alt="' . e(t('Logo') . ' ' . $cl['nom']) . '" loading="lazy"/>' : e($cl['nom']); ?>
+        <?php if ($cl['lien'] !== ''): ?><a class="client-cell" href="<?= e($cl['lien']) ?>" target="_blank" rel="noopener" title="<?= e($cl['nom']) ?>"><?= $cellule ?></a>
+        <?php else: ?><div class="client-cell" title="<?= e($cl['nom']) ?>"><?= $cellule ?></div><?php endif; ?>
+      <?php endforeach; ?>
     </div>
+    <?php endif; ?>
   </div>
 </section>
 
 <!-- TESTIMONIALS -->
+<?php if ($temoignages): ?>
 <section class="testimonials">
   <div class="testi-inner">
     <div class="section-label" style="color: #ffffff !important;"> Ce que disent nos clients</div>
     <h2 class="section-title">Des résultats qui<br/>parlent d'eux-mêmes</h2>
     <div class="testi-grid reveal">
-      <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-quote">Live Y Dream nous accompagne depuis 3 ans. Ils ont su s'immerger dans notre culture d'entreprise pour nous offrir une identité visuelle incomparable. Leur réactivité est indéniablement leur plus grand atout.</p><div class="testi-author"><div class="testi-av">W</div><div><div class="testi-name">Directeur Marketing</div><div class="testi-role">Woodin Togo</div></div></div></div>
-      <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-quote">Les missions confiées à Live Y Dream ont été réussies. Planification rigoureuse, sérieux et créativité ont apporté notre satisfaction. Je les recommande sans aucune hésitation à qui veut développer sa visibilité.</p><div class="testi-author"><div class="testi-av">K</div><div><div class="testi-name">Responsable Communication</div><div class="testi-role">Groupe KIK</div></div></div></div>
-      <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-quote">Live Y Dream apporte de bonnes réponses en termes de visibilité. Nos interlocuteurs font preuve d'une excellente capacité d'écoute tant pour la nature de nos besoins que pour la mise en œuvre des actions.</p><div class="testi-author"><div class="testi-av">M</div><div><div class="testi-name">Directrice Générale</div><div class="testi-role">Manta Hub</div></div></div></div>
-      <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-quote">Une agence créative, réactive et sympathique qui sait mettre la satisfaction client au cœur de ses préoccupations. À travers les projets réalisés, ils ont su répondre à toutes nos demandes, quelle que soit leur complexité.</p><div class="testi-author"><div class="testi-av">A</div><div><div class="testi-name">Responsable</div><div class="testi-role">Abiscream</div></div></div></div>
+      <?php foreach ($temoignages as $te): ?>
+      <div class="testi-card"><div class="testi-stars" aria-label="<?= (int) $te['note'] ?>/5"><?= str_repeat('★', max(1, min(5, (int) $te['note']))) ?></div><p class="testi-quote"><?= e((string) texte_l($te, 'texte')) ?></p><div class="testi-author"><div class="testi-av"><?= e(mb_strtoupper(mb_substr($te['entreprise'] ?: '?', 0, 1))) ?></div><div><div class="testi-name"><?= e((string) texte_l($te, 'auteur')) ?></div><div class="testi-role"><?= e($te['entreprise']) ?></div></div></div></div>
+      <?php endforeach; ?>
     </div>
   </div>
 </section>
+<?php endif; ?>
 
 <!-- CTA -->
 <section class="cta-banner">
@@ -712,7 +677,7 @@ html,body{
     <h2 class="cta-big-title">PRÊT À<br/><span>DOMINER</span><br/>VOTRE MARCHÉ ?</h2>
     <p class="cta-sub">Vos concurrents investissent dans leur communication. Chaque jour que vous attendez est un jour où ils prennent de l'avance. <strong>L'audit est gratuit. Les résultats sont réels.</strong></p>
     <div class="cta-actions">
-      <a href="<?= e(wa_lien()) ?>?text=Bonjour%20LYD%2C%20je%20souhaite%20un%20audit%20gratuit." class="btn btn-wa" target="_blank">
+      <a href="<?= e(wa_lien(t('Bonjour LYD, je souhaite un audit gratuit.'))) ?>" class="btn btn-wa" target="_blank" rel="noopener">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         Audit gratuit sur WhatsApp
       </a>

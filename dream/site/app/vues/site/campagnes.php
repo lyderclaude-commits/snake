@@ -443,6 +443,6 @@ ob_start(); ?>
 </div>
 <script type="application/json" id="donneesCampagnes"><?= json_encode(array_map(fn($c) => [
     'id' => (int) $c['id'], 'titre' => $c['titre'], 'client' => $c['client'], 'categorie' => $c['categorie'],
-    'libelle' => categorie_campagne($c['categorie']), 'annee' => $c['annee'], 'description' => $c['description'],
+    'libelle' => t(categorie_campagne($c['categorie'])),'annee' => $c['annee'], 'description' => $c['description'],
     'image' => image_url($c['image']), 'tags' => $c['tags'], 'resultats' => $c['resultats'],
 ], $campagnes), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>

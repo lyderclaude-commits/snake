@@ -6,10 +6,13 @@
  * aucune adresse à partager, rien qu'un moteur de recherche puisse lire.
  * La mise en forme de cette fenêtre (`am-*`) est reprise telle quelle.
  */
-$titre = $a['titre'] . ' | ' . reglage('nom_site');
+$titre = article_l($a, 'titre') . ' | ' . reglage('nom_site');
 $description = article_extrait($a, 160);
+// En anglais, un article sans traduction s'affiche en français, et le dit.
+$en_francais = langue() === 'en' && !article_traduit($a);
 ob_start(); ?>
 <style>
+.am-langue { background: var(--gold-bg); border: 1px solid var(--border-gold); color: var(--gold-dark); font-size: 13px; padding: 10px 14px; margin-bottom: 16px; }
 .am-page { background: var(--bg); padding: 120px var(--gutter) clamp(60px,8vw,100px); }
 .am-inner { max-width: 820px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); }
 .am-hero { width: 100%; max-height: 460px; object-fit: cover; display: block; }
@@ -57,24 +60,26 @@ ob_start(); ?>
 .am-brouillon { max-width: 820px; margin: 0 auto 16px; background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; padding: 12px 16px; font-size: 14px; }
 </style>
 <?php $tete = ob_get_clean(); ?>
-<article class="am-page">
-  <?php if ($a['statut'] !== 'publie' || $a['publie_le'] > maintenant()): ?>
+<?php $en_ligne = $a['statut'] === 'publie' && $a['publie_le'] <= maintenant(); ?>
+<article class="am-page"<?= $en_ligne ? ' data-lecture="' . e(url('blog/' . rawurlencode($a['slug']) . '/vue')) . '" data-article="' . (int) $a['id'] . '"' : '' ?>>
+  <?php if (!$en_ligne): ?>
     <div class="am-brouillon"><strong>Aperçu.</strong> Cet article n’est pas en ligne : seuls les membres connectés le voient.</div>
   <?php endif; ?>
   <div class="am-inner">
-    <img src="<?= e(article_image($a)) ?>" alt="<?= e($a['titre']) ?>" class="am-hero"/>
+    <img src="<?= e(article_image($a)) ?>" alt="<?= e(article_l($a, 'titre')) ?>" class="am-hero"/>
     <div class="am-body">
       <nav class="am-fil" aria-label="Fil d’Ariane"><a href="<?= url('') ?>">Accueil</a><span>/</span><a href="<?= url('blog') ?>">Blog</a></nav>
+      <?php if ($en_francais): ?><p class="am-langue"><?= e(t('Cet article n’est disponible qu’en français.')) ?></p><?php endif; ?>
       <?php if ($a['categorie'] !== ''): ?>
-        <a class="am-cat" href="<?= url('blog?categorie=' . rawurlencode($a['categorie'])) ?>"><?= e($a['categorie']) ?></a>
+        <a class="am-cat" href="<?= url('blog?categorie=' . rawurlencode($a['categorie'])) ?>"><?= e(t($a['categorie'])) ?></a>
       <?php endif; ?>
-      <h1 class="am-title"><?= e($a['titre']) ?></h1>
+      <h1 class="am-title"<?= $en_francais ? ' lang="fr"' : '' ?>><?= e(article_l($a, 'titre')) ?></h1>
       <div class="am-meta">
-        <time datetime="<?= e(date('c', strtotime((string) $a['publie_le']) ?: time())) ?>"><?= e(date_fr($a['publie_le'])) ?></time>
-        <span>·</span><span><?= e(temps_lecture($a['contenu'])) ?> de lecture</span>
+        <time datetime="<?= e(date('c', strtotime((string) $a['publie_le']) ?: time())) ?>"><?= e(date_lang($a['publie_le'])) ?></time>
+        <span>·</span><span><?= e(t('%s de lecture', temps_lecture(article_l($a, 'contenu')))) ?></span>
         <?php if ($a['auteur'] !== ''): ?><span>·</span><span><?= e($a['auteur']) ?></span><?php endif; ?>
       </div>
-      <div class="am-content"><?= contenu_afficher($a['contenu']) ?></div>
+      <div class="am-content"<?= $en_francais ? ' lang="fr"' : '' ?>><?= contenu_afficher(article_l($a, 'contenu')) ?></div>
 
       <?php if ($tags_article = json_liste($a['tags'])): ?>
         <div class="am-tags">
@@ -84,7 +89,7 @@ ob_start(); ?>
 
       <?php $adresse = rawurlencode(url_absolue('blog/' . $a['slug'])); ?>
       <div class="am-partage">Partager
-        <a href="https://wa.me/?text=<?= rawurlencode($a['titre']) ?>%20<?= $adresse ?>" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://wa.me/?text=<?= rawurlencode(article_l($a, 'titre')) ?>%20<?= $adresse ?>" target="_blank" rel="noopener">WhatsApp</a>
         <a href="https://www.facebook.com/sharer/sharer.php?u=<?= $adresse ?>" target="_blank" rel="noopener">Facebook</a>
         <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= $adresse ?>" target="_blank" rel="noopener">LinkedIn</a>
       </div>
@@ -104,8 +109,8 @@ ob_start(); ?>
       <?php foreach ($autres as $o): ?>
         <a href="<?= url('blog/' . rawurlencode($o['slug'])) ?>">
           <img src="<?= e(article_image($o)) ?>" alt="" loading="lazy"/>
-          <b><?= e($o['titre']) ?></b>
-          <span><?= e(date_fr($o['publie_le'])) ?></span>
+          <b><?= e(article_l($o, 'titre')) ?></b>
+          <span><?= e(date_lang($o['publie_le'])) ?></span>
         </a>
       <?php endforeach; ?>
     </div>

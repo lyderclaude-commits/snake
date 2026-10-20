@@ -102,7 +102,9 @@ function article_image(array $a): string
 
 function article_extrait(array $a, int $n = 220): string
 {
-    return tronquer($a['extrait'] !== '' ? $a['extrait'] : texte_nu((string) $a['contenu']), $n);
+    $extrait = function_exists('article_l') ? article_l($a, 'extrait') : (string) $a['extrait'];
+    $contenu = function_exists('article_l') ? article_l($a, 'contenu') : (string) $a['contenu'];
+    return tronquer($extrait !== '' ? $extrait : texte_nu($contenu), $n);
 }
 
 /**
@@ -158,6 +160,39 @@ function campagnes_demonstration(): array
     ];
 }
 
+/** L'anglais des campagnes livrées, rangé par titre français. */
+function campagnes_demonstration_en(): array
+{
+    return [
+        'Woodin Togo — Domination Digitale' => ['titre' => 'Woodin Togo — Digital Domination', 'extrait' => 'A complete overhaul of the digital strategy. +340% engagement in 3 months.',
+            'description' => 'Hired to completely rebuild Woodin Togo\'s digital presence, we designed and executed a full content strategy across Instagram, Facebook and TikTok: monthly product shoots, a themed editorial calendar built around key Togolese cultural moments, and daily community management.',
+            'resultats' => ['+340%', 'Engagement', '50k+', 'Followers', '×4', 'Organic reach', '★★★★★', 'Satisfaction'], 'tags' => ['Community Management', 'Digital Strategy', 'Content']],
+        'Battle Arena — Compétition Internationale' => ['titre' => 'Battle Arena — International Competition', 'extrait' => 'An event concept that became the national benchmark for urban dance in Togo.',
+            'description' => 'An event concept created and produced by Live Y Dream. An urban dance competition that became the national benchmark, drawing dancers from all over West Africa. Full production: stage design, communication, ticketing, audiovisual coverage, partnerships.',
+            'resultats' => ['1000+', 'Participants', '5', 'Editions', '15k+', 'Total spectators', 'No.1', 'In Togo'], 'tags' => ['Events', 'Production', 'Communication']],
+        'Groupe KIK — Campagne Publicitaire 360°' => ['titre' => 'Groupe KIK — 360° Advertising Campaign', 'extrait' => 'A series of commercials for the group\'s brands, broadcast across every channel.',
+            'description' => 'Production of a series of commercials for the Groupe KIK brands. Art direction, casting, studio and outdoor shooting, post-production and adaptation for every channel: TV, social media, billboards.',
+            'resultats' => ['8', 'Commercials produced', '4', 'Brands covered', '100%', 'Deadlines met', '★★★★★', 'Satisfaction'], 'tags' => ['Video Production', 'Advertising', 'Multi-channel']],
+        'Krystal Optique — Nouvelle Identité' => ['titre' => 'Krystal Optique — New Identity', 'extrait' => 'A complete visual identity overhaul. Logo, guidelines, materials and social media.',
+            'description' => 'A complete overhaul of Krystal Optique\'s visual identity: new logo, full brand guidelines, all communication materials, store signage and social media branding. A premium repositioning that transformed how the brand is perceived.',
+            'resultats' => ['Logo', 'Redesigned', 'Guidelines', 'Complete', 'Social', 'Rebranded', '+40%', 'Awareness'], 'tags' => ['Visual Identity', 'Logo', 'Branding']],
+        'Kramel — Croissance Community Management' => ['titre' => 'Kramel — Community Management Growth', 'extrait' => '+280% community growth and a direct increase in online sales.',
+            'description' => 'Full social media management for Kramel with a conversion-driven content strategy: recurring product shoots, giveaways, interactive stories, targeted Facebook ads and seasonal campaigns. Measurable, trackable results.',
+            'resultats' => ['+280%', 'Growth', '+150%', 'Online sales', '2×', 'Store traffic', 'Top 3', 'Lomé'], 'tags' => ['Community Management', 'Facebook Ads', 'Content']],
+        'Lomé By Night — Concept Événementiel' => ['titre' => 'Lomé By Night — Event Concept', 'extrait' => 'A concept that brought together over 1,000 people to discover Lomé in a new light.',
+            'description' => 'A concept created by Live Y Dream to explore Lomé\'s nightlife. The event brought more than 1,000 people together around the cultural and culinary discovery of the Togolese capital. Viral communication, online ticketing, media coverage.',
+            'resultats' => ['1000+', 'People', '2', 'Editions', '100%', 'Sold out', 'Viral', 'On social media'], 'tags' => ['Concept', 'Events', 'Lomé']],
+    ];
+}
+
+/** Donne leur anglais aux campagnes livrées qui n'en ont pas encore (bases créées avant le bilinguisme). */
+function completer_campagnes_en(): void
+{
+    foreach (campagnes_demonstration_en() as $titre => $en) {
+        q("UPDATE campagnes SET en = ? WHERE titre = ? AND en IN ('', '{}')", [json_encode($en, JSON_UNESCAPED_UNICODE), $titre]);
+    }
+}
+
 function installer_campagnes_demonstration(): void
 {
     if ((int) valeur('SELECT COUNT(*) FROM campagnes') > 0) {
@@ -169,6 +204,7 @@ function installer_campagnes_demonstration(): void
         $st->execute([$c[0], $c[1], $c[2], $c[3], $c[4], $c[5], $c[6], $c[7],
             json_encode($c[8], JSON_UNESCAPED_UNICODE), json_encode($c[9], JSON_UNESCAPED_UNICODE), $i, maintenant(), maintenant()]);
     }
+    completer_campagnes_en();
 }
 
 /* ------------------------------------------------------------------ */

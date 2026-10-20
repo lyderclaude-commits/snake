@@ -11,7 +11,8 @@
     <?php foreach ($liste as $m): ?>
       <tr class="<?= (int) $m['lu'] ? '' : 'non-lu' ?>">
         <td><a class="titre-ligne" href="<?= url('admin/messages/' . $m['id']) ?>"><?= e($m['nom']) ?></a><?= (int) $m['lu'] ? '' : ' <span class="pastille nouveau">Nouveau</span>' ?>
-          <?= str_starts_with((string) $m['courriel'], 'échec') ? ' <span class="pastille refuse" title="' . e($m['courriel']) . '">E-mail non parti</span>' : '' ?>
+          <?= ($m['langue'] ?? 'fr') === 'en' ? ' <span class="drapeau" title="Envoyée depuis le site anglais">EN</span>' : '' ?>
+          <?= str_starts_with((string) $m['courriel'], 'échec') ?' <span class="pastille refuse" title="' . e($m['courriel']) . '">E-mail non parti</span>' : '' ?>
           <span class="sous"><?= e($m['email']) ?><?= $m['entreprise'] !== '' ? ' · ' . e($m['entreprise']) : '' ?></span></td>
         <td><?= e($m['besoin'] ?: '—') ?></td>
         <td><?= e($m['budget'] ?: '—') ?></td>

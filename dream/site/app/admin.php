@@ -11,6 +11,8 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/admin-accueil.php';
+
 function vue_admin(string $nom, array $donnees = [], int $code = 200): never
 {
     http_response_code($code);
@@ -203,6 +205,20 @@ function admin_router(array $s, string $methode): void
             }
             vue_admin('campagne', ['c' => $c ? campagne_decoder($c) : null, 'erreur' => $erreur]);
 
+        /* ---------------- accueil : services, témoignages, logos ---------------- */
+        case 'services':
+            admin_services($r1, $r2, $post);
+
+        case 'temoignages':
+            admin_temoignages($r1, $r2, $post);
+
+        case 'clients':
+            admin_clients($r1, $r2, $post);
+
+        /* ---------------- notifications push de cet appareil ---------------- */
+        case 'push':
+            admin_push($r1, $post, $me);
+
         /* ---------------- médias ---------------- */
         case 'medias':
             if ($r1 === 'liste.json') {
@@ -334,7 +350,7 @@ function admin_router(array $s, string $methode): void
                         $v[$k] = trim((string) $_POST[$k]);
                     }
                 }
-                foreach (['mentions_legales', 'confidentialite'] as $k) {
+                foreach (['mentions_legales', 'confidentialite', 'mentions_legales_en', 'confidentialite_en'] as $k) {
                     if (isset($v[$k])) {
                         $v[$k] = contenu_stocker($v[$k]);
                     }
@@ -488,6 +504,10 @@ function article_enregistrer(array $v, ?array $a, array $me): array
         'statut' => $statut,
         'publie_le' => $publie_le,
         'modifie_le' => maintenant(),
+        // La version anglaise : publiée dès qu'elle a un titre et un texte, sinon le français s'affiche.
+        'titre_en' => mb_substr(trim((string) ($v['titre_en'] ?? '')), 0, 240),
+        'extrait_en' => mb_substr(trim((string) ($v['extrait_en'] ?? '')), 0, 600),
+        'contenu_en' => contenu_stocker((string) ($v['contenu_en'] ?? '')),
     ];
     if ($a) {
         $sets = implode(', ', array_map(fn($k) => "$k = ?", array_keys($champs)));
@@ -499,6 +519,32 @@ function article_enregistrer(array $v, ?array $a, array $me): array
     q('INSERT INTO articles (' . implode(', ', array_keys($champs)) . ') VALUES (' . implode(', ', array_fill(0, count($champs), '?')) . ')',
         array_values($champs));
     return [null, (int) db()->lastInsertId()];
+}
+
+/**
+ * L'anglais d'une campagne. Les chiffres (« +340% ») sont les mêmes dans les
+ * deux langues : seuls leurs libellés se traduisent, et un libellé anglais
+ * vide reprend le français.
+ */
+function campagne_en_saisie(array $en, array $resultats_fr): array
+{
+    $libelles = array_values((array) ($en['libelles'] ?? []));
+    $resultats = [];
+    for ($i = 0; $i < count($resultats_fr); $i += 2) {
+        $resultats[] = $resultats_fr[$i];
+        $resultats[] = mb_substr(trim((string) ($libelles[intdiv($i, 2)] ?? '')), 0, 40) ?: ($resultats_fr[$i + 1] ?? '');
+    }
+    $sortie = [
+        'titre' => mb_substr(trim((string) ($en['titre'] ?? '')), 0, 200),
+        'extrait' => mb_substr(trim((string) ($en['extrait'] ?? '')), 0, 300),
+        'description' => mb_substr(trim((string) ($en['description'] ?? '')), 0, 5000),
+        'tags' => liste_depuis_saisie((string) ($en['tags'] ?? '')),
+    ];
+    // Des libellés tous repris du français ne sont pas une traduction : on ne les range pas.
+    if (array_filter($libelles, fn($x) => trim((string) $x) !== '')) {
+        $sortie['resultats'] = $resultats;
+    }
+    return array_filter($sortie, fn($x) => $x !== '' && $x !== []);
 }
 
 /** @return array{0: ?string, 1: int} */
@@ -532,6 +578,7 @@ function campagne_enregistrer(array $v, ?array $c): array
         'tags' => json_encode(liste_depuis_saisie((string) ($v['tags'] ?? '')), JSON_UNESCAPED_UNICODE),
         'publie' => isset($v['publie']) ? 1 : 0,
         'modifie_le' => maintenant(),
+        'en' => json_encode(campagne_en_saisie((array) ($v['en'] ?? []), $resultats), JSON_UNESCAPED_UNICODE),
     ];
     if ($c) {
         $sets = implode(', ', array_map(fn($k) => "$k = ?", array_keys($champs)));
