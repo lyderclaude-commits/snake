@@ -539,7 +539,7 @@ const run = async () => {
    */
   const replis: string[] = [];
   for (const g of ['application', 'boost-push', 'boost-regie', 'boost-liens',
-                   'partenaires', 'villes', 'a-propos', 'contact']) {
+                   'tarifs', 'partenaires', 'villes', 'a-propos', 'contact']) {
     await p.goto(`${BASE}/index.php?p=${g}`, { waitUntil: 'domcontentloaded' });
     await p.evaluate(() => (document as unknown as { fonts: FontFaceSet }).fonts.ready);
     await p.waitForTimeout(150);
@@ -554,8 +554,8 @@ const run = async () => {
     });
     if (!servie) replis.push(g);
   }
-  ok('les huit pages du guide servent la MÊME police, et non celle du système',
-     replis.length === 0, replis.join(', ') || '8 pages mesurées');
+  ok('les neuf pages du guide servent la MÊME police, et non celle du système',
+     replis.length === 0, replis.join(', ') || '9 pages mesurées');
   await p.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   ok('les canaux portent de vraies icônes',
      (await p.locator('.canal .ico svg').count()) === 6,
@@ -4514,6 +4514,9 @@ const run = async () => {
     // page À Propos.
     'application', 'partenaires', 'villes', 'a-propos', 'contact',
     'boost-push', 'boost-regie', 'boost-liens',
+    // Les tarifs : le prix est public, et le cacher à un éditeur
+    // reviendrait à le cacher au visiteur à qui la page est faite.
+    'tarifs',
     // Les conditions et la confidentialité : publiques par nature, et
     // c'est leur raison d'être. Les refuser à un éditeur voudrait dire
     // qu'on les cache à un visiteur.
@@ -5206,8 +5209,13 @@ const run = async () => {
   ok('la vitrine porte les sept entrées du site fusionné',
      menu.join(' · ') === 'L’Application · Boost · Les décors · Partenaires · Nos Villes · Blog · À Propos',
      menu.join(' · '));
-  ok('« Boost » ouvre ses trois outils',
-     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a').count()) === 3);
+  /* Trois outils, et la page des tarifs : le prix se décide au même
+     endroit que le choix de l'outil, et le chercher ailleurs était le
+     seul chemin que ce menu ne donnait pas. */
+  ok('« Boost » ouvre ses trois outils et ses tarifs',
+     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a').count()) === 4,
+     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a')
+       .evaluateAll((n) => n.map((x) => (x.querySelector('strong') ?? x).textContent?.trim()))).join(' · '));
   ok('les pages du guide sont des routes, pas des liens sortants',
      (await pAnon.locator('.wk-menu a[href^="https://wakabileguide.com"]').count()) === 0);
   /* Enfants DIRECTS de `.wk-droite` : le volet du hamburger y vit aussi,
@@ -6292,9 +6300,10 @@ const run = async () => {
                      règle que le reste de la maison. */
                   'application', 'boost-push', 'boost-regie', 'boost-liens',
                   'partenaires', 'villes', 'a-propos', 'contact',
-                  /* Les deux pages légales et l'écran des adresses : trois écrans
-                     de plus, et c'est exactement ce que cette règle redoutait. */
-                  'cgu', 'confidentialite', 'reglages-permaliens',
+                  /* Les deux pages légales, l'écran des adresses et la page des
+                     tarifs : quatre écrans de plus, et c'est exactement ce que
+                     cette règle redoutait. */
+                  'cgu', 'confidentialite', 'reglages-permaliens', 'tarifs',
                   'sondage&j=PAS-UN-JETON',
                   ...(slugTypo
                     ? [`segments&decor=${encodeURIComponent(slugTypo)}`,
@@ -8782,6 +8791,32 @@ const run = async () => {
      bandes.length === 0, bandes.join(' · ') || 'neuf pages mesurées');
 
   /**
+   * Et la barre du haut SUIT le défilement, sur toutes les pages publiques.
+   *
+   * Elle collait sur la vitrine et nulle part ailleurs : sur Partenaires,
+   * À propos, et les pages ajoutées depuis, elle partait avec le haut de
+   * la page, et il fallait remonter cinq mille pixels pour changer de
+   * rubrique. Ce qu'on mesure est la POSITION RÉELLE après défilement, et
+   * non la valeur de `position` : une barre déclarée collante que son
+   * parent en `overflow` empêche de coller rendrait le même `sticky`.
+   */
+  const partent: string[] = [];
+  for (const r of ['accueil', 'application', 'boost-push', 'boost-regie', 'boost-liens',
+                   'tarifs', 'partenaires', 'villes', 'a-propos', 'contact',
+                   'blog', 'cgu', 'confidentialite']) {
+    await pAp.goto(`${BASE}/index.php?p=${r}`, { waitUntil: 'domcontentloaded' });
+    await pAp.evaluate(() => window.scrollTo(0, 1500));
+    await pAp.waitForTimeout(250);
+    const haut = await pAp.evaluate(() => {
+      const b = document.querySelector('header.wk-tete') as HTMLElement | null;
+      return b ? Math.round(b.getBoundingClientRect().top) : 9999;
+    });
+    if (Math.abs(haut) > 2) partent.push(`${r} à ${haut}px`);
+  }
+  ok('la barre du haut reste visible quand on défile, sur les 13 pages publiques',
+     partent.length === 0, partent.slice(0, 4).join(' · ') || '13 pages défilées');
+
+  /**
    * Le blog : douze par page, et deux lignes de chapô.
    *
    * Les articles venus du guide n'ont pas de chapô : on prend leur début,
@@ -9282,8 +9317,14 @@ const run = async () => {
   await pId.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pId.fill('#legal_registre', 'RCCM TG-LOM-RECETTE-0001');
   await pId.fill('#legal_forme', 'société de recette');
-  await pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit());
-  await pId.waitForLoadState('domcontentloaded');
+  /* On RETIENT la navigation avant de la déclencher. `waitForLoadState`
+     seul répondait aussitôt : le document courant était déjà chargé, et
+     le `goto` suivant coupait l'envoi en vol — un `ERR_ABORTED` qui
+     n'arrivait qu'une fois sur dix, c'est-à-dire au pire moment. */
+  await Promise.all([
+    pId.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit()),
+  ]);
 
   await pId.goto(`${BASE}/index.php?p=cgu`, { waitUntil: 'domcontentloaded' });
   const avecId = await pId.locator('.legal-content').innerText();
@@ -9293,8 +9334,14 @@ const run = async () => {
   await pId.goto(`${BASE}/index.php?p=reglages`, { waitUntil: 'domcontentloaded' });
   await pId.fill('#legal_registre', '');
   await pId.fill('#legal_forme', '');
-  await pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit());
-  await pId.waitForLoadState('domcontentloaded');
+  /* On RETIENT la navigation avant de la déclencher. `waitForLoadState`
+     seul répondait aussitôt : le document courant était déjà chargé, et
+     le `goto` suivant coupait l'envoi en vol — un `ERR_ABORTED` qui
+     n'arrivait qu'une fois sur dix, c'est-à-dire au pire moment. */
+  await Promise.all([
+    pId.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    pId.locator('#legal_registre').evaluate((e) => (e as HTMLInputElement).form?.requestSubmit()),
+  ]);
   await pId.goto(`${BASE}/index.php?p=cgu`, { waitUntil: 'domcontentloaded' });
   const sansId = await pId.locator('.legal-content').innerText();
   ok('et ce qui n’est pas renseigné ne laisse aucun trou visible',
@@ -9344,15 +9391,40 @@ const run = async () => {
        `${await pBoost.locator('.faq-item').count()}`);
 
     /**
-     * Le bandeau de prix VIENT DES OFFRES, il n'est pas écrit dans la page.
+     * AUCUN prix sur ces trois pages, et ce n'est pas un oubli.
      *
-     * Trois pages de vitrine qui annonceraient un chiffre en dur
-     * mentiraient dès la première modification des offres, sans que
-     * personne ne pense à les rouvrir.
+     * Elles ouvraient sur « l'offre Croissance, 6 000 F CFA » : un chiffre
+     * seul, qu'il fallait comparer de mémoire avec les trois autres
+     * offres. Les prix vivent maintenant sur `?p=tarifs`, qui les montre
+     * côte à côte ; ces pages expliquent, et renvoient là-bas.
      */
-    ok(`  ${route} annonce l’offre, et la lit dans les offres`,
-       (await pBoost.locator('.pricing-note').count()) === 1
-       && /offre|compris/i.test(await pBoost.locator('.pricing-note').innerText()));
+    ok(`  ${route} ne porte plus de bandeau de prix`,
+       (await pBoost.locator('.pricing-note').count()) === 0);
+    ok(`  ${route} renvoie vers la page des tarifs`,
+       (await pBoost.locator('a[href*="tarifs"]').count()) >= 2,
+       `${await pBoost.locator('a[href*="tarifs"]').count()} liens`);
+
+    /**
+     * Le relief : une section sombre AU MILIEU, un appel de fin en couleur.
+     *
+     * Les trois pages se lisaient comme un document — un bandeau bleu,
+     * puis cinq mille pixels de blanc et de gris pâle. On vérifie les deux
+     * respirations qui cassent cette monotonie, et surtout que la section
+     * sombre ne touche PAS le pied de page : les deux portent la même
+     * encre, et collées elles ne feraient qu'un seul bloc noir.
+     */
+    ok(`  ${route} pose une section sombre, et une seule`,
+       (await pBoost.locator('.section-sombre').count()) === 1);
+    ok(`  ${route} ferme sur un appel en couleur`,
+       (await pBoost.locator('.appel-final').count()) === 1);
+    const _ecart = await pBoost.evaluate(() => {
+      const s = document.querySelector('.section-sombre') as HTMLElement | null;
+      const f = document.querySelector('footer') as HTMLElement | null;
+      if (!s || !f) return -1;
+      return Math.round(f.getBoundingClientRect().top - s.getBoundingClientRect().bottom);
+    });
+    ok(`  ${route} garde la section sombre loin du pied de page`,
+       _ecart > 600, `${_ecart} px entre les deux`);
 
     /**
      * La rangée de réassurance est VISIBLE, pas seulement présente.
@@ -9370,8 +9442,8 @@ const run = async () => {
 
     /* Les icônes sont dessinées ici, pas chargées ailleurs : la règle de
        toute la fusion, et elle vaut pour les pages neuves aussi. */
-    const dessinees = await pBoost.locator('.why-icon svg, .value-icon svg').count();
-    const chargees = await pBoost.locator('.why-icon img, .value-icon img').count();
+    const dessinees = await pBoost.locator('.why-icon svg, .value-icon svg, .jeton svg').count();
+    const chargees = await pBoost.locator('.why-icon img, .value-icon img, .jeton img').count();
     ok(`  ${route} dessine ses icônes au lieu de les charger`,
        dessinees >= 3 && chargees === 0, `${dessinees} tracés, ${chargees} images`);
 
@@ -9518,6 +9590,109 @@ const run = async () => {
      nettete.length > 0 && nettete.every((n) => n.fichier >= n.besoin),
      nettete.slice(0, 3).map((n) => `${n.fichier}px pour ${n.besoin}px`).join(' · '));
   await pPoids.close();
+
+
+  /* ======================================================================
+     66. La page des tarifs : un seul endroit où l'on parle d'argent
+     ====================================================================== */
+  console.log('\n━━ 66. Les tarifs, rassemblés ━━');
+
+  /**
+   * Le prix se disait à cinq endroits, et ne se COMPARAIT nulle part.
+   *
+   * La page d'accueil portait la grille, les trois pages Boost ouvraient
+   * sur un bandeau annonçant une offre, et chacun de ces endroits
+   * répondait à une moitié de la question. Un seul écran les met
+   * maintenant côte à côte, et tous les boutons qui parlent d'argent y
+   * mènent. Ces scénarios tiennent les deux bouts : que la page dise tout
+   * ce qu'il faut, et que les offres ne soient écrites nulle part.
+   */
+  const pTarifs = await browser.newPage();
+  surveiller(pTarifs);
+
+  const rTarifs = await pTarifs.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
+  ok('la page des tarifs répond', rTarifs?.status() === 200);
+
+  /**
+   * Autant de cartes que d'offres ACTIVES, et pas un nombre écrit à la main.
+   *
+   * Les offres se règlent depuis l'administration. Une page qui en
+   * afficherait quatre parce que quelqu'un a tapé quatre mentirait au
+   * premier ajout, et c'est exactement ce que la grille à trois colonnes
+   * du guide faisait déjà : la quatrième offre tombait seule sur une
+   * deuxième rangée.
+   */
+  const nbOffres = await pTarifs.locator('.pricing-grid .pricing-card').count();
+  const nbColonnes = await pTarifs.locator('.tableau-offres thead th.col-offre').count();
+  ok('elle montre toutes les offres, et son tableau porte les mêmes',
+     nbOffres >= 3 && nbColonnes === nbOffres, `${nbOffres} cartes, ${nbColonnes} colonnes`);
+
+  /* Les quatre tiennent sur UNE rangée : une offre reléguée en dessous se
+     lit comme un ajout, et non comme la dernière marche. */
+  const rangees = await pTarifs.evaluate(() => {
+    const hauts = [...document.querySelectorAll('.pricing-grid .pricing-card')]
+      /* `left` et non `top` : la carte mise en avant porte un
+         `transform: scale()` qui décale son bord supérieur, et compter
+         par le haut donnait deux rangées là où il n'y en a qu'une. */
+      .map((c) => Math.round(c.getBoundingClientRect().left));
+    return new Set(hauts).size;
+  });
+  ok('et les aligne sur une seule rangée', rangees === nbOffres, `${rangees} colonnes distinctes`);
+
+  /**
+   * Le tableau compare LIGNE À LIGNE, et chaque ligne s'explique.
+   *
+   * « Ciblage ville et rubrique » ne dit rien à qui n'a pas encore utilisé
+   * le produit. L'explication sous chaque intitulé est ce qui fait la
+   * différence entre une grille qu'on lit et une grille qu'on survole.
+   */
+  const lignesOffres = await pTarifs.locator('.tableau-offres tbody tr').count();
+  const aides = await pTarifs.locator('.tableau-offres .ligne-aide').count();
+  ok('chaque ligne du tableau porte son explication',
+     lignesOffres > 10 && aides === lignesOffres, `${lignesOffres} lignes, ${aides} explications`);
+
+  /**
+   * Ce qui se paie À PART est dit ici, et pas découvert sur la facture.
+   *
+   * Les crédits WhatsApp sont refacturés au prix coûtant. Le taire aurait
+   * été la seule ligne malhonnête d'une page qui ne vit que de clarté.
+   */
+  ok('elle dit ce qui se paie en plus de l’abonnement',
+     /whatsapp/i.test(await pTarifs.locator('main').innerText())
+     && /co[uû]tant|1\s*F\s*CFA/i.test(await pTarifs.locator('main').innerText()));
+
+  /**
+   * Et personne ne parle d'argent ailleurs sans ramener ici.
+   *
+   * On relève les boutons « offres / tarifs » des pages de vitrine : tous
+   * doivent viser cette page. Un seul qui pointerait encore vers l'ancre
+   * `#tarifs` de l'accueil suffirait à rouvrir le problème.
+   */
+  const egares: string[] = [];
+  for (const route of ['accueil', 'boost-push', 'boost-regie', 'boost-liens', 'partenaires']) {
+    await pTarifs.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
+    const mauvais = await pTarifs.evaluate(() =>
+      [...document.querySelectorAll('a')]
+        .filter((a) => /voir les offres|nos tarifs|voir les tarifs/i.test(a.textContent ?? ''))
+        .filter((a) => !/[?&]p=tarifs|\/tarifs/.test(a.getAttribute('href') ?? ''))
+        .map((a) => (a.textContent ?? '').trim().slice(0, 30) + ' → ' + a.getAttribute('href')));
+    for (const m of mauvais) egares.push(`${route} : ${m}`);
+  }
+  ok('tous les boutons « voir les offres » mènent à la page des tarifs',
+     egares.length === 0, egares.slice(0, 3).join(' | ') || '5 écrans parcourus');
+
+  /* Sur un téléphone, le tableau se fait DÉFILER plutôt que de se replier :
+     une ligne repliée sous son offre ne compare plus rien. */
+  await pTarifs.setViewportSize({ width: 390, height: 844 });
+  await pTarifs.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
+  await pTarifs.waitForTimeout(200);
+  const defile = await pTarifs.evaluate(() => {
+    const w = document.querySelector('.admin-table-wrap') as HTMLElement | null;
+    return w ? { dedans: w.scrollWidth > w.clientWidth, page: document.documentElement.scrollWidth > window.innerWidth + 1 } : null;
+  });
+  ok('le tableau se fait défiler sans emporter la page',
+     defile !== null && defile.dedans && !defile.page, JSON.stringify(defile));
+  await pTarifs.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

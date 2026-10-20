@@ -209,7 +209,24 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
-body { font-family: var(--font-body); background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+/**
+ * `clip` et non `hidden`, et ce n'est pas un détail de style.
+ *
+ * `overflow-x: hidden` sur `body` fait de lui un CONTENEUR DE
+ * DÉFILEMENT. Un `position: sticky` à l'intérieur se colle alors à ce
+ * conteneur-là, qui ne défile jamais : la barre du site partait donc
+ * vers le haut sur les dix pages qui chargent cette feuille, pendant
+ * qu'elle restait collée sur l'accueil et le catalogue, qui chargent
+ * l'autre. Le même `position: sticky` était écrit des deux côtés ; seul
+ * cet `overflow` différait.
+ *
+ * `clip` rogne ce qui dépasse SANS créer ce conteneur. La déclaration
+ * `hidden` est gardée juste avant pour les navigateurs qui ne
+ * connaissent pas `clip` : ils retombent sur le comportement
+ * d'aujourd'hui, barre non collée, plutôt que sur une page qui glisse
+ * de côté.
+ */
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; overflow-x: clip; }
 img { display: block; max-width: 100%; }
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: var(--font-body); border: none; background: none; }
@@ -945,7 +962,9 @@ footer { background: var(--text); color: rgba(255,255,255,0.85); padding: 70px 0
    ================================================================ */
 
 /* --- Empêcher tout débordement horizontal global --- */
-html, body { max-width: 100%; overflow-x: hidden; }
+/* Même raison qu'en tête de fichier : `clip` rogne sans faire de `html`
+   et de `body` des conteneurs de défilement, ce qui décollerait la barre. */
+html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; }
 img, video, iframe { max-width: 100%; height: auto; }
 
 /* ============================================
@@ -1798,3 +1817,323 @@ img, video, iframe { max-width: 100%; height: auto; }
    seule ne dit rien à qui ne la distingue pas. */
 .kb-icon.kb-vert   { background: #DCFCE7; color: #15803D; font-weight: 700; }
 .kb-icon.kb-orange { background: #FEF3C7; color: #B45309; font-weight: 700; }
+
+/* ================================================================
+   LE TABLEAU DES OFFRES — `?p=tarifs`
+   ================================================================
+   Il se fait DÉFILER du doigt sur un téléphone plutôt que de se replier :
+   la colonne de gauche n'a de sens qu'en face des autres, et une ligne
+   repliée sous son offre ne compare plus rien. La règle est déjà posée
+   plus haut pour `.admin-table-wrap`. */
+/* La grille des offres s'adapte à leur NOMBRE.
+   `guide.css` la fige à trois colonnes, ce qui va pour la page
+   Partenaires et ses trois formules. Boost en vend quatre : la
+   quatrième tombait seule sur une deuxième rangée, où elle se lisait
+   comme un ajout plutôt que comme la dernière marche. Et les offres se
+   règlent depuis l'administration : un compte écrit ici mentirait au
+   premier ajout. */
+.pricing-grid.pricing-auto { grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
+@media (max-width: 1040px) {
+  .pricing-grid.pricing-auto { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .pricing-grid.pricing-auto { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+}
+
+.tableau-offres { min-width: 720px; }
+.tableau-offres td:first-child { min-width: 260px; }
+.tableau-offres td strong { display: block; color: var(--text); font-weight: 600; font-size: 14px; }
+/* L'explication sous chaque ligne : c'est elle qui évite d'avoir à
+   deviner ce qu'achète « Ciblage ville et rubrique ». */
+.tableau-offres .ligne-aide { display: block; font-size: 12.5px; color: var(--text3);
+  line-height: 1.55; margin-top: 3px; max-width: 46ch; }
+.tableau-offres .col-offre { text-align: center; white-space: nowrap; }
+.tableau-offres th.col-offre { color: var(--text); font-size: 12.5px; }
+/* L'offre mise en avant garde sa colonne teintée de haut en bas : c'est
+   ce qui permet de suivre une colonne des yeux sur dix-sept lignes. */
+.tableau-offres .col-offre.phare { background: var(--blue-50); }
+.tableau-offres th.col-offre.phare { color: var(--primary); }
+.tableau-offres tr:hover td.col-offre.phare { background: var(--blue-100, #DBEAFE); }
+/* Un signe ET une couleur : une couleur seule ne dit rien à qui ne la
+   distingue pas, et ces deux colonnes-là se lisent en diagonale. */
+.tableau-offres .oui { color: var(--green, #15803D); font-weight: 800; font-size: 16px; }
+.tableau-offres .non { color: var(--border2, #CBD5E1); font-weight: 700; font-size: 16px; }
+.tableau-offres .col-offre b { font-family: var(--font-display); font-weight: 700;
+  color: var(--text); font-size: 14px; }
+
+/* ================================================================
+   LE RELIEF DES PAGES BOOST
+   ================================================================
+
+   Les trois pages disaient ce qu'il fallait et se lisaient quand même
+   comme un document : un bandeau bleu, puis cinq mille pixels de blanc
+   et de gris pâle, toutes les cartes de la même forme et du même poids.
+   Passé les trente premiers centimètres, plus rien n'attrapait l'œil, et
+   une page qu'on ne parcourt pas ne vend rien.
+
+   Ce bloc ne change AUCUN texte. Il remet du relief là où la page n'en
+   avait plus : de la profondeur dans le bandeau, une section sombre au
+   milieu du défilement, une couleur par carte quand les cartes parlent
+   de choses différentes, et des maquettes d'écran qui MONTRENT ce que
+   le produit envoie au lieu de le décrire.
+
+   Les règles sont en fin de fichier, après les media queries du guide,
+   et portent les leurs : une largeur de colonne posée ici serait sinon
+   reprise par une media query écrite plus haut. */
+
+/* ---- Le bandeau, avec de la profondeur -------------------------
+   `.page-header` était un aplat de deux bleus. Trois arrêts et deux
+   halos suffisent à lui donner un volume, et le `::before` du guide
+   garde sa trame de points par-dessus. */
+.entete-boost {
+  padding: 138px 0 82px;
+  background: linear-gradient(152deg, #0A1A4A 0%, var(--blue-800) 44%, var(--blue-600) 100%);
+}
+.entete-boost::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(620px 380px at 82% 6%,  rgba(96,165,250,0.42), transparent 68%),
+    radial-gradient(520px 340px at 10% 96%, rgba(14,165,233,0.26), transparent 70%);
+}
+.entete-boost h1 { text-shadow: 0 2px 22px rgba(2,10,40,0.28); }
+.entete-boost p { color: rgba(255,255,255,0.80); max-width: 620px; }
+
+/* La première section respire depuis le bleu plutôt que de commencer
+   net sur du blanc. */
+.section-ouverture { background: linear-gradient(180deg, var(--blue-50), #fff 380px); }
+
+/* Un gris qui n'est plus tout à fait plat. */
+.section-grise {
+  background: radial-gradient(900px 420px at 50% -12%, var(--blue-50), transparent 70%), var(--bg2);
+}
+
+/* ---- La section sombre ------------------------------------------
+   Une page longue a besoin d'un moment, et c'est lui. Même encre que
+   le pied de page (`--text`), pour que les deux appartiennent à la
+   même famille — elle se place au MILIEU du défilement, jamais juste
+   avant le pied, où les deux se confondraient en un seul bloc noir. */
+.section-sombre {
+  background: var(--text); color: rgba(255,255,255,0.72);
+  position: relative; overflow: hidden;
+}
+.section-sombre::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(640px 400px at 78% 0%,   rgba(37,99,235,0.34), transparent 70%),
+    radial-gradient(540px 340px at 6% 100%,  rgba(14,165,233,0.18), transparent 72%),
+    radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: auto, auto, 26px 26px;
+}
+.section-sombre > .container { position: relative; z-index: 1; }
+.section-sombre .headline { color: #fff; }
+.section-sombre .headline span { color: var(--blue-300); }
+.section-sombre .tag {
+  color: #BFDBFE; background: rgba(96,165,250,0.14); border-color: rgba(147,197,253,0.34);
+}
+.section-sombre .tag-orange { color: #FDBA74; background: rgba(249,115,22,0.14); border-color: rgba(253,186,116,0.34); }
+.section-sombre p { color: rgba(255,255,255,0.66); }
+.section-sombre .legende { color: rgba(255,255,255,0.56); }
+/* Les pilules par défaut sont blanches sur blanc : sur l'encre, elles
+   feraient une rangée de confettis. */
+.section-sombre .pill {
+  background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.78);
+}
+.section-sombre .pill-dot { background: var(--blue-300); }
+/* Un `.encart` posé sur l'encre reste BLANC : un relevé qui ressemble à
+   un document se lit comme un document. Son titre garde donc sa couleur
+   d'origine, et seul celui d'une carte de nuit passe au blanc. */
+.section-sombre .carte-nuit .encart-titre { color: #fff; }
+
+/* La carte de la section sombre. */
+.carte-nuit {
+  background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-xl); padding: 26px; transition: all 0.25s;
+}
+.carte-nuit:hover {
+  background: rgba(255,255,255,0.09); border-color: rgba(147,197,253,0.42);
+  transform: translateY(-4px);
+}
+.carte-nuit .carte-titre {
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  color: #fff; margin-bottom: 9px;
+}
+.carte-nuit .carte-texte { font-size: 14px; line-height: 1.75; color: rgba(255,255,255,0.66); }
+.carte-nuit .pill { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.75); }
+.carte-nuit .pill-dot { background: var(--accent-n, var(--blue-300)); }
+
+/* ---- Les chiffres en grand --------------------------------------
+   Un chiffre de 2 rem posé dans une carte blanche se lit comme une
+   ligne de tableau. Celui-ci se voit depuis l'autre bout de la page. */
+.ruban-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 22px; }
+.chiffre { text-align: center; }
+.chiffre-val {
+  font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em;
+  font-size: clamp(2.2rem, 5.2vw, 3.6rem); line-height: 1;
+  color: var(--blue-300);
+  background: linear-gradient(135deg, #fff, var(--blue-300));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.chiffre-quoi { margin-top: 12px; font-size: 13.5px; line-height: 1.6; color: rgba(255,255,255,0.62); }
+.chiffre-val .unite { font-size: 0.5em; }
+/* Le même ruban sur fond clair. */
+.ruban-chiffres.clair .chiffre-val {
+  color: var(--primary);
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-400));
+}
+.ruban-chiffres.clair .chiffre-quoi { color: var(--text2); }
+
+/* ---- Une couleur par carte --------------------------------------
+   Trois canaux qui ne se ressemblent pas avaient trois cartes
+   identiques. La couleur se pose sur la carte, PAS dans la page :
+   deux variables par modificateur, et le jeton, le filet du haut et
+   la pastille des pilules suivent. */
+.a-vert   { --accent: #16A34A; --accent-l: #F0FDF4; --accent-b: #BBF7D0; --accent-n: #4ADE80; }
+.a-bleu   { --accent: #2563EB; --accent-l: #EFF6FF; --accent-b: #BFDBFE; --accent-n: #93C5FD; }
+.a-ciel   { --accent: #0284C7; --accent-l: #F0F9FF; --accent-b: #BAE6FD; --accent-n: #7DD3FC; }
+.a-orange { --accent: #EA580C; --accent-l: #FFF7ED; --accent-b: #FED7AA; --accent-n: #FDBA74; }
+.a-violet { --accent: #7C3AED; --accent-l: #F5F3FF; --accent-b: #DDD6FE; --accent-n: #C4B5FD; }
+.a-teal   { --accent: #0D9488; --accent-l: #F0FDFA; --accent-b: #99F6E4; --accent-n: #5EEAD4; }
+.a-rose   { --accent: #DB2777; --accent-l: #FDF2F8; --accent-b: #FBCFE8; --accent-n: #F9A8D4; }
+
+/* Le filet de couleur en tête de carte. */
+.why-card.accent, .carte-nuit.accent, .value-card.accent { position: relative; overflow: hidden; }
+.why-card.accent::before, .carte-nuit.accent::before, .value-card.accent::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-b));
+}
+.carte-nuit.accent::before { background: linear-gradient(90deg, var(--accent-n), transparent); }
+.why-card.accent:hover { border-color: var(--accent-b); }
+.value-card.accent { background: #fff; transition: all 0.25s; }
+.value-card.accent:hover { border-color: var(--accent-b); box-shadow: var(--shadow); transform: translateY(-3px); }
+
+/* Le jeton : l'icône dans un carré teinté, au lieu d'un trait nu. */
+.jeton {
+  width: 52px; height: 52px; border-radius: 15px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-l, var(--blue-50)); color: var(--accent, var(--primary));
+  border: 1px solid var(--accent-b, var(--blue-200)); margin-bottom: 16px;
+}
+.section-sombre .jeton {
+  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.14);
+  color: var(--accent-n, var(--blue-300));
+}
+
+/* ---- Les quatre étapes, reliées ---------------------------------
+   Le trait pointillé passe DERRIÈRE les cartes, à la hauteur du
+   centre des pastilles (36 px de marge haute + 26 px de demi-pastille).
+   Il disparaît dès que la rangée se replie : sur deux rangées, il
+   relierait des étapes qui ne se suivent pas. */
+.steps-reliees { position: relative; }
+.steps-reliees::before {
+  content: ''; position: absolute; top: 62px; left: 12%; right: 12%; height: 2px;
+  background-image: linear-gradient(90deg, var(--blue-200) 55%, transparent 0);
+  background-size: 11px 2px; z-index: 0;
+}
+.steps-reliees .step-card { position: relative; z-index: 1; }
+.steps-reliees .step-num {
+  background: linear-gradient(140deg, var(--blue-400), var(--blue-700));
+  box-shadow: 0 10px 24px rgba(37,99,235,0.34);
+}
+
+/* ---- Le téléphone -----------------------------------------------
+   Ce que reçoit l'invité, montré plutôt que raconté. Le bandeau du
+   haut porte le nom de L'ORGANISATEUR : le message vient de lui, pas
+   de la messagerie, et une maquette qui imiterait l'habillage d'un
+   service tiers dirait le contraire.
+
+   `.telephone` et non `.tel` : `wakabi.css` tient DÉJÀ un `.tel` et une
+   `.bulle`, pour le même objet et avec d'autres mesures. Les deux
+   feuilles ne se chargent jamais ensemble, donc rien ne casserait
+   aujourd'hui ; mais le jour où ce bloc de balises sera recopié d'une
+   page du guide vers une page Boost, il prendrait silencieusement
+   l'autre habillage. Deux noms valent mieux qu'un piège. */
+.telephone {
+  width: 296px; max-width: 100%; margin: 0 auto;
+  background: linear-gradient(160deg, #1E293B, #0F172A);
+  border-radius: 40px; padding: 11px;
+  box-shadow: 0 34px 70px rgba(2,10,40,0.45), 0 0 0 1px rgba(255,255,255,0.07) inset;
+}
+.telephone::before {
+  content: ''; display: block; width: 86px; height: 5px; border-radius: 3px;
+  background: rgba(255,255,255,0.22); margin: 2px auto 9px;
+}
+.telephone-ecran { background: #E9E4DD; border-radius: 30px; overflow: hidden; }
+.telephone-tete {
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-500));
+  color: #fff; padding: 13px 14px; display: flex; align-items: center; gap: 10px;
+}
+.telephone-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex: 0 0 auto;
+  background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 12px; font-weight: 800;
+}
+.telephone-nom { font-size: 13.5px; font-weight: 700; line-height: 1.25; }
+.telephone-sous { font-size: 11px; color: rgba(255,255,255,0.72); }
+.telephone-fil {
+  padding: 16px 12px 20px; min-height: 236px;
+  background-image: radial-gradient(rgba(15,23,42,0.045) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.message {
+  background: #fff; border-radius: 15px 15px 15px 5px; padding: 11px 12px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.14); font-size: 12.5px; line-height: 1.6; color: #111827;
+}
+.message + .message { margin-top: 10px; }
+.message-image {
+  height: 88px; border-radius: 10px; margin: -3px 0 9px;
+  background: linear-gradient(135deg, var(--blue-600), var(--teal));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+}
+.message-bouton {
+  margin-top: 10px; padding-top: 9px; border-top: 1px solid #E5E7EB;
+  text-align: center; color: var(--primary); font-weight: 700; font-size: 12px;
+}
+.message-heure { font-size: 10.5px; color: #9CA3AF; text-align: right; margin-top: 6px; }
+.message-heure .vu { color: #2563EB; font-weight: 700; }
+
+/* ---- L'appel de fin ----------------------------------------------
+   La dernière section était blanche, juste avant un pied de page noir.
+   Elle ferme maintenant la page comme le bandeau l'ouvre. */
+.appel-final {
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-500) 58%, #0EA5E9);
+  color: #fff; position: relative; overflow: hidden;
+}
+.appel-final::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.appel-final > .container { position: relative; z-index: 1; }
+.appel-final .headline { color: #fff; }
+.appel-final .headline span { color: #BAE6FD; }
+.appel-final p { color: rgba(255,255,255,0.82); }
+.appel-final a:not(.btn) { color: #fff; text-decoration: underline; }
+
+@media (max-width: 1000px) {
+  /* Sur deux rangées, le trait relierait des étapes qui ne se suivent pas. */
+  .steps-reliees::before { display: none; }
+}
+@media (max-width: 760px) {
+  .entete-boost { padding: 112px 0 64px; }
+}
+
+/* Le téléphone à gauche, les trois canaux empilés à droite. */
+.duo-canaux { display: grid; grid-template-columns: 330px 1fr; gap: 46px; align-items: start; }
+.pile-canaux { display: grid; gap: 16px; }
+@media (max-width: 900px) {
+  .duo-canaux { grid-template-columns: 1fr; gap: 34px; }
+}
+
+/* La carte d'un canal : le jeton à gauche, le texte à droite. Empilée
+   en colonne, elle devenait trois fois plus haute que large pour trois
+   lignes de texte. */
+.pile-canaux .carte-nuit { display: grid; grid-template-columns: 52px 1fr; gap: 20px; align-items: start; }
+.pile-canaux .jeton { margin-bottom: 0; }
+/* La ligne de lecture se compte en caractères, pas en pixels. */
+.carte-nuit .carte-texte { max-width: 68ch; }
+@media (max-width: 620px) {
+  .pile-canaux .carte-nuit { grid-template-columns: 1fr; gap: 14px; }
+}

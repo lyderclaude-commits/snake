@@ -13,16 +13,18 @@
  * marche, qu'est-ce qu'il me faut pour commencer, et qu'est-ce que ça
  * donne vraiment. Les sections suivent cet ordre-là.
  *
- * Le prix n'est pas écrit ici : il se lit dans `partiels/offre-ligne.php`,
- * qui va le chercher dans les offres. Une page de vitrine qui annoncerait
- * un chiffre en dur mentirait dès la première modification.
+ * AUCUN prix n'est écrit ici, et aucun n'est lu non plus : les chiffres
+ * vivent sur `?p=tarifs`, qui les prend dans les offres. Une page qui
+ * annonçait « l'offre Croissance, 6 000 F CFA » en tête faisait deux
+ * choses à la fois, et obligeait à comparer de mémoire avec les trois
+ * autres offres. Les boutons mènent là-bas ; la page, elle, explique.
  *
  * LES CHIFFRES DES DEUX TABLEAUX DE BORD SONT DES ILLUSTRATIONS, et le
  * disent. Montrer un écran vide ne dirait rien de ce qu'on y lit ; faire
  * passer des chiffres inventés pour une mesure serait pire.
  */
 ?>
-<div class="page-header">
+<div class="page-header entete-boost">
   <div class="container"><div class="page-header-inner">
     <div class="breadcrumb">
       <a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">›</span>
@@ -33,7 +35,7 @@
     Vous écrivez une fois, vous choisissez qui reçoit, et vous voyez ce qui est arrivé.</p>
     <div class="hero-ctas" style="justify-content:center;margin-top:26px">
       <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
-      <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=accueil#tarifs')) ?>">Voir les offres</a>
+      <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
     </div>
     <?php
     /* `.rassure` et non `.trust-item` : le bloc « EDIT » en tête de
@@ -48,19 +50,8 @@
   </div></div>
 </div>
 
-<section class="section">
+<section class="section section-ouverture">
   <div class="container">
-
-    <?php
-    /* `telegram_push` est la ligne qui OUVRE l'écran des canaux ; les
-       messages WhatsApp et Telegram se comptent ensuite par des quotas
-       à part (`whatsapp_par_mois`, `telegram_par_mois`). C'est la
-       capacité qu'on annonce, parce que c'est elle qui donne la clé. */
-    $ligne = 'telegram_push';
-    $quoi = 'l’envoi de messages';
-    $pluriel = false;
-    require __DIR__ . '/partiels/offre-ligne.php';
-    ?>
 
     <div style="text-align:center;margin-bottom:46px" class="fade-up">
       <div class="tag">En quatre gestes</div>
@@ -71,7 +62,7 @@
       </p>
     </div>
 
-    <div class="steps-grid steps-quatre fade-up">
+    <div class="steps-grid steps-quatre steps-reliees fade-up">
       <div class="step-card">
         <div class="step-num">1</div>
         <div class="step-title">Vous écrivez</div>
@@ -100,50 +91,100 @@
   </div>
 </section>
 
-<section class="section section-grise">
+<?php
+/**
+ * LA section sombre de la page.
+ *
+ * Elle est au milieu du défilement, et non juste avant le pied de page :
+ * le pied porte la même encre, et les deux collés se liraient comme un
+ * seul bloc noir de six cents pixels.
+ *
+ * Le téléphone n'imite l'habillage d'AUCUNE messagerie. Le bandeau du
+ * haut porte le nom de l'organisateur, parce que c'est de lui que vient
+ * le message : une maquette aux couleurs de WhatsApp dirait le
+ * contraire, et ce serait faux autant pour l'invité que pour la loi.
+ */
+?>
+<section class="section section-sombre">
   <div class="container">
-    <div style="text-align:center;margin-bottom:40px" class="fade-up">
+    <div style="text-align:center;margin-bottom:46px" class="fade-up">
       <div class="tag">Trois canaux</div>
       <h2 class="headline">Le message part <span>là où on le lit</span></h2>
-      <p style="color:var(--text2);max-width:64ch;margin:14px auto 0;line-height:1.8">
+      <p style="max-width:64ch;margin:14px auto 0;line-height:1.8">
         Chacun demande quelque chose de différent pour s’ouvrir. C’est écrit ici plutôt que
         découvert le soir de la campagne.
       </p>
     </div>
 
-    <div class="why-grid fade-up">
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('whatsapp', 32) ?></div>
-        <div class="why-title">WhatsApp</div>
-        <div class="why-desc">Le canal que tout le monde ouvre. Vos messages partent par
-        l’API officielle, avec vos gabarits validés, et pas depuis un téléphone qui finit
-        par se faire bloquer.</div>
-        <div class="feature-pills" style="margin:16px 0 0">
-          <span class="pill"><span class="pill-dot"></span>Numéro vérifié</span>
-          <span class="pill"><span class="pill-dot"></span>Gabarits validés</span>
-          <span class="pill"><span class="pill-dot"></span>Quota mensuel</span>
+    <div class="duo-canaux fade-up">
+      <div>
+        <div class="telephone">
+          <div class="telephone-ecran">
+            <div class="telephone-tete">
+              <div class="telephone-avatar">SB</div>
+              <div>
+                <div class="telephone-nom">Soirée Blanche</div>
+                <div class="telephone-sous">Message de l’organisateur</div>
+              </div>
+            </div>
+            <div class="telephone-fil">
+              <div class="message">
+                <div class="message-image">VOTRE DÉCOR</div>
+                Samedi 12 avril, 21 h, Lomé. Votre badge est déjà prêt :
+                il ne vous reste qu’à y mettre votre photo.
+                <div class="message-bouton">Faire mon badge</div>
+                <div class="message-heure">20:12 <span class="vu">✓✓</span></div>
+              </div>
+              <div class="message" style="color:#6B7280;font-size:11.5px">
+                Pour ne plus recevoir ces messages, répondez STOP.
+                <div class="message-heure">20:12 <span class="vu">✓✓</span></div>
+              </div>
+            </div>
+          </div>
         </div>
+        <div class="legende">Un exemple. La soirée et l’heure sont inventées.</div>
       </div>
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('telegram', 32) ?></div>
-        <div class="why-title">Telegram</div>
-        <div class="why-desc">Pour les groupes et les canaux d’annonce. Un message, un lien
-        court traçable, et vous savez combien de personnes l’ont réellement suivi.</div>
-        <div class="feature-pills" style="margin:16px 0 0">
-          <span class="pill"><span class="pill-dot"></span>Jeton de bot</span>
-          <span class="pill"><span class="pill-dot"></span>Canal ou groupe</span>
-          <span class="pill"><span class="pill-dot"></span>Sans quota</span>
+
+      <div class="pile-canaux">
+        <div class="carte-nuit accent a-vert">
+          <div class="jeton"><?= icone_guide('whatsapp', 26) ?></div>
+          <div>
+            <div class="carte-titre">WhatsApp</div>
+            <div class="carte-texte">Le canal que tout le monde ouvre. Vos messages partent
+            par l’API officielle, avec vos gabarits validés, et pas depuis un téléphone qui
+            finit par se faire bloquer.</div>
+            <div class="feature-pills" style="margin:16px 0 0">
+              <span class="pill"><span class="pill-dot"></span>Numéro vérifié</span>
+              <span class="pill"><span class="pill-dot"></span>Gabarits validés</span>
+              <span class="pill"><span class="pill-dot"></span>Quota mensuel</span>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('push-notifications', 32) ?></div>
-        <div class="why-title">Notifications navigateur</div>
-        <div class="why-desc">La personne accepte une fois, depuis votre page de décor, et
-        vous la joignez ensuite sans connaître ni son numéro ni son adresse.</div>
-        <div class="feature-pills" style="margin:16px 0 0">
-          <span class="pill"><span class="pill-dot"></span>Rien à configurer</span>
-          <span class="pill"><span class="pill-dot"></span>Anonyme</span>
-          <span class="pill"><span class="pill-dot"></span>Compris dans l’offre</span>
+        <div class="carte-nuit accent a-ciel">
+          <div class="jeton"><?= icone_guide('telegram', 26) ?></div>
+          <div>
+            <div class="carte-titre">Telegram</div>
+            <div class="carte-texte">Pour les groupes et les canaux d’annonce. Un message, un
+            lien court traçable, et vous savez combien de personnes l’ont réellement suivi.</div>
+            <div class="feature-pills" style="margin:16px 0 0">
+              <span class="pill"><span class="pill-dot"></span>Jeton de bot</span>
+              <span class="pill"><span class="pill-dot"></span>Canal ou groupe</span>
+              <span class="pill"><span class="pill-dot"></span>Sans quota</span>
+            </div>
+          </div>
+        </div>
+        <div class="carte-nuit accent a-orange">
+          <div class="jeton"><?= icone_guide('push-notifications', 26) ?></div>
+          <div>
+            <div class="carte-titre">Notifications navigateur</div>
+            <div class="carte-texte">La personne accepte une fois, depuis votre page de décor,
+            et vous la joignez ensuite sans connaître ni son numéro ni son adresse.</div>
+            <div class="feature-pills" style="margin:16px 0 0">
+              <span class="pill"><span class="pill-dot"></span>Rien à configurer</span>
+              <span class="pill"><span class="pill-dot"></span>Anonyme</span>
+              <span class="pill"><span class="pill-dot"></span>Compris dans l’offre</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -285,7 +326,7 @@
           adresse.</div></details>
         <details class="faq-item"><summary class="faq-q">Combien de messages par mois ?<span>+</span></summary>
           <div class="faq-a">Cela dépend de l’offre, et chaque canal a son propre compteur. Le détail
-          est sur <a href="<?= e(url('?p=accueil#tarifs')) ?>">la page des offres</a>, et votre
+          est sur <a href="<?= e(url('?p=tarifs')) ?>">la page des offres</a>, et votre
           tableau de bord affiche ce qu’il vous reste.</div></details>
         <details class="faq-item"><summary class="faq-q">Comment quelqu’un se désabonne ?<span>+</span></summary>
           <div class="faq-a">En un clic, et c’est nous qui l’imposons : chaque e-mail porte son lien,
@@ -304,18 +345,18 @@
   </div>
 </section>
 
-<section class="section-sm">
+<section class="section-sm appel-final">
   <div class="container">
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">Votre prochaine soirée a déjà <span>une liste d’invités</span></h2>
-      <p style="color:var(--text2);margin:14px 0 24px;line-height:1.8">
+      <p style="margin:14px 0 24px;line-height:1.8">
         Ce sont les gens qui sont venus à la dernière. Il ne manque qu’un message.
       </p>
       <div class="hero-ctas" style="justify-content:center">
-        <a class="btn btn-primary btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
-        <a class="btn btn-outline btn-lg" href="<?= e(url('?p=accueil#tarifs')) ?>">Voir les offres</a>
+        <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
+        <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
       </div>
-      <p style="color:var(--text3);margin-top:16px;font-size:14px">
+      <p style="color:rgba(255,255,255,.75);margin-top:16px;font-size:14px">
         Déjà un compte ? <a href="<?= e(url('?p=canaux')) ?>">Ouvrir mes canaux</a>
       </p>
     </div>

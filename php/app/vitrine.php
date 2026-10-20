@@ -76,6 +76,16 @@ const PAGES_CONTENU = [
      * tout : le dessin du guide, la barre de vitrine, le pied complet, et
      * leur ligne dans le plan du site.
      */
+    /**
+     * Les tarifs, page à part entière et non ancre de l'accueil.
+     *
+     * Treize boutons du produit menaient à `?p=accueil#tarifs`, c'est-à-dire
+     * à quatre mille pixels du haut d'une page que le visiteur n'avait pas
+     * demandée. Une ancre ne se partage pas, ne se met pas en favori, et un
+     * moteur ne la distingue pas de l'accueil.
+     */
+    'tarifs'          => ['guide-tarifs', 'Tarifs',
+        'Une offre gratuite à vie, et trois qui grandissent avec vos salles. Sans engagement.'],
     'cgu'             => ['guide-cgu', 'Conditions d’utilisation',
         'Ce que vous pouvez attendre du service, ce qu’il attend de vous, et ce qui se passe quand ça ne va pas.'],
     'confidentialite' => ['guide-confidentialite', 'Politique de confidentialité',
@@ -146,6 +156,7 @@ function menu_vitrine(): array
             ['?p=boost-push',  'Push',         'WhatsApp, Telegram, notifications'],
             ['?p=boost-regie', 'Régie',        'Campagnes e-mail'],
             ['?p=boost-liens', 'Liens courts', 'Adresses traçables'],
+            ['?p=tarifs',      'Tarifs',       'Les quatre offres, comparées'],
         ]],
         ['?p=decors',      'Les décors'],
         ['?p=partenaires', 'Partenaires'],
@@ -155,33 +166,176 @@ function menu_vitrine(): array
     ];
 }
 
+/* ------------------------------------------------------------------ */
+/* Les offres, calculées UNE fois pour les deux pages qui les montrent  */
+/* ------------------------------------------------------------------ */
+
 /**
- * La première offre qui ouvre une ligne, telle qu'elle est AUJOURD'HUI.
+ * Ce que chaque offre vendue donne, prêt à afficher.
  *
- * Les pages de présentation de Boost annoncent un prix. L'écrire à la
- * main les ferait mentir le jour où quelqu'un change une offre depuis
- * l'administration — et personne ne penserait à rouvrir trois pages de
- * vitrine pour corriger un chiffre.
+ * Ce calcul vivait en entier dans `accueil.php`, en trois fermetures de
+ * cent quarante lignes. Il en faut maintenant un second exemplaire sur la
+ * page des tarifs, et recopier cent quarante lignes de règles de vente,
+ * c'est se donner rendez-vous dans six mois avec deux pages qui annoncent
+ * deux choses différentes.
  *
- * Deux sortes de lignes, et c'est la raison de cette fonction plutôt que
- * d'un simple appel à `offre_qui_debloque()` : une CAPACITÉ s'ouvre ou
- * non, un COMPTEUR grandit. « La régie » se débloque ; « cent liens
- * courts » ne se débloque pas, il se compte, et `offre_qui_debloque()`
- * répond donc `null` pour lui — à raison.
+ * Il rend des DONNÉES, pas du balisage, et c'est la raison de sa forme :
+ * l'accueil est habillé par `wakabi.css`, la page des tarifs par
+ * `guide.css`, et leurs cartes n'ont pas une classe en commun. Une
+ * fonction qui rendrait du HTML aurait obligé l'une des deux à porter le
+ * dessin de l'autre.
+ *
+ * Les prix et les lignes viennent de `formules()`, jamais d'une liste
+ * écrite à la main : une promesse et son application ne peuvent pas
+ * diverger quand elles n'ont qu'une source.
+ *
+ * @return list<array{cle:string,nom:string,tag:string,cta:string,phare:bool,
+ *                    prix:int,lancement:int,prefixe:?string,
+ *                    lignes:list<array{0:string,1:int}>}>
  */
-function offre_porte(string $ligne): ?array
+function offres_vitrine(): array
 {
-    $compteurs = ['campagnes', 'telechargements', 'liens_courts', 'emails_par_mois'];
-    if (in_array($ligne, $compteurs, true)) {
-        foreach (formules_actives() as $cle => $f) {
-            if ((int) ($f[$ligne] ?? 0) !== 0) {
-                return ['cle' => $cle] + $f;
+    /** Ce qu'une offre donne, ligne à ligne, telle qu'on la vend. */
+    $lignes_offre = static function (string $cle): array {
+        $f = formules()[$cle] ?? formules()['decouverte'] ?? FORMULES['decouverte'];
+        $out = [];
+        $out[] = [$f['campagnes'] < 0 ? 'Campagnes illimitées'
+                  : $f['campagnes'] . ' campagne' . ($f['campagnes'] > 1 ? 's' : '') . ' active'
+                    . ($f['campagnes'] > 1 ? 's' : ''), 1];
+        $out[] = [$f['telechargements'] < 0 ? 'Téléchargements illimités'
+                  : number_format($f['telechargements'], 0, ',', ' ') . ' téléchargements / mois', 1];
+        if ($f['liens_courts'] !== 0) {
+            $out[] = [$f['liens_courts'] < 0 ? 'Liens courts illimités'
+                      : $f['liens_courts'] . ' liens courts wkb.link', 1];
+        }
+        /* Un compteur qui vaut zéro ne se montre pas : « 0 e-mail par mois »
+           se lit comme une privation, alors que l'offre n'a simplement
+           jamais promis cette ligne. */
+        if ($f['emails_par_mois'] !== 0) {
+            $out[] = [$f['emails_par_mois'] < 0 ? 'E-mails marketing illimités'
+                      : number_format($f['emails_par_mois'], 0, ',', ' ') . ' e-mails marketing / mois', 1];
+        }
+        /* Le Studio est dans toutes les offres, y compris la gratuite :
+           c'est le produit lui-même, et le dire ici évite qu'on croie
+           l'offre d'essai amputée. */
+        $out[] = ['Studio complet', 1];
+        if ($f['stats'] !== 'completes') {
+            $out[] = ['Statistiques de base', 1];
+        }
+
+        $barrees = 0;
+        foreach (OFFRE_LIGNES as $k => [$libelle, $nature, ]) {
+            if ($nature === 'compteur') {
+                continue;
+            }
+            $ouvert = $k === 'stats' ? $f['stats'] === 'completes' : (bool) $f[$k];
+            if ($ouvert) {
+                $out[] = [$libelle, 1];
+                continue;
+            }
+            /* Deux lignes barrées suffisent à situer une offre d'entrée.
+               Les dix y tiendraient, mais la carte deviendrait un catalogue
+               de ce qu'on n'a pas. */
+            if ($cle === 'decouverte' && $barrees < 2) {
+                $out[] = [$libelle, 0];
+                $barrees++;
             }
         }
-        return null;
+        return $out;
+    };
+
+    /** Ce que l'offre précédente donnait déjà : inutile de le relister. */
+    $nouveautes = static function (string $cle, ?string $avant) use ($lignes_offre): array {
+        if (!$avant) {
+            return $lignes_offre($cle);
+        }
+        $deja = [];
+        foreach ($lignes_offre($avant) as [$t, $ok]) {
+            if ($ok) {
+                $deja[$t] = true;
+            }
+        }
+        return array_values(array_filter($lignes_offre($cle), fn($l) => !isset($deja[$l[0]])));
+    };
+
+    /**
+     * La liste des offres se DÉDUIT, elle ne s'écrit pas.
+     *
+     * Les quatre clés étaient codées en dur avec leur accroche et leur
+     * bouton : ajouter une offre depuis l'administration aurait donné une
+     * offre invisible, et en supprimer une aurait cassé la page.
+     */
+    $vendues = formules_actives();
+    $cles = array_keys($vendues);
+    $out = [];
+    foreach ($cles as $i => $cle) {
+        $f = $vendues[$cle];
+        /**
+         * La PREMIÈRE offre payante liste tout ce qu'elle donne.
+         *
+         * « Tout Découverte, plus : » ferait paraître maigre l'offre
+         * d'entrée, puisque Découverte ne donne presque rien. Le raccourci
+         * ne vaut qu'entre deux offres qui se paient toutes les deux.
+         */
+        $prec = $i > 0 ? $cles[$i - 1] : null;
+        $avant = $prec !== null && (int) $f['prix'] > 0
+              && (int) $vendues[$prec]['prix'] > 0 ? $prec : null;
+        $out[] = [
+            'cle' => $cle,
+            'nom' => (string) $f['nom'],
+            'tag' => (string) ($f['tag'] ?? ''),
+            'cta' => (string) ($f['cta'] ?? '') ?: ('Choisir ' . $f['nom']),
+            'phare' => (bool) ($f['phare'] ?? false),
+            'prix' => (int) $f['prix'],
+            'lancement' => (int) $f['lancement'],
+            'prefixe' => $avant ? 'Tout ' . $vendues[$avant]['nom'] . ', plus :' : null,
+            'lignes' => $nouveautes($cle, $avant),
+        ];
     }
-    $cle = offre_qui_debloque($ligne);
-    return $cle === null ? null : ['cle' => $cle] + formules()[$cle];
+    return $out;
+}
+
+/**
+ * Le tableau comparatif : une ligne par capacité, une colonne par offre.
+ *
+ * Quatre cartes côte à côte disent ce que chacune donne ; elles ne disent
+ * pas ce qu'on gagne en passant de l'une à l'autre. Pour le savoir, il
+ * faut lire quatre listes et les tenir en tête en même temps — c'est
+ * précisément le moment où l'on referme la page.
+ *
+ * Les lignes et leur ordre viennent d'`OFFRE_LIGNES`, la table que le
+ * produit APPLIQUE. Une capacité ajoutée au produit apparaît donc ici
+ * sans que personne n'ait à y penser, et une capacité retirée disparaît.
+ *
+ * @return list<array{libelle:string,aide:string,valeurs:array<string,string>}>
+ */
+function offres_tableau(): array
+{
+    $vendues = formules_actives();
+    $nombre = static function (int $v): string {
+        if ($v < 0) {
+            return 'illimité';
+        }
+        return $v === 0 ? '' : number_format($v, 0, ',', ' ');
+    };
+
+    $out = [];
+    foreach (OFFRE_LIGNES as $cle => [$libelle, $nature, $aide]) {
+        $valeurs = [];
+        foreach ($vendues as $k => $f) {
+            if ($nature === 'compteur') {
+                $valeurs[$k] = $nombre((int) ($f[$cle] ?? 0));
+                continue;
+            }
+            /* `stats` ne vaut pas oui ou non mais « de base » ou
+               « complètes » : la seule ligne de la table qui porte un mot
+               plutôt qu'un interrupteur. */
+            $ouvert = $cle === 'stats' ? ($f['stats'] ?? '') === 'completes' : (bool) ($f[$cle] ?? false);
+            $valeurs[$k] = $ouvert ? 'oui' : '';
+        }
+        $out[] = ['libelle' => $libelle, 'aide' => $aide, 'valeurs' => $valeurs];
+    }
+    return $out;
 }
 
 /**

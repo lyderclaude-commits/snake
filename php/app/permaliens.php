@@ -73,6 +73,7 @@ const PERMALIENS_FIXES = [
     'boost-push'      => 'push',
     'boost-regie'     => 'regie',
     'boost-liens'     => 'liens-courts',
+    'tarifs'          => 'tarifs',
     'cgu'             => 'cgu',
     'confidentialite' => 'confidentialite',
     'inscription'     => 'inscription',

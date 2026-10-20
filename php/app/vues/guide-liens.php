@@ -14,7 +14,7 @@
  * serait pire que pas de champ du tout.
  */
 ?>
-<div class="page-header">
+<div class="page-header entete-boost">
   <div class="container"><div class="page-header-inner">
     <div class="breadcrumb">
       <a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">›</span>
@@ -44,11 +44,8 @@
   </div></div>
 </div>
 
-<section class="section">
+<section class="section section-ouverture">
   <div class="container">
-
-    <?php $ligne = 'liens_courts'; $quoi = 'les liens courts'; $pluriel = true;
-          require __DIR__ . '/partiels/offre-ligne.php'; ?>
 
     <div style="text-align:center;margin-bottom:40px" class="fade-up">
       <div class="tag">Six caractères</div>
@@ -135,29 +132,40 @@
   </div>
 </section>
 
-<section class="section">
+<?php
+/**
+ * LA section sombre de la page.
+ *
+ * Trois chiffres posés dans trois cases blanches se lisaient comme une
+ * ligne de tableau. C'est pourtant la seule promesse mesurable de la
+ * page : elle méritait qu'on s'arrête dessus, et un fond d'encre au
+ * milieu du défilement est ce qui arrête.
+ */
+?>
+<section class="section section-sombre">
   <div class="container">
-    <div style="text-align:center;margin-bottom:36px" class="fade-up">
+    <div style="text-align:center;margin-bottom:44px" class="fade-up">
       <div class="tag">Ce que ça mesure</div>
       <h2 class="headline">La seule chose qu’une affiche <span>sait vous dire</span></h2>
-      <p style="color:var(--text2);max-width:64ch;margin:14px auto 0;line-height:1.8">
+      <p style="max-width:64ch;margin:14px auto 0;line-height:1.8">
         Quand on colle une affiche, tout se devine : combien l’ont vue, combien s’en
         souviennent. Le nombre de personnes qui ont suivi le lien, lui, se lit.
       </p>
     </div>
 
     <div class="colonne-lecture fade-up">
-      <div class="stats-grid">
-        <div class="stat-block"><div class="stat-num">1 842</div>
-          <div class="stat-label">clics sur le lien de l’affiche</div></div>
-        <div class="stat-block"><div class="stat-num">612</div>
-          <div class="stat-label">badges faits derrière</div></div>
-        <div class="stat-block"><div class="stat-num">33<sub>%</sub></div>
-          <div class="stat-label">de ceux qui ont cliqué</div></div>
+      <div class="ruban-chiffres">
+        <div class="chiffre"><div class="chiffre-val">1 842</div>
+          <div class="chiffre-quoi">clics sur le lien de l’affiche</div></div>
+        <div class="chiffre"><div class="chiffre-val">612</div>
+          <div class="chiffre-quoi">badges faits derrière</div></div>
+        <div class="chiffre"><div class="chiffre-val">33<span class="unite">%</span></div>
+          <div class="chiffre-quoi">de ceux qui ont cliqué</div></div>
       </div>
-      <p class="legende">Chiffres d’illustration. L’écran affiche les vôtres, lien par lien.</p>
+      <p class="legende" style="margin-top:22px">Chiffres d’illustration. L’écran affiche les
+      vôtres, lien par lien.</p>
 
-      <div class="encart" style="margin-top:28px">
+      <div class="carte-nuit" style="margin-top:32px">
         <div class="encart-titre">Rattaché à une campagne, le lien compte deux fois</div>
         <p style="margin-bottom:14px">Un lien peut appartenir à l’une de vos campagnes. Ses
         clics entrent alors dans son rapport, à côté des vues de la page, des badges
@@ -181,26 +189,26 @@
       <h2 class="headline">Un lien par support, <span>et on sait lequel a marché</span></h2>
     </div>
     <div class="why-grid why-quatre fade-up">
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('affiche', 30) ?></div>
+      <div class="why-card accent a-bleu">
+        <div class="jeton"><?= icone_guide('affiche', 26) ?></div>
         <div class="why-title">L’affiche</div>
         <div class="why-desc">Collée sur un mur, lue à trois mètres. Le lien doit tenir sur
         une ligne et se taper sans erreur.</div>
       </div>
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('telephone', 30) ?></div>
+      <div class="why-card accent a-vert">
+        <div class="jeton"><?= icone_guide('telephone', 26) ?></div>
         <div class="why-title">Le statut</div>
         <div class="why-desc">WhatsApp, Instagram. Un lien long se fait couper par l’aperçu ;
         un lien court reste entier.</div>
       </div>
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('radio', 30) ?></div>
+      <div class="why-card accent a-orange">
+        <div class="jeton"><?= icone_guide('radio', 26) ?></div>
         <div class="why-title">La radio</div>
         <div class="why-desc">Six caractères se disent à voix haute. C’est pour cela que
         l’alphabet écarte ce qui s’entend pareil.</div>
       </div>
-      <div class="why-card">
-        <div class="why-icon"><?= icone_guide('flyer', 30) ?></div>
+      <div class="why-card accent a-violet">
+        <div class="jeton"><?= icone_guide('flyer', 26) ?></div>
         <div class="why-title">Le flyer</div>
         <div class="why-desc">Avec son QR. Celui qui tape et celui qui scanne comptent dans
         le même total.</div>
@@ -250,26 +258,26 @@
           sur celui qui clique : c’est une mesure de volume, pas un suivi de personne.</div></details>
         <details class="faq-item"><summary class="faq-q">Combien de liens par mois ?<span>+</span></summary>
           <div class="faq-a">Cela dépend de l’offre, et le détail est sur
-          <a href="<?= e(url('?p=accueil#tarifs')) ?>">la page des offres</a>. Composer un lien ne
+          <a href="<?= e(url('?p=tarifs')) ?>">la page des offres</a>. Composer un lien ne
           demande pas de compte ; le créer, oui.</div></details>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section-sm">
+<section class="section-sm appel-final">
   <div class="container">
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">Essayez avant <span>de vous inscrire</span></h2>
-      <p style="color:var(--text2);margin:14px 0 24px;line-height:1.8">
+      <p style="margin:14px 0 24px;line-height:1.8">
         Composez votre lien maintenant. On vous demandera qui vous êtes au moment de le
         créer, et pas une seconde avant.
       </p>
       <div class="hero-ctas" style="justify-content:center">
-        <a class="btn btn-primary btn-lg" href="<?= e(url('?p=lien-court')) ?>">Composer un lien</a>
-        <a class="btn btn-outline btn-lg" href="<?= e(url('?p=accueil#tarifs')) ?>">Voir les offres</a>
+        <a class="btn btn-white btn-lg" href="<?= e(url('?p=lien-court')) ?>">Composer un lien</a>
+        <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
       </div>
-      <p style="color:var(--text3);margin-top:16px;font-size:14px">
+      <p style="color:rgba(255,255,255,.75);margin-top:16px;font-size:14px">
         Déjà un compte ? <a href="<?= e(url('?p=liens')) ?>">Ouvrir mes liens</a>
       </p>
     </div>

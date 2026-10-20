@@ -111,7 +111,7 @@
         <span class="aide">Compte de l’équipe · aucun quota</span>
       <?php else: ?>
         <h3 style="margin:0">Offre <?= e($offre['nom']) ?></h3>
-        <a class="aide" href="<?= e(url('#tarifs')) ?>">Comparer les offres</a>
+        <a class="aide" href="<?= e(url('?p=tarifs')) ?>">Comparer les offres</a>
       <?php endif; ?>
     </div>
 

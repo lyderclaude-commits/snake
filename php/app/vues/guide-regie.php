@@ -15,7 +15,7 @@
  * Les chiffres des tableaux sont des ILLUSTRATIONS, et le disent.
  */
 ?>
-<div class="page-header">
+<div class="page-header entete-boost">
   <div class="container"><div class="page-header-inner">
     <div class="breadcrumb">
       <a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">›</span>
@@ -26,7 +26,7 @@
     audience reste la vôtre, et non celle d’un réseau social qui décide qui vous voit.</p>
     <div class="hero-ctas" style="justify-content:center;margin-top:26px">
       <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
-      <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=accueil#tarifs')) ?>">Voir les offres</a>
+      <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
     </div>
     <div class="rassure" style="margin-top:20px">
       <span class="rassure-item">Vos listes ne sont jamais mélangées</span>
@@ -36,11 +36,8 @@
   </div></div>
 </div>
 
-<section class="section">
+<section class="section section-ouverture">
   <div class="container">
-
-    <?php $ligne = 'regie'; $quoi = 'la régie'; $pluriel = false;
-          require __DIR__ . '/partiels/offre-ligne.php'; ?>
 
     <div style="text-align:center;margin-bottom:46px" class="fade-up">
       <div class="tag">De la salle à la boîte aux lettres</div>
@@ -52,7 +49,7 @@
       </p>
     </div>
 
-    <div class="steps-grid steps-quatre fade-up">
+    <div class="steps-grid steps-quatre steps-reliees fade-up">
       <div class="step-card">
         <div class="step-num">1</div>
         <div class="step-title">Le badge laisse une adresse</div>
@@ -153,32 +150,32 @@
     </div>
 
     <div class="values-grid fade-up">
-      <div class="value-card">
-        <div class="value-icon"><?= icone_guide('map-marker', 26) ?></div>
+      <div class="value-card accent a-bleu">
+        <div class="jeton"><?= icone_guide('map-marker', 26) ?></div>
         <div class="value-title">La ville</div>
         <div class="value-desc">Lomé, Cotonou, Abidjan. Une soirée à Lomé n’intéresse
         personne à Abidjan.</div>
       </div>
-      <div class="value-card">
-        <div class="value-icon"><?= icone_guide('calendar', 26) ?></div>
+      <div class="value-card accent a-violet">
+        <div class="jeton"><?= icone_guide('calendar', 26) ?></div>
         <div class="value-title">La date</div>
         <div class="value-desc">Venus ce mois-ci, ce trimestre, l’an dernier. Une liste
         ancienne se réveille autrement.</div>
       </div>
-      <div class="value-card">
-        <div class="value-icon"><?= icone_guide('rubrique', 26) ?></div>
+      <div class="value-card accent a-orange">
+        <div class="jeton"><?= icone_guide('rubrique', 26) ?></div>
         <div class="value-title">La rubrique</div>
         <div class="value-desc">Concerts, restaurants, sport. Ce qui a plu une fois plaira
         sans doute encore.</div>
       </div>
-      <div class="value-card">
-        <div class="value-icon"><?= icone_guide('carnet', 26) ?></div>
+      <div class="value-card accent a-rose">
+        <div class="jeton"><?= icone_guide('carnet', 26) ?></div>
         <div class="value-title">La campagne</div>
         <div class="value-desc">Ceux qui ont fait le badge de telle soirée, et pas d’une
         autre.</div>
       </div>
-      <div class="value-card" style="border-color:var(--blue-200);background:var(--blue-50)">
-        <div class="value-icon"><?= icone_guide('coche', 26) ?></div>
+      <div class="value-card accent a-vert" style="border-color:#BBF7D0;background:#F7FEF9">
+        <div class="jeton"><?= icone_guide('coche', 26) ?></div>
         <div class="value-title">Est réellement venu</div>
         <div class="value-desc">Son badge a été scanné à l’entrée. C’est la règle que
         personne d’autre ne peut vous donner, parce qu’elle vient du contrôle d’accès.</div>
@@ -203,7 +200,7 @@
   </div>
 </section>
 
-<section class="section section-grise">
+<section class="section section-sombre">
   <div class="container">
     <div class="app-showcase fade-up">
       <div>
@@ -229,12 +226,12 @@
         <div class="tag tag-orange">Ce qui a changé en 2024</div>
         <h2 class="headline" style="margin:10px 0 16px">Un message mal authentifié<br>
         <span>n’est plus rangé en indésirables</span></h2>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:16px">
+        <p style="line-height:1.85;margin-bottom:16px">
           Il est refusé. Chez Gmail et Yahoo depuis 2024, chez Outlook depuis 2025. C’est le
           genre de règle qu’on découvre le jour où mille messages ne sont jamais arrivés, et
           dont personne ne vous prévient.
         </p>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:22px">
+        <p style="line-height:1.85;margin-bottom:22px">
           L’écran des réglages relève votre domaine et vous dit ce qui manque, avec la ligne
           à poser. C’est trois minutes chez votre hébergeur, une fois pour toutes, et c’est
           la différence entre une campagne qui arrive et une campagne qui disparaît.
@@ -334,7 +331,7 @@
           telle.</div></details>
         <details class="faq-item"><summary class="faq-q">Combien d’envois par mois ?<span>+</span></summary>
           <div class="faq-a">Cela dépend de l’offre. Le détail est sur
-          <a href="<?= e(url('?p=accueil#tarifs')) ?>">la page des offres</a>, et votre tableau de
+          <a href="<?= e(url('?p=tarifs')) ?>">la page des offres</a>, et votre tableau de
           bord affiche ce qu’il vous reste.</div></details>
         <details class="faq-item"><summary class="faq-q">Et si je veux partir avec ma liste ?<span>+</span></summary>
           <div class="faq-a">Un bouton dans votre profil exporte tout dans un fichier lisible : votre
@@ -344,18 +341,18 @@
   </div>
 </section>
 
-<section class="section-sm section-grise">
+<section class="section-sm appel-final">
   <div class="container">
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">La liste commence <span>au premier badge</span></h2>
-      <p style="color:var(--text2);margin:14px 0 24px;line-height:1.8">
+      <p style="margin:14px 0 24px;line-height:1.8">
         Publiez un décor ce soir, et vous aurez une audience demain matin.
       </p>
       <div class="hero-ctas" style="justify-content:center">
-        <a class="btn btn-primary btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
-        <a class="btn btn-outline btn-lg" href="<?= e(url('?p=accueil#tarifs')) ?>">Voir les offres</a>
+        <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
+        <a class="btn btn-outline btn-lg btn-sur-bleu" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
       </div>
-      <p style="color:var(--text3);margin-top:16px;font-size:14px">
+      <p style="color:rgba(255,255,255,.75);margin-top:16px;font-size:14px">
         Déjà un compte ? <a href="<?= e(url('?p=regie')) ?>">Ouvrir ma régie</a>
       </p>
     </div>

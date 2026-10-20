@@ -31,7 +31,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       </p>
       <div class="rangee" style="margin-top:26px">
         <a class="bouton" href="<?= e(url('?p=decors')) ?>">Créer mon badge gratuit →</a>
-        <a class="bouton fant" href="#tarifs">Voir les offres</a>
+        <a class="bouton fant" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
       </div>
       <ul class="gages">
         <li>Sans carte bancaire</li>
@@ -190,133 +190,41 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <h2>Commencez gratuitement, <em>payez quand ça marche</em></h2>
       <p><strong>−50 % les 3 premiers mois</strong>, offre de lancement.</p>
     </div>
+    <?php
+    /**
+     * Les prix et les lignes viennent de `offres_vitrine()`, dans
+     * `app/vitrine.php`, et non d'une liste écrite ici.
+     *
+     * Ce calcul tenait en trois fermetures de cent quarante lignes, juste
+     * au-dessus. La page des tarifs en a besoin du même, et recopier cent
+     * quarante lignes de règles de vente, c'est se donner rendez-vous dans
+     * six mois avec deux pages qui annoncent deux choses différentes.
+     *
+     * La fonction rend des DONNÉES ; le dessin reste ici, parce que cette
+     * page est habillée par `wakabi.css` et celle des tarifs par
+     * `guide.css` — leurs cartes n'ont pas une classe en commun.
+     */
+    ?>
     <div class="grille offres">
-      <?php
-      /**
-       * Les prix et les lignes viennent de `formules()`, pas d'une liste écrite ici.
-       *
-       * Cette grille était recopiée à la main : le jour où une offre a
-       * changé dans le produit, la vitrine a continué d'en promettre une
-       * autre. Elle est maintenant DÉDUITE de la table que le code
-       * applique, ligne à ligne. Une promesse et son application ne peuvent
-       * plus diverger : elles n'ont qu'une source.
-       */
-      $lignes_offre = function (string $cle): array {
-          $f = formules()[$cle] ?? formules()['decouverte'] ?? FORMULES['decouverte'];
-          $out = [];
-          // Les compteurs, formulés comme on les vend.
-          $out[] = [$f['campagnes'] < 0 ? 'Campagnes illimitées'
-                    : $f['campagnes'] . ' campagne' . ($f['campagnes'] > 1 ? 's' : '') . ' active'
-                      . ($f['campagnes'] > 1 ? 's' : ''), 1];
-          $out[] = [$f['telechargements'] < 0 ? 'Téléchargements illimités'
-                    : number_format($f['telechargements'], 0, ',', ' ') . ' téléchargements / mois', 1];
-          if ($f['liens_courts'] !== 0) {
-              $out[] = [$f['liens_courts'] < 0 ? 'Liens courts illimités'
-                        : $f['liens_courts'] . ' liens courts wkb.link', 1];
-          }
-          // Un compteur qui vaut zéro ne se montre pas : « 0 e-mail par
-          // mois » se lit comme une privation, alors que l'offre n'a
-          // simplement jamais promis cette ligne.
-          if ($f['emails_par_mois'] !== 0) {
-              $out[] = [$f['emails_par_mois'] < 0 ? 'E-mails marketing illimités'
-                        : number_format($f['emails_par_mois'], 0, ',', ' ') . ' e-mails marketing / mois', 1];
-          }
-          // Le Studio est dans toutes les offres, y compris la gratuite :
-          // c'est le produit lui-même, et le dire ici évite qu'on croie
-          // l'offre d'essai amputée.
-          $out[] = ['Studio complet', 1];
-          if ($f['stats'] !== 'completes') {
-              $out[] = ['Statistiques de base', 1];
-          }
-
-          // Puis les capacités et les services, dans l'ordre de la table.
-          $barrees = 0;
-          foreach (OFFRE_LIGNES as $k => [$libelle, $nature, ]) {
-              if ($nature === 'compteur') {
-                  continue;
-              }
-              $ouvert = $k === 'stats' ? $f['stats'] === 'completes' : (bool) $f[$k];
-              if ($ouvert) {
-                  $out[] = [$libelle, 1];
-                  continue;
-              }
-              // Deux lignes barrées suffisent à situer une offre d'entrée.
-              // Les dix y tiendraient, mais la carte deviendrait un
-              // catalogue de ce qu'on n'a pas — la liste complète est sur le
-              // tableau de bord, là où elle sert à décider.
-              if ($cle === 'decouverte' && $barrees < 2) {
-                  $out[] = [$libelle, 0];
-                  $barrees++;
-              }
-          }
-          return $out;
-      };
-      /** Ce que l'offre précédente donnait déjà : inutile de le relister. */
-      $nouveautes = function (string $cle, ?string $avant) use ($lignes_offre): array {
-          if (!$avant) {
-              return $lignes_offre($cle);
-          }
-          $deja = [];
-          foreach ($lignes_offre($avant) as [$t, $ok]) {
-              if ($ok) {
-                  $deja[$t] = true;
-              }
-          }
-          return array_values(array_filter($lignes_offre($cle),
-              fn($l) => !isset($deja[$l[0]])));
-      };
-      /**
-       * La liste des offres n'est plus écrite ici non plus.
-       *
-       * Les quatre clés étaient codées en dur avec leur accroche, leur
-       * bouton et leur « Tout Impact, plus : ». Ajouter une offre depuis
-       * l'administration aurait donc donné une offre invisible, et en
-       * supprimer une aurait cassé la page. Tout se déduit maintenant de
-       * l'ordre d'affichage : l'offre précédente est celle d'avant dans la
-       * liste, quelle qu'elle soit.
-       */
-      $vendues = formules_actives();
-      $cles = array_keys($vendues);
-      foreach ($cles as $i => $cle):
-        $f = $vendues[$cle];
-        $tag = (string) ($f['tag'] ?? '');
-        $cta = (string) ($f['cta'] ?? '') ?: ('Choisir ' . $f['nom']);
-        $phare = (bool) ($f['phare'] ?? false);
-        /**
-         * La PREMIÈRE offre payante liste tout ce qu'elle donne.
-         *
-         * « Tout Découverte, plus : » ferait paraître maigre l'offre
-         * d'entrée, puisque Découverte ne donne presque rien : la moitié de
-         * ses lignes disparaîtraient au nom d'un doublon. Le raccourci ne
-         * vaut qu'entre deux offres qui se paient toutes les deux.
-         */
-        $prec = $i > 0 ? $cles[$i - 1] : null;
-        $avant = $prec !== null && (int) $f['prix'] > 0
-              && (int) $vendues[$prec]['prix'] > 0 ? $prec : null;
-        $prefixe = $avant ? 'Tout ' . $vendues[$avant]['nom'] . ', plus :' : null;
-        $nom = $f['nom'];
-        $prix = (int) $f['prix'];
-        $lancement = (int) $f['lancement'];
-        $lignes = $nouveautes($cle, $avant);
-      ?>
-        <div class="offre<?= $phare ? ' phare' : '' ?>">
-          <?php if ($phare): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
-          <span class="tag"><?= e($tag) ?></span>
-          <h3><?= e($nom) ?></h3>
-          <?php if ($prix === 0): ?>
+      <?php foreach (offres_vitrine() as $o): ?>
+        <div class="offre<?= $o['phare'] ? ' phare' : '' ?>">
+          <?php if ($o['phare']): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
+          <span class="tag"><?= e($o['tag']) ?></span>
+          <h3><?= e($o['nom']) ?></h3>
+          <?php if ($o['prix'] === 0): ?>
             <div class="prix">Gratuit <small>à vie</small></div>
           <?php else: ?>
-            <div class="prix"><s><?= $fr($prix) ?></s><?= $fr($lancement) ?> <small>FCFA/mois</small></div>
+            <div class="prix"><s><?= $fr($o['prix']) ?></s><?= $fr($o['lancement']) ?> <small>FCFA/mois</small></div>
             <p class="avant">−50 % les 3 premiers mois</p>
           <?php endif; ?>
-          <?php if ($prefixe): ?><p class="prefixe"><?= e($prefixe) ?></p><?php endif; ?>
+          <?php if ($o['prefixe']): ?><p class="prefixe"><?= e($o['prefixe']) ?></p><?php endif; ?>
           <ul>
-            <?php foreach ($lignes as [$texte, $inclus]): ?>
+            <?php foreach ($o['lignes'] as [$texte, $inclus]): ?>
               <li class="<?= $inclus ? '' : 'non' ?>"><span><?= e($texte) ?></span></li>
             <?php endforeach; ?>
           </ul>
-          <a class="bouton<?= $phare ? '' : ' fant' ?>" style="justify-content:center"
-             href="<?= e(url('?p=inscription&offre=' . $cle)) ?>"><?= e($cta) ?></a>
+          <a class="bouton<?= $o['phare'] ? '' : ' fant' ?>" style="justify-content:center"
+             href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?></a>
         </div>
       <?php endforeach; ?>
     </div>
@@ -398,7 +306,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <p>Rejoignez les <?= $fr($organisateurs) ?> organisateurs qui ne laissent plus jamais une chaise vide.</p>
       <div class="rangee" style="justify-content:center;margin-top:26px">
         <a class="bouton" href="<?= e(url('?p=decors')) ?>">Créer mon badge gratuit</a>
-        <a class="bouton fant" href="#tarifs">Voir les offres −50 %</a>
+        <a class="bouton fant" href="<?= e(url('?p=tarifs')) ?>">Voir les offres −50 %</a>
       </div>
     </div>
   </div>

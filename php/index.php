@@ -923,6 +923,7 @@ switch ($page) {
     case 'boost-push':
     case 'boost-regie':
     case 'boost-liens':
+    case 'tarifs':
     case 'cgu':
     case 'confidentialite':
         [$_v, $_t, $_d] = PAGES_CONTENU[$page];

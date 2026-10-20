@@ -149,7 +149,10 @@ const SEO_PAGES_PUBLIQUES = ['accueil', 'decors', 'decor', 'blog', 'inscription'
        visiteur cherche nommément (« wakabi cgu », « wakabi données
        personnelles »), et une page de conditions introuvable fait douter
        qu'elle existe. */
-    'cgu', 'confidentialite'];
+    /* Les tarifs : c'est la page qu'un visiteur cherche nommément, et
+       celle qui décide. La laisser hors des moteurs reviendrait à ne la
+       montrer qu'à ceux qui ont déjà trouvé le site. */
+    'tarifs', 'cgu', 'confidentialite'];
 
 function seo_indexable(string $page): bool
 {

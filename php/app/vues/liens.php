@@ -78,7 +78,7 @@ foreach ($liste as $l) {
       <p class="aide" style="margin:0 0 14px">Votre offre
       <?= e(formule_libelle($me['formule'] ?? null)) ?> n’en comprend pas. Impact en donne 20,
       Croissance 100, Mouvement sans limite, avec le compte des clics pour chacun.</p>
-      <a class="bouton" href="<?= e(url('#tarifs')) ?>">Voir les offres</a>
+      <a class="bouton" href="<?= e(url('?p=tarifs')) ?>">Voir les offres</a>
     </div>
   <?php else: ?>
     <div class="carte">
