@@ -697,7 +697,7 @@ $_vitrine = barre_vitrine($me, $_page);
        */
       $colonnes = [
         'Produit' => [
-          ['Les décors',        url('?p=decors')],
+          ['Les Badges',        url('?p=decors')],
           ['Le blog',           url('?p=blog')],
           ['L’application',     url('?p=application')],
           ['Télécharger',       APPLICATION_URL],

@@ -6,6 +6,15 @@
  * organisateurs. Le Studio, lui, tutoie : il parle aux participants.
  * Ce n'est pas une incohérence, ce sont deux audiences.
  *
+ * Note de vocabulaire : cette page dit BADGE là où le logiciel dit décor
+ * ou Studio, et ÉVÉNEMENT là où elle disait salle. Le menu et le pied
+ * suivent, parce qu'ils s'affichent juste au-dessus et juste au-dessous
+ * d'elle. Les écrans de travail, eux, gardent les leurs, et c'est voulu :
+ * dans le catalogue, dans les CGU et dans la base, « décor » désigne
+ * précisément le fond qu'on dépose, pas le badge qui en sort. Ici, c'est
+ * un organisateur qui lit — « décor » lui demande une explication, et
+ * « salle » laisse dehors tout ce qui se passe dehors.
+ *
  * Les chiffres viennent de la base réelle, augmentés du socle écosystème
  * annoncé sur le prototype. Rien n'est inventé côté produit : ce qui est
  * compté est ce qui existe.
@@ -34,7 +43,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu heros-in" style="padding-bottom:0">
     <div>
       <p class="etiquette"><b>NOUVEAU</b> La suite marketing événementielle de Wakabi</p>
-      <h1>Vos invitations méritent<br><em>une salle pleine</em></h1>
+      <h1>Vos invitations méritent<br><em>un événement complet</em></h1>
       <p class="accroche">
         Badges viraux, WhatsApp, Push, Telegram, liens traçables.
         <strong>Wakabi Boost</strong> transforme chaque contact en présence réelle,
@@ -58,7 +67,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <div class="tel">
         <div class="tel-ecran">
           <img src="<?= e(url('public/apercu-studio.webp')) ?>" width="640" height="1385"
-               alt="Le Studio Wakabi Boost sur un téléphone : une invitée compose son badge « J’y serai », photo, QR Code et prénom déjà en place.">
+               alt="Wakabi Boost sur un téléphone : une invitée compose son badge « J’y serai », photo, QR Code et prénom déjà en place.">
         </div>
         <span class="tel-encoche" aria-hidden="true"></span>
       </div>
@@ -98,8 +107,8 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <section class="bloc">
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
-      <p class="sur">Tous vos canaux</p>
-      <h2>Un seul outil pour <em>remplir la salle</em></h2>
+      <p class="sur">Nos solutions</p>
+      <h2>Les outils permettant de <em>remplir son événement</em></h2>
       <p>Là où vos invités sont déjà, pas là où vous espérez qu’ils aillent.</p>
     </div>
     <div class="grille canaux">
@@ -107,11 +116,11 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       /**
        * Trois cartes mènent quelque part, et ce sont les seules.
        *
-       * Une seule portait un bouton, et ce bouton mentait : « Ouvrir le
-       * Studio » envoyait sur la LISTE DES DÉCORS, c'est-à-dire là où l'on
-       * fait son badge, pas là où on le fabrique. Chaque promesse est
-       * maintenant en face de sa porte, et « Générer un badge » récupère
-       * la destination qu'on lui avait prise.
+       * Une seule portait un bouton, et ce bouton mentait : il promettait
+       * le Studio et envoyait sur la LISTE DES BADGES PUBLIÉS, c'est-à-dire
+       * là où l'on fait son badge, pas là où on le fabrique. Chaque
+       * promesse est maintenant en face de sa porte : « Réaliser un badge »
+       * ouvre le Studio, « Voir les badges » ouvre la liste.
        *
        * Les deux premières restent sans bouton : elles décrivent des
        * canaux qui se branchent depuis un compte, pas une porte d'entrée.
@@ -121,8 +130,8 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
         ['avion', 'Telegram', 'Créez des canaux de diffusion illimités et sécurisés. Idéal pour fédérer une communauté fidèle.', 'Canaux illimités', null, ''],
         ['message', 'WhatsApp & Rappels', 'Invitations, rappels automatiques J-1 et H-2, chatbots. Vos messages lus à 98 %, jamais dans les spams.', 'À partir de 1 FCFA/message', null, ''],
         ['lien', 'Liens courts', 'Une adresse courte à mettre sur une affiche, et le nombre de personnes qui l’ont réellement suivie.', 'wkb.link', '?p=lien-court', 'Raccourcir un lien'],
-        ['studio', 'Studio Badge « J’y serai »', 'Composez le décor de votre événement : déposez le vôtre, ou partez de zéro dans le Studio.', 'Sans compte pour commencer', '?p=creer', 'Ouvrir le Studio'],
-        ['coche', 'Générer un badge', 'Choisissez un décor publié, ajoutez votre photo, partagez. C’est ce que font vos invités.', 'Sans compte, en 30 secondes', '?p=decors', 'Voir les décors'],
+        ['studio', 'Badge « J’y serai »', 'Composez le badge de votre événement : déposez le vôtre, ou partez de zéro.', 'Sans compte pour commencer', '?p=creer', 'Réaliser un badge'],
+        ['coche', 'Générer un badge', 'Choisissez un badge publié, ajoutez votre photo, partagez. C’est ce que font vos invités.', 'Sans compte, en 30 secondes', '?p=decors', 'Voir les badges'],
       ] as [$ico, $canal, $corps, $note, $vers, $bouton]): ?>
         <div class="canal<?= $vers ? ' actif' : '' ?>">
           <span class="ico"><?= icone($ico) ?></span>
@@ -148,7 +157,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
     </div>
     <div class="grille g3">
       <?php foreach ([
-        ['Le badge viral', 'Vos invités créent leur badge « J’y serai » dans le Studio et le partagent. Chaque partage attire de nouveaux invités.'],
+        ['Le badge viral', 'Vos invités créent leur badge « J’y serai » et le partagent. Chaque partage attire de nouveaux invités.'],
         ['WhatsApp & rappels auto', 'Invitations et rappels J-1, H-2 envoyés automatiquement. Vous ne courez plus après vos invités, Wakabi le fait pour vous.'],
         ['QR Code à l’entrée → Koris', 'Chaque présent scanne son QR, gagne des Koris et devient un client fidèle de l’écosystème Wakabi. Vous mesurez tout.'],
       ] as $i => [$t, $b]): ?>
@@ -162,14 +171,14 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   </div>
 </section>
 
-<!-- ---------- le Studio ---------- -->
+<!-- ---------- les badges publiés ---------- -->
 <?php if ($vitrine): ?>
 <section class="bloc">
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
-      <p class="sur">Le Studio</p>
+      <p class="sur">Les Badges</p>
       <h2>Vos invités font <em>l’affiche</em></h2>
-      <p>Une photo, un décor, trente secondes. La photo ne quitte jamais leur téléphone.</p>
+      <p>Une photo, un badge, trente secondes. La photo ne quitte jamais leur téléphone.</p>
     </div>
     <div class="grille vitrines">
       <?php foreach ($vitrine as $d): ?>
@@ -187,7 +196,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       <?php endforeach; ?>
     </div>
     <div class="rangee" style="margin-top:20px">
-      <a class="bouton fant" href="<?= e(url('?p=decors')) ?>">Voir tous les décors</a>
+      <a class="bouton fant" href="<?= e(url('?p=decors')) ?>">Voir tous les badges</a>
     </div>
   </div>
 </section>
@@ -198,8 +207,8 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 /**
  * L'application, prise par le bout qui intéresse un organisateur.
  *
- * Elle est posée AVANT les offres et non en ouverture : un visiteur
- * vient ici pour remplir une salle, pas pour télécharger une
+ * Elle n'est PAS en ouverture, et c'est délibéré : un visiteur vient
+ * ici pour remplir son événement, pas pour télécharger une
  * application. L'argument n'est donc pas « voici notre app », c'est
  * « derrière Boost il y a une audience, et votre soirée y est déjà ».
  *
@@ -276,7 +285,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Ils l’utilisent</p>
-      <h2>Des salles pleines, <em>pas des promesses</em></h2>
+      <h2>Des événements complets, <em>pas des promesses</em></h2>
     </div>
     <div class="grille g3">
       <?php foreach ([
@@ -303,7 +312,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Le blog</p>
-      <h2>Ce qu’on apprend <em>en remplissant des salles</em></h2>
+      <h2>Ce qu’on apprend <em>en remplissant des événements</em></h2>
     </div>
     <div class="grille g3">
       <?php foreach ($articles as $a): ?>
@@ -335,7 +344,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <section class="bloc" style="padding-top:0">
   <div class="contenu" style="padding-bottom:0">
     <div class="final">
-      <h2>Votre prochaine salle comble commence maintenant</h2>
+      <h2>Votre prochain événement complet commence maintenant</h2>
       <p>Rejoignez les <?= $fr($organisateurs) ?> organisateurs qui ne laissent plus jamais une chaise vide.</p>
       <div class="rangee" style="justify-content:center;margin-top:26px">
         <a class="bouton" href="<?= e(url('?p=decors')) ?>">Créer mon badge gratuit</a>

@@ -158,7 +158,7 @@ function menu_vitrine(): array
             ['?p=boost-liens', 'Liens courts', 'Adresses traçables'],
             ['?p=tarifs',      'Tarifs',       'Les quatre offres, comparées'],
         ]],
-        ['?p=decors',      'Les décors'],
+        ['?p=decors',      'Les Badges'],
         ['?p=partenaires', 'Partenaires'],
         ['?p=villes',      'Nos Villes'],
         ['?p=blog',        'Blog'],

@@ -2133,7 +2133,7 @@ l'autre changeait de maison sans le vouloir. Ils n'en font plus qu'un.
 ### Deux barres, et non une qui se réarrange
 
 La **barre de vitrine** ne bouge jamais : `L'Application · Boost (Push, Régie,
-Liens courts) · Les décors · Partenaires · Nos Villes · Blog · À Propos`,
+Liens courts, Tarifs) · Les Badges · Partenaires · Nos Villes · Blog · À Propos`,
 identique qu'on soit connecté ou non. Un site public dont le menu se réarrange
 selon qui regarde oblige chacun à réapprendre où sont les choses, et oblige
 surtout à expliquer deux fois le même site.
@@ -2142,6 +2142,32 @@ Seul le **volet du compte** connaît deux états : il propose de se connecter ou
 de créer un compte, ou bien il porte le nom de la personne, son tableau de
 bord et de quoi ressortir. Ce volet est alors la seule porte vers l'atelier,
 et c'est pourquoi « Mon tableau de bord » y figure en tête.
+
+### Le vocabulaire de la vitrine n'est pas celui de l'atelier
+
+La page d'accueil dit **badge** là où le logiciel dit *décor* ou *Studio*, et
+**événement** là où il disait *salle*. Le menu et le pied de page suivent,
+parce qu'ils s'affichent juste au-dessus et juste au-dessous d'elle : une page
+qui promet un « badge » sous un menu qui propose des « décors » demande au
+visiteur de deviner que c'est la même chose.
+
+Les écrans de travail, eux, gardent les leurs, et c'est voulu. Dans le
+catalogue, dans les CGU et dans la base, « décor » désigne précisément *le
+fond qu'on dépose*, et non le badge qui en sort — deux objets distincts qu'un
+seul mot rendrait impossibles à expliquer à qui les manipule. Sur la vitrine,
+personne n'a besoin de cette distinction : « décor » y demande une
+explication, et « salle » y laisse dehors tout ce qui se passe dehors.
+
+La frontière est donc nette : **accueil, menu et pied** parlent badges et
+événements ; **`?p=decors`, le Studio, les pages du guide, les CGU et la
+politique de confidentialité** parlent décors. Les adresses (`?p=decors`,
+`?p=creer`), les colonnes et les droits n'ont pas bougé d'une lettre.
+
+La suite le tient : la section 67 de `e2e-php.ts` marche sur les nœuds de
+texte de l'accueil et refuse d'y trouver « décor », « Studio » ou « salle »,
+à deux exceptions près qui sont dans la mesure — les titres du catalogue et
+des articles, qui viennent de la base, et la citation d'un organisateur qui
+dit « salle comble », parce que c'est lui qui parle.
 
 La **barre d'administration** se déduit des droits, comme avant, et ne paraît
 que sur les écrans de travail. `barre_vitrine()` tranche entre les deux, et sa

@@ -613,20 +613,25 @@ const run = async () => {
   /**
    * Trois cartes mènent quelque part, et chacune au bon endroit.
    *
-   * « Ouvrir le Studio » envoyait sur la liste des décors, c'est-à-dire là
-   * où l'on FAIT son badge et non là où on le fabrique. C'est le genre de
-   * lien qu'on ne remarque jamais en relisant, et qu'un visiteur remarque
-   * tout de suite.
+   * Le bouton du Studio envoyait sur la liste des badges publiés,
+   * c'est-à-dire là où l'on FAIT son badge et non là où on le fabrique.
+   * C'est le genre de lien qu'on ne remarque jamais en relisant, et qu'un
+   * visiteur remarque tout de suite.
+   *
+   * On mesure l'adresse ET le libellé : la carte a déjà changé de nom une
+   * fois, et c'est en changeant de nom qu'un bouton se remet à mentir.
    */
   const portes = await p.locator('.canal.actif a.bouton').evaluateAll(
     (n) => n.map((e) => `${(e.getAttribute('href') ?? '').split('?')[1] ?? ''} → ${(e.textContent ?? '').trim()}`));
   ok('trois cartes mènent quelque part', portes.length === 3, portes.join(' · '));
   ok('les liens courts vont au raccourcisseur, pas à la connexion',
      portes.some((x) => x.startsWith('p=lien-court')), portes.join(' · '));
-  ok('le Studio va au Studio, pas au catalogue',
-     portes.some((x) => x.startsWith('p=creer')), portes.join(' · '));
-  ok('et « Générer un badge » récupère la liste des décors',
-     portes.some((x) => x.startsWith('p=decors')), portes.join(' · '));
+  ok('« Réaliser un badge » ouvre le Studio, pas le catalogue',
+     portes.some((x) => x.startsWith('p=creer') && x.endsWith('Réaliser un badge')),
+     portes.join(' · '));
+  ok('et « Voir les badges » ouvre la liste des badges publiés',
+     portes.some((x) => x.startsWith('p=decors') && x.endsWith('Voir les badges')),
+     portes.join(' · '));
 
   await p.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
   ok('les offres de la table sont toutes là',
@@ -5218,7 +5223,7 @@ const run = async () => {
   const menu = await pAnon.locator('.wk-menu > li > a, .wk-menu > li > details > summary')
     .evaluateAll((n) => n.map((x) => (x.textContent ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean));
   ok('la vitrine porte les sept entrées du site fusionné',
-     menu.join(' · ') === 'L’Application · Boost · Les décors · Partenaires · Nos Villes · Blog · À Propos',
+     menu.join(' · ') === 'L’Application · Boost · Les Badges · Partenaires · Nos Villes · Blog · À Propos',
      menu.join(' · '));
   /* Trois outils, et la page des tarifs : le prix se décide au même
      endroit que le choix de l'outil, et le chercher ailleurs était le
@@ -9839,6 +9844,63 @@ const run = async () => {
   ok('l’accueil ne porte plus ni grille d’offres ni questions',
      reste.offres === 0 && reste.questions === 0, JSON.stringify(reste));
   ok('et l’application passe avant les témoignages', reste.ordre === true);
+
+  /**
+   * LE VOCABULAIRE DE LA PAGE, mesuré sur le texte rendu.
+   *
+   * L'accueil dit BADGE là où le logiciel dit décor ou Studio, et
+   * ÉVÉNEMENT là où il dit salle. Le menu et le pied suivent, parce
+   * qu'ils s'affichent avec elle, et c'est tout l'enjeu de la mesure :
+   * une page qui promet un « badge » au-dessus d'un menu qui propose des
+   * « décors » demande au visiteur de deviner que c'est la même chose.
+   *
+   * On marche donc sur les NŒUDS DE TEXTE, pas sur une liste de sélecteurs
+   * à tenir à jour : une phrase ajoutée demain est contrôlée sans qu'on y
+   * pense. Deux exceptions, et elles sont dans la mesure :
+   *
+   *  - `.vignette` : les titres du catalogue et des articles viennent de
+   *    la BASE. Un partenaire nomme son badge comme il veut, et la
+   *    démonstration en a justement nommé un « Décor à vérifier ».
+   *  - `q` : Kofi Mensah dit « salle comble », et c'est lui qui parle.
+   *    Réécrire une citation pour qu'elle suive notre vocabulaire, c'est
+   *    lui mettre nos mots dans la bouche.
+   */
+  const vocabulaire = await pAcc.evaluate(() => {
+    const anciens: string[] = [];
+    const salles: string[] = [];
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const el = n.parentElement;
+      if (!el || el.closest('script, style, .vignette')) continue;
+      const t = (n.nodeValue ?? '').replace(/\s+/g, ' ').trim();
+      if (!t) continue;
+      if (/d[eé]cors?|studio/i.test(t)) anciens.push(t.slice(0, 54));
+      if (/salles?\b/i.test(t) && !el.closest('q, blockquote')) salles.push(t.slice(0, 54));
+    }
+    return {
+      anciens,
+      salles,
+      /* Le menu et le pied, nommément : ce sont eux qui s'affichent sur
+         toutes les pages, donc eux qu'on oublie en renommant. */
+      portes: [...document.querySelectorAll('a[href*="p=decors"]')]
+        .map((a) => (a.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      /* L'alternative d'une image est du texte affiché, elle aussi : c'est
+         ce que lit un lecteur d'écran, et ce qui reste quand l'image
+         manque. */
+      alternatives: [...document.querySelectorAll('img[alt]')]
+        .map((i) => i.getAttribute('alt') ?? '')
+        .filter((a) => /d[eé]cor|studio/i.test(a)),
+    };
+  });
+  ok('l’accueil ne dit plus ni « décor » ni « Studio », nulle part',
+     vocabulaire.anciens.length === 0, vocabulaire.anciens.join(' · ') || 'rien');
+  ok('ni « salle », sauf dans la bouche de celui qui témoigne',
+     vocabulaire.salles.length === 0, vocabulaire.salles.join(' · ') || 'rien');
+  ok('le menu, le pied et les boutons mènent aux badges, pas aux décors',
+     vocabulaire.portes.length >= 5 && vocabulaire.portes.every((x) => /badge/i.test(x)),
+     vocabulaire.portes.join(' · '));
+  ok('et les alternatives des images parlent la même langue',
+     vocabulaire.alternatives.length === 0, vocabulaire.alternatives.join(' · ') || 'rien');
 
   /* Et rien ne déborde sur un téléphone, images comprises. */
   await pAcc.setViewportSize({ width: 390, height: 844 });

@@ -38,7 +38,7 @@ push_contexte_attendu(true);
     </span>
     <div>
       <b id="push-invite-t">Ne ratez plus une news</b>
-      <p data-push-aide>Une alerte quand un décor paraît ou qu’une campagne ouvre,
+      <p data-push-aide>Une alerte quand un badge paraît ou qu’une campagne ouvre,
       même site fermé. Un clic pour arrêter.</p>
     </div>
   </div>
