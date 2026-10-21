@@ -43,7 +43,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu heros-in" style="padding-bottom:0">
     <div>
       <p class="etiquette"><b>NOUVEAU</b> La suite marketing événementielle de Wakabi</p>
-      <h1>Vos invitations méritent<br><em>un événement complet</em></h1>
+      <h1>Faites de chaque invitation,<br><em>une présence</em></h1>
       <p class="accroche">
         Badges viraux, WhatsApp, Push, Telegram, liens traçables.
         <strong>Wakabi Boost</strong> transforme chaque contact en présence réelle,
@@ -108,7 +108,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Nos solutions</p>
-      <h2>Les outils permettant de <em>remplir son événement</em></h2>
+      <h2>Nos outils vous permettent <em>de remplir vos événements</em></h2>
       <p>Là où vos invités sont déjà, pas là où vous espérez qu’ils aillent.</p>
     </div>
     <div class="grille canaux">
@@ -285,7 +285,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
       <p class="sur">Ils l’utilisent</p>
-      <h2>Des événements complets, <em>pas des promesses</em></h2>
+      <h2>Des événements réussis, <em>pas des promesses</em></h2>
     </div>
     <div class="grille g3">
       <?php foreach ([
@@ -344,7 +344,7 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 <section class="bloc" style="padding-top:0">
   <div class="contenu" style="padding-bottom:0">
     <div class="final">
-      <h2>Votre prochain événement complet commence maintenant</h2>
+      <h2>Votre prochain événement commence maintenant</h2>
       <p>Rejoignez les <?= $fr($organisateurs) ?> organisateurs qui ne laissent plus jamais une chaise vide.</p>
       <div class="rangee" style="justify-content:center;margin-top:26px">
         <a class="bouton" href="<?= e(url('?p=decors')) ?>">Créer mon badge gratuit</a>
