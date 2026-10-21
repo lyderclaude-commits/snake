@@ -7270,10 +7270,17 @@ const run = async () => {
   ok('à sa place dans l’ordre demandé',
      grilleOffres.indexOf('Essentiel') === 1, grilleOffres.join(' · '));
   const texteVitrine = await pVit.locator('.offre').nth(1).innerText();
-  // La casse vient du CSS (`text-transform`), pas du contenu : on compare
-  // ce qui est écrit, pas ce qui est dessiné.
-  ok('avec son accroche et son bouton',
-     /pour démarrer/i.test(texteVitrine) && /choisir essentiel/i.test(texteVitrine),
+  /**
+   * Son prix et son bouton, pris dans l'offre.
+   *
+   * L'accroche (« POUR DÉMARRER ») a quitté la carte avec la
+   * condensation : l'accueil dit maintenant ce qu'on gagne, et
+   * `?p=tarifs` dit tout le reste. Ce qui reste à vérifier est que les
+   * deux choses qui viennent de l'ÉCRAN DES OFFRES y arrivent bien, le
+   * prix de lancement et le libellé du bouton.
+   */
+  ok('avec son prix de lancement et son bouton',
+     /1\s*500/.test(texteVitrine) && /choisir essentiel/i.test(texteVitrine),
      texteVitrine.replace(/\s+/g, ' ').slice(0, 96));
   ok('et ses cinq liens courts, lus dans la table',
      texteVitrine.includes('5 liens courts'), texteVitrine.replace(/\s+/g, ' ').slice(0, 90));
@@ -9693,6 +9700,150 @@ const run = async () => {
   ok('le tableau se fait défiler sans emporter la page',
      defile !== null && defile.dedans && !defile.page, JSON.stringify(defile));
   await pTarifs.close();
+
+
+  /* ======================================================================
+     67. La page d'accueil : le socle, l'application, les offres courtes
+     ====================================================================== */
+  console.log('\n━━ 67. L’accueil : le socle, l’application, les offres ━━');
+
+  const pAcc = await browser.newPage();
+  surveiller(pAcc);
+  await pAcc.setViewportSize({ width: 1340, height: 900 });
+  await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+
+  /**
+   * Les chiffres de l'écosystème, et l'air qui les sépare du héros.
+   *
+   * Le héros de cette page finit sans aucune marge basse (son téléphone
+   * descend jusqu'au bord), et un panneau posé là-dessous s'y collait.
+   * On mesure donc l'écart RÉEL entre le bas du héros et le haut du
+   * panneau, pas la règle qui est censée le produire.
+   */
+  const socle = await pAcc.evaluate(() => {
+    const h = document.querySelector('.heros') as HTMLElement | null;
+    const g = document.querySelector('.socle-grille') as HTMLElement | null;
+    if (!h || !g) return null;
+    return {
+      air: Math.round(g.getBoundingClientRect().top - h.getBoundingClientRect().bottom),
+      colonnes: g.querySelectorAll('.socle').length,
+      /* Une seule rangée : trois chiffres repliés en deux lignes ne se
+         lisent plus comme un socle, ils se lisent comme une liste. */
+      rangees: new Set([...g.querySelectorAll('.socle')]
+        .map((c) => Math.round(c.getBoundingClientRect().top))).size,
+      fond: getComputedStyle(document.querySelector('.socle-chiffres') as Element).backgroundColor,
+    };
+  });
+  ok('le socle des chiffres montre trois colonnes sur une rangée',
+     socle !== null && socle.colonnes === 3 && socle.rangees === 1, JSON.stringify(socle));
+  ok('et respire sous le héros', socle !== null && socle.air >= 40, `${socle?.air} px`);
+  /* La section n'a PAS de fond à elle : elle laisse passer celui de la
+     page, sinon une bande blanche se découpe entre le héros et la suite. */
+  ok('la section des chiffres ne pose aucun fond à elle',
+     socle !== null && /rgba\(0, 0, 0, 0\)|transparent/.test(socle.fond), socle?.fond);
+
+  /**
+   * Le plancher annoncé et le compte réel viennent du MÊME nombre.
+   *
+   * Le socle dit « 2 340+ », l'appel de fin donne le total du jour. Deux
+   * nombres écrits à la main auraient fini par se contredire sur la même
+   * page, et c'est le genre de détail qu'un visiteur attrape avant nous.
+   */
+  /* Pas de fonction NOMMÉE dans un `evaluate` : esbuild y injecte son
+     assistant `__name`, qui n'existe pas dans la page, et l'appel part
+     en `ReferenceError` avant la première assertion. */
+  /* Aucune fonction nommée dans un `evaluate` : esbuild y injecte son
+     assistant `__name`, qui n'existe pas dans la page, et l'appel part en
+     `ReferenceError` avant la première assertion. Les rappels anonymes,
+     eux, passent sans rien. */
+  const nombres = await pAcc.evaluate(() => {
+    const socleTxt = [...document.querySelectorAll('.socle')]
+      .find((c) => /partenaires/i.test(c.textContent ?? ''))?.textContent ?? '';
+    const final = [...document.querySelectorAll('p')]
+      .find((e) => /organisateurs qui ne laissent/i.test(e.textContent ?? ''))?.textContent ?? '';
+    return {
+      plancher: Number((socleTxt.match(/[\d   ]{3,}/)?.[0] ?? '0').replace(/\D/g, '')),
+      total: Number((final.match(/[\d   ]{3,}/)?.[0] ?? '0').replace(/\D/g, '')),
+    };
+  });
+  ok('le « + » du socle est tenu par le compte réel de l’appel de fin',
+     nombres.plancher > 0 && nombres.total >= nombres.plancher,
+     `${nombres.plancher}+ annoncés, ${nombres.total} comptés`);
+
+  /**
+   * L'application : les MÊMES visuels que sa propre page.
+   *
+   * Deux copies du même téléphone finiraient par diverger. On vérifie
+   * donc que les adresses d'images de l'accueil sont exactement celles
+   * que `?p=application` utilise déjà.
+   */
+  const srcApp = await pAcc.evaluate(() =>
+    [...document.querySelectorAll('.app-tels img')].map((i) => i.getAttribute('src') ?? ''));
+  await pAcc.goto(`${BASE}/index.php?p=application`, { waitUntil: 'domcontentloaded' });
+  const srcPage = await pAcc.evaluate(() =>
+    [...document.querySelectorAll('.phones-wrap img')].map((i) => i.getAttribute('src') ?? ''));
+  ok('les visuels de l’application sont ceux de sa propre page',
+     srcApp.length === 2 && srcApp.every((u) => srcPage.includes(u)),
+     srcApp.map((u) => u.split('/').pop()).join(' · '));
+
+  await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  const magasins = await pAcc.evaluate(() => {
+    const play = document.querySelector('.app-magasins a.app-mag') as HTMLAnchorElement | null;
+    const gris = document.querySelector('.app-mag.gris');
+    return {
+      play: play?.getAttribute('href') ?? '',
+      rel: play?.getAttribute('rel') ?? '',
+      /* « Bientôt sur App Store » n'est PAS un lien : envoyer quelqu'un
+         chercher une application qui n'existe pas sur son téléphone, c'est
+         gagner une mauvaise note. */
+      grisEstUnLien: gris?.tagName === 'A',
+      versPage: !!document.querySelector('.app-magasins a[href*="application"]'),
+    };
+  });
+  ok('le bouton du magasin mène à la vraie fiche, en nouvel onglet protégé',
+     magasins.play.includes('play.google.com') && magasins.rel.includes('noopener'),
+     magasins.play.slice(0, 48));
+  ok('« bientôt sur App Store » n’est pas un lien', magasins.grisEstUnLien === false);
+  ok('et la section renvoie vers la page de l’application', magasins.versPage);
+
+  /**
+   * Les offres de l'accueil sont COURTES, et renvoient aux tarifs.
+   *
+   * Le détail ligne à ligne vit sur `?p=tarifs`. Le garder ici en double
+   * donnait deux grilles à tenir d'accord, et mille pixels de page pour
+   * la seconde.
+   */
+  const courtes = await pAcc.evaluate(() => {
+    const cartes = [...document.querySelectorAll('#tarifs .offre')];
+    return {
+      cartes: cartes.length,
+      resumes: cartes.filter((c) => (c.querySelector('.resume')?.textContent ?? '').trim().length > 10).length,
+      listes: cartes.filter((c) => c.querySelector('ul')).length,
+      versTarifs: !!document.querySelector('.offres-pied a[href*="tarifs"]'),
+      /* Les filets des quatre cartes sont à la MÊME hauteur : l'offre
+         gratuite n'a pas de ligne « −50 % », et sans hauteur réservée le
+         sien remontait de dix-huit pixels. */
+      filets: new Set(cartes.map((c) => {
+        const r = c.querySelector('.resume');
+        const k = c.getBoundingClientRect().top;
+        return r ? Math.round(r.getBoundingClientRect().top - k) : -1;
+      })).size,
+    };
+  });
+  ok('chaque offre de l’accueil tient en un résumé, sans sa liste',
+     courtes.cartes >= 3 && courtes.resumes === courtes.cartes && courtes.listes === 0,
+     JSON.stringify(courtes));
+  ok('et les filets des cartes sont à la même hauteur', courtes.filets === 1,
+     `${courtes.filets} hauteur(s)`);
+  ok('un seul bouton mène au détail des offres', courtes.versTarifs);
+
+  /* Et rien ne déborde sur un téléphone, images comprises. */
+  await pAcc.setViewportSize({ width: 390, height: 844 });
+  await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pAcc.waitForTimeout(300);
+  ok('l’accueil tient dans la largeur d’un téléphone',
+     !(await pAcc.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+  await pAcc.close();
 
   await browser.close();
   console.log(`\n━━ Résultat : ${pass} réussis, ${fail} échoués ━━`);

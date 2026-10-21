@@ -688,7 +688,6 @@ section.bloc{padding:64px 0}
 .offres{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:stretch}
 .offre{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:22px;display:flex;flex-direction:column}
 .offre.phare{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-wash);position:relative}
-.offre .tag{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3)}
 .offre h3{font-family:var(--display);font-size:1.25rem;font-weight:800;margin:6px 0 0}
 .offre .prix{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:-.03em;margin:12px 0 0;line-height:1}
 .offre .prix s{font-size:1rem;font-weight:600;color:var(--text3);margin-right:8px}
@@ -697,12 +696,6 @@ section.bloc{padding:64px 0}
    endroit d'une offre à l'autre. */
 .offre .prix small{display:block;font-size:.8rem;font-weight:600;color:var(--text3);margin-top:3px}
 .offre .avant{font-size:.78rem;color:var(--orange);font-weight:700;margin-top:5px}
-.offre ul{list-style:none;padding:0;margin:16px 0;flex:1;font-size:.88rem}
-.offre li{padding:5px 0;color:var(--text2);display:flex;gap:8px}
-.offre li::before{content:"✓";color:var(--teal);font-weight:800;flex:0 0 auto}
-.offre li.non{color:var(--text3)}
-.offre li.non::before{content:"✕";color:var(--text3);font-weight:700;font-size:.8em}
-.offre .prefixe{font-size:.8rem;font-weight:700;color:var(--text2);margin:14px 0 0}
 .ruban{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;
   border-radius:999px;padding:4px 14px;font-size:.72rem;font-weight:700;white-space:nowrap}
 
@@ -1994,3 +1987,111 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
   .bord-ligne .bord-auteur,.bord-ligne .bord-age{order:3;width:auto}
   .bord-ligne .bouton{order:4;margin-left:auto}
 }
+
+/* ================================================================
+   LA PAGE D'ACCUEIL : LE SOCLE, L'APPLICATION, LES OFFRES COURTES
+   ================================================================ */
+
+/* ---- Les chiffres de l'écosystème, sous le héros ----------------
+   Le même panneau que sur la page d'accueil du guide, aux mêmes
+   mesures : trois colonnes séparées par un filet d'un pixel, le
+   chiffre en bleu, son libellé en dessous. Le filet n'est pas dessiné,
+   c'est le fond de la grille qu'on voit par un `gap` d'un pixel. Un
+   trait qu'on ne dessine pas ne se décale jamais, et les coins arrondis
+   le coupent proprement grâce à l'`overflow`.
+
+   Le rembourrage du haut est plus généreux que les 60 px du guide : ici
+   le héros finit sans aucune marge basse (`padding-bottom:0`, pour que
+   le téléphone de la maquette descende jusqu'au bord), et le panneau se
+   serait collé dessous. */
+/* AUCUN fond propre : la section laisse passer celui de la page. Un
+   blanc posé ici découpait une bande entre le héros et la suite, et le
+   panneau se mettait à flotter dans un rectangle qui n'appartenait à
+   rien. C'est le panneau qui est blanc, pas la section. */
+.socle-chiffres{padding:78px 0 70px}
+.socle-chiffres .contenu{padding-bottom:0}
+.socle-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+  border:1px solid var(--border);border-radius:var(--r24);overflow:hidden;
+  box-shadow:0 1px 3px rgba(15,23,42,.07),0 1px 2px rgba(15,23,42,.04)}
+.socle{background:var(--paper);padding:32px 28px;text-align:center;transition:background .2s}
+.socle:hover{background:var(--bg)}
+.socle b{display:block;font-family:var(--display);font-size:2.5rem;font-weight:800;
+  color:var(--primary);line-height:1;margin-bottom:6px;letter-spacing:-.02em}
+.socle span{font-size:13px;color:var(--text2);font-weight:500}
+@media(max-width:900px){.socle-grille{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){
+  .socle-chiffres{padding:52px 0 48px}
+  .socle-grille{grid-template-columns:1fr}
+  .socle{padding:22px 18px}
+  .socle b{font-size:2rem}
+}
+
+/* ---- L'application, mise en avant -----------------------------
+   Les visuels et le texte viennent de la page « L'Application » du
+   guide, et les images sont les MÊMES fichiers, aux mêmes adresses :
+   deux copies du même téléphone qui se mettraient à diverger seraient
+   pires que la requête qu'on économiserait.
+
+   Les images portent leur `width` et leur `height` : le bloc garde sa
+   place même quand elles n'arrivent pas, et la page ne saute pas
+   au moment où elles finissent par arriver. */
+.bloc-app{background:var(--bg2)}
+.app-duo{display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:54px;align-items:center}
+.app-tels{position:relative;display:flex;justify-content:center;align-items:flex-end;min-height:430px}
+.app-tels img{width:auto;max-width:100%;height:auto}
+.app-tel-un{max-height:430px;position:relative;z-index:2;
+  filter:drop-shadow(0 26px 46px rgba(2,10,40,.28))}
+.app-tel-cote{max-height:348px;position:relative;z-index:1;margin-right:-52px;
+  transform:rotate(-6deg);filter:drop-shadow(0 16px 32px rgba(2,10,40,.2))}
+.app-atouts{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 22px;list-style:none;padding:0}
+.app-atouts li{display:inline-flex;align-items:center;gap:7px;background:var(--paper);
+  border:1px solid var(--border);border-radius:999px;padding:7px 14px;
+  font-size:.82rem;font-weight:500;color:var(--text2)}
+.app-atouts li::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--primary);flex:0 0 auto}
+.app-magasins{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.app-mag{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:#fff;
+  border-radius:12px;padding:9px 16px;text-decoration:none}
+.app-mag small{display:block;font-size:.62rem;opacity:.65;line-height:1.1}
+.app-mag strong{display:block;font-size:.88rem;line-height:1.2}
+.app-mag svg{width:17px;height:17px;flex:0 0 auto}
+/* « Bientôt » : un bloc gris, et PAS un lien. Un bouton qui mène au
+   magasin d'un système où l'application n'existe pas encore coûte une
+   mauvaise note à qui l'y cherche. */
+.app-mag.gris{background:var(--paper);color:var(--text3);border:1px solid var(--border)}
+@media(max-width:860px){
+  .app-duo{grid-template-columns:1fr;gap:34px}
+  .app-tels{min-height:0}
+  .app-tel-un{max-height:360px}
+  .app-tel-cote{max-height:290px;margin-right:-44px}
+}
+@media(max-width:520px){
+  .app-tel-un{max-height:290px}
+  .app-tel-cote{max-height:232px;margin-right:-36px}
+}
+
+/* ---- La carte d'offre, version courte --------------------------
+   Le détail ligne à ligne vit sur `?p=tarifs`, qui met les offres côte
+   à côte. Le répéter ici donnait deux grilles à tenir d'accord, et mille
+   pixels de page pour la seconde. La carte garde donc son habillage,
+   et perd sa liste : trois lignes de résumé, puis le lien. */
+/* Le nom tient DEUX lignes réservées, et le prix sa propre hauteur.
+   Un nom d'offre un peu long passait à la ligne, et le filet de cette
+   carte-là descendait d'une ligne pendant que les autres restaient en
+   place. Les offres se règlent depuis l'administration : le nom long
+   finira par arriver, et il ne doit pas décaler la rangée. */
+.offre h3{min-height:2.4em}
+.offre .tarif{min-height:96px}
+.offre .resume{margin:14px 0 0;padding-top:13px;border-top:1px solid var(--border);
+  font-size:.82rem;line-height:1.6;color:var(--text2);flex:1}
+.offre .choisir{margin-top:14px;font-size:.84rem;font-weight:700;
+  color:var(--primary-d);text-decoration:none}
+.offre .choisir:hover{text-decoration:underline}
+.offres-pied{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.offres-pied .aide{margin:0;text-align:center;max-width:62ch}
+
+/* Le lien vers la page complète, à côté des deux magasins : qui veut
+   les quatre niveaux d'explorateur et les six fonctionnalités les y
+   trouve, sans que la page d'accueil les recopie. */
+.lien-app{font-size:.86rem;font-weight:700;color:var(--primary-d);text-decoration:none}
+.lien-app:hover{text-decoration:underline}

@@ -10,7 +10,38 @@
  * annoncé sur le prototype. Rien n'est inventé côté produit : ce qui est
  * compté est ce qui existe.
  */
-$organisateurs = 2340 + (int) db()->query("SELECT COUNT(*) n FROM utilisateurs WHERE role='partenaire'")->fetch()['n'];
+/**
+ * Le socle de partenaires de l'écosystème, écrit UNE fois.
+ *
+ * Il sert à deux endroits de la page, et deux chiffres différents pour
+ * la même population auraient fini par s'y glisser : le ruban des
+ * chiffres l'annonce comme un plancher (« 2 340+ »), l'appel de fin y
+ * ajoute les comptes réels et donne le total du jour.
+ */
+const SOCLE_PARTENAIRES = 2340;
+$organisateurs = SOCLE_PARTENAIRES
+    + (int) db()->query("SELECT COUNT(*) n FROM utilisateurs WHERE role='partenaire'")->fetch()['n'];
+
+/**
+ * Les trois premières lignes INCLUSES d'une offre, en une phrase.
+ *
+ * La carte dit ce qu'on gagne ; la page des tarifs dit tout le reste,
+ * ligne à ligne et offre par offre. Prendre les trois premières plutôt
+ * qu'une liste écrite ici garde la carte juste le jour où une offre
+ * change dans l'administration.
+ */
+$resume = static function (array $o): string {
+    $pris = [];
+    foreach ($o['lignes'] as [$texte, $inclus]) {
+        if ($inclus) {
+            $pris[] = $texte;
+        }
+        if (count($pris) === 3) {
+            break;
+        }
+    }
+    return implode(' · ', $pris);
+};
 $vitrine = array_slice(decors_publies(8), 0, 4);
 // Le blog sur la vitrine : trois articles, et rien si la rédaction n'a
 // encore rien écrit. Une section « Le blog » vide est pire que pas de blog.
@@ -53,6 +84,32 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       </div>
       <div class="pastille-flot" style="top:14%;left:-6px"><b>98 %</b>taux de lecture</div>
       <div class="pastille-flot" style="bottom:6%;right:-14px"><b>+40 %</b>présence réelle</div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- les chiffres de l'écosystème ---------- -->
+<?php
+/**
+ * Les chiffres de l'écosystème Wakabi, repris de la page d'accueil du
+ * guide, au même dessin et aux mêmes mesures.
+ *
+ * Ce sont ceux de L'APPLICATION, pas ceux de Boost : dix mille personnes
+ * qui sortent, et non dix mille organisateurs. Les deux premiers sont
+ * des planchers, et c'est ce que le « + » dit ; le troisième est un
+ * objectif annoncé, pas un état des lieux.
+ *
+ * Le nombre de partenaires sort du même socle que l'appel de fin, qui y
+ * ajoute les comptes réels : un seul nombre dans le fichier, donc jamais
+ * deux comptes différents pour les mêmes gens.
+ */
+?>
+<section class="socle-chiffres">
+  <div class="contenu">
+    <div class="socle-grille">
+      <div class="socle"><b>10 000+</b><span>Utilisateurs actifs</span></div>
+      <div class="socle"><b><?= $fr(SOCLE_PARTENAIRES) ?>+</b><span>Partenaires référencés</span></div>
+      <div class="socle"><b>6</b><span>Pays cibles UEMOA</span></div>
     </div>
   </div>
 </section>
@@ -182,6 +239,74 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   </div>
 </section>
 
+<!-- ---------- l'application Wakabi ---------- -->
+<?php
+/**
+ * L'application, prise par le bout qui intéresse un organisateur.
+ *
+ * Elle est posée AVANT les offres et non en ouverture : un visiteur
+ * vient ici pour remplir une salle, pas pour télécharger une
+ * application. L'argument n'est donc pas « voici notre app », c'est
+ * « derrière Boost il y a une audience, et votre soirée y est déjà ».
+ *
+ * Le texte, les atouts et les visuels sont CEUX de la page
+ * « L'Application », aux mêmes adresses d'images : une seconde version
+ * du même argumentaire aurait fini par dire autre chose.
+ *
+ * Une seule chose change, et c'est la personne. La page de
+ * l'application tutoie — elle parle à qui sort ; celle-ci vouvoie, elle
+ * parle à qui organise. « Tu sais où aller » devient donc « vos invités
+ * savent où aller » : même information, même page, une seule voix.
+ */
+?>
+<section class="bloc bloc-app">
+  <div class="contenu">
+    <div class="tete centre">
+      <p class="sur">L’application Wakabi</p>
+      <h2>Simple. Rapide. <em>Addictif.</em></h2>
+      <p>Boost ne parle pas dans le vide : derrière lui, il y a l’application où vos invités
+      cherchent déjà quoi faire ce soir dans leur ville.</p>
+    </div>
+    <div class="app-duo">
+      <div class="app-tels">
+        <img class="app-tel-cote"
+             src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE-2.png"
+             alt="L’écran des bons plans, dans l’application Wakabi"
+             width="1080" height="2160" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+        <img class="app-tel-un"
+             src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE.png"
+             alt="L’accueil de l’application Wakabi sur un téléphone"
+             width="1080" height="2160" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+      </div>
+      <div>
+        <p>Wakabi a été conçue pour la réalité africaine : mobile first, légère, optimisée
+        pour les connexions 3G et les smartphones d’entrée de gamme. En quelques secondes,
+        vos invités savent où aller, ce qui se passe et combien ils vont économiser.</p>
+        <ul class="app-atouts">
+          <li>Géolocalisation</li>
+          <li>Filtres intelligents</li>
+          <li>Agenda events</li>
+          <li>QR Code</li>
+          <li>Notifications live</li>
+          <li>Avis communauté</li>
+          <li>Mode hors ligne</li>
+        </ul>
+        <div class="app-magasins">
+          <a class="app-mag" href="<?= e(APPLICATION_URL) ?>" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3.2v17.6c0 .5.5.8.9.6l12.4-8.8c.4-.3.4-.9 0-1.2L4.9 2.6c-.4-.2-.9.1-.9.6Z"/></svg>
+            <span><small>Disponible sur</small><strong>Google Play</strong></span>
+          </a>
+          <span class="app-mag gris">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.2 12.6c0-2 1.6-3 1.7-3-.9-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7-1.3 0-2.6.8-3.3 2-1.4 2.4-.4 6 1 8 .7 1 1.5 2 2.5 2 1 0 1.4-.6 2.6-.6s1.5.6 2.6.6 1.7-.9 2.4-1.9c.7-1.1 1-2.2 1-2.2s-1.9-.8-2-3.3ZM14.4 6.3c.5-.7.9-1.6.8-2.6-.8 0-1.8.5-2.4 1.2-.5.6-1 1.6-.8 2.5.9.1 1.8-.4 2.4-1.1Z"/></svg>
+            <span><small>Bientôt sur</small><strong>App Store</strong></span>
+          </span>
+          <a class="lien-app" href="<?= e(url('?p=application')) ?>">Tout sur l’application →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ---------- tarifs ---------- -->
 <section class="bloc" id="tarifs" style="background:var(--bg2);scroll-margin-top:70px">
   <div class="contenu" style="padding-bottom:0">
@@ -203,35 +328,45 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
      * La fonction rend des DONNÉES ; le dessin reste ici, parce que cette
      * page est habillée par `wakabi.css` et celle des tarifs par
      * `guide.css` — leurs cartes n'ont pas une classe en commun.
+     *
+     * La carte est COURTE depuis que `?p=tarifs` existe : nom, prix, trois
+     * lignes de résumé, un lien. Le détail ligne à ligne y vivait aussi,
+     * en double, et deux grilles à tenir d'accord finissent toujours par
+     * annoncer deux choses différentes. Celle-ci dit ce qu'on gagne,
+     * l'autre compare.
      */
     ?>
     <div class="grille offres">
       <?php foreach (offres_vitrine() as $o): ?>
         <div class="offre<?= $o['phare'] ? ' phare' : '' ?>">
           <?php if ($o['phare']): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
-          <span class="tag"><?= e($o['tag']) ?></span>
           <h3><?= e($o['nom']) ?></h3>
-          <?php if ($o['prix'] === 0): ?>
-            <div class="prix">Gratuit <small>à vie</small></div>
-          <?php else: ?>
-            <div class="prix"><s><?= $fr($o['prix']) ?></s><?= $fr($o['lancement']) ?> <small>FCFA/mois</small></div>
-            <p class="avant">−50 % les 3 premiers mois</p>
-          <?php endif; ?>
-          <?php if ($o['prefixe']): ?><p class="prefixe"><?= e($o['prefixe']) ?></p><?php endif; ?>
-          <ul>
-            <?php foreach ($o['lignes'] as [$texte, $inclus]): ?>
-              <li class="<?= $inclus ? '' : 'non' ?>"><span><?= e($texte) ?></span></li>
-            <?php endforeach; ?>
-          </ul>
-          <a class="bouton<?= $o['phare'] ? '' : ' fant' ?>" style="justify-content:center"
-             href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?></a>
+          <?php
+          /* Le prix et sa mention tiennent une hauteur réservée : sans
+             elle, le filet de l'offre gratuite remontait de dix-huit
+             pixels, et les quatre cartes ne se lisaient plus sur une
+             ligne. */
+          ?>
+          <div class="tarif">
+            <?php if ($o['prix'] === 0): ?>
+              <div class="prix">Gratuit <small>à vie</small></div>
+            <?php else: ?>
+              <div class="prix"><s><?= $fr($o['prix']) ?></s><?= $fr($o['lancement']) ?> <small>FCFA/mois</small></div>
+              <p class="avant">−50 % les 3 premiers mois</p>
+            <?php endif; ?>
+          </div>
+          <p class="resume"><?= e($resume($o)) ?></p>
+          <a class="choisir" href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?> →</a>
         </div>
       <?php endforeach; ?>
     </div>
-    <p class="aide" style="text-align:center;margin-top:18px">
-      Les crédits WhatsApp s’achètent à part (1 FCFA/message) : ce sont des coûts réels
-      facturés par Meta, chez nous comme ailleurs.
-    </p>
+    <div class="offres-pied">
+      <a class="bouton fant" href="<?= e(url('?p=tarifs')) ?>">Comparer les offres, ligne à ligne →</a>
+      <p class="aide">
+        Les crédits WhatsApp s’achètent à part (1 FCFA/message) : ce sont des coûts réels
+        facturés par Meta, chez nous comme ailleurs.
+      </p>
+    </div>
   </div>
 </section>
 
