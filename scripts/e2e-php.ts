@@ -489,9 +489,13 @@ const run = async () => {
   ok('vitrine chargée', /Wakabi Boost/.test(await p.title()));
   ok('la vitrine présente le produit', (await p.locator('section').count()) >= 8,
      `${await p.locator('section').count()} sections`);
-  // L'offre de lancement n'est plus annoncée par un bandeau en tête de site :
-  // elle vit dans la section des tarifs, là où elle se décide.
-  ok('offre de lancement affichée', /−50 %/.test(await p.locator('#tarifs').innerText()));
+  /* Les offres ont quitté l'accueil pour `?p=tarifs`, où elles se
+     comparent côte à côte. Ce que l'accueil doit garder, c'est le chemin
+     qui y mène : la page vend, elle ne chiffre plus. */
+  ok('l’accueil mène aux offres sans les chiffrer',
+     (await p.locator('a[href*="tarifs"]').count()) >= 2
+     && (await p.locator('.offre, #tarifs').count()) === 0,
+     `${await p.locator('a[href*="tarifs"]').count()} liens`);
   ok('aucun bandeau en tête de site', (await p.locator('.annonce').count()) === 0);
   /**
    * La police : déclarée ne suffit pas, il faut qu'elle soit CHARGÉE.
@@ -624,10 +628,17 @@ const run = async () => {
   ok('et « Générer un badge » récupère la liste des décors',
      portes.some((x) => x.startsWith('p=decors')), portes.join(' · '));
 
+  await p.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
   ok('les offres de la table sont toutes là',
-     (await p.locator('.offre').count()) >= 4,
-     `${await p.locator('.offre').count()} offres`);
-  ok('les questions fréquentes répondent', (await p.locator('details.qr').count()) === 6);
+     (await p.locator('.pricing-card').count()) >= 4,
+     `${await p.locator('.pricing-card').count()} offres`);
+  /* Les six questions de l'outil ont rejoint les cinq du partenariat :
+     elles se posent quand on se renseigne pour de bon, pas au milieu
+     d'une page qui présente. */
+  await p.goto(`${BASE}/index.php?p=partenaires`, { waitUntil: 'domcontentloaded' });
+  ok('les questions fréquentes répondent, toutes sur la même page',
+     (await p.locator('.faq-item').count()) === 11,
+     `${await p.locator('.faq-item').count()} questions`);
   await p.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
   const n = await p.locator('a[href*="p=decor&slug="]').count();
   ok('catalogue peuplé', n >= 3, `${n} décors publiés`);
@@ -7263,13 +7274,13 @@ const run = async () => {
      await pOf.locator('.msg.ok').first().innerText());
 
   const pVit = await browser.newPage();
-  await pVit.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
-  const grilleOffres = await pVit.locator('.offre h3').allInnerTexts();
+  await pVit.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
+  const grilleOffres = await pVit.locator('.pricing-name').allInnerTexts();
   ok('et la vitrine la montre, sans une ligne de code',
      grilleOffres.includes('Essentiel'), grilleOffres.join(' · '));
   ok('à sa place dans l’ordre demandé',
      grilleOffres.indexOf('Essentiel') === 1, grilleOffres.join(' · '));
-  const texteVitrine = await pVit.locator('.offre').nth(1).innerText();
+  const texteVitrine = await pVit.locator('.pricing-card').nth(1).innerText();
   /**
    * Son prix et son bouton, pris dans l'offre.
    *
@@ -7318,7 +7329,7 @@ const run = async () => {
 
   await pVit.reload({ waitUntil: 'domcontentloaded' });
   ok('et la vitrine ne la propose plus',
-     !(await pVit.locator('.offre h3').allInnerTexts()).includes('Essentiel'));
+     !(await pVit.locator('.pricing-name').allInnerTexts()).includes('Essentiel'));
   await pVit.close();
 
   /* --- le journal a tout noté --- */
@@ -9703,9 +9714,9 @@ const run = async () => {
 
 
   /* ======================================================================
-     67. La page d'accueil : le socle, l'application, les offres courtes
+     67. La page d'accueil : le socle, l'application, et ce qui l'a quittée
      ====================================================================== */
-  console.log('\n━━ 67. L’accueil : le socle, l’application, les offres ━━');
+  console.log('\n━━ 67. L’accueil : le socle, l’application, et ce qui l’a quittée ━━');
 
   const pAcc = await browser.newPage();
   surveiller(pAcc);
@@ -9771,20 +9782,32 @@ const run = async () => {
      `${nombres.plancher}+ annoncés, ${nombres.total} comptés`);
 
   /**
-   * L'application : les MÊMES visuels que sa propre page.
+   * Les deux captures sont SERVIES PAR LE SITE.
    *
-   * Deux copies du même téléphone finiraient par diverger. On vérifie
-   * donc que les adresses d'images de l'accueil sont exactement celles
-   * que `?p=application` utilise déjà.
+   * La page de l'application va encore chercher les siennes chez un
+   * domaine que nous ne tenons pas : une requête de plus sur une
+   * connexion où le mégaoctet se compte, et des images qui disparaissent
+   * le jour où ce domaine bouge. Celles de l'accueil partent dans le zip.
    */
-  const srcApp = await pAcc.evaluate(() =>
-    [...document.querySelectorAll('.app-tels img')].map((i) => i.getAttribute('src') ?? ''));
-  await pAcc.goto(`${BASE}/index.php?p=application`, { waitUntil: 'domcontentloaded' });
-  const srcPage = await pAcc.evaluate(() =>
-    [...document.querySelectorAll('.phones-wrap img')].map((i) => i.getAttribute('src') ?? ''));
-  ok('les visuels de l’application sont ceux de sa propre page',
-     srcApp.length === 2 && srcApp.every((u) => srcPage.includes(u)),
-     srcApp.map((u) => u.split('/').pop()).join(' · '));
+  const visuels = await pAcc.evaluate(() =>
+    [...document.querySelectorAll('.app-tels img')].map((i) => ({
+      src: i.getAttribute('src') ?? '',
+      poids: Math.round(((i as HTMLImageElement).naturalWidth || 0)),
+    })));
+  ok('les deux captures de l’application viennent du site, et pas d’ailleurs',
+     visuels.length === 2
+     && visuels.every((v) => !/^https?:/i.test(v.src) || v.src.startsWith(BASE)),
+     visuels.map((v) => v.src.split('/').pop()).join(' · '));
+  /* Et elles ARRIVENT : une adresse juste qui rend un 404 donnerait le
+     même HTML et un trou à l'écran. */
+  const arrivees = await pAcc.evaluate(() => Promise.all(
+    [...document.querySelectorAll('.app-tels img')].map((i) => {
+      const img = i as HTMLImageElement;
+      img.loading = 'eager';
+      return img.complete ? img.naturalWidth > 0
+        : new Promise<boolean>((r) => { img.onload = () => r(true); img.onerror = () => r(false); });
+    })));
+  ok('et elles se chargent vraiment', arrivees.every(Boolean), arrivees.join(' · '));
 
   await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   const magasins = await pAcc.evaluate(() => {
@@ -9807,35 +9830,28 @@ const run = async () => {
   ok('et la section renvoie vers la page de l’application', magasins.versPage);
 
   /**
-   * Les offres de l'accueil sont COURTES, et renvoient aux tarifs.
+   * L'accueil ne chiffre plus, et ne questionne plus.
    *
-   * Le détail ligne à ligne vit sur `?p=tarifs`. Le garder ici en double
-   * donnait deux grilles à tenir d'accord, et mille pixels de page pour
-   * la seconde.
+   * La grille des offres y vivait en double de `?p=tarifs`, et les six
+   * questions de l'outil entre le blog et l'appel final. Deux grilles à
+   * tenir d'accord annoncent tôt ou tard deux choses différentes, et des
+   * questions posées à qui n'a encore rien à demander ne servent
+   * personne. La page présente ; les deux autres répondent.
    */
-  const courtes = await pAcc.evaluate(() => {
-    const cartes = [...document.querySelectorAll('#tarifs .offre')];
-    return {
-      cartes: cartes.length,
-      resumes: cartes.filter((c) => (c.querySelector('.resume')?.textContent ?? '').trim().length > 10).length,
-      listes: cartes.filter((c) => c.querySelector('ul')).length,
-      versTarifs: !!document.querySelector('.offres-pied a[href*="tarifs"]'),
-      /* Les filets des quatre cartes sont à la MÊME hauteur : l'offre
-         gratuite n'a pas de ligne « −50 % », et sans hauteur réservée le
-         sien remontait de dix-huit pixels. */
-      filets: new Set(cartes.map((c) => {
-        const r = c.querySelector('.resume');
-        const k = c.getBoundingClientRect().top;
-        return r ? Math.round(r.getBoundingClientRect().top - k) : -1;
-      })).size,
-    };
-  });
-  ok('chaque offre de l’accueil tient en un résumé, sans sa liste',
-     courtes.cartes >= 3 && courtes.resumes === courtes.cartes && courtes.listes === 0,
-     JSON.stringify(courtes));
-  ok('et les filets des cartes sont à la même hauteur', courtes.filets === 1,
-     `${courtes.filets} hauteur(s)`);
-  ok('un seul bouton mène au détail des offres', courtes.versTarifs);
+  const reste = await pAcc.evaluate(() => ({
+    offres: document.querySelectorAll('.offre, #tarifs, .pricing-card').length,
+    questions: document.querySelectorAll('details.qr, .faq-item').length,
+    sections: document.querySelectorAll('section').length,
+    /* L'application est AVANT les témoignages : « il y a une audience
+       derrière » prépare « et voilà ce que ça donne », pas l'inverse. */
+    ordre: [...document.querySelectorAll('section')]
+      .findIndex((x) => x.classList.contains('bloc-app'))
+      < [...document.querySelectorAll('section')]
+        .findIndex((x) => !!x.querySelector('.avis')),
+  }));
+  ok('l’accueil ne porte plus ni grille d’offres ni questions',
+     reste.offres === 0 && reste.questions === 0, JSON.stringify(reste));
+  ok('et l’application passe avant les témoignages', reste.ordre === true);
 
   /* Et rien ne déborde sur un téléphone, images comprises. */
   await pAcc.setViewportSize({ width: 390, height: 844 });

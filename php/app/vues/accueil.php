@@ -22,26 +22,6 @@ const SOCLE_PARTENAIRES = 2340;
 $organisateurs = SOCLE_PARTENAIRES
     + (int) db()->query("SELECT COUNT(*) n FROM utilisateurs WHERE role='partenaire'")->fetch()['n'];
 
-/**
- * Les trois premières lignes INCLUSES d'une offre, en une phrase.
- *
- * La carte dit ce qu'on gagne ; la page des tarifs dit tout le reste,
- * ligne à ligne et offre par offre. Prendre les trois premières plutôt
- * qu'une liste écrite ici garde la carte juste le jour où une offre
- * change dans l'administration.
- */
-$resume = static function (array $o): string {
-    $pris = [];
-    foreach ($o['lignes'] as [$texte, $inclus]) {
-        if ($inclus) {
-            $pris[] = $texte;
-        }
-        if (count($pris) === 3) {
-            break;
-        }
-    }
-    return implode(' · ', $pris);
-};
 $vitrine = array_slice(decors_publies(8), 0, 4);
 // Le blog sur la vitrine : trois articles, et rien si la rédaction n'a
 // encore rien écrit. Une section « Le blog » vide est pire que pas de blog.
@@ -213,32 +193,6 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
 </section>
 <?php endif; ?>
 
-<!-- ---------- témoignages ---------- -->
-<section class="bloc">
-  <div class="contenu" style="padding-bottom:0">
-    <div class="tete centre">
-      <p class="sur">Ils l’utilisent</p>
-      <h2>Des salles pleines, <em>pas des promesses</em></h2>
-    </div>
-    <div class="grille g3">
-      <?php foreach ([
-        ['Avant Wakabi Boost, je devais relancer mes invités un par un. Maintenant les rappels partent seuls et ma dernière soirée a fait salle comble.', 'Kofi Mensah', 'Organisateur, Lomé', 'kofi', '1 200 badges'],
-        ['Le badge « J’y serai » a été partagé plus de 1 200 fois en 3 jours. Une visibilité que je n’aurais jamais pu m’offrir en pub classique.', 'Aïcha Traoré', 'Promotrice événementielle, Cotonou', 'aicha', '98 % lus'],
-        ['Le QR Code à l’entrée a tout changé : je sais exactement qui est venu, et mes invités reviennent pour les Koris. Du jamais vu.', 'Emmanuel Agbo', 'Gérant de lieu, Cotonou', 'emmanuel', 'Présence tracée'],
-      ] as [$q, $nom, $role, $portrait, $mesure]): ?>
-        <div class="avis">
-          <q><?= e($q) ?></q>
-          <div class="qui">
-            <?= avatar($portrait, 42) ?>
-            <span><b><?= e($nom) ?></b><span><?= e($role) ?></span></span>
-            <span class="mesure"><?= e($mesure) ?></span>
-          </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
 <!-- ---------- l'application Wakabi ---------- -->
 <?php
 /**
@@ -268,15 +222,25 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
       cherchent déjà quoi faire ce soir dans leur ville.</p>
     </div>
     <div class="app-duo">
+      <?php
+      /**
+       * Les deux captures sont SERVIES PAR LE SITE, et non par un tiers.
+       *
+       * La page de l'application va encore chercher les siennes chez
+       * `admin.wakabileguide.com` : une requête vers un domaine qu'on ne
+       * tient pas, sur une connexion où le mégaoctet se compte, et une
+       * image qui disparaît le jour où ce domaine bouge. Celles-ci
+       * vivent dans `public/`, partent dans le zip, et pèsent 26 et
+       * 36 Ko en WebP contre 180 et 373 en PNG.
+       */
+      ?>
       <div class="app-tels">
-        <img class="app-tel-cote"
-             src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE-2.png"
-             alt="L’écran des bons plans, dans l’application Wakabi"
-             width="1080" height="2160" loading="lazy" decoding="async" referrerpolicy="no-referrer">
-        <img class="app-tel-un"
-             src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE.png"
-             alt="L’accueil de l’application Wakabi sur un téléphone"
-             width="1080" height="2160" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+        <img class="app-tel-cote" src="<?= e(url('public/apercu-app-lieu.webp')) ?>"
+             alt="La galerie d’un lieu dans l’application Wakabi : l’hôtel Sarakawa en photos"
+             width="325" height="605" loading="lazy" decoding="async">
+        <img class="app-tel-un" src="<?= e(url('public/apercu-app-accueil.webp')) ?>"
+             alt="L’accueil de l’application Wakabi : la recherche, les évènements à venir et les lieux"
+             width="325" height="605" loading="lazy" decoding="async">
       </div>
       <div>
         <p>Wakabi a été conçue pour la réalité africaine : mobile first, légère, optimisée
@@ -307,65 +271,28 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   </div>
 </section>
 
-<!-- ---------- tarifs ---------- -->
-<section class="bloc" id="tarifs" style="background:var(--bg2);scroll-margin-top:70px">
+<!-- ---------- témoignages ---------- -->
+<section class="bloc">
   <div class="contenu" style="padding-bottom:0">
     <div class="tete centre">
-      <p class="sur">Les offres</p>
-      <h2>Commencez gratuitement, <em>payez quand ça marche</em></h2>
-      <p><strong>−50 % les 3 premiers mois</strong>, offre de lancement.</p>
+      <p class="sur">Ils l’utilisent</p>
+      <h2>Des salles pleines, <em>pas des promesses</em></h2>
     </div>
-    <?php
-    /**
-     * Les prix et les lignes viennent de `offres_vitrine()`, dans
-     * `app/vitrine.php`, et non d'une liste écrite ici.
-     *
-     * Ce calcul tenait en trois fermetures de cent quarante lignes, juste
-     * au-dessus. La page des tarifs en a besoin du même, et recopier cent
-     * quarante lignes de règles de vente, c'est se donner rendez-vous dans
-     * six mois avec deux pages qui annoncent deux choses différentes.
-     *
-     * La fonction rend des DONNÉES ; le dessin reste ici, parce que cette
-     * page est habillée par `wakabi.css` et celle des tarifs par
-     * `guide.css` — leurs cartes n'ont pas une classe en commun.
-     *
-     * La carte est COURTE depuis que `?p=tarifs` existe : nom, prix, trois
-     * lignes de résumé, un lien. Le détail ligne à ligne y vivait aussi,
-     * en double, et deux grilles à tenir d'accord finissent toujours par
-     * annoncer deux choses différentes. Celle-ci dit ce qu'on gagne,
-     * l'autre compare.
-     */
-    ?>
-    <div class="grille offres">
-      <?php foreach (offres_vitrine() as $o): ?>
-        <div class="offre<?= $o['phare'] ? ' phare' : '' ?>">
-          <?php if ($o['phare']): ?><span class="ruban">Le plus choisi</span><?php endif; ?>
-          <h3><?= e($o['nom']) ?></h3>
-          <?php
-          /* Le prix et sa mention tiennent une hauteur réservée : sans
-             elle, le filet de l'offre gratuite remontait de dix-huit
-             pixels, et les quatre cartes ne se lisaient plus sur une
-             ligne. */
-          ?>
-          <div class="tarif">
-            <?php if ($o['prix'] === 0): ?>
-              <div class="prix">Gratuit <small>à vie</small></div>
-            <?php else: ?>
-              <div class="prix"><s><?= $fr($o['prix']) ?></s><?= $fr($o['lancement']) ?> <small>FCFA/mois</small></div>
-              <p class="avant">−50 % les 3 premiers mois</p>
-            <?php endif; ?>
+    <div class="grille g3">
+      <?php foreach ([
+        ['Avant Wakabi Boost, je devais relancer mes invités un par un. Maintenant les rappels partent seuls et ma dernière soirée a fait salle comble.', 'Kofi Mensah', 'Organisateur, Lomé', 'kofi', '1 200 badges'],
+        ['Le badge « J’y serai » a été partagé plus de 1 200 fois en 3 jours. Une visibilité que je n’aurais jamais pu m’offrir en pub classique.', 'Aïcha Traoré', 'Promotrice événementielle, Cotonou', 'aicha', '98 % lus'],
+        ['Le QR Code à l’entrée a tout changé : je sais exactement qui est venu, et mes invités reviennent pour les Koris. Du jamais vu.', 'Emmanuel Agbo', 'Gérant de lieu, Cotonou', 'emmanuel', 'Présence tracée'],
+      ] as [$q, $nom, $role, $portrait, $mesure]): ?>
+        <div class="avis">
+          <q><?= e($q) ?></q>
+          <div class="qui">
+            <?= avatar($portrait, 42) ?>
+            <span><b><?= e($nom) ?></b><span><?= e($role) ?></span></span>
+            <span class="mesure"><?= e($mesure) ?></span>
           </div>
-          <p class="resume"><?= e($resume($o)) ?></p>
-          <a class="choisir" href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?> →</a>
         </div>
       <?php endforeach; ?>
-    </div>
-    <div class="offres-pied">
-      <a class="bouton fant" href="<?= e(url('?p=tarifs')) ?>">Comparer les offres, ligne à ligne →</a>
-      <p class="aide">
-        Les crédits WhatsApp s’achètent à part (1 FCFA/message) : ce sont des coûts réels
-        facturés par Meta, chez nous comme ailleurs.
-      </p>
     </div>
   </div>
 </section>
@@ -403,35 +330,6 @@ $fr = fn(int $n) => number_format($n, 0, ',', ' ');
   </div>
 </section>
 <?php endif; ?>
-
-<!-- ---------- questions ---------- -->
-<section class="bloc">
-  <div class="contenu" style="max-width:760px;padding-bottom:0">
-    <div class="tete centre">
-      <p class="sur">Vos questions</p>
-      <h2>Tout ce que vous <em>voulez savoir</em></h2>
-    </div>
-    <?php foreach ([
-      ['C’est quoi la différence avec un générateur de badge classique ?',
-       'Un générateur classique produit une image que vos invités partagent, c’est tout. Wakabi Boost ajoute un QR Code unique sur chaque badge : scanné à l’entrée, il mesure la présence réelle, crédite des Koris à l’invité et le transforme en client fidèle de l’écosystème. Vous ne créez plus du buzz qui retombe, vous créez de la valeur durable.'],
-      ['Est-ce que je peux vraiment démarrer gratuitement ?',
-       'Oui. La formule Découverte est gratuite à vie, sans carte bancaire : 1 campagne active, 50 téléchargements de badges par mois et le Studio complet. Vous ne payez que lorsque vous voulez plus de portée ou des fonctionnalités avancées.'],
-      ['Comment fonctionne le ciblage WhatsApp ?',
-       'Contrairement aux envois aveugles, Wakabi vous laisse cibler par ville, centre d’intérêt et historique de visite parmi les 10 000+ utilisateurs de l’écosystème. Vos messages atteignent les bonnes personnes, donc plus de présence pour moins de budget. Les crédits coûtent 1 FCFA par message.'],
-      ['Les crédits WhatsApp sont-ils inclus dans l’abonnement ?',
-       'Non, ils s’achètent à part (1 FCFA/message), comme chez tous les acteurs sérieux : ce sont des coûts réels facturés par Meta. En revanche, nos tarifs dégressifs et le ciblage intelligent font que vous dépensez beaucoup moins pour un meilleur résultat.'],
-      ['Je n’ai aucune compétence technique. C’est compliqué ?',
-       'Pas du tout. Le Studio fonctionne en glisser-déposer, les campagnes se lancent en quelques clics, et tout est en français. Si vous savez envoyer un message WhatsApp, vous savez utiliser Wakabi Boost.'],
-      ['Que devient la photo de mes invités ?',
-       'Elle ne quitte jamais leur téléphone. Le badge est fabriqué entièrement dans leur navigateur : rien n’est téléversé, rien n’est conservé sur nos serveurs. C’est plus rapide sur réseau faible, moins coûteux en données, et il n’y a aucune donnée personnelle à protéger.'],
-    ] as [$q, $r]): ?>
-      <details class="qr">
-        <summary><span><?= e($q) ?></span></summary>
-        <p><?= e($r) ?></p>
-      </details>
-    <?php endforeach; ?>
-  </div>
-</section>
 
 <!-- ---------- appel final ---------- -->
 <section class="bloc" style="padding-top:0">

@@ -682,22 +682,6 @@ section.bloc{padding:64px 0}
   .offres-deux{grid-template-columns:1fr}
 }
 
-/* Les offres ont leur propre grille : à 160 px de large, une colonne de
-   prix se coupe en deux (« 6 » / « 000 ») et la liste devient illisible.
-   240 px est la largeur en dessous de laquelle une offre ne tient plus. */
-.offres{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:stretch}
-.offre{background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);padding:22px;display:flex;flex-direction:column}
-.offre.phare{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-wash);position:relative}
-.offre h3{font-family:var(--display);font-size:1.25rem;font-weight:800;margin:6px 0 0}
-.offre .prix{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:-.03em;margin:12px 0 0;line-height:1}
-.offre .prix s{font-size:1rem;font-weight:600;color:var(--text3);margin-right:8px}
-/* L'unité passe à la ligne : « 12 000 6 000 » puis « FCFA/mois » se
-   coupait déjà tout seul dans les colonnes étroites, mais pas au même
-   endroit d'une offre à l'autre. */
-.offre .prix small{display:block;font-size:.8rem;font-weight:600;color:var(--text3);margin-top:3px}
-.offre .avant{font-size:.78rem;color:var(--orange);font-weight:700;margin-top:5px}
-.ruban{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;
-  border-radius:999px;padding:4px 14px;font-size:.72rem;font-weight:700;white-space:nowrap}
 
 details.qr{background:var(--paper);border:1px solid var(--border);border-radius:var(--r10);overflow:hidden;margin-bottom:9px}
 details.qr summary{cursor:pointer;list-style:none;padding:15px 18px;font-family:var(--display);font-weight:700;font-size:.96rem;display:flex;gap:14px}
@@ -762,7 +746,6 @@ details[open] > summary.bouton{border-color:var(--rouge);color:var(--rouge)}
   .carte{padding:16px}
   .stat{padding:12px 14px}
   .canal,.etape,.avis{padding:16px}
-  .offre{padding:18px}
   .final{padding:38px 18px;border-radius:var(--r16)}
   .heros-in{padding:26px 16px 38px}
   .g4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
@@ -2036,13 +2019,13 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
    place même quand elles n'arrivent pas, et la page ne saute pas
    au moment où elles finissent par arriver. */
 .bloc-app{background:var(--bg2)}
-.app-duo{display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:54px;align-items:center}
-.app-tels{position:relative;display:flex;justify-content:center;align-items:flex-end;min-height:430px}
+.app-duo{display:grid;grid-template-columns:minmax(0,470px) 1fr;gap:48px;align-items:center}
+.app-tels{position:relative;display:flex;justify-content:center;align-items:flex-end;min-height:500px}
 .app-tels img{width:auto;max-width:100%;height:auto}
-.app-tel-un{max-height:430px;position:relative;z-index:2;
-  filter:drop-shadow(0 26px 46px rgba(2,10,40,.28))}
-.app-tel-cote{max-height:348px;position:relative;z-index:1;margin-right:-52px;
-  transform:rotate(-6deg);filter:drop-shadow(0 16px 32px rgba(2,10,40,.2))}
+.app-tel-un{max-height:500px;position:relative;z-index:2;
+  filter:drop-shadow(0 26px 46px rgba(2,10,40,.26))}
+.app-tel-cote{max-height:410px;position:relative;z-index:1;margin-right:-58px;
+  transform:rotate(-6deg);filter:drop-shadow(0 16px 32px rgba(2,10,40,.18))}
 .app-atouts{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 22px;list-style:none;padding:0}
 .app-atouts li{display:inline-flex;align-items:center;gap:7px;background:var(--paper);
   border:1px solid var(--border);border-radius:999px;padding:7px 14px;
@@ -2062,33 +2045,14 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
 @media(max-width:860px){
   .app-duo{grid-template-columns:1fr;gap:34px}
   .app-tels{min-height:0}
-  .app-tel-un{max-height:360px}
-  .app-tel-cote{max-height:290px;margin-right:-44px}
+  .app-tel-un{max-height:440px}
+  .app-tel-cote{max-height:360px;margin-right:-50px}
 }
 @media(max-width:520px){
-  .app-tel-un{max-height:290px}
-  .app-tel-cote{max-height:232px;margin-right:-36px}
+  .app-tel-un{max-height:330px}
+  .app-tel-cote{max-height:270px;margin-right:-40px}
 }
 
-/* ---- La carte d'offre, version courte --------------------------
-   Le détail ligne à ligne vit sur `?p=tarifs`, qui met les offres côte
-   à côte. Le répéter ici donnait deux grilles à tenir d'accord, et mille
-   pixels de page pour la seconde. La carte garde donc son habillage,
-   et perd sa liste : trois lignes de résumé, puis le lien. */
-/* Le nom tient DEUX lignes réservées, et le prix sa propre hauteur.
-   Un nom d'offre un peu long passait à la ligne, et le filet de cette
-   carte-là descendait d'une ligne pendant que les autres restaient en
-   place. Les offres se règlent depuis l'administration : le nom long
-   finira par arriver, et il ne doit pas décaler la rangée. */
-.offre h3{min-height:2.4em}
-.offre .tarif{min-height:96px}
-.offre .resume{margin:14px 0 0;padding-top:13px;border-top:1px solid var(--border);
-  font-size:.82rem;line-height:1.6;color:var(--text2);flex:1}
-.offre .choisir{margin-top:14px;font-size:.84rem;font-weight:700;
-  color:var(--primary-d);text-decoration:none}
-.offre .choisir:hover{text-decoration:underline}
-.offres-pied{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:12px}
-.offres-pied .aide{margin:0;text-align:center;max-width:62ch}
 
 /* Le lien vers la page complète, à côté des deux magasins : qui veut
    les quatre niveaux d'explorateur et les six fonctionnalités les y

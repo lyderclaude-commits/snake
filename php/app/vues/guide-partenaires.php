@@ -117,6 +117,38 @@
         <details class="faq-item"><summary class="faq-q">Puis-je modifier mes informations à tout moment ?<span>+</span></summary><div class="faq-a">Oui, absolument. Les partenaires Pro et Premium ont accès à un dashboard complet pour modifier leurs informations, photos, horaires et offres en temps réel, directement depuis leur interface partenaire.</div></details>
         <details class="faq-item"><summary class="faq-q">Comment fonctionne le Qr Code pour mon établissement ?<span>+</span></summary><div class="faq-a">Vous recevez un QR Code unique à afficher dans votre établissement. Quand un client scanne votre QR code avec l'app Wakabi, il reçoit des points et bénéficie de vos offres actives. Vous voyez toutes les statistiques dans votre dashboard.</div></details>
       </div>
+
+      <?php
+      /**
+       * Les six questions de Wakabi Boost, venues de la page d'accueil.
+       *
+       * Elles y occupaient le dernier tiers de la page, entre le blog et
+       * l'appel final : six questions d'outil posées à quelqu'un qui
+       * venait de lire une promesse, et qui n'avait encore rien à
+       * demander. Ici, elles tombent au bon moment, chez qui se renseigne
+       * déjà avant de signer.
+       *
+       * Elles gardent leur propre intertitre : les cinq premières parlent
+       * d'être RÉFÉRENCÉ dans l'application, celles-ci de l'outil qu'on
+       * utilise ensuite. Onze questions à la file, sans rien pour dire
+       * qu'on change de sujet, se lisent comme un seul grand fourre-tout.
+       */
+      ?>
+      <div style="text-align:center;margin:56px 0 28px" class="fade-up">
+        <div class="tag">Wakabi Boost</div>
+        <h2 class="headline" style="font-size:clamp(1.5rem,3vw,2rem)">Et sur <span>l’outil de campagne</span></h2>
+      </div>
+      <div class="faq-list fade-up">
+        <details class="faq-item"><summary class="faq-q">C’est quoi la différence avec un générateur de badge classique ?<span>+</span></summary><div class="faq-a">Un générateur classique produit une image que vos invités partagent, c’est tout. Wakabi Boost ajoute un QR Code unique sur chaque badge : scanné à l’entrée, il mesure la présence réelle, crédite des Koris à l’invité et le transforme en client fidèle de l’écosystème. Vous ne créez plus du buzz qui retombe, vous créez de la valeur durable.</div></details>
+        <details class="faq-item"><summary class="faq-q">Est-ce que je peux vraiment démarrer gratuitement ?<span>+</span></summary><div class="faq-a">Oui. La formule Découverte est gratuite à vie, sans carte bancaire : 1 campagne active, 50 téléchargements de badges par mois et le Studio complet. Vous ne payez que lorsque vous voulez plus de portée ou des fonctionnalités avancées.</div></details>
+        <details class="faq-item"><summary class="faq-q">Comment fonctionne le ciblage WhatsApp ?<span>+</span></summary><div class="faq-a">Contrairement aux envois aveugles, Wakabi vous laisse cibler par ville, centre d’intérêt et historique de visite parmi les 10 000+ utilisateurs de l’écosystème. Vos messages atteignent les bonnes personnes, donc plus de présence pour moins de budget. Les crédits coûtent 1 FCFA par message.</div></details>
+        <details class="faq-item"><summary class="faq-q">Les crédits WhatsApp sont-ils inclus dans l’abonnement ?<span>+</span></summary><div class="faq-a">Non, ils s’achètent à part (1 FCFA/message), comme chez tous les acteurs sérieux : ce sont des coûts réels facturés par Meta. En revanche, nos tarifs dégressifs et le ciblage intelligent font que vous dépensez beaucoup moins pour un meilleur résultat.</div></details>
+        <details class="faq-item"><summary class="faq-q">Je n’ai aucune compétence technique. C’est compliqué ?<span>+</span></summary><div class="faq-a">Pas du tout. Le Studio fonctionne en glisser-déposer, les campagnes se lancent en quelques clics, et tout est en français. Si vous savez envoyer un message WhatsApp, vous savez utiliser Wakabi Boost.</div></details>
+        <details class="faq-item"><summary class="faq-q">Que devient la photo de mes invités ?<span>+</span></summary><div class="faq-a">Elle ne quitte jamais leur téléphone. Le badge est fabriqué entièrement dans leur navigateur : rien n’est téléversé, rien n’est conservé sur nos serveurs. C’est plus rapide sur réseau faible, moins coûteux en données, et il n’y a aucune donnée personnelle à protéger.</div></details>
+      </div>
+      <p style="text-align:center;margin:26px 0 0">
+        <a class="btn btn-outline" href="<?= e(url('?p=tarifs')) ?>">Voir les offres Wakabi Boost</a>
+      </p>
     </div>
   </section>
   <!-- Testimonials partenaires -->
