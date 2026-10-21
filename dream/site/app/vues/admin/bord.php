@@ -5,7 +5,8 @@ $classe_main = 'contenu bord';
 $onglet = ($_GET['vue'] ?? '') === 'chiffres' ? 'chiffres' : 'faire';
 $nonlus = tous('SELECT id, nom, besoin, cree_le FROM messages WHERE lu = 0 ORDER BY id LIMIT 8');
 $brouillons = tous("SELECT id, titre, auteur, modifie_le FROM articles WHERE statut = 'brouillon' ORDER BY modifie_le DESC LIMIT 5");
-$a_faire = count($nonlus) + count($brouillons);
+$a_relire = (int) valeur("SELECT COUNT(*) FROM articles WHERE traduction_auto = 1 AND trim(titre_en) <> ''");
+$a_faire = count($nonlus) + count($brouillons) + ($a_relire ? 1 : 0);
 $recents = array_merge(
     array_map(fn($r) => $r + ['genre' => 'article', 'lien' => 'admin/articles/' . $r['id']], tous('SELECT id, titre, modifie_le quand, statut FROM articles ORDER BY modifie_le DESC LIMIT 4')),
     array_map(fn($r) => $r + ['genre' => 'campagne', 'lien' => 'admin/campagnes/' . $r['id']], tous('SELECT id, titre, modifie_le quand FROM campagnes ORDER BY modifie_le DESC LIMIT 4')),
@@ -69,6 +70,13 @@ $n = [
       <a class="bouton petit fant" href="<?= url('admin/articles/' . $b['id']) ?>">Reprendre</a>
     </div>
   <?php endforeach; ?>
+  <?php if ($a_relire): ?>
+    <div class="bord-ligne">
+      <span class="bord-genre article">Anglais</span>
+      <span class="bord-titre"><?= $a_relire ?> traduction(s) automatique(s) DeepL à relire</span>
+      <a class="bouton petit fant" href="<?= url('admin/articles?statut=auto') ?>">Voir</a>
+    </div>
+  <?php endif; ?>
   <?php if (!$a_faire): ?>
     <p class="aide bord-vide">Rien n’attend. Aucune demande de contact non lue, aucun brouillon en cours.</p>
   <?php endif; ?>

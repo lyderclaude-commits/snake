@@ -234,6 +234,72 @@
     window.addEventListener('beforeunload', function (e) { if (sale) { e.preventDefault(); e.returnValue = ''; } });
   });
 
+  /* ---- traduction DeepL dans l'éditeur ---- */
+  var bTrad = document.querySelector('[data-traduire]');
+  if (bTrad) {
+    var formA = bTrad.closest('form'), etatT = formA.querySelector('[data-traduire-etat]');
+    var zones = formA.querySelectorAll('.editeur-zone');
+    bTrad.addEventListener('click', function () {
+      var titreFr = formA.querySelector('#titre').value.trim();
+      if (!titreFr) { etatT.textContent = 'Écrivez d’abord le titre français.'; return; }
+      var deja = formA.querySelector('#titre_en').value.trim() || zones[1].textContent.trim();
+      if (deja && !confirm('Remplacer la version anglaise actuelle par une traduction automatique ?')) return;
+      bTrad.disabled = true;
+      etatT.textContent = 'Traduction en cours…';
+      poster('admin/traduction/apercu', { titre: titreFr, extrait: formA.querySelector('#extrait').value, contenu: zones[0].innerHTML }).then(function (d) {
+        if (!d.ok) throw new Error(d.erreur || 'DeepL n’a pas répondu.');
+        formA.querySelector('#titre_en').value = d.titre_en;
+        formA.querySelector('#extrait_en').value = d.extrait_en;
+        zones[1].innerHTML = d.contenu_en;
+        zones[1].removeAttribute('data-vide');
+        zones[1].dispatchEvent(new Event('input', { bubbles: true }));
+        formA.querySelector('[data-traduction-auto]').value = '1';
+        formA.querySelector('[data-relue]').hidden = false;
+        var p = formA.querySelector('[data-etat-traduction]');
+        p.className = 'pastille nouveau'; p.textContent = 'Traduction automatique, à relire';
+        etatT.textContent = '✓ Traduit (' + d.caracteres.toLocaleString('fr-FR') + ' caractères). Relisez, puis enregistrez.';
+      }).catch(function (e) { etatT.textContent = '✗ ' + e.message; }).then(function () { bTrad.disabled = false; });
+    });
+  }
+
+  /* ---- traduction de tous les articles ---- */
+  var lotT = document.querySelector('[data-traduction-lot]');
+  if (lotT) {
+    var bLot = lotT.querySelector('[data-lancer-traduction]'), etatL = lotT.querySelector('[data-etat-lot]'), jL = lotT.querySelector('[data-journal-lot]');
+    var barreL = lotT.querySelector('[data-barre-lot]'), jaugeL = barreL.querySelector('i'), depart = parseInt(lotT.dataset.restants, 10) || 0;
+    // Sans clé, ou quand tout est traduit, il n'y a pas de bouton de lancement.
+    if (bLot) bLot.addEventListener('click', function () {
+      bLot.disabled = true;
+      jL.textContent = '';
+      barreL.hidden = false;
+      var faits = 0, car = 0;
+      var tour = function () {
+        etatL.textContent = 'Traduction… ' + faits + ' article(s) traduit(s)';
+        return poster('admin/traduction/lot', {}).then(function (d) {
+          (d.journal || []).forEach(function (l) { jL.textContent += l + '\n'; jL.scrollTop = jL.scrollHeight; });
+          faits += d.faits; car += d.caracteres;
+          jaugeL.style.width = (depart ? Math.round((depart - d.restants) / depart * 100) : 100) + '%';
+          if (!d.ok) throw new Error(d.erreur);
+          if (d.restants > 0 && d.faits > 0) return tour();
+          etatL.innerHTML = '<b>✓ Terminé.</b> ';
+          etatL.appendChild(document.createTextNode(faits + ' article(s) traduit(s), ' + car.toLocaleString('fr-FR') + ' caractères. Ils sont marqués « à relire » dans la liste des articles.'));
+        });
+      };
+      tour().catch(function (e) {
+        etatL.innerHTML = '<b>✗ Arrêté.</b> ';
+        etatL.appendChild(document.createTextNode(faits + ' article(s) traduit(s) avant l’arrêt. ' + e.message));
+      }).then(function () { bLot.disabled = false; });
+    });
+    var bTest = document.querySelector('[data-tester-deepl]');
+    if (bTest) bTest.addEventListener('click', function () {
+      var et = document.querySelector('[data-etat-deepl]');
+      et.textContent = 'Interrogation de DeepL…';
+      poster('admin/traduction/tester', {}).then(function (u) {
+        et.textContent = u.ok ? '✓ DeepL répond : ' + u.utilises.toLocaleString('fr-FR') + ' caractères utilisés ce mois-ci sur ' + u.limite.toLocaleString('fr-FR') + '.' : '✗ ' + u.erreur;
+      });
+    });
+  }
+
   /* ---- notifications push de cet appareil ---- */
   var push = document.querySelector('[data-push]');
   if (push) {

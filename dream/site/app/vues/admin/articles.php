@@ -17,13 +17,15 @@
     <option value="publie"<?= $statut === 'publie' ? ' selected' : '' ?>>En ligne</option>
     <option value="brouillon"<?= $statut === 'brouillon' ? ' selected' : '' ?>>Brouillons</option>
     <option value="wp"<?= $statut === 'wp' ? ' selected' : '' ?>>Importés de WordPress</option>
+    <option value="sans-en"<?= $statut === 'sans-en' ? ' selected' : '' ?>>Sans version anglaise</option>
+    <option value="auto"<?= $statut === 'auto' ? ' selected' : '' ?>>Traduction automatique à relire</option>
   </select>
   <button class="bouton fant" type="submit">Filtrer</button>
 </form>
 
 <div class="tableau">
   <table>
-    <thead><tr><th></th><th>Titre</th><th>Catégorie</th><th>État</th><th>Publié</th><th class="chiffre">Lectures</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Titre</th><th>Catégorie</th><th>État</th><th>Anglais</th><th>Publié</th><th class="chiffre">Lectures</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($liste as $a):
         $programme = $a['statut'] === 'publie' && $a['publie_le'] > maintenant(); ?>
@@ -40,6 +42,7 @@
           <?php else: ?><span class="pastille brouillon">Brouillon</span><?php endif; ?>
           <?php if ($a['wp_id']): ?><span class="pastille wp" title="Importé de WordPress">WP</span><?php endif; ?>
         </td>
+        <td><?= !(int) $a['a_en'] ? '<span class="aide">—</span>' : ((int) $a['traduction_auto'] ? '<span class="pastille nouveau" title="Traduite par DeepL, pas encore relue">Auto · à relire</span>' : '<span class="pastille publie">Traduit</span>') ?></td>
         <td class="aide" style="white-space:nowrap"><?= $a['publie_le'] ? e(date_fr($a['publie_le'])) : 'Pas encore' ?></td>
         <td class="chiffre"><?= (int) $a['lectures'] ?></td>
         <td class="actions">
@@ -49,7 +52,7 @@
       </tr>
     <?php endforeach; ?>
     <?php if (!$liste): ?>
-      <tr><td colspan="7" class="aide" style="padding:28px;text-align:center">Aucun article<?= $q !== '' || $statut !== '' ? ' ne correspond à ce filtre' : '' ?>.</td></tr>
+      <tr><td colspan="8" class="aide" style="padding:28px;text-align:center">Aucun article<?= $q !== '' || $statut !== '' ? ' ne correspond à ce filtre' : '' ?>.</td></tr>
     <?php endif; ?>
     </tbody>
   </table>

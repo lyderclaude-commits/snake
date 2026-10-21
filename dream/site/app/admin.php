@@ -140,6 +140,10 @@ function admin_router(array $s, string $methode): void
                     $p[] = $statut;
                 } elseif ($statut === 'wp') {
                     $w[] = 'wp_id IS NOT NULL';
+                } elseif ($statut === 'auto') {
+                    $w[] = "traduction_auto = 1 AND trim(titre_en) <> ''";
+                } elseif ($statut === 'sans-en') {
+                    $w[] = "(trim(titre_en) = '' OR trim(contenu_en) = '')";
                 }
                 if ($t !== '') {
                     $w[] = '(titre LIKE ? OR slug LIKE ?)';
@@ -147,7 +151,8 @@ function admin_router(array $s, string $methode): void
                 }
                 $page = max(1, (int) ($_GET['page'] ?? 1));
                 $total = (int) valeur('SELECT COUNT(*) FROM articles WHERE ' . implode(' AND ', $w), $p);
-                $liste = tous('SELECT id, slug, titre, image, contenu, categorie, auteur, statut, publie_le, modifie_le, wp_id, lectures FROM articles WHERE '
+                $liste = tous('SELECT id, slug, titre, image, contenu, categorie, auteur, statut, publie_le, modifie_le, wp_id, lectures, traduction_auto,
+                    (length(trim(titre_en)) > 0 AND length(trim(contenu_en)) > 0) AS a_en FROM articles WHERE '
                     . implode(' AND ', $w) . ' ORDER BY COALESCE(publie_le, cree_le) DESC, id DESC LIMIT 30 OFFSET ' . (($page - 1) * 30), $p);
                 vue_admin('articles', ['liste' => $liste, 'total' => $total, 'page' => $page, 'pages' => max(1, (int) ceil($total / 30)), 'statut' => $statut, 'q' => $t]);
             }
@@ -164,7 +169,9 @@ function admin_router(array $s, string $methode): void
             if ($post) {
                 [$erreur, $id] = article_enregistrer($_POST, $a, $me);
                 if ($erreur === null) {
-                    flash('ok', ($_POST['statut'] ?? '') === 'publie' ? 'Article enregistré et en ligne.' : 'Brouillon enregistré.');
+                    $tr = traduire_si_auto($id);
+                    flash('ok', (($_POST['statut'] ?? '') === 'publie' ? 'Article enregistré et en ligne.' : 'Brouillon enregistré.')
+                        . ($tr === null ? '' : ($tr['ok'] ? ' La version anglaise a été traduite par DeepL : pensez à la relire.' : ' Traduction anglaise impossible : ' . $tr['erreur'])));
                     rediriger('admin/articles/' . $id);
                 }
                 $a = array_merge($a ?? [], $_POST, ['tags' => json_encode(liste_depuis_saisie((string) ($_POST['tags'] ?? '')))]);
@@ -204,6 +211,19 @@ function admin_router(array $s, string $methode): void
                 $c['tags'] = json_encode(liste_depuis_saisie((string) ($_POST['tags'] ?? '')));
             }
             vue_admin('campagne', ['c' => $c ? campagne_decoder($c) : null, 'erreur' => $erreur]);
+
+        /* ---------------- traduction DeepL depuis l'éditeur ---------------- */
+        case 'traduction':
+            if ($r1 === 'apercu' && $post) {
+                // Ce qui est DANS le formulaire, enregistré ou non : on traduit ce que la personne voit.
+                $t = traduction_article(['titre' => (string) ($_POST['titre'] ?? ''), 'extrait' => (string) ($_POST['extrait'] ?? ''),
+                    'contenu' => contenu_stocker((string) ($_POST['contenu'] ?? ''))]);
+                if ($t['ok']) {
+                    $t['contenu_en'] = contenu_afficher($t['contenu_en']);
+                }
+                json_reponse($t, $t['ok'] ? 200 : 502);
+            }
+            break;
 
         /* ---------------- accueil : services, témoignages, logos ---------------- */
         case 'services':
@@ -432,6 +452,37 @@ function admin_router(array $s, string $methode): void
                 'curl' => function_exists('curl_init'),
             ]);
 
+        case 'traduction':
+            if ($post && $r1 === 'tester') {
+                json_reponse(deepl_usage());
+            }
+            if ($post && $r1 === 'lot') {
+                json_reponse(traduire_lot());
+            }
+            if ($post) {
+                $v = ['deepl_cible' => array_key_exists($_POST['deepl_cible'] ?? '', DEEPL_CIBLES) ? $_POST['deepl_cible'] : 'EN-GB',
+                    'deepl_auto' => isset($_POST['deepl_auto']) ? '1' : '0'];
+                // La clé n'est jamais réaffichée : un champ vide la garde, la case l'efface.
+                $cle = trim((string) ($_POST['deepl_cle'] ?? ''));
+                if ($cle !== '') {
+                    $v['deepl_cle'] = $cle;
+                } elseif (isset($_POST['deepl_effacer'])) {
+                    $v['deepl_cle'] = '';
+                }
+                reglages_enregistrer($v);
+                $u = deepl_actif() ? deepl_usage() : null;
+                flash($u === null || $u['ok'] ? 'ok' : 'err', $u === null ? 'Réglages enregistrés. Aucune clé : la traduction automatique est coupée.'
+                    : ($u['ok'] ? 'Réglages enregistrés. DeepL répond : ' . number_format($u['utilises'], 0, ',', ' ') . ' caractères utilisés ce mois-ci sur '
+                        . number_format($u['limite'], 0, ',', ' ') . '.' : 'Réglages enregistrés, mais ' . $u['erreur']));
+                rediriger('admin/traduction');
+            }
+            vue_admin('traduction', [
+                'a_traduire' => articles_a_traduire(),
+                'auto' => (int) valeur("SELECT COUNT(*) FROM articles WHERE traduction_auto = 1 AND trim(titre_en) <> ''"),
+                'releves' => (int) valeur("SELECT COUNT(*) FROM articles WHERE traduction_auto = 0 AND trim(titre_en) <> '' AND trim(contenu_en) <> ''"),
+                'publies' => (int) valeur("SELECT COUNT(*) FROM articles WHERE statut = 'publie'"),
+            ]);
+
         case 'sauvegarde':
             if ($post) {
                 $f = dossier_donnees() . '/sauvegarde-' . date('Ymd-His') . '.sqlite';
@@ -509,6 +560,8 @@ function article_enregistrer(array $v, ?array $a, array $me): array
         'extrait_en' => mb_substr(trim((string) ($v['extrait_en'] ?? '')), 0, 600),
         'contenu_en' => contenu_stocker((string) ($v['contenu_en'] ?? '')),
     ];
+    // « Traduction automatique » tant que personne n'a coché « relue » ; une version écrite à la main ne l'est pas.
+    $champs['traduction_auto'] = ($v['traduction_auto'] ?? '') === '1' && !isset($v['traduction_relue']) && $champs['titre_en'] !== '' ? 1 : 0;
     if ($a) {
         $sets = implode(', ', array_map(fn($k) => "$k = ?", array_keys($champs)));
         // Retouché ici : un nouvel import WordPress ne l'écrasera plus.

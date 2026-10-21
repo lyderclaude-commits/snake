@@ -53,11 +53,12 @@ $_nonlus = $me ? messages_non_lus() : 0;
         <a href="<?= url('admin/messages') ?>"<?= $_cour('admin/messages') ?>>Messages<?php if ($_nonlus): ?><span class="compteur" aria-label="<?= $_nonlus ?> non lus"><?= $_nonlus ?></span><?php endif; ?></a>
         <?php if (est_admin($me)): ?>
         <details class="deroulant">
-          <summary<?= $_est('admin/reglages') || $_est('admin/comptes') || $_est('admin/import') ? ' aria-current="true"' : '' ?>>Système<?= $_chev ?></summary>
+          <summary<?= $_est('admin/reglages') || $_est('admin/comptes') || $_est('admin/import') || $_est('admin/traduction') ? ' aria-current="true"' : '' ?>>Système<?= $_chev ?></summary>
           <div class="volet">
             <a href="<?= url('admin/reglages') ?>"<?= $_cour('admin/reglages') ?>>Réglages<small>Coordonnées, accueil, SEO</small></a>
             <a href="<?= url('admin/comptes') ?>"<?= $_cour('admin/comptes') ?>>Comptes<small>Qui peut publier</small></a>
             <a href="<?= url('admin/import') ?>"<?= $_cour('admin/import') ?>>Import WordPress<small>Articles et images</small></a>
+            <a href="<?= url('admin/traduction') ?>"<?= $_cour('admin/traduction') ?>>Traduction<small>DeepL, français → anglais</small></a>
           </div>
         </details>
         <?php endif; ?>

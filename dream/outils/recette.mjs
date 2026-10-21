@@ -56,6 +56,28 @@ const serveurSmtp = createServer((c) => {
   });
 }).listen(PORT_SMTP, '127.0.0.1');
 cpSync(SITE, tmp, { recursive: true, filter: (s) => !/donnees\/(lyd\.sqlite|sessions)|uploads\/\d{4}/.test(s) });
+// DeepL est remplacé par un faux service local, monté plus bas : la copie de recette le dit dans son config.php.
+const PORT_DEEPL = 8128;
+writeFileSync(join(tmp, 'config.php'), `<?php return ['deepl_url' => 'http://127.0.0.1:${PORT_DEEPL}'];\n`);
+const deepl = [];
+const serveurDeepl = serveurHttp((req, res) => {
+  const morceaux = [];
+  req.on('data', (d) => morceaux.push(d));
+  req.on('end', () => {
+    const cle = String(req.headers.authorization || '').replace(/^DeepL-Auth-Key /, '');
+    const repondre = (code, d) => { res.statusCode = code; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(d)); };
+    if (!/^(cle-test|quota):fx$/.test(cle)) return repondre(403, { message: 'Authorization failed' });
+    if (req.url === '/v2/usage') return repondre(200, { character_count: deepl.reduce((n, r) => n + r.caracteres, 0), character_limit: 500000 });
+    if (req.url !== '/v2/translate' || req.method !== 'POST') return repondre(404, { message: 'Not found' });
+    if (cle === 'quota:fx') return repondre(456, { message: 'Quota exceeded' });
+    const corps = JSON.parse(Buffer.concat(morceaux).toString());
+    deepl.push({ corps, caracteres: corps.text.join('').length });
+    // « Traduire » : chaque texte entre deux balises reçoit « EN· », les balises restent intactes.
+    const traduire = (t) => corps.tag_handling === 'html' && t.includes('<')
+      ? t.replace(/>([^<]+)</g, (m, x) => (x.trim() ? '>EN·' + x + '<' : m)) : 'EN·' + t;
+    repondre(200, { translations: corps.text.map((t) => ({ detected_source_language: 'FR', text: traduire(t) })) });
+  });
+}).listen(PORT_DEEPL, '127.0.0.1');
 const serveurs = [
   spawn('php', ['-d', `sendmail_path=php ${join(ICI, 'capture-mail.php')}`, '-S', `127.0.0.1:${PORT}`, '-t', tmp, join(ICI, 'routeur-dev.php')],
     { stdio: 'ignore', env: { ...process.env, PHP_CLI_SERVER_WORKERS: '4', LYD_COURRIELS: COURRIELS } }),
@@ -73,7 +95,7 @@ const erreurs = [];
 // Les ressources de tiers (YouTube, Unsplash) peuvent manquer selon le réseau : ce n'est pas une erreur du site.
 const tiers = /youtube|unsplash|ERR_TUNNEL|ERR_NAME|ERR_CONNECTION|ERR_INTERNET|net::ERR_FAILED/;
 p.on('pageerror', (e) => erreurs.push(p.url() + ' — ' + e));
-p.on('console', (m) => { if (m.type() === 'error' && !tiers.test(m.text()) && !/status of (40[34]|422)/.test(m.text())) erreurs.push(p.url() + ' — ' + m.text()); });
+p.on('console', (m) => { if (m.type() === 'error' && !tiers.test(m.text()) && !/status of (40[34]|422|502)/.test(m.text())) erreurs.push(p.url() + ' — ' + m.text()); });
 p.on('dialog', (d) => d.accept(d.type() === 'prompt' ? (d.message().includes('Légende') ? 'Une légende' : 'https://exemple.tg') : undefined));
 
 let ok = 0, ko = 0;
@@ -543,6 +565,94 @@ await scenario('le formulaire anglais répond en anglais et marque la demande EN
   verifier(smtp.length === avant + 1 && decoder(smtp.at(-1).donnees).includes('anglais'), 'l’e-mail doit dire que la demande vient du site anglais');
   await p.goto(B + '/admin/messages');
   verifier((await p.textContent('tr:has-text("John Smith")')).includes('EN'), 'pastille EN');
+});
+
+console.log('Traduction DeepL');
+await scenario('sans clé, l’éditeur propose de brancher DeepL', async () => {
+  await p.goto(B + '/admin/articles?q=article-numero-5'); await cliquer('a.titre-ligne:text-is("Article n°5 – l’exemple")');
+  verifier(await p.locator('details.version-en a:has-text("Branchez DeepL")').count() === 1, 'lien absent');
+  verifier(await p.locator('[data-traduire]').count() === 0, 'bouton présent sans clé');
+});
+await scenario('une clé refusée par DeepL est signalée', async () => {
+  await p.goto(B + '/admin/traduction');
+  await p.fill('#deepl_cle', 'mauvaise:fx');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier((await p.textContent('.msg.err')).includes('DeepL refuse la clé'), await p.textContent('.msg'));
+});
+await scenario('une bonne clé : DeepL répond, la clé n’est jamais réaffichée', async () => {
+  await p.fill('#deepl_cle', 'cle-test:fx');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier((await p.textContent('.msg.ok')).includes('caractères utilisés ce mois-ci sur 500 000'), await p.textContent('.msg'));
+  verifier(!(await p.content()).includes('cle-test:fx') && (await p.getAttribute('#deepl_cle', 'placeholder')).includes('offre gratuite'), 'clé visible');
+  await p.click('[data-tester-deepl]');
+  await p.waitForFunction(() => /DeepL répond|✗/.test(document.querySelector('[data-etat-deepl]').textContent));
+});
+await scenario('le bouton DeepL de l’éditeur traduit le formulaire, HTML intact', async () => {
+  await p.goto(B + '/admin/articles?q=article-numero-5'); await cliquer('a.titre-ligne:text-is("Article n°5 – l’exemple")');
+  await p.click('details.version-en > summary');
+  const avant = deepl.length;
+  await p.click('[data-traduire]');
+  await p.waitForFunction(() => /✓|✗/.test(document.querySelector('[data-traduire-etat]').textContent));
+  verifier((await p.textContent('[data-traduire-etat]')).includes('✓'), await p.textContent('[data-traduire-etat]'));
+  verifier((await p.inputValue('#titre_en')) === 'EN·Article n°5 – l’exemple', 'titre : ' + await p.inputValue('#titre_en'));
+  const html = await p.innerHTML('details.version-en .editeur-zone');
+  verifier(html.includes('<h2>EN·Un h1 dans le contenu</h2>') && /<img[^>]+src="\/uploads\//.test(html), 'contenu : ' + html.slice(0, 200));
+  const envoi = deepl.slice(avant);
+  verifier(envoi.some((r) => r.corps.tag_handling === 'html') && envoi.every((r) => r.corps.source_lang === 'FR' && r.corps.target_lang === 'EN-GB'), 'requête DeepL');
+  await soumettre('form#form-article button[type=submit]');
+  const en = await (await brut('/en/blog/article-numero-5')).text();
+  verifier(en.includes('<h1 class="am-title">EN·Article n°5 – l’exemple</h1>') && !en.includes('only available in French'), 'page anglaise');
+  await p.goto(B + '/admin/articles?q=article-numero-5');
+  verifier((await p.textContent('tbody')).includes('Auto · à relire'), 'mention « à relire »');
+});
+await scenario('cocher « relue » retire la mention de traduction automatique', async () => {
+  await cliquer('a.titre-ligne:text-is("Article n°5 – l’exemple")');
+  await p.check('input[name=traduction_relue]');
+  await soumettre('form#form-article button[type=submit]');
+  await p.goto(B + '/admin/articles?q=article-numero-5');
+  verifier(!(await p.textContent('tbody')).includes('à relire') && (await p.textContent('tbody')).includes('Traduit'), 'toujours à relire');
+});
+await scenario('traduire tous les articles en une fois', async () => {
+  await p.goto(B + '/admin/traduction');
+  const n = parseInt(await p.textContent('[data-n-a-traduire]'), 10);
+  verifier(n > 15, n + ' article(s) à traduire');
+  await p.click('[data-lancer-traduction]');
+  await p.waitForFunction(() => /Terminé|Arrêté/.test(document.querySelector('[data-etat-lot]').textContent), null, { timeout: 120000 });
+  verifier((await p.textContent('[data-etat-lot]')).includes(n + ' article(s) traduit(s)'), await p.textContent('[data-etat-lot]'));
+  const blog = await (await brut('/en/blog')).text();
+  verifier(!blog.includes('class="article-lang"') && blog.includes('EN·'), 'des articles restent en français sur /en/blog');
+  verifier(((await (await brut('/sitemap.xml')).text()).match(/\/en\/blog\//g) || []).length >= n + 2, 'plan du site');
+  await p.goto(B + '/admin');
+  verifier((await p.textContent('.bord-file')).includes('traduction(s) automatique(s) DeepL à relire'), 'tableau de bord');
+  await capture('admin-traduction');
+});
+await scenario('traduction à la publication, et une panne DeepL ne bloque jamais la publication', async () => {
+  await p.goto(B + '/admin/traduction');
+  await p.check('input[name=deepl_auto]');
+  await soumettre('button:has-text("Enregistrer")');
+  const ecrire = async (titre) => {
+    await p.goto(B + '/admin/articles/nouveau');
+    await p.fill('#titre', titre);
+    await p.click('.editeur-zone >> nth=0'); await p.keyboard.type('Texte à traduire.');
+    await p.selectOption('#statut', 'publie');
+    await soumettre('form#form-article button[type=submit]');
+    return p.textContent('.msg');
+  };
+  verifier((await ecrire('Publié et traduit')).includes('traduite par DeepL'), 'traduction à la publication');
+  verifier((await (await brut('/en/blog/publie-et-traduit')).text()).includes('EN·Publié et traduit'), 'page anglaise');
+  await p.goto(B + '/admin/traduction');
+  await p.fill('#deepl_cle', 'quota:fx');
+  await soumettre('button:has-text("Enregistrer")');
+  const msg = await ecrire('Publié malgré la panne');
+  verifier(msg.includes('en ligne') && msg.includes('quota DeepL du mois est épuisé'), msg);
+  verifier((await brut('/blog/publie-malgre-la-panne')).status === 200, 'l’article n’est pas en ligne');
+  await p.goto(B + '/admin/traduction');
+  await p.click('[data-lancer-traduction]');
+  await p.waitForFunction(() => /Terminé|Arrêté/.test(document.querySelector('[data-etat-lot]').textContent));
+  verifier((await p.textContent('[data-etat-lot]')).includes('quota'), 'arrêt sur quota : ' + await p.textContent('[data-etat-lot]'));
+  await p.fill('#deepl_cle', 'cle-test:fx'); await p.uncheck('input[name=deepl_auto]');
+  await soumettre('button:has-text("Enregistrer")');
+  serveurDeepl.close();
 });
 
 console.log('Accueil réglable');

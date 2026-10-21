@@ -42,11 +42,22 @@ $image = (string) ($a['image'] ?? '');
       <p class="aide">Collez depuis Word ou Google Docs : la mise en forme est nettoyée à l’enregistrement. Les scripts et styles ne passent pas.</p>
     </div>
 
-    <?php $traduit = trim((string) ($a['titre_en'] ?? '')) !== '' && trim((string) ($a['contenu_en'] ?? '')) !== ''; ?>
+    <?php $traduit = trim((string) ($a['titre_en'] ?? '')) !== '' && trim((string) ($a['contenu_en'] ?? '')) !== '';
+          $auto = (int) ($a['traduction_auto'] ?? 0) === 1 && $traduit; ?>
     <details class="carte version-en"<?= $traduit || trim((string) ($a['titre_en'] ?? '')) !== '' ? ' open' : '' ?>>
       <summary><span class="drapeau">EN</span> <b>Version anglaise</b>
-        <span class="pastille <?= $traduit ? 'publie' : 'brouillon' ?>"><?= $traduit ? 'Traduit' : 'Pas encore traduit' ?></span></summary>
+        <span class="pastille <?= $auto ? 'nouveau' : ($traduit ? 'publie' : 'brouillon') ?>" data-etat-traduction><?= $auto ? 'Traduction automatique, à relire' : ($traduit ? 'Traduit' : 'Pas encore traduit') ?></span></summary>
       <p class="aide">Remplissez au moins le titre et le texte : la page anglaise (<code>/en/blog/…</code>) affiche alors cette version. Sinon, le site anglais montre l’article en français, avec la mention « disponible uniquement en français ».</p>
+      <input type="hidden" name="traduction_auto" value="<?= $auto ? '1' : '0' ?>" data-traduction-auto>
+      <?php if (deepl_actif()): ?>
+        <div class="rangee" style="margin-bottom:14px">
+          <button class="bouton fant" type="button" data-traduire><span class="drapeau" style="background:#0F2B46">DeepL</span> Traduire automatiquement</button>
+          <span class="aide" data-traduire-etat style="margin:0">Traduit le titre, le chapô et le texte tels qu’ils sont dans ce formulaire. Rien n’est enregistré avant « Enregistrer ».</span>
+        </div>
+      <?php elseif (est_admin($me)): ?>
+        <p class="aide"><a href="<?= url('admin/traduction') ?>">Branchez DeepL</a> pour traduire en un clic.</p>
+      <?php endif; ?>
+      <label class="case" data-relue<?= $auto ? '' : ' hidden' ?> style="margin-bottom:14px"><input type="checkbox" name="traduction_relue" value="1"> J’ai relu la traduction anglaise</label>
       <div class="champ"><label for="titre_en">Title</label><input id="titre_en" name="titre_en" maxlength="240" value="<?= e((string) ($a['titre_en'] ?? '')) ?>" lang="en"></div>
       <div class="champ"><label for="extrait_en">Excerpt <span class="aide" style="display:inline">(facultatif)</span></label><textarea id="extrait_en" name="extrait_en" rows="2" maxlength="600" lang="en"><?= e((string) ($a['extrait_en'] ?? '')) ?></textarea></div>
       <label>Text</label>

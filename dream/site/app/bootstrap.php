@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 const VERSION = '1.1.0';
 /** La version du schéma de la base ; `assurer_schema()` rejoue les étapes qui manquent. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 define('RACINE', dirname(__DIR__));
 
 /**
@@ -256,6 +256,11 @@ function assurer_schema(PDO $pdo): void
         );
         SQL);
     }
+    if ($v < 5) {
+        // v5 : une version anglaise produite par DeepL le sait, tant que personne ne l'a relue.
+        $pdo->exec('ALTER TABLE articles ADD COLUMN traduction_auto INTEGER NOT NULL DEFAULT 0');
+        $pdo->exec('ALTER TABLE articles ADD COLUMN traduit_le TEXT');
+    }
     $pdo->exec('PRAGMA user_version = ' . SCHEMA_VERSION);
 }
 
@@ -317,6 +322,10 @@ function reglages_defaut(): array
         'meta_description_en' => 'Since 2013, Live Y Dream has been the leading communication agency in Lomé, Togo. Digital marketing, graphic design, video production, events, community management.',
         'mentions_legales_en' => '',
         'confidentialite_en' => '',
+        // DeepL : la clé (jamais réaffichée), l'anglais visé, et la traduction à la publication.
+        'deepl_cle' => '',
+        'deepl_cible' => 'EN-GB',
+        'deepl_auto' => '0',
     ];
 }
 

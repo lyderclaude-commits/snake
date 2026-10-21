@@ -5,7 +5,7 @@ vivait dans le `localStorage` du navigateur à un vrai site **PHP + SQLite** : c
 rendu par le serveur, administration réelle, articles importés de l'ancien WordPress
 avec **toutes leurs images** copiées sur le serveur.
 
-> Recette : **94 scénarios, 94 réussis, aucune erreur console** — `node dream/outils/recette.mjs`
+> Recette : **101 scénarios, 101 réussis, aucune erreur console** — `node dream/outils/recette.mjs`
 
 ## Ce qui a changé par rapport à la maquette
 
@@ -42,7 +42,8 @@ avec `mod_rewrite`. **Aucun terminal, aucun Composer.**
 5. Réglages → L’agence → *Les e-mails du formulaire de contact* : renseignez le serveur SMTP
    de la boîte `contact@liveydream.com` (espace client de l’hébergeur), puis *Enregistrer et
    envoyer un e-mail de test*. Voir plus bas.
-6. Réglages → Référencement : indiquez `https://liveydream.com`. Réglages → Pages légales :
+6. Système → **Traduction** : collez la clé DeepL, puis *Traduire tous les articles* (voir plus bas).
+7. Réglages → Référencement : indiquez `https://liveydream.com`. Réglages → Pages légales :
    complétez l'hébergeur et le responsable de publication.
 
 ### L'ordre compte : importer AVANT de basculer le domaine
@@ -108,6 +109,28 @@ arrive sur `/en` ; Google, lui, voit chaque langue à son adresse, reliée à sa
 - Les demandes envoyées depuis `/en/contact` sont marquées **EN** dans *Messages* et dans
   l'e-mail : on sait qu'il faut répondre en anglais.
 
+## La traduction automatique (DeepL)
+
+Système → **Traduction**. Il faut une clé « DeepL API Free » (deepl.com/pro-api, gratuite
+jusqu'à 500 000 caractères par mois, soit 60 à 100 articles) ; elle est gardée dans les
+réglages, jamais réaffichée.
+
+- **Traduire tous les articles** : les articles en ligne sans version anglaise, trois par
+  trois. Les versions anglaises existantes ne sont pas touchées. Quota épuisé ou clé
+  refusée : la traduction s'arrête proprement et reprend où elle s'était arrêtée.
+- **Dans l'éditeur**, le bouton *Traduire automatiquement* (bloc « Version anglaise »)
+  traduit le titre, le chapô et le texte tels qu'ils sont dans le formulaire ; rien n'est
+  enregistré avant *Enregistrer*.
+- **À la publication** (case à cocher) : chaque article publié sans anglais, depuis
+  l'éditeur ou l'import WordPress, est traduit aussitôt. Une panne de DeepL ne bloque
+  jamais la publication : l'article paraît en français et le lot le rattrapera.
+- DeepL traduit le **HTML** : titres, listes, gras, images et liens ressortent intacts. Les
+  très longs articles sont découpés entre deux blocs puis recollés.
+- Une traduction automatique reste marquée **« Auto · à relire »** (liste des articles,
+  tableau de bord) jusqu'à ce que quelqu'un coche *J'ai relu la traduction anglaise*.
+  Elle est publiée dès le départ : la mention sert à savoir lesquelles relire.
+- Anglais britannique par défaut ; américain au choix.
+
 ## L'accueil réglable
 
 *Contenus* → **Services**, **Témoignages**, **Logos clients** :
@@ -161,12 +184,12 @@ site/                 ← ce qui part chez l'hébergeur
   sw.js               le service worker des notifications
   app/                code (interdit au web) : bootstrap, html (tamis), medias, contenu,
                       wordpress (import), site, langue + langues/en.php, accueil,
-                      courriel, push, admin, admin-accueil, vues/site, vues/admin
+                      courriel, push, traduction (DeepL), admin, admin-accueil, vues
   assets/             css (site.css = global.css d'origine, admin.css), js, polices, images
   uploads/            images téléversées et importées (PHP n'y s'exécute jamais)
   donnees/            base SQLite et sessions (interdit au web)
 outils/               routeur de développement, faux WordPress, faux sendmail, recette, paquet
-                      (la recette monte aussi un faux SMTP et un faux service de push)
+                      (la recette monte aussi un faux SMTP, un faux service de push et un faux DeepL)
 ```
 
 Sauvegarde : Réglages → *Télécharger une sauvegarde* (la base). Pensez aussi à garder une

@@ -15,6 +15,7 @@ require __DIR__ . '/app/medias.php';
 require __DIR__ . '/app/contenu.php';
 require __DIR__ . '/app/wordpress.php';
 require __DIR__ . '/app/courriel.php';
+require __DIR__ . '/app/traduction.php';
 require __DIR__ . '/app/site.php';
 require __DIR__ . '/app/langue.php';
 require __DIR__ . '/app/accueil.php';

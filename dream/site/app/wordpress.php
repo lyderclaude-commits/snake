@@ -104,7 +104,10 @@ function wp_importer_lot(string $racine, int $page, bool $ecraser = false): arra
         $res['images_echec'] += $bilan['images_echec'];
         $res['journal'][] = match ($bilan['etat']) {
                 'crees' => '+ ', 'maj' => '↻ ', default => '= ',
-            } . $bilan['titre'] . ($bilan['images_echec'] ? " ({$bilan['images_echec']} image(s) non récupérée(s))" : '');
+            } . $bilan['titre'] . ($bilan['images_echec'] ? " ({$bilan['images_echec']} image(s) non récupérée(s))" : '')
+            . match ($bilan['traduit'] ?? null) {
+                null => '', 'ok' => ' · traduit en anglais', default => ' · traduction impossible : ' . $bilan['traduit'],
+            };
     }
     reglages_enregistrer(['wp_dernier_import' => maintenant()]);
     return $res;
@@ -204,6 +207,11 @@ function wp_importer_article(string $racine, array $p, bool $ecraser): array
         q("UPDATE articles SET $sets, modifie_le = ?, importe_le = ?, retouche = 0 WHERE id = ?",
             [...array_values($champs), $t, $t, $existant['id']]);
         $etat = 'maj';
+        $id = (int) $existant['id'];
+        // Le français a changé là-bas : une traduction automatique (jamais relue) suit ; une traduction relue, non.
+        if ((int) $existant['traduction_auto'] === 1 && $existant['contenu'] !== $contenu && reglage('deepl_auto') === '1' && deepl_actif()) {
+            q("UPDATE articles SET titre_en = '', contenu_en = '' WHERE id = ?", [$id]);
+        }
     } else {
         $champs['slug'] = slug_libre($slug_wp);
         $champs['wp_id'] = $wp_id;
@@ -212,9 +220,12 @@ function wp_importer_article(string $racine, array $p, bool $ecraser): array
         q("INSERT INTO articles ($cols, cree_le, modifie_le, importe_le) VALUES ($trous, ?, ?, ?)",
             [...array_values($champs), $t, $t, $t]);
         $etat = 'crees';
+        $id = (int) db()->lastInsertId();
     }
+    $traduit = traduire_si_auto($id);
     $images = (int) valeur('SELECT COUNT(*) FROM medias') - $avant;
-    return ['etat' => $etat, 'titre' => $titre, 'images' => $images, 'images_echec' => $echecs];
+    return ['etat' => $etat, 'titre' => $titre, 'images' => $images, 'images_echec' => $echecs,
+        'traduit' => $traduit === null ? null : ($traduit['ok'] ? 'ok' : $traduit['erreur'])];
 }
 
 /**
