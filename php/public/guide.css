@@ -1818,48 +1818,6 @@ img, video, iframe { max-width: 100%; height: auto; }
 .kb-icon.kb-vert   { background: #DCFCE7; color: #15803D; font-weight: 700; }
 .kb-icon.kb-orange { background: #FEF3C7; color: #B45309; font-weight: 700; }
 
-/* ================================================================
-   LE TABLEAU DES OFFRES — `?p=tarifs`
-   ================================================================
-   Il se fait DÉFILER du doigt sur un téléphone plutôt que de se replier :
-   la colonne de gauche n'a de sens qu'en face des autres, et une ligne
-   repliée sous son offre ne compare plus rien. La règle est déjà posée
-   plus haut pour `.admin-table-wrap`. */
-/* La grille des offres s'adapte à leur NOMBRE.
-   `guide.css` la fige à trois colonnes, ce qui va pour la page
-   Partenaires et ses trois formules. Boost en vend quatre : la
-   quatrième tombait seule sur une deuxième rangée, où elle se lisait
-   comme un ajout plutôt que comme la dernière marche. Et les offres se
-   règlent depuis l'administration : un compte écrit ici mentirait au
-   premier ajout. */
-.pricing-grid.pricing-auto { grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
-@media (max-width: 1040px) {
-  .pricing-grid.pricing-auto { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 620px) {
-  .pricing-grid.pricing-auto { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
-}
-
-.tableau-offres { min-width: 720px; }
-.tableau-offres td:first-child { min-width: 260px; }
-.tableau-offres td strong { display: block; color: var(--text); font-weight: 600; font-size: 14px; }
-/* L'explication sous chaque ligne : c'est elle qui évite d'avoir à
-   deviner ce qu'achète « Ciblage ville et rubrique ». */
-.tableau-offres .ligne-aide { display: block; font-size: 12.5px; color: var(--text3);
-  line-height: 1.55; margin-top: 3px; max-width: 46ch; }
-.tableau-offres .col-offre { text-align: center; white-space: nowrap; }
-.tableau-offres th.col-offre { color: var(--text); font-size: 12.5px; }
-/* L'offre mise en avant garde sa colonne teintée de haut en bas : c'est
-   ce qui permet de suivre une colonne des yeux sur dix-sept lignes. */
-.tableau-offres .col-offre.phare { background: var(--blue-50); }
-.tableau-offres th.col-offre.phare { color: var(--primary); }
-.tableau-offres tr:hover td.col-offre.phare { background: var(--blue-100, #DBEAFE); }
-/* Un signe ET une couleur : une couleur seule ne dit rien à qui ne la
-   distingue pas, et ces deux colonnes-là se lisent en diagonale. */
-.tableau-offres .oui { color: var(--green, #15803D); font-weight: 800; font-size: 16px; }
-.tableau-offres .non { color: var(--border2, #CBD5E1); font-weight: 700; font-size: 16px; }
-.tableau-offres .col-offre b { font-family: var(--font-display); font-weight: 700;
-  color: var(--text); font-size: 14px; }
 
 /* ================================================================
    LE RELIEF DES PAGES BOOST
@@ -2136,4 +2094,21 @@ img, video, iframe { max-width: 100%; height: auto; }
 .carte-nuit .carte-texte { max-width: 68ch; }
 @media (max-width: 620px) {
   .pile-canaux .carte-nuit { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* ================================================================
+   LA GRILLE DES OFFRES — `?p=tarifs`
+   ================================================================
+   `guide.css` la fige à trois colonnes, ce qui va pour la page
+   Partenaires et ses trois formules. Boost en vend quatre : la
+   quatrième tombait seule sur une deuxième rangée, où elle se lisait
+   comme un ajout plutôt que comme la dernière marche. Et les offres se
+   règlent depuis l'administration : un compte écrit ici mentirait au
+   premier ajout. */
+.pricing-grid.pricing-auto { grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
+@media (max-width: 1040px) {
+  .pricing-grid.pricing-auto { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .pricing-grid.pricing-auto { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
 }

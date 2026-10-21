@@ -9,23 +9,21 @@
  * ne peut ni partager ni mettre en favori, et qu'un moteur ne distingue
  * pas de l'accueil.
  *
- * Trois choses s'y ajoutent, que l'accueil ne pouvait pas porter :
+ * La page s'en tient aux quatre offres et aux QUESTIONS D'ARGENT :
+ * changer d'offre, dépasser un quota, partir. Trois questions qu'on se
+ * pose devant un prix, et nulle part ailleurs.
  *
- *  - LE TABLEAU COMPARATIF. Quatre cartes disent ce que chacune donne,
- *    jamais ce qu'on gagne en passant de l'une à l'autre. Pour le savoir
- *    il fallait lire quatre listes et les tenir en tête ensemble, ce qui
- *    est le moment exact où l'on referme la page.
- *  - CE QUI SE PAIE À PART. Les crédits WhatsApp sont facturés par Meta,
- *    et le dire après l'achat serait une mauvaise surprise ; le dire ici
- *    est la seule façon honnête.
- *  - LES QUESTIONS D'ARGENT. Changer d'offre, dépasser un quota, partir.
- *    Trois questions qu'on se pose devant un prix, et nulle part ailleurs.
+ * Le prix des crédits WhatsApp, lui, n'est PLUS DIT ICI. Meta facture
+ * chaque message envoyé par l'API officielle, et nous le revendons au
+ * prix coûtant ; la seule page qui le dise encore est la foire aux
+ * questions des partenaires. Le découvrir après l'achat est le genre de
+ * surprise qui coûte un client, et c'est à garder en tête le jour où
+ * l'on remet une question d'argent sur cette page.
  *
  * Les prix viennent de `offres_vitrine()`, qui les lit dans la table que
  * le produit applique. La page et le logiciel ne peuvent pas diverger.
  */
 $_offres = offres_vitrine();
-$_tableau = offres_tableau();
 $_fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
 ?>
 <div class="page-header entete-boost">
@@ -85,100 +83,6 @@ $_fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
              href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?></a>
         </div>
       <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
-<?php
-/**
- * Le tableau, dans l'ordre de la table que le produit applique.
- *
- * Il se fait défiler du doigt sur un téléphone plutôt que de se replier :
- * la colonne de gauche n'a de sens qu'en face des autres, et une ligne
- * repliée sous son offre ne compare plus rien.
- */
-?>
-<section class="section section-grise">
-  <div class="container">
-    <div style="text-align:center;margin-bottom:36px" class="fade-up">
-      <div class="tag">Ligne à ligne</div>
-      <h2 class="headline">Ce que vous gagnez <span>en montant d’une offre</span></h2>
-      <p style="color:var(--text2);max-width:62ch;margin:14px auto 0;line-height:1.8">
-        Les quatre cartes disent ce que chacune donne. Ce tableau dit ce qui change.
-      </p>
-    </div>
-
-    <div class="admin-table-wrap fade-up">
-      <table class="admin-table tableau-offres">
-        <thead>
-          <tr>
-            <th>Ce qui est compris</th>
-            <?php foreach ($_offres as $o): ?>
-              <th class="col-offre<?= $o['phare'] ? ' phare' : '' ?>"><?= e($o['nom']) ?></th>
-            <?php endforeach; ?>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($_tableau as $ligne): ?>
-            <tr>
-              <td>
-                <strong><?= e($ligne['libelle']) ?></strong>
-                <span class="ligne-aide"><?= e($ligne['aide']) ?></span>
-              </td>
-              <?php foreach ($_offres as $o): $v = $ligne['valeurs'][$o['cle']] ?? ''; ?>
-                <td class="col-offre<?= $o['phare'] ? ' phare' : '' ?>">
-                  <?php if ($v === 'oui'): ?>
-                    <span class="oui" aria-label="Compris">✓</span>
-                  <?php elseif ($v === ''): ?>
-                    <span class="non" aria-label="Non compris">×</span>
-                  <?php else: ?>
-                    <b><?= e($v) ?></b>
-                  <?php endif; ?>
-                </td>
-              <?php endforeach; ?>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <div class="app-showcase fade-up">
-      <div>
-        <div class="tag tag-orange">Ce qui se paie à part</div>
-        <h2 class="headline" style="margin:10px 0 16px">Les crédits WhatsApp,<br>
-        <span>et rien d’autre</span></h2>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:16px">
-          Meta facture chaque message WhatsApp envoyé depuis l’API officielle, à nous comme à
-          tout le monde. Nous les revendons <strong>au prix coûtant, 1 FCFA le message</strong>,
-          et votre tableau de bord affiche ce qu’il vous reste.
-        </p>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:22px">
-          Telegram et les notifications du navigateur, eux, ne coûtent rien à l’envoi : ils sont
-          compris dans votre offre, au compteur près.
-        </p>
-        <div class="feature-pills">
-          <span class="pill"><span class="pill-dot"></span>Pas de frais d’ouverture</span>
-          <span class="pill"><span class="pill-dot"></span>Pas d’engagement de durée</span>
-          <span class="pill"><span class="pill-dot"></span>Pas de commission sur vos ventes</span>
-        </div>
-      </div>
-      <div>
-        <div class="encart">
-          <div class="encart-titre">Compris dans toutes les offres, la gratuite incluse</div>
-          <div class="pf-list">
-            <div class="pf-item"><span class="pf-check">✓</span>Le Studio entier, tous les gabarits</div>
-            <div class="pf-item"><span class="pf-check">✓</span>La photo de l’invité ne quitte pas son appareil</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Le QR de contrôle à l’entrée</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Le désabonnement en un clic sur vos envois</div>
-            <div class="pf-item"><span class="pf-check">✓</span>L’export de toutes vos données, à tout moment</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Les mises à jour, sans supplément</div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </section>

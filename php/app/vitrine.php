@@ -296,49 +296,6 @@ function offres_vitrine(): array
 }
 
 /**
- * Le tableau comparatif : une ligne par capacité, une colonne par offre.
- *
- * Quatre cartes côte à côte disent ce que chacune donne ; elles ne disent
- * pas ce qu'on gagne en passant de l'une à l'autre. Pour le savoir, il
- * faut lire quatre listes et les tenir en tête en même temps — c'est
- * précisément le moment où l'on referme la page.
- *
- * Les lignes et leur ordre viennent d'`OFFRE_LIGNES`, la table que le
- * produit APPLIQUE. Une capacité ajoutée au produit apparaît donc ici
- * sans que personne n'ait à y penser, et une capacité retirée disparaît.
- *
- * @return list<array{libelle:string,aide:string,valeurs:array<string,string>}>
- */
-function offres_tableau(): array
-{
-    $vendues = formules_actives();
-    $nombre = static function (int $v): string {
-        if ($v < 0) {
-            return 'illimité';
-        }
-        return $v === 0 ? '' : number_format($v, 0, ',', ' ');
-    };
-
-    $out = [];
-    foreach (OFFRE_LIGNES as $cle => [$libelle, $nature, $aide]) {
-        $valeurs = [];
-        foreach ($vendues as $k => $f) {
-            if ($nature === 'compteur') {
-                $valeurs[$k] = $nombre((int) ($f[$cle] ?? 0));
-                continue;
-            }
-            /* `stats` ne vaut pas oui ou non mais « de base » ou
-               « complètes » : la seule ligne de la table qui porte un mot
-               plutôt qu'un interrupteur. */
-            $ouvert = $cle === 'stats' ? ($f['stats'] ?? '') === 'completes' : (bool) ($f[$cle] ?? false);
-            $valeurs[$k] = $ouvert ? 'oui' : '';
-        }
-        $out[] = ['libelle' => $libelle, 'aide' => $aide, 'valeurs' => $valeurs];
-    }
-    return $out;
-}
-
-/**
  * Les trois icônes du déroulant « Boost ».
  *
  * Dessinées ici plutôt que chargées : le site d'origine allait chercher

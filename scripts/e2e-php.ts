@@ -9641,9 +9641,10 @@ const run = async () => {
    * deuxième rangée.
    */
   const nbOffres = await pTarifs.locator('.pricing-grid .pricing-card').count();
-  const nbColonnes = await pTarifs.locator('.tableau-offres thead th.col-offre').count();
-  ok('elle montre toutes les offres, et son tableau porte les mêmes',
-     nbOffres >= 3 && nbColonnes === nbOffres, `${nbOffres} cartes, ${nbColonnes} colonnes`);
+  const nbActives = await pTarifs.evaluate(() =>
+    document.querySelectorAll('.pricing-card .pricing-name').length);
+  ok('elle montre toutes les offres', nbOffres >= 3 && nbActives === nbOffres,
+     `${nbOffres} cartes`);
 
   /* Les quatre tiennent sur UNE rangée : une offre reléguée en dessous se
      lit comme un ajout, et non comme la dernière marche. */
@@ -9656,28 +9657,6 @@ const run = async () => {
     return new Set(hauts).size;
   });
   ok('et les aligne sur une seule rangée', rangees === nbOffres, `${rangees} colonnes distinctes`);
-
-  /**
-   * Le tableau compare LIGNE À LIGNE, et chaque ligne s'explique.
-   *
-   * « Ciblage ville et rubrique » ne dit rien à qui n'a pas encore utilisé
-   * le produit. L'explication sous chaque intitulé est ce qui fait la
-   * différence entre une grille qu'on lit et une grille qu'on survole.
-   */
-  const lignesOffres = await pTarifs.locator('.tableau-offres tbody tr').count();
-  const aides = await pTarifs.locator('.tableau-offres .ligne-aide').count();
-  ok('chaque ligne du tableau porte son explication',
-     lignesOffres > 10 && aides === lignesOffres, `${lignesOffres} lignes, ${aides} explications`);
-
-  /**
-   * Ce qui se paie À PART est dit ici, et pas découvert sur la facture.
-   *
-   * Les crédits WhatsApp sont refacturés au prix coûtant. Le taire aurait
-   * été la seule ligne malhonnête d'une page qui ne vit que de clarté.
-   */
-  ok('elle dit ce qui se paie en plus de l’abonnement',
-     /whatsapp/i.test(await pTarifs.locator('main').innerText())
-     && /co[uû]tant|1\s*F\s*CFA/i.test(await pTarifs.locator('main').innerText()));
 
   /**
    * Et personne ne parle d'argent ailleurs sans ramener ici.
@@ -9699,17 +9678,18 @@ const run = async () => {
   ok('tous les boutons « voir les offres » mènent à la page des tarifs',
      egares.length === 0, egares.slice(0, 3).join(' | ') || '5 écrans parcourus');
 
-  /* Sur un téléphone, le tableau se fait DÉFILER plutôt que de se replier :
-     une ligne repliée sous son offre ne compare plus rien. */
+  /* Sur un téléphone, les offres se replient en colonne sans rien
+     pousser de côté. */
   await pTarifs.setViewportSize({ width: 390, height: 844 });
   await pTarifs.goto(`${BASE}/index.php?p=tarifs`, { waitUntil: 'domcontentloaded' });
   await pTarifs.waitForTimeout(200);
-  const defile = await pTarifs.evaluate(() => {
-    const w = document.querySelector('.admin-table-wrap') as HTMLElement | null;
-    return w ? { dedans: w.scrollWidth > w.clientWidth, page: document.documentElement.scrollWidth > window.innerWidth + 1 } : null;
-  });
-  ok('le tableau se fait défiler sans emporter la page',
-     defile !== null && defile.dedans && !defile.page, JSON.stringify(defile));
+  const surTel = await pTarifs.evaluate(() => ({
+    colonnes: new Set([...document.querySelectorAll('.pricing-card')]
+      .map((c) => Math.round(c.getBoundingClientRect().left))).size,
+    deborde: document.documentElement.scrollWidth > window.innerWidth + 1,
+  }));
+  ok('les offres se replient en une colonne, sans débordement',
+     surTel.colonnes === 1 && !surTel.deborde, JSON.stringify(surTel));
   await pTarifs.close();
 
 
