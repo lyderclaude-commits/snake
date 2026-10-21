@@ -1730,9 +1730,8 @@ img, video, iframe { max-width: 100%; height: auto; }
 .colonne-large   { max-width: 940px; margin: 0 auto; }
 .colonne-etroite { max-width: 680px; margin: 0 auto; }
 
-/* Quatre étapes plutôt que trois, et quatre cartes plutôt que trois. */
+/* Quatre étapes plutôt que trois. */
 .steps-grid.steps-quatre { grid-template-columns: repeat(4,1fr); }
-.why-grid.why-quatre { grid-template-columns: repeat(4,1fr); }
 
 /* Un panneau du bandeau, posé dans le flux : `.hero-float-card` est en
    position absolue, ce qui n'a de sens que sur l'illustration du héros. */
@@ -1790,7 +1789,6 @@ img, video, iframe { max-width: 100%; height: auto; }
   border-radius: var(--r-lg); padding: 24px; }
 .encart-titre { font-family: var(--font-display); font-size: 15px; font-weight: 700;
   color: var(--text); margin-bottom: 12px; }
-.encart.appui { border-left: 4px solid var(--primary); }
 /* `max-width` en `ch` et non en pixels : la ligne de lecture se compte en
    caractères, et c'est la règle que la recette mesure dans la police
    réelle depuis le tour du dessin. Un encart posé dans une colonne de
@@ -1798,11 +1796,11 @@ img, video, iframe { max-width: 100%; height: auto; }
 .encart p { color: var(--text2); line-height: 1.8; margin: 0; max-width: 75ch; }
 
 @media (max-width: 1000px) {
-  .steps-grid.steps-quatre, .why-grid.why-quatre { grid-template-columns: repeat(2,1fr); }
+  .steps-grid.steps-quatre { grid-template-columns: repeat(2,1fr); }
   .dash-stats.dash-cinq { grid-template-columns: repeat(3,1fr); }
 }
 @media (max-width: 700px) {
-  .steps-grid.steps-quatre, .why-grid.why-quatre,
+  .steps-grid.steps-quatre,
   .dash-stats.dash-deux, .dash-stats.dash-cinq,
   .anatomie { grid-template-columns: 1fr; }
   .composeur { padding: 8px; }

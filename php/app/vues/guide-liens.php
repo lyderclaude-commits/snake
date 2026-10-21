@@ -184,56 +184,6 @@
 
 <section class="section section-grise">
   <div class="container">
-    <div style="text-align:center;margin-bottom:40px" class="fade-up">
-      <div class="tag">Quatre endroits</div>
-      <h2 class="headline">Un lien par support, <span>et on sait lequel a marché</span></h2>
-    </div>
-    <div class="why-grid why-quatre fade-up">
-      <div class="why-card accent a-bleu">
-        <div class="jeton"><?= icone_guide('affiche', 26) ?></div>
-        <div class="why-title">L’affiche</div>
-        <div class="why-desc">Collée sur un mur, lue à trois mètres. Le lien doit tenir sur
-        une ligne et se taper sans erreur.</div>
-      </div>
-      <div class="why-card accent a-vert">
-        <div class="jeton"><?= icone_guide('telephone', 26) ?></div>
-        <div class="why-title">Le statut</div>
-        <div class="why-desc">WhatsApp, Instagram. Un lien long se fait couper par l’aperçu ;
-        un lien court reste entier.</div>
-      </div>
-      <div class="why-card accent a-orange">
-        <div class="jeton"><?= icone_guide('radio', 26) ?></div>
-        <div class="why-title">La radio</div>
-        <div class="why-desc">Six caractères se disent à voix haute. C’est pour cela que
-        l’alphabet écarte ce qui s’entend pareil.</div>
-      </div>
-      <div class="why-card accent a-violet">
-        <div class="jeton"><?= icone_guide('flyer', 26) ?></div>
-        <div class="why-title">Le flyer</div>
-        <div class="why-desc">Avec son QR. Celui qui tape et celui qui scanne comptent dans
-        le même total.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <div class="colonne-etroite fade-up" style="max-width:760px">
-      <div class="encart appui">
-        <div class="encart-titre">Ce qu’un lien court n’est pas</div>
-        <p>Ce n’est pas un masque. Un lien qui cacherait une destination trompeuse, une
-        collecte de mots de passe ou un téléchargement malveillant est supprimé, et le compte
-        avec. Un raccourcisseur n’a de valeur que si les gens cliquent dessus les yeux
-        fermés : c’est une confiance qui se garde en la défendant. Les
-        <a href="<?= e(url('?p=cgu')) ?>">conditions d’utilisation</a> le disent aussi.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section-grise">
-  <div class="container">
     <div class="colonne-lecture" style="max-width:780px">
       <div style="text-align:center;margin-bottom:30px" class="fade-up">
         <div class="tag">Questions fréquentes</div>

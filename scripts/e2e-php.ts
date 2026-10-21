@@ -9384,16 +9384,23 @@ const run = async () => {
   const pBoost = await browser.newPage();
   surveiller(pBoost);
 
-  for (const [route, titre, etapes, questions, rassure] of [
-    ['boost-push', 'Parler à ceux qui sont déjà venus', 4, 6, 3],
-    ['boost-regie', 'Vos invités vous appartiennent', 4, 6, 3],
+  for (const [route, titre, etapes, questions, rassure, icones] of [
+    ['boost-push', 'Parler à ceux qui sont déjà venus', 4, 6, 3, 3],
+    ['boost-regie', 'Vos invités vous appartiennent', 4, 6, 3, 5],
     /**
      * Zéro rangée de réassurance sur les liens courts, et c'est voulu :
      * son bandeau porte DÉJÀ le composeur, donc un champ qu'on remplit.
      * Trois promesses de plus repousseraient d'autant la seule chose
      * qu'on veut faire là, qui est d'essayer.
      */
-    ['boost-liens', 'Une adresse courte, et ce qu’elle rapporte', 0, 5, 0],
+    /**
+     * Et zéro icône dessinée sur les liens courts, ce qui est une
+     * réponse et non un oubli : ses illustrations sont une adresse en
+     * grand, un QR qu'on peut scanner, et des chiffres. Un compte exact
+     * plutôt qu'un minimum, parce qu'un minimum laisse passer la page
+     * qui n'en a plus du tout sans que personne ne s'en aperçoive.
+     */
+    ['boost-liens', 'Une adresse courte, et ce qu’elle rapporte', 0, 5, 0, 0],
   ] as const) {
     const r = await pBoost.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
     ok(`${route} répond et garde son titre`,
@@ -9463,7 +9470,7 @@ const run = async () => {
     const dessinees = await pBoost.locator('.why-icon svg, .value-icon svg, .jeton svg').count();
     const chargees = await pBoost.locator('.why-icon img, .value-icon img, .jeton img').count();
     ok(`  ${route} dessine ses icônes au lieu de les charger`,
-       dessinees >= 3 && chargees === 0, `${dessinees} tracés, ${chargees} images`);
+       dessinees === icones && chargees === 0, `${dessinees} tracés, ${chargees} images`);
 
     /**
      * Un tableau de bord d'exemple PORTE SA LÉGENDE.
