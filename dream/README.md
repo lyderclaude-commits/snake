@@ -25,8 +25,29 @@ La mise en page publique est **celle de la maquette** (`css/global.css` et les s
 chaque page, repris tels quels). L'administration, elle, est **refaite dans le langage
 visuel de l'administration Wakabi** (`php/public/wakabi.css`) : même barre, mêmes cartes,
 tableaux, pastilles, boutons, même tableau de bord (*À faire / Les chiffres*, *Reprendre*,
-*Où aller*), même éditeur. Seul le logo change ; l'accent se règle dans `--primary` en tête
-de `site/assets/css/admin.css`.
+*Où aller*), même éditeur. Seul le logo change.
+
+## L'administration vient du socle commun
+
+L'administration n'est plus propre à ce site : c'est le **socle d'administration**
+(`socle-admin/` à la racine du dépôt), partagé avec les autres sites. Il est copié dans
+`site/socle/` (un lien symbolique dans le dépôt, un vrai dossier dans le paquet). Live Y Dream
+s'y décrit dans un seul fichier, **`site/app/definition.php`** :
+
+- son nom, son logo (`assets/css/admin-marque.css` pour la police Bebas Neue), ses langues ;
+- ses **collections** : campagnes, services, témoignages, logos clients — chacune déclarée
+  champ par champ ; le socle en tire les listes, les fiches et la version anglaise ;
+- ses **réglages** (L'agence, Accueil, Référencement, Pages légales ; l'onglet E-mails vient du socle) ;
+- son formulaire de contact (entreprise, WhatsApp, besoin, budget) et son destinataire fixe.
+
+À la première visite après la mise à jour, `site/app/migrations.php` range les données
+existantes à la façon du socle : campagnes, services, témoignages et logos rejoignent la
+table commune `elements` (les campagnes gardent leur numéro, donc les liens
+`/campagnes#campagne-3` déjà partagés), les champs propres aux demandes rejoignent leur
+colonne `donnees`. Les anciennes tables restent, renommées `archive_…`. Rien à faire à la main.
+
+Pour corriger ou améliorer l'administration : modifier `socle-admin/socle/`, puis refaire les
+paquets des sites qui l'utilisent. Le socle est documenté dans `socle-admin/README.md`.
 
 ## Mettre en ligne (hébergement PHP mutualisé)
 
@@ -74,7 +95,7 @@ Après la bascule, les anciennes adresses des articles (`/mon-article/`,
 ### Les e-mails des demandes de contact
 
 Chaque demande est envoyée à **`contact@liveydream.com`**, toujours : l’adresse est fixée dans
-`site/app/courriel.php` (constante `CONTACT_EMAIL`, ou `contact_email` dans `config.php`), pas
+`site/app/definition.php` (`contact.destinataire`, ou `contact_email` dans `config.php`), pas
 dans un réglage qu’on pourrait vider. Les réglages permettent seulement d’ajouter des copies.
 L’e-mail reprend toute la demande, avec des boutons « Répondre sur WhatsApp » et « Ouvrir
 dans l’administration » ; *Répondre* dans la messagerie répond directement au client.
@@ -180,12 +201,11 @@ reproduit l'API (pagination, en-têtes `X-WP-Total`, `_embed`, contenu Gutenberg
 
 ```
 site/                 ← ce qui part chez l'hébergeur
-  index.php           routeur unique (site FR/EN, redirections WordPress, sitemap, robots)
-  sw.js               le service worker des notifications
-  app/                code (interdit au web) : bootstrap, html (tamis), medias, contenu,
-                      wordpress (import), site, langue + langues/en.php, accueil,
-                      courriel, push, traduction (DeepL), admin, admin-accueil, vues
-  assets/             css (site.css = global.css d'origine, admin.css), js, polices, images
+  index.php           routeur des pages publiques (FR/EN, redirections WordPress, sitemap, robots)
+  socle/              le socle d'administration (lien vers ../../socle-admin/socle)
+  app/                code (interdit au web) : definition (le site pour le socle), migrations,
+                      site, langue + langues/en.php, contenu (campagnes), accueil, vues/site
+  assets/             css (site.css = global.css d'origine, admin-marque.css), js, polices, images
   uploads/            images téléversées et importées (PHP n'y s'exécute jamais)
   donnees/            base SQLite et sessions (interdit au web)
 outils/               routeur de développement, faux WordPress, faux sendmail, recette, paquet

@@ -97,55 +97,6 @@ function date_lang(?string $d): string
     return $t === false ? '' : MOIS_EN[(int) date('n', $t) - 1] . ' ' . date('j, Y', $t);
 }
 
-/** Un réglage dans la langue de la page : `cle_en` s'il est rempli, sinon `cle`. */
-function reglage_l(string $cle): string
-{
-    if (langue() === 'en') {
-        $v = reglage($cle . '_en');
-        if (trim($v) !== '') {
-            return $v;
-        }
-    }
-    return reglage($cle);
-}
-
-/* ------------------------------------------------------------------ */
-/* Articles et campagnes                                               */
-/* ------------------------------------------------------------------ */
-
-/** L'article a-t-il sa version anglaise ? (un titre et un texte au moins) */
-function article_traduit(array $a): bool
-{
-    return trim((string) ($a['titre_en'] ?? '')) !== '' && trim((string) ($a['contenu_en'] ?? '')) !== '';
-}
-
-/** Un champ d'article dans la langue de la page, avec repli sur le français. */
-function article_l(array $a, string $champ): string
-{
-    if (langue() === 'en' && article_traduit($a)) {
-        $v = (string) ($a[$champ . '_en'] ?? '');
-        if (trim($v) !== '') {
-            return $v;
-        }
-    }
-    return (string) ($a[$champ] ?? '');
-}
-
-/** Une campagne lue dans la langue de la page : les champs anglais remplacent les français s'ils existent. */
-function campagne_l(array $c): array
-{
-    if (langue() !== 'en') {
-        return $c;
-    }
-    $en = json_decode((string) ($c['en'] ?? '{}'), true) ?: [];
-    foreach (['titre', 'extrait', 'description', 'resultats', 'tags'] as $k) {
-        if (!empty($en[$k])) {
-            $c[$k] = $en[$k];
-        }
-    }
-    return $c;
-}
-
 /* ------------------------------------------------------------------ */
 /* Choix de la langue                                                  */
 /* ------------------------------------------------------------------ */

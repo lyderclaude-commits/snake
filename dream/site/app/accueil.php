@@ -3,37 +3,21 @@
  * Les contenus de l'accueil et de la page Services qui se règlent dans
  * l'administration : les services, les témoignages, les logos clients.
  *
- * Les textes d'un service ou d'un témoignage vivent dans deux colonnes JSON,
- * `fr` et `en` : un champ anglais laissé vide retombe sur le français, si
- * bien qu'une traduction incomplète ne laisse jamais de trou sur le site.
+ * Ce sont des collections du socle (déclarées dans `app/definition.php`) :
+ * un champ anglais laissé vide retombe sur le français, si bien qu'une
+ * traduction incomplète ne laisse jamais de trou sur le site.
  */
 
 declare(strict_types=1);
 
-/** Les pictogrammes qu'on peut choisir pour un service (dessinés dans `icone()`). */
-const ICONES_SERVICE = [
-    'cible' => 'Cible (stratégie)', 'photos' => 'Photos (production)', 'design' => 'Crayon (graphisme)',
-    'evenement' => 'Public (événementiel)', 'regie' => 'Mégaphone (publicité)', 'abonnement' => 'Étoile (offre)',
-    'video' => 'Caméra (vidéo)', 'web' => 'Écran (web)', 'graphique' => 'Courbe (résultats)',
-];
-
-/** Un champ traduit d'une ligne `fr`/`en` : l'anglais s'il existe, sinon le français. */
-function texte_l(array $ligne, string $cle): mixed
+/**
+ * Un champ d'un service ou d'un témoignage. Les éléments arrivent déjà dans
+ * la langue de la page (le socle a remplacé chaque champ traduit), d'où ce
+ * simple accès — gardé pour que les vues se lisent comme avant.
+ */
+function texte_l(array $e, string $cle): mixed
 {
-    $fr = is_array($ligne['fr'] ?? null) ? $ligne['fr'] : (json_decode((string) ($ligne['fr'] ?? '{}'), true) ?: []);
-    if (langue() === 'en') {
-        $en = is_array($ligne['en'] ?? null) ? $ligne['en'] : (json_decode((string) ($ligne['en'] ?? '{}'), true) ?: []);
-        $v = $en[$cle] ?? null;
-        if ($v !== null && $v !== '' && $v !== []) {
-            return $v;
-        }
-    }
-    return $fr[$cle] ?? (in_array($cle, ['tags', 'livrables'], true) ? [] : '');
-}
-
-function json_texte(array $v): string
-{
-    return json_encode($v, JSON_UNESCAPED_UNICODE);
+    return $e[$cle] ?? (in_array($cle, ['tags', 'livrables'], true) ? [] : '');
 }
 
 /* ------------------------------------------------------------------ */
@@ -42,17 +26,17 @@ function json_texte(array $v): string
 
 function services_visibles(): array
 {
-    return tous('SELECT * FROM services WHERE visible = 1 ORDER BY ordre, id');
+    return elements('services');
 }
 
 function temoignages_visibles(): array
 {
-    return tous('SELECT * FROM temoignages WHERE visible = 1 ORDER BY ordre, id');
+    return elements('temoignages');
 }
 
 function clients_visibles(): array
 {
-    return tous('SELECT * FROM clients WHERE visible = 1 ORDER BY ordre, id');
+    return elements('clients');
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,31 +54,30 @@ function installer_accueil(): void
     if (reglage('accueil_installe') === '1') {
         return;
     }
-    $t = maintenant();
     db()->beginTransaction();
-    if ((int) valeur('SELECT COUNT(*) FROM services') === 0) {
-        $st = db()->prepare('INSERT INTO services (ancre, numero, icone, image, vedette, detail, fr, en, ordre, modifie_le) VALUES (?,?,?,?,?,?,?,?,?,?)');
-        foreach (services_demonstration() as $i => $s) {
-            $st->execute([$s['ancre'], $s['numero'], $s['icone'], $s['image'], $s['vedette'], $s['detail'], json_texte($s['fr']), json_texte($s['en']), $i, $t]);
+    // Les campagnes d'abord : elles portent les numéros 1 à 6 (`/campagnes#campagne-1`).
+    if (elements_compter('campagnes') === 0) {
+        installer_campagnes_demonstration();
+    }
+    if (elements_compter('services') === 0) {
+        foreach (services_demonstration() as $i => $x) {
+            element_creer('services', $x['fr'] + ['ancre' => $x['ancre'], 'numero' => $x['numero'], 'icone' => $x['icone'], 'image' => $x['image'],
+                'vedette' => $x['vedette'], 'detail' => $x['detail']], $x['en'], true, $i);
         }
     }
-    if ((int) valeur('SELECT COUNT(*) FROM temoignages') === 0) {
-        $st = db()->prepare('INSERT INTO temoignages (entreprise, note, fr, en, ordre, modifie_le) VALUES (?,?,?,?,?,?)');
+    if (elements_compter('temoignages') === 0) {
         foreach (temoignages_demonstration() as $i => $x) {
-            $st->execute([$x[0], 5, json_texte(['texte' => $x[1], 'auteur' => $x[2]]), json_texte(['texte' => $x[3], 'auteur' => $x[4]]), $i, $t]);
+            element_creer('temoignages', ['entreprise' => $x[0], 'note' => 5, 'texte' => $x[1], 'auteur' => $x[2]], ['texte' => $x[3], 'auteur' => $x[4]], true, $i);
         }
     }
-    if ((int) valeur('SELECT COUNT(*) FROM clients') === 0) {
-        $st = db()->prepare('INSERT INTO clients (nom, logo, ordre, modifie_le) VALUES (?,?,?,?)');
+    if (elements_compter('clients') === 0) {
         foreach ([['UNICEF', 'assets/images/clients/unicef-1.svg'], ['UBA', ''], ['ECOBANK', 'assets/images/clients/Ecobank.svg'],
             ['WOODIN', ''], ['GIZ', ''], ['MSC', 'assets/images/clients/MSC.svg'], ['GROUPE KIK', ''], ['KRYSTAL', ''],
             ['KRAMEL', ''], ['MANTA HUB', ''], ['ABISCREAM', ''], ['LDM', '']] as $i => [$nom, $logo]) {
-            $st->execute([$nom, $logo, $i, $t]);
+            element_creer('clients', ['nom' => $nom, 'logo' => $logo, 'lien' => ''], [], true, $i);
         }
     }
     db()->commit();
-    installer_campagnes_demonstration();
-    completer_campagnes_en();
     reglages_enregistrer(['accueil_installe' => '1']);
 }
 

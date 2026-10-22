@@ -1,0 +1,6 @@
+exemple/donnees/*
+!exemple/donnees/.htaccess
+exemple/uploads/*
+!exemple/uploads/.htaccess
+exemple/config.php
+socle-admin.zip

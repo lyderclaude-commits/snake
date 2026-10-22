@@ -9,34 +9,18 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/app/bootstrap.php';
-require __DIR__ . '/app/html.php';
-require __DIR__ . '/app/medias.php';
-require __DIR__ . '/app/contenu.php';
-require __DIR__ . '/app/wordpress.php';
-require __DIR__ . '/app/courriel.php';
-require __DIR__ . '/app/traduction.php';
-require __DIR__ . '/app/site.php';
-require __DIR__ . '/app/langue.php';
-require __DIR__ . '/app/accueil.php';
-require __DIR__ . '/app/push.php';
-
-installer_accueil();
-
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: SAMEORIGIN');
-header('Referrer-Policy: strict-origin-when-cross-origin');
+/*
+ * Le socle d'administration (`socle/`, partagé avec les autres sites) :
+ * la base, l'administration, les e-mails, les notifications. Ce site s'y
+ * décrit dans `app/definition.php`. `socle_router()` sert `/admin/…` et le
+ * service worker, et rend la main pour les pages publiques ci-dessous.
+ */
+require __DIR__ . '/socle/demarrer.php';
+socle_router();
 
 $chemin = chemin_demande();
 $segments = $chemin === '' ? [] : explode('/', $chemin);
 $methode = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-
-/* L’administration a son propre routeur (app/admin.php). */
-if (($segments[0] ?? '') === 'admin') {
-    require __DIR__ . '/app/admin.php';
-    admin_router(array_slice($segments, 1), $methode);
-    exit;
-}
 
 /**
  * La langue : `/en/…` pour l'anglais, tout le reste en français.
@@ -88,16 +72,13 @@ $GLOBALS['page_interne'] = $chemin . ($q ? '?' . http_build_query($q) : '');
 if (preg_match('#^(index|services|campagnes|blog|a-propos|contact)\.html$#', $chemin, $m)) {
     rediriger($m[1] === 'index' ? '' : $m[1], 301);
 }
-if ($chemin === '' && isset($_GET['p']) && ctype_digit((string) $_GET['p'])) {
-    $a = un('SELECT slug FROM articles WHERE wp_id = ? AND ' . sql_article_en_ligne(), [(int) $_GET['p']]);
-    rediriger($a ? 'blog/' . rawurlencode($a['slug']) : 'blog', 301);
-}
+wp_rediriger_ancienne_adresse($chemin, false);
 
 switch ($segments[0] ?? '') {
     case '':
         vue_site('accueil', [
             'page' => 'accueil',
-            'campagnes' => array_map('campagne_l', campagnes_publiees(5)),
+            'campagnes' => campagnes_publiees(5),
             'services' => services_visibles(),
             'temoignages' => temoignages_visibles(),
             'clients' => clients_visibles(),
@@ -120,7 +101,7 @@ switch ($segments[0] ?? '') {
         if (count($segments) > 1) {
             break;
         }
-        vue_site('campagnes', ['campagnes' => array_map('campagne_l', campagnes_publiees())]);
+        vue_site('campagnes', ['campagnes' => campagnes_publiees()]);
 
     case 'blog':
         if (($segments[1] ?? '') === 'flux.xml') {
@@ -128,22 +109,9 @@ switch ($segments[0] ?? '') {
             require __DIR__ . '/app/vues/site/flux.php';
             exit;
         }
-        /**
-         * Une lecture, signalée par la page elle-même une fois affichée.
-         *
-         * Compter au chargement côté serveur comptait les robots, les
-         * aperçus de liens de WhatsApp, et ne comptait PAS l'équipe connectée
-         * — si bien qu'en vérifiant le site soi-même, le compteur ne bougeait
-         * jamais. La page envoie un signal ; le navigateur n'en envoie qu'un
-         * par onglet et par article.
-         */
+        // Une lecture, signalée par la page elle-même une fois affichée (voir `article_lecture()`).
         if (isset($segments[2]) && $segments[2] === 'vue' && $methode === 'POST') {
-            $a = article_par_slug($segments[1]);
-            if ($a && !est_robot()) {
-                q('UPDATE articles SET lectures = lectures + 1 WHERE id = ?', [$a['id']]);
-            }
-            http_response_code(204);
-            exit;
+            article_lecture($segments[1]);
         }
         if (isset($segments[1])) {
             if (isset($segments[2])) {
@@ -204,34 +172,7 @@ switch ($segments[0] ?? '') {
         if (count($segments) > 1) {
             break;
         }
-        $erreur = null;
-        $envoye = isset($_GET['envoye']);
-        $v = [];
-        if ($methode === 'POST') {
-            csrf_verifier();
-            $id = null;
-            $erreur = contact_recevoir($_POST, $id);
-            if ($erreur === null) {
-                /**
-                 * Le visiteur n'attend pas l'e-mail ni les notifications.
-                 *
-                 * Sur PHP-FPM (la plupart des hébergeurs), la réponse part
-                 * d'abord et les envois se font ensuite. Ailleurs, ils se
-                 * font avant la redirection : plus lent, mais rien ne se perd.
-                 */
-                if ($id !== null && function_exists('fastcgi_finish_request')) {
-                    header('Location: ' . url('contact?envoye=1#formSuccess'), true, 303);
-                    fastcgi_finish_request();
-                    contact_notifier($id);
-                    exit;
-                }
-                if ($id !== null) {
-                    contact_notifier($id);
-                }
-                rediriger('contact?envoye=1#formSuccess');
-            }
-            $v = $_POST;
-        }
+        ['erreur' => $erreur, 'envoye' => $envoye, 'v' => $v] = contact_traiter('contact', 'formSuccess');
         vue_site('contact', ['erreur' => $erreur, 'envoye' => $envoye, 'v' => $v, 'noindex' => $envoye]);
 
     case 'mentions-legales':
@@ -251,31 +192,9 @@ switch ($segments[0] ?? '') {
         exit;
 }
 
-/**
- * Rien ne correspond : peut-être une adresse de l'ancien WordPress.
- * `/2024/03/mon-article/`, `/category/x/mon-article/` ou `/mon-article/`
- * pointent vers le même article ici — redirection permanente, pour que
- * Google transfère ce qu'il savait de l'ancienne adresse.
- */
-if ($methode === 'GET' && langue() === 'fr') {
-    $a = wp_article_pour_chemin($chemin);
-    if ($a) {
-        rediriger('blog/' . rawurlencode($a['slug']), 301);
-    }
-    if (preg_match('#^(category|tag)/([^/]+)#', $chemin, $m)) {
-        rediriger('blog', 301);
-    }
-    if (preg_match('#^(feed|rss)/?$#', $chemin)) {
-        rediriger('blog/flux.xml', 301);
-    }
-}
+/* Rien ne correspond : peut-être une adresse de l'ancien WordPress. */
+wp_rediriger_ancienne_adresse($chemin);
 vue_site('introuvable', [], 404);
-
-/** Ne démarre pas de session pour un simple visiteur : seulement s'il en a déjà une. */
-function utilisateur_courant_si_session(): ?array
-{
-    return isset($_COOKIE['lyd_session']) ? utilisateur_courant() : null;
-}
 
 function mentions_defaut(): string
 {

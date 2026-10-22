@@ -13,6 +13,8 @@ RewriteEngine On
 
 # Le code, les données et la configuration ne sont jamais servis.
 RewriteRule ^(app|donnees|outils)(/|$) - [F,L]
+# Le socle d'administration : seules ses feuilles de style, scripts et images sont publics.
+RewriteRule ^socle/(?!assets/) - [F,L]
 RewriteRule ^config\.php$ - [F,L]
 RewriteRule (^|/)\.(?!well-known) - [F,L]
 

@@ -147,56 +147,18 @@ function sitemap(): string
     return $x . "</urlset>\n";
 }
 
-/** Une demande de contact : enregistrée, puis signalée par e-mail. */
-function contact_recevoir(array $v, ?int &$id = null): ?string
-{
-    if (trim((string) ($v['site_web'] ?? '')) !== '') {
-        return null; // le champ piège : un robot l'a rempli, on fait semblant d'accepter
-    }
-    $d = [];
-    foreach (['nom' => 120, 'entreprise' => 120, 'email' => 160, 'whatsapp' => 40, 'besoin' => 80, 'budget' => 80, 'message' => 5000] as $k => $max) {
-        $d[$k] = mb_substr(trim((string) ($v[$k] ?? '')), 0, $max);
-    }
-    if ($d['nom'] === '' || $d['whatsapp'] === '') {
-        return t('Indiquez votre nom et votre numéro WhatsApp.');
-    }
-    if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) {
-        return t('Cette adresse e-mail ne semble pas valide.');
-    }
-    $cle = 'contact:' . ip_client();
-    // Huit par heure et par adresse : assez pour une équipe derrière une même box, trop peu pour un robot.
-    if (tentatives_recentes($cle, 3600) >= 8) {
-        return t('Vous avez déjà envoyé plusieurs demandes. Pour aller plus vite, écrivez-nous sur WhatsApp.');
-    }
-    tentative_noter($cle);
-    q('INSERT INTO messages (nom, entreprise, email, whatsapp, besoin, budget, message, ip, langue, cree_le) VALUES (?,?,?,?,?,?,?,?,?,?)',
-        [$d['nom'], $d['entreprise'], $d['email'], $d['whatsapp'], $d['besoin'], $d['budget'], $d['message'], ip_client(), langue(), maintenant()]);
-    $id = (int) db()->lastInsertId();
-    return null;
-}
-
-/** Prévient l'équipe d'une demande : e-mail à contact@, notification push aux appareils abonnés. */
-function contact_notifier(int $id): void
-{
-    @set_time_limit(90);
-    ignore_user_abort(true);
-    $m = un('SELECT * FROM messages WHERE id = ?', [$id]);
-    if (!$m) {
-        return;
-    }
-    courriel_demande($m);
-    push_nouveau_message($m);
-}
-
 /** Le titre d'un service : `*mots*` en italique doré, une ligne par retour à la ligne. */
 function titre_service(string $s): string
 {
     return nl2br((string) preg_replace('/\*(.+?)\*/u', '<em>$1</em>', e($s)), false);
 }
 
-/** Les robots, aperçus de liens et outils de mesure : ils ne lisent pas, ils ne comptent pas. */
-function est_robot(): bool
+/** Le texte saisi en clair dans un réglage (`**gras**`, `*or*`, `_contour_`), rendu en HTML sûr. */
+function texte_marque(string $s): string
 {
-    $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-    return $ua === '' || (bool) preg_match('/bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|curl|wget|python|headless(?!chrome)|lighthouse|pingdom/', $ua);
+    $h = e($s);
+    $h = (string) preg_replace('/\*\*(.+?)\*\*/u', '<strong>$1</strong>', $h);
+    $h = (string) preg_replace('/\*(.+?)\*/u', '<span class="gold">$1</span>', $h);
+    $h = (string) preg_replace('/(?<![\w])_(.+?)_(?![\w])/u', '<span class="stroke">$1</span>', $h);
+    return nl2br($h, false);
 }

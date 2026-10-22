@@ -1,0 +1,11 @@
+# Les feuilles de style, scripts, polices et images de l’administration — rien qui s’exécute.
+<IfModule mod_authz_core.c>
+  Require all granted
+  <FilesMatch "\.(php\d?|phtml|phar)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Allow from all
+</IfModule>

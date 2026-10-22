@@ -7,7 +7,7 @@
 // chaque scénario. Rien n'est écrit dans le dépôt.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
-import { cpSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { openSync, cpSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { createServer as serveurHttp } from 'node:http';
 import { createECDH, createDecipheriv, createPublicKey, hkdfSync, randomBytes, verify } from 'node:crypto';
@@ -32,6 +32,7 @@ const smtp = [];
 const serveurSmtp = createServer((c) => {
   const lettre = { de: '', a: [], auth: '', donnees: '' };
   let enDonnees = false, tampon = '', etape = '';
+  c.on('error', () => {});
   c.write('220 faux-smtp ESMTP\r\n');
   c.on('data', (d) => {
     tampon += d.toString();
@@ -80,7 +81,8 @@ const serveurDeepl = serveurHttp((req, res) => {
 }).listen(PORT_DEEPL, '127.0.0.1');
 const serveurs = [
   spawn('php', ['-d', `sendmail_path=php ${join(ICI, 'capture-mail.php')}`, '-S', `127.0.0.1:${PORT}`, '-t', tmp, join(ICI, 'routeur-dev.php')],
-    { stdio: 'ignore', env: { ...process.env, PHP_CLI_SERVER_WORKERS: '4', LYD_COURRIELS: COURRIELS } }),
+    // JOURNAL=fichier garde les erreurs PHP du site, pour comprendre un échec.
+    { stdio: ['ignore', 'ignore', process.env.JOURNAL ? openSync(process.env.JOURNAL, 'w') : 'ignore'], env: { ...process.env, PHP_CLI_SERVER_WORKERS: '4', COURRIELS_RECETTE: COURRIELS } }),
   spawn('php', ['-S', `127.0.0.1:${PORT_WP}`, join(ICI, 'faux-wordpress', 'index.php')], { stdio: 'ignore' }),
 ];
 const fin = () => { serveurs.forEach((s) => s.kill()); serveurSmtp.close(); rmSync(tmp, { recursive: true, force: true }); rmSync(COURRIELS, { recursive: true, force: true }); };
@@ -365,7 +367,7 @@ await scenario('un fichier qui n’est pas une image est refusé', async () => {
 await scenario('une campagne modifiée et masquée suit sur le site', async () => {
   await p.goto(B + '/admin/campagnes'); await cliquer('text=Lomé By Night — Concept Événementiel');
   await p.fill('#titre', 'Lomé By Night — Édition 2025');
-  await p.uncheck('input[name=publie]');
+  await p.uncheck('input[name=visible]');
   await soumettre('button:has-text("Enregistrer")');
   const h = await (await brut('/campagnes')).text();
   verifier(!h.includes('Lomé By Night'), 'devrait être masquée');
@@ -415,7 +417,7 @@ await scenario('le destinataire contact@ est affiché comme fixe, les copies s�
   await p.click('.menu button:has-text("Déconnexion")'); await p.waitForURL(/connexion/);
   await p.fill('#email', 'admin@liveydream.com'); await p.fill('#mdp', 'motdepasse-solide');
   await soumettre('button[type=submit]');
-  await p.goto(B + '/admin/reglages');
+  await p.goto(B + '/admin/reglages/courriel');
   verifier((await p.textContent('main')).includes('contact@liveydream.com — toujours'), 'mention du destinataire fixe');
   await p.fill('#r-contact_copies', 'direction@liveydream.com, pas-une-adresse');
   await p.fill('#r-smtp_hote', '127.0.0.1'); await p.fill('#r-smtp_port', String(PORT_SMTP));
@@ -449,7 +451,7 @@ await scenario('une nouvelle demande part par SMTP à contact@ et aux copies', a
   verifier(m.includes('\n.Ligne qui commence par un point.'), 'la ligne commençant par un point est abîmée');
 });
 await scenario('un échec d’envoi est noté sur la demande, et se renvoie', async () => {
-  await p.goto(B + '/admin/reglages');
+  await p.goto(B + '/admin/reglages/courriel');
   await p.fill('#r-smtp_mdp', 'mauvais-mdp');
   await soumettre('button[name=tester]');
   verifier((await p.textContent('.msg.err')).includes('identifiants refusés'), 'échec attendu');
@@ -462,7 +464,7 @@ await scenario('un échec d’envoi est noté sur la demande, et se renvoie', as
   await page.close();
   await p.goto(B + '/admin/messages');
   verifier((await p.textContent('tr:has-text("Essai Échec")')).includes('E-mail non parti'), 'pastille d’échec');
-  await p.goto(B + '/admin/reglages');
+  await p.goto(B + '/admin/reglages/courriel');
   await p.fill('#r-smtp_mdp', 'bon-mdp');
   await soumettre('button:has-text("Enregistrer"):not([name])');
   await p.goto(B + '/admin/messages'); await cliquer('text=Essai Échec');
@@ -658,10 +660,10 @@ await scenario('traduction à la publication, et une panne DeepL ne bloque jamai
 console.log('Accueil réglable');
 await scenario('modifier un service change l’accueil, la page Services et le pied, en deux langues', async () => {
   await p.goto(B + '/admin/services'); await cliquer('a.titre-ligne:text-is("Production Vidéo & Photo")');
-  await p.fill('#s-fr-titre', 'Production Vidéo Premium');
-  await p.fill('#s-en-titre', 'Premium Video Production');
-  await p.fill('[name="fr[livrables][titre][]"] >> nth=4', 'Drone');
-  await p.fill('[name="fr[livrables][texte][]"] >> nth=4', 'Prises de vue aériennes');
+  await p.fill('#titre', 'Production Vidéo Premium');
+  await p.fill('#en-titre', 'Premium Video Production');
+  await p.fill('#livrables-4-titre', 'Drone');
+  await p.fill('#livrables-4-texte', 'Prises de vue aériennes');
   await soumettre('button:has-text("Enregistrer")');
   verifier((await p.textContent('.msg.ok')).includes('enregistré'), 'enregistrement');
   const fr = await (await brut('/')).text(), en = await (await brut('/en')).text();
@@ -680,8 +682,9 @@ await scenario('masquer un service le retire partout', async () => {
 await scenario('un témoignage ajouté paraît sur l’accueil, traduit ; masqué, il disparaît', async () => {
   await p.goto(B + '/admin/temoignages/nouveau');
   await p.fill('#entreprise', 'Banque Exemple');
-  await p.fill('#t-fr', 'Une équipe qui livre à l’heure.'); await p.fill('#t-en', 'A team that delivers on time.');
-  await p.fill('#a-fr', 'Directrice'); await p.fill('#a-en', 'Director');
+  await p.fill('#texte', 'Une équipe qui livre à l’heure.'); await p.fill('#auteur', 'Directrice');
+  await p.click('details.version-en > summary');
+  await p.fill('#en-texte', 'A team that delivers on time.'); await p.fill('#en-auteur', 'Director');
   await soumettre('button:has-text("Enregistrer")');
   verifier((await (await brut('/')).text()).includes('Une équipe qui livre à l’heure.'), 'français');
   verifier((await (await brut('/en')).text()).includes('A team that delivers on time.'), 'anglais');
@@ -691,13 +694,15 @@ await scenario('un témoignage ajouté paraît sur l’accueil, traduit ; masqu�
 });
 await scenario('un logo client s’ajoute depuis la médiathèque', async () => {
   await p.goto(B + '/admin/clients');
-  await p.click('summary:has-text("Ajouter un client")');
-  await p.fill('#c-nom', 'NOUVEAU CLIENT');
+  await cliquer('a:has-text("+ Nouveau client")');
+  await p.fill('#nom', 'NOUVEAU CLIENT');
   await p.click('[data-choisir-couverture]');
   await p.waitForSelector('#selecteur-medias [data-grille] .media');
   await p.click('#selecteur-medias [data-grille] button.choisir >> nth=0');
-  await soumettre('button:has-text("Ajouter")');
-  verifier((await p.textContent('.msg.ok')).includes('NOUVEAU CLIENT'), 'ajout');
+  await soumettre('button:has-text("Enregistrer")');
+  verifier((await p.textContent('.msg.ok')).includes('Client enregistré'), 'ajout');
+  await p.goto(B + '/admin/clients');
+  verifier((await p.textContent('.tableau')).includes('NOUVEAU CLIENT'), 'absent de la liste');
   const h = await (await brut('/')).text();
   verifier(/<img src="\/uploads\/[^"]+" alt="Logo NOUVEAU CLIENT"/.test(h), 'logo absent de l’accueil');
   verifier(h.includes('>UBA<'), 'un client sans logo garde son nom');
@@ -817,7 +822,7 @@ await scenario('un abonnement incomplet est refusé', async () => {
 
 console.log('Sécurité');
 await scenario('le code et la base ne sont jamais servis', async () => {
-  for (const u of ['/app/bootstrap.php', '/donnees/lyd.sqlite', '/app/vues/site/blog.php', '/.htaccess']) {
+  for (const u of ['/app/definition.php', '/donnees/lyd.sqlite', '/app/vues/site/blog.php', '/.htaccess', '/socle/demarrer.php', '/socle/noyau/base.php', '/socle/vues/bord.php']) {
     verifier((await brut(u)).status === 403, u);
   }
 });
@@ -834,7 +839,7 @@ console.log('Téléphone');
 const tel = await ctx.newPage();
 await tel.setViewportSize({ width: 380, height: 800 });
 for (const chemin of ['/', '/services', '/campagnes', '/blog', '/blog/article-numero-3', '/a-propos', '/contact', '/en', '/en/services', '/en/contact',
-  '/admin', '/admin/articles', '/admin/services/1', '/admin/clients', '/admin/profil']) {
+  '/admin', '/admin/articles', '/admin/campagnes/1', '/admin/services', '/admin/clients', '/admin/reglages', '/admin/profil']) {
   await scenario(`${chemin} tient dans 380 px sans défilement horizontal`, async () => {
     await tel.goto(B + chemin, { waitUntil: 'load' });
     const debord = await tel.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

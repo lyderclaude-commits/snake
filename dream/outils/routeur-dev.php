@@ -6,7 +6,7 @@
  */
 $racine = (string) $_SERVER['DOCUMENT_ROOT'];
 $chemin = ltrim((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH), '/');
-if (preg_match('#^(app|donnees|outils)(/|$)|^config\.php$|(^|/)\.#', $chemin)) {
+if (preg_match('#^(app|donnees|outils)(/|$)|^socle/(?!assets/)|^config\.php$|(^|/)\.#', $chemin)) {
     http_response_code(403);
     exit('Forbidden');
 }
