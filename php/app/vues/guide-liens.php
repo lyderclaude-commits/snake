@@ -92,93 +92,63 @@
   </div>
 </section>
 
-<section class="section section-grise">
-  <div class="container">
-    <div class="app-showcase fade-up">
-      <div>
-        <div class="tag">Le même lien, en image</div>
-        <h2 class="headline" style="margin:10px 0 16px">Un QR pour ceux qui<br>
-        <span>ne tapent rien du tout</span></h2>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:18px">
-          Chaque lien court porte son QR, à télécharger pour l’affiche comme pour
-          l’imprimeur. C’est le même lien : les deux comptent dans le même total, et vous
-          saurez combien de personnes ont scanné plutôt que tapé.
-        </p>
-        <div class="pf-list">
-          <div class="pf-item"><span class="pf-check">✓</span>Une image pour un flyer, un tracé net pour une bâche</div>
-          <div class="pf-item"><span class="pf-check">✓</span>Correction d’erreur haute : un QR sali se lit encore</div>
-          <div class="pf-item"><span class="pf-check">✓</span>Le lien peut changer de destination, pas le QR imprimé</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:center">
-        <?php
-        /**
-         * Un VRAI QR, dessiné par le même code que celui des badges.
-         *
-         * Un damier d'illustration aurait suffi à l'oeil, et aurait menti
-         * à qui sort son téléphone pour l'essayer — c'est-à-dire
-         * exactement la personne qu'on cherche à convaincre. Celui-ci
-         * mène à la page du composeur.
-         */
-        $_qr = Qr::dataUri(url('?p=lien-court'), 420);
-        ?>
-        <div class="encart" style="text-align:center;padding:28px">
-          <img src="<?= e($_qr) ?>" width="190" height="190" alt="QR vers le composeur de lien court"
-               style="display:block;margin:0 auto 14px;border-radius:12px">
-          <div class="anatomie-adresse" style="text-align:center">Essayez-le : il ouvre le composeur.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <?php
 /**
- * LA section sombre de la page.
+ * LA section sombre de la page, et ce qu'elle dit depuis qu'elle a cessé
+ * d'inventer.
  *
- * Trois chiffres posés dans trois cases blanches se lisaient comme une
- * ligne de tableau. C'est pourtant la seule promesse mesurable de la
- * page : elle méritait qu'on s'arrête dessus, et un fond d'encre au
- * milieu du défilement est ce qui arrête.
+ * Elle montrait trois chiffres d'exemple — mille huit cent quarante-deux
+ * clics, six cent douze badges, trente-trois pour cent — sous une ligne
+ * qui avouait l'exemple. Un chiffre se lit avant sa légende : la page
+ * vendait un résultat qu'elle n'avait pas mesuré.
+ *
+ * Elle dit maintenant ce que le logiciel FAIT, et chaque phrase se
+ * vérifie dans le code : `liens.clics` est un compteur cumulé avec son
+ * `dernier_clic`, la destination d'un lien se change sans toucher au
+ * code à six caractères, et `rapport_liens()` range les clics d'une
+ * campagne à côté de ses badges et de ses présences. Rien ici ne peut
+ * vieillir, et plus rien ne demande de légende.
+ *
+ * La ligne sur la gratuité des clics en est une aussi : aucune table ne
+ * facture un passage, et c'est le NOMBRE DE LIENS que l'offre limite.
+ * Dire « gratuit » tout court aurait été la moitié de la phrase.
  */
 ?>
 <section class="section section-sombre">
   <div class="container">
     <div style="text-align:center;margin-bottom:44px" class="fade-up">
-      <div class="tag">Ce que ça mesure</div>
-      <h2 class="headline">La seule chose qu’une affiche <span>sait vous dire</span></h2>
+      <div class="tag">Les avantages</div>
+      <h2 class="headline">Ce qu’une adresse courte <span>sait faire</span></h2>
       <p style="max-width:64ch;margin:14px auto 0;line-height:1.8">
-        Quand on colle une affiche, tout se devine : combien l’ont vue, combien s’en
-        souviennent. Le nombre de personnes qui ont suivi le lien, lui, se lit.
+        Une adresse de billetterie ne sait rien faire d’autre que mener quelque part.
+        Celle-ci se compte, se corrige après l’impression, et se range dans le rapport
+        d’une campagne.
       </p>
     </div>
 
-    <div class="colonne-lecture fade-up">
-      <div class="ruban-chiffres">
-        <div class="chiffre"><div class="chiffre-val">1 842</div>
-          <div class="chiffre-quoi">clics sur le lien de l’affiche</div></div>
-        <div class="chiffre"><div class="chiffre-val">612</div>
-          <div class="chiffre-quoi">badges faits derrière</div></div>
-        <div class="chiffre"><div class="chiffre-val">33<span class="unite">%</span></div>
-          <div class="chiffre-quoi">de ceux qui ont cliqué</div></div>
+    <div class="why-grid fade-up" style="margin-bottom:0">
+      <div class="carte-nuit accent a-ciel">
+        <div class="carte-titre">Il se compte</div>
+        <div class="carte-texte">Une affiche ne dit rien de ceux qui l’ont vue. Un lien court
+        porte un compteur, cumulé depuis sa création, avec la date du dernier passage. C’est
+        la seule chose qu’une campagne d’affichage sache vous dire de vrai.</div>
       </div>
-      <p class="legende" style="margin-top:22px">Chiffres d’illustration. L’écran affiche les
-      vôtres, lien par lien.</p>
-
-      <div class="carte-nuit" style="margin-top:32px">
-        <div class="encart-titre">Rattaché à une campagne, le lien compte deux fois</div>
-        <p style="margin-bottom:14px">Un lien peut appartenir à l’une de vos campagnes. Ses
-        clics entrent alors dans son rapport, à côté des vues de la page, des badges
-        fabriqués et des présences scannées à l’entrée. C’est ce qui transforme « on a collé
-        cent affiches » en une phrase qui se vérifie.</p>
-        <div class="feature-pills" style="margin:0">
-          <span class="pill"><span class="pill-dot"></span>Affiche · 1 842 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Story · 940 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Radio · 318 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Flyer · 97 clics</span>
-        </div>
+      <div class="carte-nuit accent a-vert">
+        <div class="carte-titre">Il se corrige après l’impression</div>
+        <div class="carte-texte">La billetterie change d’adresse et les affiches sont déjà
+        collées. Vous changez la destination ; le code à six caractères, lui, ne bouge pas, et
+        les exemplaires en ville continuent de mener au bon endroit.</div>
+      </div>
+      <div class="carte-nuit accent a-orange">
+        <div class="carte-titre">Il entre dans le rapport</div>
+        <div class="carte-texte">Rattaché à l’une de vos campagnes, ses clics se lisent à côté
+        des vues de la page, des badges fabriqués et des présences scannées à l’entrée. C’est
+        ce qui transforme « on a collé cent affiches » en une phrase qui se vérifie.</div>
       </div>
     </div>
+
+    <p class="legende" style="margin-top:28px">Aucun clic n’est facturé, quel que soit le nombre
+    de passages : votre offre limite le nombre de liens, pas leur succès.</p>
   </div>
 </section>
 

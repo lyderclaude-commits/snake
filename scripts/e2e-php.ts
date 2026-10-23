@@ -9519,17 +9519,38 @@ const run = async () => {
      await pBoost.locator('#cible').inputValue().catch(() => pBoost.url()));
 
   /**
-   * Et le QR de cette page est un VRAI QR, dessiné par la maison.
+   * La page ne montre plus de QR, et c'est une assertion d'HONNÊTETÉ.
    *
-   * Un damier d'illustration aurait suffi à l'oeil et menti à qui sort son
-   * téléphone pour l'essayer, c'est-à-dire exactement la personne qu'on
-   * cherche à convaincre.
+   * Elle en affichait un vrai, dessiné par la maison — l'image ne mentait
+   * pas. C'est la phrase au-dessus qui mentait : « chaque lien court porte
+   * son QR, à télécharger pour l'affiche comme pour l'imprimeur ». Le
+   * logiciel ne le fait pas. Ni `?p=liens` ni `?p=lien-court` n'offrent de
+   * QR, et `Qr::` ne sert qu'aux badges et au code du profil.
+   *
+   * Tant que l'écran des liens n'en donnera pas, la page n'a pas le droit
+   * d'en dessiner un : une capture vaut promesse, et celle-ci se remet
+   * toute seule le jour où quelqu'un trouve que « ça vend bien ».
    */
   await pBoost.goto(`${BASE}/index.php?p=boost-liens`, { waitUntil: 'domcontentloaded' });
-  const srcQr = await pBoost.locator('img[alt*="QR"]').first().getAttribute('src') ?? '';
-  ok('le QR de la page est dessiné ici, et ne vient d’aucun serveur',
-     srcQr.startsWith('data:image/') && srcQr.length > 500,
-     `${srcQr.slice(0, 22)}… ${srcQr.length} octets`);
+  const imagesQr = await pBoost.locator('img[alt*="QR"], img[alt*="qr"]').count();
+  ok('la page des liens ne montre pas un QR que l’écran ne donne pas',
+     imagesQr === 0, `${imagesQr} image(s)`);
+
+  /**
+   * Et sa section sombre avance des faits, plus des chiffres inventés.
+   *
+   * Elle alignait 1 842 clics, 612 badges et 33 %, sous une ligne qui
+   * avouait l'exemple. Un chiffre se lit avant sa légende. Les trois
+   * cartes qui les remplacent disent ce que le logiciel fait — un
+   * compteur cumulé, une destination qui se change, des clics qui entrent
+   * dans le rapport d'une campagne — et chacune se vérifie dans le code.
+   */
+  const sombre = await pBoost.evaluate(() => ({
+    cartes: document.querySelectorAll('.section-sombre .carte-nuit').length,
+    chiffres: document.querySelectorAll('.section-sombre .chiffre-val').length,
+  }));
+  ok('et sa section sombre avance des faits, pas des chiffres inventés',
+     sombre.cartes === 3 && sombre.chiffres === 0, JSON.stringify(sombre));
 
   /* Sur un téléphone, aucune des trois ne glisse de côté : la mesure se
      fait sur le document, pas sur une impression. */
