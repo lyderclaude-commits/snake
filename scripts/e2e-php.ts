@@ -9417,17 +9417,16 @@ const run = async () => {
      await pBoost.locator('#cible').inputValue().catch(() => pBoost.url()));
 
   /**
-   * Et le QR de cette page est un VRAI QR, dessiné par la maison.
-   *
-   * Un damier d'illustration aurait suffi à l'oeil et menti à qui sort son
-   * téléphone pour l'essayer, c'est-à-dire exactement la personne qu'on
-   * cherche à convaincre.
+   * La page des liens courts n'a plus de section QR : ses chiffres clés
+   * disent ce que le lien court apporte, et ce sont des faits du produit
+   * (la longueur du code, l'écart sur l'adresse d'exemple), légendés.
    */
   await pBoost.goto(`${BASE}/index.php?p=boost-liens`, { waitUntil: 'domcontentloaded' });
-  const srcQr = await pBoost.locator('img[alt*="QR"]').first().getAttribute('src') ?? '';
-  ok('le QR de la page est dessiné ici, et ne vient d’aucun serveur',
-     srcQr.startsWith('data:image/') && srcQr.length > 500,
-     `${srcQr.slice(0, 22)}… ${srcQr.length} octets`);
+  ok('les liens courts montrent leurs chiffres clés, sans section QR',
+     (await pBoost.locator('img[alt*="QR"]').count()) === 0
+     && (await pBoost.locator('.stats-grid .stat-block').count()) === 3
+     && (await pBoost.locator('h2:has-text("change pour vous")').count()) === 1,
+     `${await pBoost.locator('img[alt*="QR"]').count()} QR`);
 
   /* Sur un téléphone, aucune des trois ne glisse de côté : la mesure se
      fait sur le document, pas sur une impression. */

@@ -97,38 +97,44 @@
 
 <section class="section section-grise">
   <div class="container">
-    <div class="app-showcase fade-up">
-      <div>
-        <div class="tag">Le même lien, en image</div>
-        <h2 class="headline" style="margin:10px 0 16px">Un QR pour ceux qui<br>
-        <span>ne tapent rien du tout</span></h2>
-        <p style="color:var(--text2);line-height:1.85;margin-bottom:18px">
-          Chaque lien court porte son QR, à télécharger pour l’affiche comme pour
-          l’imprimeur. C’est le même lien : les deux comptent dans le même total, et vous
-          saurez combien de personnes ont scanné plutôt que tapé.
-        </p>
-        <div class="pf-list">
-          <div class="pf-item"><span class="pf-check">✓</span>Une image pour un flyer, un tracé net pour une bâche</div>
-          <div class="pf-item"><span class="pf-check">✓</span>Correction d’erreur haute : un QR sali se lit encore</div>
-          <div class="pf-item"><span class="pf-check">✓</span>Le lien peut changer de destination, pas le QR imprimé</div>
-        </div>
+    <div style="text-align:center;margin-bottom:36px" class="fade-up">
+      <div class="tag">En chiffres</div>
+      <h2 class="headline">Ce qu’un lien court <span>change pour vous</span></h2>
+      <p style="color:var(--text2);max-width:64ch;margin:14px auto 0;line-height:1.8">
+        Une adresse qu’on retient, qu’on peut corriger après l’impression, et qui dit
+        combien de personnes l’ont vraiment suivie.
+      </p>
+    </div>
+
+    <div class="colonne-lecture fade-up">
+      <?php
+      /**
+       * Des faits du produit, pas des résultats promis : la longueur du code,
+       * l'écart sur l'adresse d'exemple plus haut (86 → 23 caractères), et
+       * la redirection qui évite de réimprimer.
+       */
+      ?>
+      <div class="stats-grid">
+        <div class="stat-block"><div class="stat-num">6</div>
+          <div class="stat-label">caractères à retenir, sans i, l, O ni zéro</div></div>
+        <div class="stat-block"><div class="stat-num">−73<sub>%</sub></div>
+          <div class="stat-label">de longueur face à une adresse de billetterie</div></div>
+        <div class="stat-block"><div class="stat-num">0</div>
+          <div class="stat-label">réimpression quand la destination change</div></div>
       </div>
-      <div style="display:flex;justify-content:center">
-        <?php
-        /**
-         * Un VRAI QR, dessiné par le même code que celui des badges.
-         *
-         * Un damier d'illustration aurait suffi à l'oeil, et aurait menti
-         * à qui sort son téléphone pour l'essayer — c'est-à-dire
-         * exactement la personne qu'on cherche à convaincre. Celui-ci
-         * mène à la page du composeur.
-         */
-        $_qr = Qr::dataUri(url('?p=lien-court'), 420);
-        ?>
-        <div class="encart" style="text-align:center;padding:28px">
-          <img src="<?= e($_qr) ?>" width="190" height="190" alt="QR vers le composeur de lien court"
-               style="display:block;margin:0 auto 14px;border-radius:12px">
-          <div class="anatomie-adresse" style="text-align:center">Essayez-le : il ouvre le composeur.</div>
+      <p class="legende">Six caractères par code ; 86 caractères ramenés à 23 sur l’adresse d’exemple plus haut.</p>
+
+      <div class="encart" style="margin-top:28px">
+        <div class="encart-titre">Et chaque clic se compte, support par support</div>
+        <p style="margin-bottom:14px">Un lien par support, et vous savez lequel a marché.
+        Rattaché à l’une de vos campagnes, un lien voit ses clics entrer dans son rapport, à
+        côté des vues de la page, des badges fabriqués et des présences scannées à l’entrée.
+        « On a collé cent affiches » devient une phrase qui se vérifie.</p>
+        <div class="feature-pills" style="margin:0">
+          <span class="pill"><span class="pill-dot"></span>Clics comptés sans mouchard</span>
+          <span class="pill"><span class="pill-dot"></span>Votre domaine, ou le nôtre</span>
+          <span class="pill"><span class="pill-dot"></span>Destination modifiable</span>
+          <span class="pill"><span class="pill-dot"></span>Rapport par campagne</span>
         </div>
       </div>
     </div>
@@ -136,45 +142,6 @@
 </section>
 
 <section class="section">
-  <div class="container">
-    <div style="text-align:center;margin-bottom:36px" class="fade-up">
-      <div class="tag">Ce que ça mesure</div>
-      <h2 class="headline">La seule chose qu’une affiche <span>sait vous dire</span></h2>
-      <p style="color:var(--text2);max-width:64ch;margin:14px auto 0;line-height:1.8">
-        Quand on colle une affiche, tout se devine : combien l’ont vue, combien s’en
-        souviennent. Le nombre de personnes qui ont suivi le lien, lui, se lit.
-      </p>
-    </div>
-
-    <div class="colonne-lecture fade-up">
-      <div class="stats-grid">
-        <div class="stat-block"><div class="stat-num">1 842</div>
-          <div class="stat-label">clics sur le lien de l’affiche</div></div>
-        <div class="stat-block"><div class="stat-num">612</div>
-          <div class="stat-label">badges faits derrière</div></div>
-        <div class="stat-block"><div class="stat-num">33<sub>%</sub></div>
-          <div class="stat-label">de ceux qui ont cliqué</div></div>
-      </div>
-      <p class="legende">Chiffres d’illustration. L’écran affiche les vôtres, lien par lien.</p>
-
-      <div class="encart" style="margin-top:28px">
-        <div class="encart-titre">Rattaché à une campagne, le lien compte deux fois</div>
-        <p style="margin-bottom:14px">Un lien peut appartenir à l’une de vos campagnes. Ses
-        clics entrent alors dans son rapport, à côté des vues de la page, des badges
-        fabriqués et des présences scannées à l’entrée. C’est ce qui transforme « on a collé
-        cent affiches » en une phrase qui se vérifie.</p>
-        <div class="feature-pills" style="margin:0">
-          <span class="pill"><span class="pill-dot"></span>Affiche · 1 842 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Story · 940 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Radio · 318 clics</span>
-          <span class="pill"><span class="pill-dot"></span>Flyer · 97 clics</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section section-grise">
   <div class="container">
     <div style="text-align:center;margin-bottom:40px" class="fade-up">
       <div class="tag">Quatre endroits</div>
@@ -209,7 +176,7 @@
   </div>
 </section>
 
-<section class="section">
+<section class="section section-grise">
   <div class="container">
     <div class="colonne-etroite fade-up" style="max-width:760px">
       <div class="encart appui">
@@ -224,7 +191,7 @@
   </div>
 </section>
 
-<section class="section section-grise">
+<section class="section">
   <div class="container">
     <div class="colonne-lecture" style="max-width:780px">
       <div style="text-align:center;margin-bottom:30px" class="fade-up">
@@ -257,7 +224,7 @@
   </div>
 </section>
 
-<section class="section-sm">
+<section class="section-sm section-grise">
   <div class="container">
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">Essayez avant <span>de vous inscrire</span></h2>
