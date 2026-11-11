@@ -1,34 +1,30 @@
 <?php
 /**
- * Tous les lieux.
+ * Les lieux, en vitrine.
  *
- * La liste complète des lieux du guide, des deux villes, avec la
- * recherche et ses sélecteurs : ville, catégorie. La vue liste ou
- * grille voyage dans l'adresse, et la bascule permute sur place :
- * les deux vues sont rendues, l'une cachée.
+ * SEPT lieux, pas un de plus — `VITRINE_LIEUX`, écrit dans
+ * `guide-api.php`. Le catalogue complet vit dans l'application, et la
+ * page se ferme sur sa porte.
  *
- * Les catégories se dérivent des données : une nouvelle catégorie qui
- * arrive par l'API gagne son option toute seule.
+ * La page s'appelait « Tous les lieux » et montrait tout, avec une
+ * recherche et deux sélecteurs. Les deux sont partis avec le
+ * catalogue : chercher dans sept entrées n'aide personne, et un titre
+ * qui promet « tous » au-dessus de sept lignes est un mensonge qu'on
+ * se raconte à soi-même.
+ *
+ * La vue liste ou grille voyage toujours dans l'adresse : elle change
+ * la façon de regarder, pas ce qu'on regarde.
  */
-$q = (string) ($_GET['q'] ?? '');
-$cat = api_cle_type((string) ($_GET['cat'] ?? ''));
-$ville = in_array($_GET['ville'] ?? '', ['lome', 'cotonou'], true) ? (string) $_GET['ville'] : '';
 $vue = ($_GET['vue'] ?? '') === 'grille' ? 'grille' : 'liste';
 
-$tous = api_lieux(null);
-$lieux = api_cherche(api_par_categorie($tous, $cat), $q);
-if ($ville !== '') {
-    $lieux = array_values(array_filter($lieux, fn(array $li) => $li['ville'] === $ville));
-}
-$categories = api_categories($tous);
-$filtres = array_filter(['cat' => $cat, 'ville' => $ville, 'q' => $q]);
+$lieux = array_slice(api_lieux(null), 0, VITRINE_LIEUX);
 $n = count($lieux);
 ?>
 <div class="page-header">
   <div class="container"><div class="page-header-inner">
-    <div class="breadcrumb"><a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">></span><span>Tous les lieux</span></div>
-    <h1>Tous les lieux</h1>
-    <p>Les lieux du guide, à Lomé comme à Cotonou : bars, restaurants, hôtels, plages. Cherchez, filtrez, et trouvez votre bon coin.</p>
+    <div class="breadcrumb"><a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">></span><span>Les lieux</span></div>
+    <h1>Les lieux</h1>
+    <p>Quelques bons coins du guide, à Lomé comme à Cotonou : bars, restaurants, hôtels, plages. La liste entière est dans l’application.</p>
   </div></div>
 </div>
 
@@ -42,33 +38,19 @@ $n = count($lieux);
       </div>
     <?php else: ?>
 
-    <?php
-    $recherche_page = 'lieux';
-    $recherche_q = $q;
-    $recherche_params = [];
-    $recherche_placeholder = 'Chercher un lieu, un quartier, une spécialité...';
-    $recherche_selects = [
-        ['nom' => 'ville', 'libelle' => 'Ville', 'valeur' => $ville,
-         'options' => ['' => 'Ville', 'lome' => 'Lomé', 'cotonou' => 'Cotonou']],
-        ['nom' => 'cat', 'libelle' => 'Catégorie', 'valeur' => $cat,
-         'options' => ['' => 'Catégorie'] + $categories],
-    ];
-    require __DIR__ . '/partiels/guide-recherche.php';
-    ?>
-
     <div class="guide-zone">
       <div class="rangee-tete">
         <h2 class="headline"><?= $n ?> lieu<?= $n > 1 ? 'x' : '' ?></h2>
         <div class="rangee-outils">
-          <?php $bascule_page = 'lieux'; $bascule_cle = 'vue'; $bascule_vue = $vue; $bascule_params = $filtres; require __DIR__ . '/partiels/guide-bascule.php'; ?>
+          <?php $bascule_page = 'lieux'; $bascule_cle = 'vue'; $bascule_vue = $vue; $bascule_params = []; require __DIR__ . '/partiels/guide-bascule.php'; ?>
         </div>
       </div>
 
       <?php if (!$lieux): ?>
         <div class="carte" style="text-align:center;padding:56px 24px">
-          <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:0 0 10px">Aucun lieu trouvé</h2>
-          <p class="aide" style="margin:0 auto 18px;max-width:60ch">Aucun lieu ne correspond à cette recherche. Élargissez les filtres, ou revenez bientôt.</p>
-          <a class="btn btn-outline" href="<?= e(url('?p=lieux')) ?>">Voir tous les lieux</a>
+          <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:0 0 10px">Aucun lieu pour le moment</h2>
+          <p class="aide" style="margin:0 auto 18px;max-width:60ch">Le guide n’a encore rien publié ici. L’application, elle, est déjà pleine.</p>
+          <a class="btn btn-outline" href="<?= e(APPLICATION_URL) ?>"<?= sortie_externe(APPLICATION_URL) ?>>Ouvrir l’application</a>
         </div>
       <?php else: ?>
 
@@ -87,7 +69,15 @@ $n = count($lieux);
       <?php endif; ?>
     </div>
 
-    <div class="encart-ville">
+    <?php
+    $plus_titre = 'Sept lieux ici, tout le guide dans l’application';
+    $plus_texte = 'Le site en montre un aperçu. Les bars, les restaurants, les hôtels et '
+        . 'les plages des deux villes, avec leurs horaires et leurs photos, vivent dans '
+        . 'l’application Wakabi.';
+    require __DIR__ . '/partiels/guide-plus-app.php';
+    ?>
+
+    <div class="encart-ville" style="margin-top:24px">
       <h3>Vous gérez un lieu ?</h3>
       <p>Ajoutez-le au guide, publiez vos événements et vendez vos billets. C'est gratuit, et ça prend quelques minutes.</p>
       <a class="btn btn-primary btn-lg" href="<?= e(url('?p=partenaires')) ?>">Devenir Partenaire</a>

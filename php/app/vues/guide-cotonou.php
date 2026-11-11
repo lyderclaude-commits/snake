@@ -6,17 +6,16 @@
  * jour les deux pages divergent — une section ici, pas là — ce sera
  * le moment de les séparer. En attendant, deux fichiers jumeaux se
  * relisent mieux qu'un fichier à drapeaux.
+ *
+ * Vitrine, et non catalogue : six événements, sept lieux, et le reste
+ * s'ouvre dans l'application. La recherche et les filtres sont partis
+ * avec le catalogue, pour la raison dite sur la page de Lomé.
  */
-$type = api_cle_type((string) ($_GET['type'] ?? ''));
-$q = (string) ($_GET['q'] ?? '');
 $vue_evts = ($_GET['evts'] ?? '') === 'liste' ? 'liste' : 'grille';
 $vue_lieux = ($_GET['lieux'] ?? '') === 'grille' ? 'grille' : 'liste';
 
-$tous_evts = api_evenements('cotonou');
-$tous_lieux = api_lieux('cotonou');
-$evenements = api_cherche(api_par_categorie($tous_evts, $type), $q);
-$lieux = api_cherche(api_par_categorie($tous_lieux, $type), $q);
-$types = api_categories(array_merge($tous_evts, $tous_lieux));
+$evenements = array_slice(api_evenements('cotonou'), 0, VITRINE_EVENEMENTS);
+$lieux = array_slice(api_lieux('cotonou'), 0, VITRINE_LIEUX);
 ?>
 <div class="page-header">
   <div class="container"><div class="page-header-inner">
@@ -36,36 +35,16 @@ $types = api_categories(array_merge($tous_evts, $tous_lieux));
       </div>
     <?php else: ?>
 
-    <?php
-    $recherche_page = 'sortir-cotonou';
-    $recherche_q = $q;
-    $recherche_params = [];
-    $recherche_placeholder = 'Chercher un lieu, un événement, un quartier...';
-    $recherche_selects = [
-        ['nom' => 'type', 'libelle' => 'Catégorie', 'valeur' => $type,
-         'options' => ['' => 'Catégorie'] + $types],
-    ];
-    require __DIR__ . '/partiels/guide-recherche.php';
-    ?>
-
-    <?php if ($q !== '' && !$evenements && !$lieux): ?>
-      <div class="carte" style="text-align:center;padding:56px 24px">
-        <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:0 0 10px">Aucun résultat</h2>
-        <p class="aide" style="margin:0 auto 18px;max-width:60ch">Rien ne correspond à « <?= e($q) ?> » à Cotonou. Essayez un autre mot, ou élargissez les filtres.</p>
-        <a class="btn btn-outline" href="<?= e(url('?p=sortir-cotonou')) ?>">Tout afficher</a>
-      </div>
-    <?php else: ?>
-
     <div class="guide-zone">
       <div class="rangee-tete">
         <h2 class="headline headline-md">Événements à venir</h2>
         <div class="rangee-outils">
-          <?php $bascule_page = 'sortir-cotonou'; $bascule_cle = 'evts'; $bascule_vue = $vue_evts; $bascule_params = array_filter(['type' => $type, 'q' => $q]); require __DIR__ . '/partiels/guide-bascule.php'; ?>
-          <a class="btn btn-outline btn-sm" href="<?= e(url('?p=agenda&ville=cotonou')) ?>">Voir tout</a>
+          <?php $bascule_page = 'sortir-cotonou'; $bascule_cle = 'evts'; $bascule_vue = $vue_evts; $bascule_params = []; require __DIR__ . '/partiels/guide-bascule.php'; ?>
+          <a class="btn btn-outline btn-sm" href="<?= e(APPLICATION_URL) ?>"<?= sortie_externe(APPLICATION_URL) ?>>Plus dans l’application</a>
         </div>
       </div>
       <?php if (!$evenements): ?>
-        <p class="aide" style="margin:0 0 60px">Aucun événement dans cette catégorie pour le moment.</p>
+        <p class="aide" style="margin:0 0 60px">Aucun événement annoncé pour le moment.</p>
       <?php else: ?>
         <div class="vue-grille"<?= $vue_evts === 'grille' ? '' : ' hidden' ?>>
           <div class="evt-grille" style="margin-bottom:0">
@@ -82,12 +61,12 @@ $types = api_categories(array_merge($tous_evts, $tous_lieux));
       <div class="rangee-tete">
         <h2 class="headline headline-md">Les lieux</h2>
         <div class="rangee-outils">
-          <?php $bascule_page = 'sortir-cotonou'; $bascule_cle = 'lieux'; $bascule_vue = $vue_lieux; $bascule_params = array_filter(['type' => $type, 'q' => $q]); require __DIR__ . '/partiels/guide-bascule.php'; ?>
-          <a class="btn btn-outline btn-sm" href="<?= e(url('?p=lieux')) ?>">Tous les lieux</a>
+          <?php $bascule_page = 'sortir-cotonou'; $bascule_cle = 'lieux'; $bascule_vue = $vue_lieux; $bascule_params = []; require __DIR__ . '/partiels/guide-bascule.php'; ?>
+          <a class="btn btn-outline btn-sm" href="<?= e(APPLICATION_URL) ?>"<?= sortie_externe(APPLICATION_URL) ?>>Plus dans l’application</a>
         </div>
       </div>
       <?php if (!$lieux): ?>
-        <p class="aide" style="margin:0 0 60px">Aucun lieu dans cette catégorie pour le moment.</p>
+        <p class="aide" style="margin:0 0 60px">Aucun lieu publié pour le moment.</p>
       <?php else: ?>
         <div class="vue-liste"<?= $vue_lieux === 'liste' ? '' : ' hidden' ?>>
           <div class="lieu-liste" style="margin-bottom:0">
@@ -107,8 +86,6 @@ $types = api_categories(array_merge($tous_evts, $tous_lieux));
       <p>Ajoutez-le au guide, publiez vos événements et vendez vos billets. C'est gratuit, et ça prend quelques minutes.</p>
       <a class="btn btn-primary btn-lg" href="<?= e(url('?p=partenaires')) ?>">Devenir Partenaire</a>
     </div>
-
-    <?php endif; ?>
 
     <?php endif; ?>
 

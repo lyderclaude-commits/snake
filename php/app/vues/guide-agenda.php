@@ -14,46 +14,18 @@
  * « Cette semaine » et « ce mois-ci » se comptent en UTC : Lomé et
  * Cotonou sont à GMT+0, le serveur n'a donc pas de fuseau à deviner.
  */
-$filtre = (string) ($_GET['filtre'] ?? '');
-$periode = (string) ($_GET['periode'] ?? '');
-$ville = (string) ($_GET['ville'] ?? '');
-if ($filtre !== '' && $periode === '' && $ville === '') {
-    if (in_array($filtre, ['semaine', 'mois'], true)) {
-        $periode = $filtre;
-    }
-    if (in_array($filtre, ['lome', 'cotonou'], true)) {
-        $ville = $filtre;
-    }
-}
-$periode = in_array($periode, ['semaine', 'mois'], true) ? $periode : '';
-$ville = in_array($ville, ['lome', 'cotonou'], true) ? $ville : '';
-$q = (string) ($_GET['q'] ?? '');
-$cat = api_cle_type((string) ($_GET['cat'] ?? ''));
 $vue = ($_GET['vue'] ?? '') === 'grille' ? 'grille' : 'liste';
 
-$tout = api_agenda();
-$evenements = api_cherche(api_par_categorie($tout, $cat), $q);
-$evenements = array_values(array_filter($evenements, function (array $e) use ($periode, $ville): bool {
-    if ($ville !== '' && $e['ville'] !== $ville) {
-        return false;
-    }
-    if ($periode === 'semaine') {
-        return $e['date'] !== '' && strtotime($e['date']) <= time() + 7 * 86400;
-    }
-    if ($periode === 'mois') {
-        return $e['date'] !== '' && substr($e['date'], 0, 7) === gmdate('Y-m');
-    }
-    return true;
-}));
-$categories = api_categories($tout);
-$filtres = array_filter(['periode' => $periode, 'ville' => $ville, 'cat' => $cat, 'q' => $q]);
+/* Les six qui arrivent le plus tôt : `api_agenda()` écarte ce qui est
+   passé et trie par date, le découpage n'a donc qu'à prendre le début. */
+$evenements = array_slice(api_agenda(), 0, VITRINE_EVENEMENTS);
 $n = count($evenements);
 ?>
 <div class="page-header">
   <div class="container"><div class="page-header-inner">
     <div class="breadcrumb"><a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">></span><span>Agenda</span></div>
     <h1>L'agenda</h1>
-    <p>Ce qui sort cette semaine et ce mois-ci, à Lomé comme à Cotonou. Cherchez, filtrez, et trouvez votre sortie.</p>
+    <p>Les six prochaines sorties, à Lomé comme à Cotonou. L’agenda complet, mois par mois, est dans l’application.</p>
   </div></div>
 </div>
 
@@ -67,35 +39,19 @@ $n = count($evenements);
       </div>
     <?php else: ?>
 
-    <?php
-    $recherche_page = 'agenda';
-    $recherche_q = $q;
-    $recherche_params = [];
-    $recherche_placeholder = 'Chercher un événement, un lieu, un quartier...';
-    $recherche_selects = [
-        ['nom' => 'periode', 'libelle' => 'Période', 'valeur' => $periode,
-         'options' => ['' => 'Période', 'semaine' => 'Cette semaine', 'mois' => 'Ce mois-ci']],
-        ['nom' => 'ville', 'libelle' => 'Ville', 'valeur' => $ville,
-         'options' => ['' => 'Ville', 'lome' => 'Lomé', 'cotonou' => 'Cotonou']],
-        ['nom' => 'cat', 'libelle' => 'Catégorie', 'valeur' => $cat,
-         'options' => ['' => 'Catégorie'] + $categories],
-    ];
-    require __DIR__ . '/partiels/guide-recherche.php';
-    ?>
-
     <div class="guide-zone">
       <div class="rangee-tete">
         <h2 class="headline"><?= $n ?> événement<?= $n > 1 ? 's' : '' ?></h2>
         <div class="rangee-outils">
-          <?php $bascule_page = 'agenda'; $bascule_cle = 'vue'; $bascule_vue = $vue; $bascule_params = $filtres; require __DIR__ . '/partiels/guide-bascule.php'; ?>
+          <?php $bascule_page = 'agenda'; $bascule_cle = 'vue'; $bascule_vue = $vue; $bascule_params = []; require __DIR__ . '/partiels/guide-bascule.php'; ?>
         </div>
       </div>
 
       <?php if (!$evenements): ?>
         <div class="carte" style="text-align:center;padding:56px 24px">
-          <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:0 0 10px">Rien de prévu ici</h2>
-          <p class="aide" style="margin:0 auto 18px;max-width:60ch">Aucun événement ne correspond à cette recherche. Élargissez les filtres, ou revenez bientôt.</p>
-          <a class="btn btn-outline" href="<?= e(url('?p=agenda')) ?>">Voir tout l'agenda</a>
+          <h2 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:0 0 10px">Rien d’annoncé pour l’instant</h2>
+          <p class="aide" style="margin:0 auto 18px;max-width:60ch">Aucune date n’est publiée ici en ce moment. L’application tient l’agenda complet, au jour le jour.</p>
+          <a class="btn btn-outline" href="<?= e(APPLICATION_URL) ?>"<?= sortie_externe(APPLICATION_URL) ?>>Ouvrir l’application</a>
         </div>
       <?php else: ?>
 
@@ -124,7 +80,14 @@ $n = count($evenements);
       <?php endif; ?>
     </div>
 
-    <div class="encart-ville">
+    <?php
+    $plus_titre = 'Six dates ici, tout l’agenda dans l’application';
+    $plus_texte = 'Le site annonce les prochaines sorties. Le mois entier, ville par ville, '
+        . 'avec les rappels et les billets, se lit dans l’application Wakabi.';
+    require __DIR__ . '/partiels/guide-plus-app.php';
+    ?>
+
+    <div class="encart-ville" style="margin-top:24px">
       <h3>Un événement à ajouter ?</h3>
       <p>Organisateurs, lieux, associations : publiez votre événement dans l'agenda, gratuitement. Il paraît aussi dans les pages de sa ville.</p>
       <a class="btn btn-primary btn-lg" href="<?= e(url('?p=contact')) ?>">Publier un événement</a>

@@ -123,7 +123,7 @@ if ($choisi !== null && is_array($choisi['categories'])) {
       <h2 class="headline headline-sm">En vente en ce moment</h2>
     </div>
     <div class="evt-grille">
-      <?php foreach ($en_vente as $ev): ?>
+      <?php foreach (array_slice($en_vente, 0, VITRINE_EVENEMENTS) as $ev): ?>
         <?php $ev_etat = is_array($ev['categories']) ? 'En vente' : 'Bientôt'; $ev_avec_date = true; $ev_compte = is_array($ev['categories']) ? count($ev['categories']) : 0; ?>
         <?php require __DIR__ . '/partiels/evt-carte.php'; ?>
       <?php endforeach; ?>

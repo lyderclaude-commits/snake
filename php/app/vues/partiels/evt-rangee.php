@@ -6,10 +6,19 @@
  * liste : date en médaillon, titre, lieu, catégorie, prix, et le lien
  * vers la billetterie.
  *
+ * TOUS LES ÉVÉNEMENTS N'ONT PAS DE BILLET À VENDRE. Un concert gratuit,
+ * une exposition, une soirée à l'entrée libre : l'API les rend avec
+ * `billets` à faux, et la rangée menait quand même vers la billetterie,
+ * où le visiteur ne trouvait rien le concernant. Elle suit maintenant la
+ * règle que la carte applique déjà : un lien vers la billetterie quand
+ * il y a quelque chose à y acheter, un bloc muet sinon. Une rangée morte
+ * vaut mieux qu'un lien mort.
+ *
  * Variable attendue : $ev, une entrée de `api_evenements()`.
  */
+$achetable = $ev['billets'];
 ?>
-<a class="agenda-ligne" href="<?= e(url('?p=tickets&e=' . rawurlencode($ev['id']))) ?>">
+<<?= $achetable ? 'a class="agenda-ligne" href="' . e(url('?p=tickets&e=' . rawurlencode($ev['id']))) . '"' : 'div class="agenda-ligne"' ?>>
   <div class="agenda-date"><b><?= e(api_date_jour($ev['date']) ?: '·') ?></b><span><?= e(api_date_mois($ev['date'])) ?></span></div>
   <div class="agenda-corps">
     <h3><?= e($ev['titre']) ?></h3>
@@ -18,5 +27,5 @@
   <?php if ($ev['categorie'] !== ''): ?><span class="tag"><?= e($ev['categorie']) ?></span><?php endif; ?>
   <?php $prix = api_prix($ev['prix_min']); ?>
   <?php if ($prix !== ''): ?><span class="agenda-prix"><?= e($prix) ?></span><?php endif; ?>
-  <span class="btn btn-outline btn-sm">Détails</span>
-</a>
+  <?php if ($achetable): ?><span class="btn btn-outline btn-sm">Détails</span><?php endif; ?>
+</<?= $achetable ? 'a' : 'div' ?>>

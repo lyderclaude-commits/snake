@@ -10,13 +10,33 @@ import { createServer } from 'node:net';
 import { createServer as createServeurHttp } from 'node:http';
 import { createECDH, createHmac, randomBytes } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import QRCode from 'qrcode';
 import { jetonDuQr } from '../php/studio/scanner';
 
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+/**
+ * Le Chromium de l'image, QUELLE QUE SOIT SA VERSION.
+ *
+ * Le chemin portait « chromium-1194 » en dur. L'image a changé de
+ * version, et la suite entière a cessé de démarrer — mille cent
+ * scénarios tombés pour un nombre dans un chemin. On lit le dossier et
+ * on prend le plus récent qu'on y trouve.
+ */
+const EXE = ((): string => {
+  const racine = '/opt/pw-browsers';
+  const versions = readdirSync(racine).filter((d) => /^chromium-\d+$/.test(d))
+    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+  for (const v of versions) {
+    for (const sous of ['chrome-linux64/chrome', 'chrome-linux/chrome']) {
+      if (existsSync(`${racine}/${v}/${sous}`)) {
+        return `${racine}/${v}/${sous}`;
+      }
+    }
+  }
+  throw new Error(`aucun Chromium sous ${racine} : ${readdirSync(racine).join(', ')}`);
+})();
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
 
 /**

@@ -12,22 +12,28 @@
  *
  * L'adresse du backend se règle dans `config.php`, clé `api_url` :
  *
- *     'api_url' => 'https://api.wakabi.app',
+ *     'api_url' => 'https://wakabi-backoffice.amsgomado.com/api/v1',
  *
  * Vide ou absente, les pages affichent leur état vide, sans erreur.
+ *
+ * LA VILLE NE SE DEMANDE PAS À L'API. Les deux routes rendent tout, et
+ * le tri par ville se fait ici, sur ce qui est arrivé. Deux raisons : un
+ * paramètre que l'API ne connaît pas serait ignoré en silence — on
+ * croirait filtrer sans filtrer — et deux adresses pour la même liste,
+ * c'est deux entrées de cache qui vieillissent séparément.
  *
  * Le contrat, tel que le client l'attend — chaque champ manque peut-être,
  * le client les tolère tous absents, sauf le titre (ou le nom) qui décide
  * si l'entrée existe :
  *
- *   GET {api_url}/evenements?ville=lome        (ville facultatif)
+ *   GET {api_url}/events
  *     [ { "id": "senzaa-2026", "titre": "Senzaa En Concert",
  *         "lieu": "Palais des Congrès", "ville": "lome",
  *         "date": "2026-12-18T18:00:00+00:00", "prix_min": 5000,
  *         "categorie": "Concerts live", "billets": true,
  *         "image": "https://..." }, ... ]
  *
- *   GET {api_url}/lieux?ville=lome             (ville facultatif)
+ *   GET {api_url}/venues
  *     [ { "id": "best-t", "nom": "Best.t Lounge Bar Restaurant",
  *         "categorie": "Bars", "adresse": "Carrefour Elavagnon, Lomé",
  *         "ville": "lome", "info": "Capacité d'accueil : 100 personnes",
@@ -52,6 +58,21 @@ const API_REPIT = 300;
 
 /** Combien de temps une réponse reste en cache. */
 const API_CACHE_SECONDES = 300;
+
+/**
+ * CE QUE LA VITRINE MONTRE, ET PAS UN DE PLUS.
+ *
+ * Le site n'est pas le catalogue : il en est la devanture. Sept lieux,
+ * six événements, et le reste s'ouvre dans l'application — c'est une
+ * décision de produit, pas une limite technique. L'API rend tout, le
+ * tri et le compte se font ici.
+ *
+ * Les deux nombres vivent à UN SEUL endroit : cinq pages les appliquent,
+ * et cinq nombres écrits à la main auraient fini par diverger le jour où
+ * l'on en change un.
+ */
+const VITRINE_EVENEMENTS = 6;
+const VITRINE_LIEUX = 7;
 
 /**
  * L'adresse du backend officiel, sans barre finale.
@@ -147,7 +168,7 @@ function api_get(string $chemin): ?array
  */
 function api_evenements(?string $ville = null): array
 {
-    $bruts = api_get('/evenements' . ($ville ? '?ville=' . rawurlencode($ville) : ''));
+    $bruts = api_get('/events');
     if ($bruts === null) {
         return [];
     }
@@ -195,7 +216,7 @@ function api_evenements(?string $ville = null): array
  */
 function api_lieux(?string $ville = null): array
 {
-    $bruts = api_get('/lieux' . ($ville ? '?ville=' . rawurlencode($ville) : ''));
+    $bruts = api_get('/venues');
     if ($bruts === null) {
         return [];
     }
