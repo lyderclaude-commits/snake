@@ -18,6 +18,10 @@ if ($page === 'creer-lien') {
     $cible = trim((string) ($_POST['cible'] ?? ''));
     $titre = trim((string) ($_POST['titre'] ?? ''));
     $decor = trim((string) ($_POST['decor_id'] ?? ''));
+    // Le domaine du lien : un des trois nôtres, ou rien (automatique).
+    // La liste est fermée côté depot ; ici sinon on laisse passer un nom
+    // de domaine qui n'appartient à personne.
+    $domaine = domaine_lien_valide(trim((string) ($_POST['domaine'] ?? '')));
 
     /**
      * La cible doit être une adresse web, et rien d'autre.
@@ -34,6 +38,12 @@ if ($page === 'creer-lien') {
             . ' liens, et ils sont tous pris. Supprimez-en un, ou passez à l’offre supérieure.',
         !filter_var($cible, FILTER_VALIDATE_URL) || !in_array($schema, ['http', 'https'], true) =>
             'Indiquez une adresse complète, commençant par http:// ou https://',
+        // Le garde-fou des cibles : un lien court Wakabi ne porte que du
+        // Wakabi. L'équipe aussi : la règle est de la plateforme, pas du
+        // rôle.
+        !lien_cible_autorisee($cible) =>
+            'On ne raccourcit que des liens Wakabi : l’adresse doit mener vers '
+            . implode(' ou ', DOMAINES_CIBLES_LIENS) . '.',
         mb_strlen($cible) > 2000 => 'Cette adresse est trop longue.',
         default => null,
     };
@@ -47,8 +57,8 @@ if ($page === 'creer-lien') {
     if ($d && !droit($u, 'decors_tous') && $d['auteur_id'] !== $u['id']) {
         $d = null;
     }
-    $code = creer_lien((string) $u['id'], $cible, $titre, $d['id'] ?? null);
-    rediriger('?p=liens&ok=' . rawurlencode('Lien créé : ' . lien_court_url($code)));
+    $code = creer_lien((string) $u['id'], $cible, $titre, $d['id'] ?? null, $domaine);
+    rediriger('?p=liens&ok=' . rawurlencode('Lien créé : ' . lien_court_url($code, $domaine)));
 }
 
 /* ---------------- supprimer ---------------- */
@@ -100,11 +110,17 @@ if (($_GET['reprendre'] ?? '') === '1') {
     } elseif ($b = brouillon_prendre('lien')) {
         $cible = (string) ($b['charge']['cible'] ?? '');
         $schema = strtolower((string) parse_url($cible, PHP_URL_SCHEME));
-        if (filter_var($cible, FILTER_VALIDATE_URL) && in_array($schema, ['http', 'https'], true)) {
-            $code = creer_lien((string) $u['id'], $cible, (string) ($b['charge']['titre'] ?? ''), null);
+        // Le garde-fou des cibles vaut pour la reprise comme pour l'écran :
+        // un brouillon datant d'avant la règle ne doit pas devenir un lien
+        // que la règle refuserait. Il s'oublie comme une adresse morte.
+        if (filter_var($cible, FILTER_VALIDATE_URL) && in_array($schema, ['http', 'https'], true)
+            && lien_cible_autorisee($cible)) {
+            $code = creer_lien((string) $u['id'], $cible, (string) ($b['charge']['titre'] ?? ''), null,
+                domaine_lien_valide((string) ($b['charge']['domaine'] ?? '') ?: null));
             brouillon_consommer('lien');
+            $_reprise_domaine = domaine_lien_valide((string) ($b['charge']['domaine'] ?? '') ?: null);
             rediriger('?p=liens&ok=' . rawurlencode(
-                'Votre lien vous attendait, le voici : ' . lien_court_url($code)));
+                'Votre lien vous attendait, le voici : ' . lien_court_url($code, $_reprise_domaine)));
         }
         // Une adresse devenue invalide entre-temps : on l'oublie plutôt que
         // d'afficher une erreur à quelqu'un qui vient de créer son compte.

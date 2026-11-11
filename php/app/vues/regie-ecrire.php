@@ -49,7 +49,7 @@ $fonds  = ['email' => 'cx-ml', 'push' => 'cx-web', 'telegram' => 'cx-telegram', 
 $points = ['email' => '#0F172A', 'push' => '#2563EB', 'telegram' => '#229ED9', 'whatsapp' => '#25D366'];
 ?>
 <div class="contenu">
-  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>Campagne</a></p>
 
   <section class="entete" style="padding-bottom:12px">
     <h1><?= $existante ? 'Modifier le message' : 'Nouveau message' ?></h1>

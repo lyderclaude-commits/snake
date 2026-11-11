@@ -19,7 +19,7 @@ declare(strict_types=1);
  * lisible sans toucher à la base — et la migration ne coûte qu'un stat de
  * fichier par requête.
  */
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 24;
 
 function assurer_schema(): void
 {
@@ -173,10 +173,21 @@ function migrer_schema(PDO $pdo, bool $mysql): void
         // v21 — trois questions accrochées au « Merci d’être venu ».
         'ALTER TABLE decors ADD COLUMN sondage INT NOT NULL DEFAULT 0',
 
-        /* v21 — une campagne peut viser un SEGMENT d’un décor, et peut
+        /* v21 — une campagne peut viser un SEGMENT d'un décor, et peut
            porter le sondage du lendemain. */
         "ALTER TABLE campagnes_email ADD COLUMN segment $court NULL",
         'ALTER TABLE campagnes_email ADD COLUMN sondage INT NOT NULL DEFAULT 0',
+
+        /* v22 — un article importé depuis le WordPress du guide : la
+           référence du lien d'origine, pour ne jamais l'importer deux
+           fois et pour pouvoir y retourner. */
+        "ALTER TABLE articles ADD COLUMN importe_de $court NULL",
+
+        /* v24 — un lien court porte le domaine sur lequel il s'écrit :
+           wkb.tg, wkb.bj ou wkb.sn. Sans colonne, tous les liens pointent
+           vers le domaine du site ; avec, chacun garde celui qu'on lui a
+           choisi au moment de sa création. Vide (ou NULL) = automatique. */
+        "ALTER TABLE liens ADD COLUMN domaine $court NULL",
     ] as $sql) {
         try {
             $pdo->exec($sql);
@@ -627,7 +638,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
         /**
          * Les liens courts : une adresse à soi, et le compte des clics.
          *
-         * `code` est la partie visible — `wkb.link/AbC123`. Il est unique,
+         * `code` est la partie visible — `wkb.tg/AbC123`. Il est unique,
          * et c'est la clé sur laquelle on redirige : un index dessus, sinon
          * chaque clic ferait un balayage complet de la table.
          */
@@ -636,6 +647,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
             code       $court NOT NULL UNIQUE,
             cible      $txt NOT NULL,
             titre      $court NULL,
+            domaine    $court NULL,
             auteur_id  $id NOT NULL,
             decor_id   $id NULL,
             clics      INT NOT NULL DEFAULT 0,
@@ -805,6 +817,7 @@ function creer_schema(PDO $pdo, bool $mysql): void
             relu_le    $court NULL,
             relu_par   $id NULL,
             publie_le  $court NULL,
+            importe_de $court NULL,
             cree_le    $court NOT NULL,
             maj_le     $court NOT NULL
         )$moteur",

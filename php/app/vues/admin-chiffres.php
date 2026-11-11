@@ -16,7 +16,7 @@ $onglet = 'chiffres';
 <?php require __DIR__ . '/partiels/bord-barre.php'; ?>
 
 <p class="aide">
-  <?= $fr($stats['publies']) ?> décors en ligne · <?= $fr($stats['comptes']) ?> comptes ·
+  <?= $fr($stats['publies']) ?> badges en ligne · <?= $fr($stats['comptes']) ?> comptes ·
   <?= $fr($stats['koris']) ?> Koris distribués
 </p>
 
@@ -72,8 +72,8 @@ $onglet = 'chiffres';
     </div>
     <?php $pluriel = fn(int $n, string $mot) => $n . ' ' . $mot . ($n > 1 ? 's' : ''); ?>
     <p class="aide" style="margin:6px 0 12px">
-      <?= e($pluriel((int) ($roles['partenaire'] ?? 0), 'organisateur')) ?> ·
-      <?= e($pluriel((int) ($roles['participant'] ?? 0), 'participant')) ?> ·
+      <?= e($pluriel((int) ($roles['partenaire'] ?? 0), 'Partenaire')) ?> ·
+      <?= e($pluriel((int) ($roles['participant'] ?? 0), 'Utilisateur')) ?> ·
       <?= e($pluriel((int) ($roles['equipe'] ?? 0), 'membre')) ?> de l’équipe
     </p>
     <ul class="liste-comptes">
@@ -148,14 +148,14 @@ $onglet = 'chiffres';
 <!-- ---------- les décors qui portent ---------- -->
 <div class="carte plate" style="padding:0;overflow:hidden">
   <div class="rangee" style="justify-content:space-between;padding:16px 18px 12px">
-    <h3 style="margin:0">Les décors qui portent</h3>
+    <h3 style="margin:0">Les badges qui portent</h3>
     <a class="aide" href="<?= e(url('?p=catalogue')) ?>">Le catalogue complet</a>
   </div>
   <div class="tableau" style="border:0;border-radius:0">
     <table>
       <thead>
         <tr>
-          <th>Décor</th><th>Auteur</th>
+          <th>Badge</th><th>Auteur</th>
           <th class="chiffre">Vues</th><th class="chiffre">Badges</th>
           <th class="chiffre">Téléch.</th><th class="chiffre">Présence</th>
         </tr>
@@ -179,7 +179,7 @@ $onglet = 'chiffres';
         </tr>
       <?php endforeach; ?>
       <?php if (!$tetes): ?>
-        <tr><td colspan="6" class="aide">Aucun décor publié pour l’instant.</td></tr>
+        <tr><td colspan="6" class="aide">Aucun badge publié pour l’instant.</td></tr>
       <?php endif; ?>
       </tbody>
     </table>

@@ -21,7 +21,7 @@ $ev = $decor['evenement_le'] ? strtotime((string) $decor['evenement_le']) : null
 $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
 ?>
 <div class="contenu">
-  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>Campagne</a></p>
 
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
@@ -34,12 +34,12 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
               · <strong><?= $jours >= 0 ? 'J − ' . $jours : 'passé depuis ' . abs($jours) . ' j' ?></strong>
             <?php endif; ?>
           <?php else: ?>
-            Ce décor n’a pas encore de date d’événement.
+            Ce badge n’a pas encore de date d’événement.
           <?php endif; ?>
         </p>
       </div>
       <div class="rangee" style="gap:8px">
-        <a class="bouton fant" href="<?= e(url('?p=modifier&id=' . urlencode((string) $decor['id']))) ?>">Le décor</a>
+        <a class="bouton fant" href="<?= e(url('?p=modifier&id=' . urlencode((string) $decor['id']))) ?>">Le badge</a>
         <form method="post" action="<?= e(url('?p=rappels&id=' . urlencode((string) $decor['id']))) ?>">
           <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
           <input type="hidden" name="quoi" value="poser">
@@ -71,7 +71,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
           <?php if ($_ouvert): ?>
             Le rappel « Merci d’être venu » porte les trois questions : la note de la
             soirée, l’intention de revenir, et un mot libre. Chaque destinataire a son
-            propre lien : une réponse par personne, et l’organisateur voit les notes
+            propre lien : une réponse par personne, et le Partenaire voit les notes
             sans les noms.
           <?php else: ?>
             Une note, une intention de revenir, un mot libre. Le rappel du lendemain les
@@ -82,7 +82,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
         <?php if ($_ouvert): ?>
           <p class="aide" style="margin:10px 0 0">
             Les réponses se lisent dans le
-            <a href="<?= e(url('?p=rapports&decor=' . rawurlencode((string) $decor['slug']))) ?>">rapport de ce décor</a>.
+            <a href="<?= e(url('?p=rapports&decor=' . rawurlencode((string) $decor['slug']))) ?>">rapport de ce badge</a>.
           </p>
         <?php endif; ?>
       </div>
@@ -104,7 +104,7 @@ $jours = $ev ? (int) floor(($ev - time()) / 86400) : null;
       leurs dates calculées depuis celle de l’événement, et tout reste modifiable ensuite.</p>
       <?php if (!$decor['evenement_le']): ?>
         <p class="aide" style="margin:0">Ajoutez d’abord la <strong>date de l’événement</strong> au
-        décor : c’est d’elle que tout se déduit.</p>
+        badge : c’est d’elle que tout se déduit.</p>
       <?php endif; ?>
     </div>
   <?php else: ?>

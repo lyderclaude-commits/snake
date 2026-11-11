@@ -38,6 +38,19 @@ declare(strict_types=1);
 const APPLICATION_URL = 'https://play.google.com/store/apps/details?id=com.wakabi.wakabimobile';
 
 /**
+ * L'adresse du magasin d'Apple, à venir.
+ *
+ * L'application n'est pas encore publiée sur l'App Store : la constante
+ * reste VIDE. Chaque bouton qui la concerne (le second bouton de la page
+ * « L'application », le choix du pied de page) testera cette constante
+ * et affichera, tant qu'elle est vide, un bouton GRISE « bientôt » — un
+ * lien mort vers un magasin tiers étant pire qu'un bouton qui n'y va pas.
+ * Le jour de la publication, remplir la constante suffit : aucun autre
+ * endroit du site ne porte l'adresse.
+ */
+const APP_STORE_URL = '';
+
+/**
  * Ce que chaque page de contenu porte : sa vue, son titre, sa phrase.
  *
  * Rangé ici et non dans le routeur, parce que ces trois-là vont ensemble
@@ -54,10 +67,10 @@ const PAGES_CONTENU = [
         'Cotonou, Lomé, Abidjan, et la suite : le plan d’expansion de Wakabi en Afrique francophone.'],
     'a-propos'    => ['guide-a-propos', 'À propos',
         'Qui nous sommes, ce que nous construisons, et pourquoi nous le construisons ici.'],
-    'contact'     => ['guide-contact', 'Contact',
+    'contact'     => ['guide-contact', 'Contacts',
         'Une question, un partenariat, une ville à ouvrir : écrivez-nous.'],
     'boost-push'  => ['guide-push', 'Push',
-        'WhatsApp, Telegram et les notifications du navigateur, depuis un seul écran.'],
+        'WhatsApp, Telegram et les notifications — du navigateur comme de l’application Wakabi —, depuis un seul écran.'],
     'boost-regie' => ['guide-regie', 'Régie',
         'Chaque badge laisse une adresse. La régie en fait une audience, et elle reste la vôtre.'],
     'boost-liens' => ['guide-liens', 'Liens courts',
@@ -86,6 +99,24 @@ const PAGES_CONTENU = [
      */
     'tarifs'          => ['guide-tarifs', 'Tarifs',
         'Une offre gratuite à vie, et trois qui grandissent avec vos salles. Sans engagement.'],
+    /**
+     * Les pages Sortir, l'agenda et la billetterie.
+     *
+     * Leurs données ne viennent pas de la base locale : elles arrivent de
+     * l'API du backend officiel de l'application, lue par
+     * `app/guide-api.php`. Sans API réglée, elles restent debout avec
+     * leur état vide — jamais une erreur blanche.
+     */
+    'sortir-lome'     => ['guide-lome', 'Sortir à Lomé',
+        'Les lieux qui comptent et les événements qui arrivent, à Lomé.'],
+    'sortir-cotonou'  => ['guide-cotonou', 'Sortir à Cotonou',
+        'Les lieux qui comptent et les événements qui arrivent, à Cotonou.'],
+    'lieux'           => ['guide-lieux', 'Tous les lieux',
+        'Tous les lieux du guide, à Lomé comme à Cotonou : bars, restaurants, hôtels, plages.'],
+    'agenda'          => ['guide-agenda', 'L’agenda',
+        'Ce qui sort cette semaine et ce mois-ci, à Lomé comme à Cotonou.'],
+    'tickets'         => ['guide-tickets', 'La billetterie',
+        'Choisissez votre place, payez par Mobile Money, recevez votre billet avec son QR.'],
     'cgu'             => ['guide-cgu', 'Conditions d’utilisation',
         'Ce que vous pouvez attendre du service, ce qu’il attend de vous, et ce qui se passe quand ça ne va pas.'],
     'confidentialite' => ['guide-confidentialite', 'Politique de confidentialité',
@@ -116,12 +147,23 @@ const PAGES_VITRINE = [
  *
  * La question se pose à `PAGES_CONTENU` plutôt qu'à une seconde liste :
  * deux listes qui doivent s'accorder finissent toujours par diverger, et
- * celle-là se serait vengée en servant la mauvaise feuille — donc une
+ * celle-là se serait vengée en servant la mauvaise feuille - donc une
  * page au dessin cassé, sans message ni piste.
+ *
+ * L'accueil y répond à part, et c'est voulu : sa page est celle de
+ * wakabileguide.com, reprise section par section, et elle porte le même
+ * dessin que les pages du guide. Il n'entre pas dans `PAGES_CONTENU`
+ * pour autant — la sitemap écrit déjà l'adresse nue du site en tête de
+ * liste, et y ajouter `?p=accueil` serait lui donner deux fois la même
+ * page sous deux formes.
  */
 function page_du_guide(string $page): bool
 {
-    return isset(PAGES_CONTENU[$page]);
+    /* `lieu` n'est pas dans `PAGES_CONTENU` : sa page est dynamique, un
+       lieu par identifiant, comme `decor` côté atelier. Elle porte le
+       même dessin que les pages de ville, donc elle répond oui ici —
+       sinon elle chargeait la feuille du tableau de bord. */
+    return $page === 'accueil' || $page === 'lieu' || isset(PAGES_CONTENU[$page]);
 }
 
 /**
@@ -150,20 +192,53 @@ function barre_vitrine(?array $moi, string $page): bool
  */
 function menu_vitrine(): array
 {
+    /* Une entrée grisée porterait un QUATRIÈME élément, « attente » : la
+       page n'existe pas encore, l'entrée se montre sans lien, en gris —
+       le motif de « App Store bientôt disponible ». Les quatre pages
+       Sortir, Agenda et Tickets ont ouvert : plus aucun marqueur, mais
+       le motif reste là pour la ville suivante. */
     return [
-        ['?p=application', 'L’Application'],
-        ['groupe', 'Boost', [
-            ['?p=boost-push',  'Push',         'WhatsApp, Telegram, notifications'],
-            ['?p=boost-regie', 'Régie',        'Campagnes e-mail'],
-            ['?p=boost-liens', 'Liens courts', 'Adresses traçables'],
-            ['?p=tarifs',      'Tarifs',       'Les quatre offres, comparées'],
+        ['groupe', 'Sortir', [
+            ['?p=sortir-cotonou', 'Cotonou', 'Les bons coins de Cotonou'],
+            ['?p=sortir-lome',    'Lomé',    'Les bons coins de Lomé'],
+            ['?p=agenda',         'Agenda',  'Ce qui sort cette semaine'],
+            ['?p=blog',           'Blog',    'Adresses, guides et coulisses'],
         ]],
-        ['?p=decors',      'Les Badges'],
+        ['?p=decors', 'Badges'],
+        ['groupe', 'Boost', [
+            ['?p=tickets',     'Tickets',                   'La billetterie web'],
+            ['?p=boost-push',  'WhatsApp et notifications', 'Push, Telegram, messages'],
+            ['?p=boost-liens', 'Liens courts',              'Adresses traçables'],
+            ['?p=boost-regie', 'Campagnes e-mail',          'Invitations et rappels'],
+            ['?p=tarifs',      'Tarifs',                    'Les quatre offres, comparées'],
+        ]],
         ['?p=partenaires', 'Partenaires'],
-        ['?p=villes',      'Nos Villes'],
-        ['?p=blog',        'Blog'],
-        ['?p=a-propos',    'À Propos'],
+        ['?p=application', 'L’app'],
     ];
+}
+
+/**
+ * Les pages du côté Boost, lues dans le menu plutôt que recopiées.
+ *
+ * Le bouton du header change de texte selon le côté où l'on se trouve —
+ * « Télécharger l'app » sur le guide, « Créer mon espace » sur Boost.
+ * Dériver la liste du menu évite deux listes qui divergent : une entrée
+ * ajoutée au groupe Boost change le bouton sans qu'on y pense.
+ */
+function pages_boost(): array
+{
+    foreach (menu_vitrine() as $entree) {
+        if ($entree[0] === 'groupe' && $entree[1] === 'Boost') {
+            $out = [];
+            foreach ($entree[2] as [$route, , ]) {
+                if ($route !== null) {
+                    $out[] = substr((string) $route, 3);
+                }
+            }
+            return $out;
+        }
+    }
+    return [];
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,7 +281,7 @@ function offres_vitrine(): array
                   : number_format($f['telechargements'], 0, ',', ' ') . ' téléchargements / mois', 1];
         if ($f['liens_courts'] !== 0) {
             $out[] = [$f['liens_courts'] < 0 ? 'Liens courts illimités'
-                      : $f['liens_courts'] . ' liens courts wkb.link', 1];
+                      : $f['liens_courts'] . ' liens courts (wkb.tg, wkb.bj, wkb.sn)', 1];
         }
         /* Un compteur qui vaut zéro ne se montre pas : « 0 e-mail par mois »
            se lit comme une privation, alors que l'offre n'a simplement
@@ -309,9 +384,30 @@ function icone_vitrine(string $route): string
         str_contains($route, 'push') =>
             '<path d="M18 8.5a6 6 0 1 0-12 0c0 6-2 7.5-2 7.5h16s-2-1.5-2-7.5"></path>'
             . '<path d="M13.7 20a2 2 0 0 1-3.4 0"></path>',
+        /* Les villes du groupe « Sortir » portent une épingle. */
+        str_contains($route, 'cotonou') || str_contains($route, 'lome') =>
+            '<path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"></path>'
+            . '<circle cx="12" cy="10" r="2.6"></circle>',
+        str_contains($route, 'agenda') =>
+            '<rect x="3" y="5" width="18" height="16" rx="2.5"></rect>'
+            . '<line x1="3" y1="10" x2="21" y2="10"></line>'
+            . '<line x1="8" y1="3" x2="8" y2="7"></line>'
+            . '<line x1="16" y1="3" x2="16" y2="7"></line>',
+        /* Le billet de la billetterie, en attente d'ouverture. */
+        str_contains($route, 'tickets') =>
+            '<path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"></path>'
+            . '<line x1="13" y1="7" x2="13" y2="17" stroke-dasharray="2 3"></line>',
+        str_contains($route, 'blog') =>
+            '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"></path>'
+            . '<path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"></path>',
         str_contains($route, 'regie') =>
             '<rect x="3" y="5" width="18" height="14" rx="2.5"></rect>'
             . '<polyline points="3.6 6.5 12 13 20.4 6.5"></polyline>',
+        /* Les tarifs portent un billet, comme le tracé de `TRACES_GUIDE` :
+           deux encoches latérales et la perforation du ticket détachable. */
+        str_contains($route, 'tarifs') =>
+            '<path d="M3 9.5V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a2.5 2.5 0 0 0 0-5z"></path>'
+            . '<line x1="14" y1="5" x2="14" y2="19" stroke-dasharray="2 3"></line>',
         default =>
             '<path d="M10 13.5a4 4 0 0 0 5.7.4l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7"></path>'
             . '<path d="M14 10.5a4 4 0 0 0-5.7-.4l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"></path>',
@@ -361,7 +457,13 @@ function initiales(string $nom): string
 const LEGAL_DEFAUTS = [
     'legal_forme'    => '',
     'legal_registre' => '',
-    'legal_siege'    => '',
+    /* Le siège, annoncé par défaut et non laissé vide : les pages de
+       conditions doivent répondre « où » en plus de « qui ». Cotonou est
+       là où l'équipe est établie ; un réglage dans l'écran des réglages
+       (`legal_siege`) reste le dernier mot. La chute vers la ville du
+       référencement (Lomé) ne joue donc plus qu'en théorie — le défaut
+       d'ici est déjà non vide. */
+    'legal_siege'    => 'Cotonou',
     'legal_courriel' => 'contact@wakabileguide.com',
     'legal_maj'      => '2026-10-01',
 ];
@@ -435,4 +537,42 @@ function identite_legale_brute(): array
     $r['courriel'] = $r['courriel'] ?: LEGAL_DEFAUTS['legal_courriel'];
     $r['maj'] = $r['maj'] ?: LEGAL_DEFAUTS['legal_maj'];
     return $r;
+}
+
+/**
+ * Le contact WhatsApp, et le bouton qui va avec.
+ *
+ * Un numéro absent ne laisse rien voir : un bouton qui mène nulle part
+ * est pire qu'un bouton manquant — la règle est la même que pour
+ * l'identité légale. Le numéro est normalisé en chiffres seuls, au
+ * format international sans signe : « +228 90 12 34 56 » devient
+ * « 22890123456 », la forme que wa.me attend.
+ */
+const WHATSAPP_DEFAUTS = [
+    'whatsapp_numero'  => '',
+    'whatsapp_message' => 'Bonjour, je viens du site Wakabi le guide.',
+];
+
+function whatsapp_contact(): ?array
+{
+    static $cache = null;
+    static $version = -1;
+    if ($cache !== null && $version === reglages_version()) {
+        return $cache;
+    }
+
+    $lus = reglages_bdd(array_keys(WHATSAPP_DEFAUTS));
+    $numero = preg_replace('~\D~', '', (string) ($lus['whatsapp_numero'] ?? ''));
+    if ($numero === '') {
+        $version = reglages_version();
+        return $cache = null;
+    }
+
+    $message = trim((string) ($lus['whatsapp_message'] ?? ''));
+    if ($message === '') {
+        $message = WHATSAPP_DEFAUTS['whatsapp_message'];
+    }
+
+    $version = reglages_version();
+    return $cache = ['numero' => $numero, 'message' => $message];
 }

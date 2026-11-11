@@ -103,9 +103,9 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
       <?php endif; ?>
 
       <?php if ($decors_choisis): ?>
-        <label class="rap-champ" for="f-decor">Décor
+        <label class="rap-champ" for="f-decor">Badge
           <select id="f-decor" name="decor">
-            <option value="">Tous les décors</option>
+            <option value="">Tous les badges</option>
             <?php foreach ($decors_choisis as $d): ?>
               <option value="<?= e((string) $d['slug']) ?>"
                 <?= $portee['cle'] === 'decor' && (string) $portee['decor']['id'] === (string) $d['id']
@@ -159,7 +159,7 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
             : ' · ' . ($r['activite']['presences']['variation'] >= 0 ? '+' : '')
               . $r['activite']['presences']['variation'] . ' %' ?></span></div>
       <div class="stat"><b><?= e($nb((int) $r['activite']['vues']['valeur'])) ?></b>
-        <span>Vues de décors</span></div>
+        <span>Vues de badges</span></div>
     <?php endif; ?>
   </div>
 
@@ -358,7 +358,7 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
   <!-- ------------------- les campagnes ------------------- -->
   <?php if ($r['campagnes']): ?>
     <section class="carte" style="margin-bottom:18px">
-      <h2><?= $portee['cle'] === 'decor' ? 'Les rappels de ce décor' : 'Les campagnes de la période' ?></h2>
+      <h2><?= $portee['cle'] === 'decor' ? 'Les rappels de ce badge' : 'Les campagnes de la période' ?></h2>
       <p class="aide" style="margin:4px 0 12px">Dans l’ordre où elles sont parties. Les nombres sont
       ceux de la période : une campagne à cheval sur deux mois se lit sur les deux rapports, et la
       somme des lignes tombe juste sur le total plus haut.</p>
@@ -463,13 +463,13 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
   <!-- ------------------- les décors ------------------- -->
   <?php if ($r['decors']): ?>
     <section class="carte" style="margin-bottom:18px">
-      <h2>Les décors, classés sur la présence</h2>
-      <p class="aide" style="margin:4px 0 12px">Pas sur les vues : un décor très vu qui ne remplit pas
+      <h2>Les badges, classés sur la présence</h2>
+      <p class="aide" style="margin:4px 0 12px">Pas sur les vues : un badge très vu qui ne remplit pas
       la salle est exactement celui qu’on croit bon et qui ne l’est pas.</p>
       <div class="tableau">
         <table>
           <thead>
-            <tr><th>Décor</th><th class="num">Vues</th><th class="num">Badges</th>
+            <tr><th>Badge</th><th class="num">Vues</th><th class="num">Émis</th>
                 <th class="num">Téléchargés</th><th class="num">Présents</th><th class="num">Taux</th>
                 <th>À qui écrire</th></tr>
           </thead>
@@ -532,7 +532,7 @@ $pc = static fn(float $x): string => number_format($x * 100, ($x * 100) < 10 ? 1
           <tbody>
             <?php foreach ($r['liens'] as $l): ?>
               <tr>
-                <td class="mono"><?= e(lien_court_url((string) $l['code'])) ?></td>
+                <td class="mono"><?= e(lien_court_url((string) $l['code'], $l['domaine'] ?? null)) ?></td>
                 <td><?= e((string) ($l['titre'] ?: 'Sans titre')) ?></td>
                 <td class="num"><?= e($nb((int) $l['clics'])) ?></td>
                 <td><?= e(($l['dernier_clic'] ?? null) ? date_fr((string) $l['dernier_clic']) : 'jamais') ?></td>

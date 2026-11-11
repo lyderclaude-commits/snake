@@ -232,7 +232,7 @@ function prevol(array $gabarit, ?string $cadre_url): array
     } else {
         $chemin = chemin_cadre($cadre_url);
         if (!$chemin || !is_file($chemin)) {
-            $ajouter('format', 'echec', 'Aucun cadre exploitable n’est attaché à ce décor.');
+            $ajouter('format', 'echec', 'Aucun cadre exploitable n’est attaché à ce badge.');
             return ['passe' => false, 'controles' => $controles];
         }
 
@@ -302,7 +302,7 @@ function prevol(array $gabarit, ?string $cadre_url): array
         // qui n'en porte pas ferait douter de tous les autres contrôles.
         $ajouter('collision', 'ok', ($gabarit['qr']['enabled'] ?? true)
             ? 'Aucun texte sous le filigrane ni sous le QR.'
-            : 'Aucun texte sous le filigrane. Ce décor ne porte pas de QR Code.');
+            : 'Aucun texte sous le filigrane. Ce badge ne porte pas de QR Code.');
     }
 
     /* 6 — les textes tiennent dans leur zone */

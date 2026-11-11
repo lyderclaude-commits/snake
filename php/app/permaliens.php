@@ -74,6 +74,14 @@ const PERMALIENS_FIXES = [
     'boost-regie'     => 'regie',
     'boost-liens'     => 'liens-courts',
     'tarifs'          => 'tarifs',
+    'sortir-lome'     => 'lome',
+    'sortir-cotonou'  => 'cotonou',
+    'lieux'           => 'lieux',
+    /* Pas « agenda » : six caractères, et le garde-fou des liens courts
+       retomberait sur la forme simple. « evenements » dit la même chose. */
+    'agenda'          => 'evenements',
+    'tickets'         => 'tickets',
+    'lieu'            => 'lieu',
     'cgu'             => 'cgu',
     'confidentialite' => 'confidentialite',
     'inscription'     => 'inscription',
@@ -283,12 +291,63 @@ function permaliens_segment(string $s): string
  * caché `p` (sans lui, un `method="get"` efface la requête de son propre
  * `action`). Le chemin fait foi, le champ caché ne peut pas contredire.
  */
+/**
+ * Traduit l'adresse lisible reçue en paramètres, AVANT que le routeur ne
+ * regarde `p`.
+ *
+ * Le `.htaccess` dépose le chemin dans `wk`. Ce qu'on en tire est écrit
+ * dans `$_GET` : le routeur n'a donc rien à savoir de tout ceci, et une
+ * route nouvelle marche sous les deux formes sans qu'on y pense.
+ *
+ * Sur certains hébergements, il n'y a PAS de `.htaccess` consulté : le
+ * frontal (proxy, panneau de gestion) réécrit lui-même TOUTE requête vers
+ * `index.php`, à la manière du `try_files … /index.php` de WordPress, et
+ * sans transmettre le chemin. Le site répond, mais des adresses déjà
+ * partagées arriveraient sur l'accueil. D'où le secours : quand `wk` est
+ * vide, le chemin est tiré de `REQUEST_URI` — avec les mêmes gardes
+ * qu'Apache, c'est-à-dire en laissant aux fichiers réels le leur
+ * (`public/…`, `sw.js`, /robots.txt et /sitemap.xml qui sont ENGENDRÉS
+ * ici, jamais déposés), et aux liens courts qui passent avant dans le
+ * `.htaccess`. Là où Apache marche, `wk` est fourni et ce secours
+ * s'éteint : aucun des deux n'a le dernier mot sur l'autre.
+ *
+ * Le `p` d'une requête lisible est ÉCRASÉ, et c'est volontaire : le
+ * formulaire de recherche du blog et celui du catalogue portent un champ
+ * caché `p` (sans lui, un `method="get"` efface la requête de son propre
+ * `action`). Le chemin fait foi, le champ caché ne peut pas contredire.
+ */
 function permaliens_entrer(): bool
 {
     $brut = (string) ($_GET['wk'] ?? '');
     unset($_GET['wk']);
     if ($brut === '') {
-        return false;
+        [$secours, $code_court] = permaliens_secours();
+        if ($code_court !== null) {
+            // La règle des liens courts du .htaccess, quand le frontal a
+            // déjà fait son travail et qu'il n'y a pas de `wk`.
+            $_GET['p'] = 'l';
+            $_GET['c'] = $code_court;
+            return true;
+        }
+        if ($secours !== null) {
+            if ($secours === '') {
+                // La racine du site : l'accueil, sans réécriture.
+                return false;
+            }
+            if (in_array($secours, ['robots.txt', 'sitemap.xml'], true)) {
+                // Lire les deux adresses ENGENDRÉES, sinon le frontal les
+                // réécrirait vers l'accueil devant les robots.
+                $_GET['p'] = $secours === 'robots.txt' ? 'robots' : 'sitemap';
+                return true;
+            }
+            if ($secours === PERMALIENS_ESSAI) {
+                $_GET['p'] = 'permaliens-essai';
+                return true;
+            }
+            $brut = $secours;
+        } else {
+            return false;
+        }
     }
 
     $params = permaliens_resoudre($brut);
@@ -302,6 +361,60 @@ function permaliens_entrer(): bool
         $_GET[$cle] = $valeur;
     }
     return true;
+}
+
+/**
+ * Le chemin lisible d'une requête qui n'a pas transité par le `.htaccess`.
+ *
+ * Rend [chemin, code-court] : `null` pour chacun quand les conditions ne
+ * sont pas réunies. La requête du site à lui-même (`?p=permaliens-essai`,
+ * l'essai des réglages) arrive PAR ici sur ces hébergements.
+ *
+ * Le test final est le même que dans `permaliens_resoudre()` : un chemin
+ * n'est fait que de slugs (`[A-Za-z0-9/_-]+`). Tout le reste — un
+ * `index.php?p=…`, une feuille `public/…`, une image — appartient au
+ * serveur ou à la forme simple ; on ne s'en mêle pas.
+ *
+ * @return array{0: ?string, 1: ?string}
+ */
+function permaliens_secours(): array
+{
+    $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $chemin = rawurldecode((string) (parse_url($uri, PHP_URL_PATH) ?: '/'));
+    if (!str_starts_with($chemin, '/')) {
+        return [null, null];
+    }
+
+    // Le même zip vit à la racine ou dans un sous-dossier : retirer la
+    // base donne toujours un chemin relatif au site.
+    $base = rtrim((string) parse_url(base_url(), PHP_URL_PATH), '/');
+    if ($base !== '') {
+        $base_brut = rawurldecode($base);
+        if (str_starts_with($chemin, $base_brut)) {
+            $chemin = substr($chemin, strlen($base_brut));
+        }
+    }
+
+    // Un DOCUMENT_ROOT mal réglé pourrait faire tout passer par PHP, les
+    // feuilles comprises. Ce que sert le frontal ne doit pas être
+    // retraité ici — SAUF les deux adresses ENGENDRÉES à point :
+    // /robots.txt et /sitemap.xml, jamais déposées sur le disque.
+    $brut = trim($chemin, '/');
+    if (in_array($brut, ['robots.txt', 'sitemap.xml'], true)) {
+        return [$brut, null];
+    }
+    if ($chemin !== '/' && !preg_match('~^/?[A-Za-z0-9/_-]*$~', $chemin)) {
+        return [null, null];
+    }
+
+    /* Les liens courts, exactement la règle du .htaccess : six caractères
+       de leur alphabet. Après le décodage : côté serveur, une seule forme
+       arrive, l'alphabet garanti l'unicité. */
+    if (preg_match('~^/?([A-HJ-NP-Za-hj-np-z2-9]{6})$~', $chemin, $m)) {
+        return [null, $m[1]];
+    }
+
+    return [$brut, null];
 }
 
 /**
@@ -614,7 +727,7 @@ function permaliens_exemples(string $forme, string $base_blog, string $base_deco
     if ($forme !== 'lisible') {
         return [
             ['Le catalogue',   'index.php?p=decors'],
-            ['Un décor',       'index.php?p=decor&slug=soiree-blanche-lome'],
+            ['Un badge',       'index.php?p=decor&slug=soiree-blanche-lome'],
             ['Le blog',        'index.php?p=blog'],
             ['Un article',     'index.php?p=blog&a=remplir-une-salle-a-lome'],
             ['Devenir partenaire', 'index.php?p=partenaires'],
@@ -622,7 +735,7 @@ function permaliens_exemples(string $forme, string $base_blog, string $base_deco
     }
     return [
         ['Le catalogue',   $d . $fin],
-        ['Un décor',       $d . '/soiree-blanche-lome' . $fin],
+        ['Un badge',       $d . '/soiree-blanche-lome' . $fin],
         ['Le blog',        $b . $fin],
         ['Un article',     $b . '/remplir-une-salle-a-lome' . $fin],
         ['Devenir partenaire', 'partenaires' . $fin],

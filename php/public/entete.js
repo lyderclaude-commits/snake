@@ -22,7 +22,7 @@
   'use strict';
 
   var MENUS = 'details.wk-grp, details.wk-compte, details.wk-burger,'
-            + ' details.deroulant, details.menu';
+            + ' details.wk-stores, details.deroulant, details.menu';
 
   var ouverts = function () {
     var out = [];

@@ -35,8 +35,8 @@ const SEO_BRUIT = ['ok', 'err', 'j', 'jeton', 'csrf', 'v', 'cle', 'retour', 'ouv
 
 /** Les réglages, et ce qu'ils valent tant que personne n'y a touché. */
 const SEO_DEFAUTS = [
-    'seo_nom_site'      => 'Wakabi Boost',
-    'seo_titre_suffixe' => 'Wakabi Boost',
+    'seo_nom_site'      => 'Wakabi le guide',
+    'seo_titre_suffixe' => 'Wakabi le guide',
     'seo_description'   => 'Créez votre badge et partagez-le. Wakabi Boost, le guide des '
                          . 'bons plans de Lomé, Cotonou et Abidjan.',
     'seo_image'         => '',
@@ -473,21 +473,15 @@ function sitemap_xml(): string
     }
 
     /**
-     * Les articles du guide entrent dans le plan, eux aussi.
+     * Tout article non listé plus haut n'a plus rien à faire ici : la
+     * bibliothèque, les comptes, les formulaires.
      *
-     * C'est même le premier bénéfice de la fusion : ces articles-là
-     * n'étaient dans AUCUN plan de site, parce qu'ils n'existaient que
-     * dans un appel JavaScript. Les déclarer ici, c'est leur donner leur
-     * première chance d'être indexés.
-     *
-     * On passe par le cache habituel : le plan se fabrique rarement, et
-     * s'il tombe sur un WordPress muet, il rend ce qu'on avait — un plan
-     * un peu court vaut mieux qu'un plan absent.
+     * Les articles du guide n'ont plus de boucle à eux : une fois
+     * importés, ils sont DES articles de la table `articles`, et la
+     * boucle qui précède les a déjà écrits. Lire le WordPress du guide
+     * ici remettrait le sitemap d'une page publique à la merci d'un API
+     * lointain — et un plan de site à moitié rempli le jour de la panne.
      */
-    foreach (wp_jusqua(min(200, $budget - count($decors) - count($articles)))['articles'] as $g) {
-        $ajouter(url_canonique(['p' => 'blog', 'g' => (string) $g['slug']]),
-                 (string) ($g['maj_le'] ?? $g['publie_le'] ?? ''), 'monthly', '0.6');
-    }
 
     return $x . '</urlset>' . "\n";
 }

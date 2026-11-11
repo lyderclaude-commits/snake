@@ -20,7 +20,7 @@ $genres_places = array_column($canaux, 'genre');
         <h1>Canaux de diffusion</h1>
         <p>Par où vos messages sortent. Un canal se branche une fois, puis se coche à l’écriture.</p>
       </div>
-      <a class="bouton" href="<?= e(url('?p=regie-ecrire')) ?>">Écrire un message</a>
+      <a class="bouton" href="<?= e(url('?p=notification')) ?>">Écrire un message</a>
     </div>
   </section>
 
@@ -141,10 +141,10 @@ $genres_places = array_column($canaux, 'genre');
       <ul class="cx-liste">
         <li><span class="cx-genre">Direct</span> Appareils abonnés <b><?= (int) $push['abonnes'] ?></b></li>
       </ul>
-      <p class="aide" style="margin:0">Gratuit, instantané, et déjà branché sur vos décors :
+      <p class="aide" style="margin:0">Gratuit, instantané, et déjà branché sur vos badges :
       c’est la case « Être prévenu des prochaines campagnes » du Studio.</p>
       <div class="rangee" style="gap:8px">
-        <a class="bouton fant petit" href="<?= e(url('?p=diffusion')) ?>">Écrire et historique</a>
+        <a class="bouton fant petit" href="<?= e(url('?p=notification')) ?>">Écrire et historique</a>
       </div>
     </div>
 
@@ -158,7 +158,7 @@ $genres_places = array_column($canaux, 'genre');
       authentifiée par SPF, DKIM et DMARC, sans quoi les messages sont refusés, pas classés
       en indésirables.</p>
       <div class="rangee" style="gap:8px">
-        <a class="bouton fant petit" href="<?= e(url('?p=regie')) ?>">La régie</a>
+        <a class="bouton fant petit" href="<?= e(url('?p=regie')) ?>">Campagne Email</a>
         <?php if ($equipe): ?>
           <a class="bouton fant petit" href="<?= e(url('?p=reglages')) ?>">Réglages et diagnostic</a>
         <?php endif; ?>

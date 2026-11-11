@@ -39,24 +39,24 @@
       <h2>1. Qui nous sommes</h2>
       <?php require __DIR__ . '/partiels/identite-legale.php'; ?>
       <p>Dans tout ce texte, « le service » désigne ce site et les outils qu’il met à
-      disposition : la fabrication de badges, le catalogue de décors, les liens courts,
+      disposition : la fabrication de badges, leur catalogue, les liens courts,
       l’envoi de messages et les rapports qui vont avec. « Vous » désigne la personne qui
       utilise le service, avec ou sans compte.</p>
 
       <h2>2. Ce que le service fait</h2>
-      <p>Le service permet à un organisateur de publier un décor, et à ses invités de
-      composer un badge à partir de ce décor et de leur photo, puis de le partager. Il
+      <p>Le service permet à un Partenaire de publier un badge, et à ses invités de
+      composer le leur à partir de ce badge et de leur photo, puis de le partager. Il
       permet aussi d’envoyer des messages à une audience, de raccourcir des adresses, et de
       mesurer ce que tout cela produit : vues, badges fabriqués, badges emportés, présences
       scannées à l’entrée.</p>
-      <p>Fabriquer un badge ne demande pas de compte. Publier un décor, envoyer des
+      <p>Fabriquer un badge ne demande pas de compte. Publier un badge, envoyer des
       messages, créer des liens ou consulter des rapports en demande un.</p>
 
       <h2>3. Le compte</h2>
       <h3>3.1 La création</h3>
       <p>Vous nous donnez une adresse e-mail valable et un nom. L’adresse doit être la
       vôtre : c’est par elle que passent la confirmation, la réinitialisation du mot de
-      passe et les décisions sur vos décors. Une adresse qui ne vous appartient pas est un
+      passe et les décisions sur vos badges. Une adresse qui ne vous appartient pas est un
       compte que nous suspendrons.</p>
       <p>Vous êtes responsable de votre mot de passe et de ce qui se fait avec votre compte.
       La double authentification est disponible dans votre profil : sur un compte qui publie
@@ -71,25 +71,25 @@
       <p>Nous pouvons suspendre un compte qui enfreint ces conditions, qui met le service en
       danger, ou qui s’en sert pour nuire à quelqu’un. Nous disons toujours pourquoi. Une
       suspension n’efface rien : vos données restent, et un compte rétabli retrouve ses
-      décors.</p>
+      badges.</p>
 
       <h2>4. Vos contenus restent les vôtres</h2>
-      <p>Les décors que vous publiez, les textes que vous écrivez, les images que vous
+      <p>Les badges que vous publiez, les textes que vous écrivez, les images que vous
       téléversez et les listes de contacts que vous constituez vous appartiennent. Nous n’en
       devenons pas propriétaires, nous ne les vendons pas, et nous ne les utilisons pas pour
       autre chose que faire fonctionner le service pour vous.</p>
-      <p>Pour afficher un décor dans le catalogue, l’envoyer dans une vignette de partage et
+      <p>Pour afficher un badge dans le catalogue, l’envoyer dans une vignette de partage et
       le fabriquer dans le navigateur d’un invité, il faut techniquement que nous puissions
       le reproduire et le redimensionner. Vous nous en donnez donc l’autorisation, pour cela
-      seulement, et pour le temps où le décor est publié.</p>
+      seulement, et pour le temps où le badge est publié.</p>
       <p>En publiant un contenu, vous affirmez que vous en avez le droit : que les photos
       sont les vôtres ou que leur auteur vous a autorisé, que les logos que vous apposez
       sont les vôtres ou ceux d’un partenaire qui a dit oui, et que les personnes
       reconnaissables sur une image ont accepté d’y figurer. Nous ne pouvons pas le
       vérifier, et c’est précisément pour cela que la responsabilité est la vôtre.</p>
 
-      <h2>5. La relecture des décors</h2>
-      <p>Un décor soumis par un partenaire passe par une relecture avant d’être publié. Nous
+      <h2>5. La relecture des badges</h2>
+      <p>Un badge soumis par un partenaire passe par une relecture avant d’être publié. Nous
       regardons ce qui se verra : la lisibilité, le respect des marques, et l’absence de
       contenu illégal, haineux, trompeur ou sexuellement explicite. La décision est
       approuvée, à corriger avec le motif, ou refusée avec le motif. Elle vous est notifiée
@@ -100,8 +100,8 @@
       <h2>6. Ce que vous ne pouvez pas faire</h2>
       <ul>
         <li>Publier un contenu illégal, haineux, diffamatoire, trompeur sur l’identité de
-        l’organisateur, ou sexuellement explicite.</li>
-        <li>Faire passer un décor pour celui d’une marque, d’un lieu ou d’une personne sans
+        du Partenaire, ou sexuellement explicite.</li>
+        <li>Faire passer un badge pour celui d’une marque, d’un lieu ou d’une personne sans
         son accord.</li>
         <li>Envoyer des messages à des personnes qui ne les ont pas demandés, ou continuer
         d’écrire à quelqu’un qui s’est désabonné.</li>
@@ -115,7 +115,7 @@
 
       <h2>7. Les offres, les quotas et le paiement</h2>
       <p>Le service propose plusieurs offres. Chacune porte ses propres limites : nombre de
-      décors publiés, nombre de badges par campagne, accès à la régie, aux liens courts et
+      badges publiés, nombre de messages par campagne, accès à la régie, aux liens courts et
       aux canaux d’envoi. Le détail et le prix de chaque offre sont affichés avant l’achat,
       et vos factures sont dans votre espace.</p>
       <p>Un quota atteint ne supprime rien et n’interrompt pas une campagne en cours : il
@@ -139,10 +139,10 @@
       refusé.</p>
 
       <h2>9. Les badges et les QR</h2>
-      <p>Chaque badge fabriqué porte un code unique, lisible par le scanner de
-      l’organisateur à l’entrée. Un badge est valable une fois par personne et par
+      <p>Chaque badge fabriqué porte un code unique, lisible par le scanner du
+      Partenaire à l’entrée. Un badge est valable une fois par personne et par
       campagne : recharger la page rend le même code, elle n’en fabrique pas un second.</p>
-      <p>Un code n’est pas un titre d’accès : c’est l’organisateur qui décide qui entre, et
+      <p>Un code n’est pas un titre d’accès : c’est le Partenaire qui décide qui entre, et
       selon quelles règles. Nous ne garantissons ni l’entrée, ni le déroulement, ni la tenue
       d’un événement annoncé sur le service.</p>
 
@@ -167,12 +167,12 @@
       qui exporte toutes vos données dans un fichier lisible, et un bouton qui supprime
       votre compte. La suppression efface vos identifiants, vos liens courts, vos
       notifications, vos abonnements aux notifications du navigateur et votre historique de
-      koris. Elle détache vos décors et les badges déjà émis de votre compte plutôt que de
+      koris. Elle détache vos badges et les badges déjà émis de votre compte plutôt que de
       les détruire : un badge qu’un invité garde doit continuer de se vérifier à l’entrée, et
-      un décor dont l’adresse circule doit continuer de répondre.</p>
+      un badge dont l’adresse circule doit continuer de répondre.</p>
       <p>Le journal d’activité conserve la trace des actes faits sur le service, avec le nom
       recopié au moment de l’acte. C’est ce qui permet de répondre à « qui a supprimé ce
-      décor » des mois plus tard, et c’est la seule donnée qu’une suppression de compte
+      badge » des mois plus tard, et c’est la seule donnée qu’une suppression de compte
       n’emporte pas. La politique de confidentialité le détaille.</p>
 
       <h2>13. Les modifications</h2>

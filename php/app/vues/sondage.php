@@ -13,7 +13,7 @@
 
     <section class="carte" style="text-align:center;padding:36px 22px">
       <h1 style="margin:0 0 10px">Ce sondage n’est plus ouvert</h1>
-      <p class="aide">Le lien a peut-être expiré, ou l’organisateur a clos son sondage.
+      <p class="aide">Le lien a peut-être expiré, ou le Partenaire a clos son sondage.
       Rien n’est perdu : votre badge, lui, reste valide.</p>
       <p style="margin-top:18px"><a class="bouton fant" href="<?= e(url('')) ?>">Retour à l’accueil</a></p>
     </section>
@@ -26,7 +26,7 @@
       c’est ce qui fait que la moyenne veut dire quelque chose.</p>
       <p style="margin-top:18px">
         <a class="bouton fant"
-           href="<?= e(url('?p=decor&slug=' . rawurlencode((string) $ctx['decor']['slug']))) ?>">Revoir le décor</a>
+           href="<?= e(url('?p=decor&slug=' . rawurlencode((string) $ctx['decor']['slug']))) ?>">Revoir le badge</a>
       </p>
     </section>
 
@@ -70,7 +70,7 @@
         </fieldset>
 
         <div class="champ">
-          <label for="s-mot">Un mot pour l’organisateur ?</label>
+          <label for="s-mot">Un mot pour le Partenaire ?</label>
           <textarea id="s-mot" name="mot" rows="3" maxlength="600"
                     placeholder="Facultatif"><?= e((string) $valeurs['mot']) ?></textarea>
         </div>
@@ -78,7 +78,7 @@
         <button class="bouton" type="submit">Envoyer ma réponse</button>
 
         <p class="aide" style="margin-top:14px">
-          Votre réponse n’est pas signée : l’organisateur voit les notes, pas qui a mis quoi.
+          Votre réponse n’est pas signée : le Partenaire voit les notes, pas qui a mis quoi.
         </p>
       </form>
     </section>

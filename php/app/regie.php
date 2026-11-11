@@ -77,11 +77,11 @@ function entetes_desabonnement(string $jeton): array
  */
 const REGIE_CIBLES = [
     'mes-invites'   => ['Les invités de mes campagnes', 'partenaire'],
-    'segment'       => ['Un segment d’un de mes décors', 'partenaire'],
+    'segment'       => ['Un segment d’un de mes badges', 'partenaire'],
     'liste'         => ['Une liste de mon carnet', 'partenaire'],
     'tous'          => ['Tout le monde', 'equipe'],
-    'organisateurs' => ['Les organisateurs', 'equipe'],
-    'participants'  => ['Les participants', 'equipe'],
+    'organisateurs' => ['Les Partenaires', 'equipe'],
+    'participants'  => ['Les Utilisateurs', 'equipe'],
     'lome'          => ['Lomé', 'equipe'],
     'cotonou'       => ['Cotonou', 'equipe'],
     'abidjan'       => ['Abidjan', 'equipe'],
@@ -163,7 +163,7 @@ const RAPPELS_MODELE = [
      'libelle' => ''],
     ['cle' => 'merci', 'heures' => -15, 'titre' => 'Merci d’être venu',
      'corps' => "C’était une belle soirée. À très vite pour la prochaine.",
-     'libelle' => 'Revoir le décor'],
+     'libelle' => 'Revoir le badge'],
 ];
 
 /**

@@ -9,16 +9,33 @@
   </section>
 
   <?php
-  /* La recherche porte sur le titre, le chapô et le texte : on se souvient
-     rarement d'un titre, mais très bien d'un mot lu dedans. */
+  /* La recherche du blog, à l'identique du catalogue : le champ à gauche
+     (la loupe dedans, le bouton DEHORS), ses suggestions dans un
+     sélecteur, et le bouton bleu qui ferme la ligne. Le sélecteur ne
+     change rien tout seul : il propose une adresse complète, la recherche
+     part au choix du visiteur — le même contrat que les réglages du
+     catalogue. La rangée se replie d'elle-même sur un écran étroit. */
   ?>
-  <form method="get" action="<?= e(url('?p=blog')) ?>" class="rangee chercher chercher-comptes">
+  <form method="get" action="<?= e(url('?p=blog')) ?>" class="catalogue-recherche blogue-recherche">
     <?= permaliens_champ_page('blog') ?>
-    <input type="search" name="q" value="<?= e($cherche) ?>" placeholder="Chercher dans le blog"
-           aria-label="Chercher dans le blog">
-    <button class="bouton fant petit" type="submit">Chercher</button>
+    <div class="catalogue-champ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle>
+        <line x1="16" y1="16" x2="21" y2="21"></line></svg>
+      <input type="search" name="q" value="<?= e($cherche) ?>"
+             placeholder="Chercher dans le blog : un conseil, une ville, un chiffre"
+             aria-label="Chercher dans le blog">
+    </div>
+    <select name="suggestion" aria-label="Recherches suggérées"
+            onchange="this.form.q.value=this.value;this.form.submit()">
+      <option value="">Suggérer</option>
+      <?php foreach (['badges', 'campagne', 'Lomé', 'affiche'] as $sug): ?>
+        <option value="<?= e($sug) ?>" <?= $cherche === $sug ? 'selected' : '' ?>><?= e($sug) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button class="bouton" type="submit">Chercher</button>
     <?php if ($cherche !== ''): ?>
-      <a class="bouton fant petit" href="<?= e(url('?p=blog')) ?>">Tout voir</a>
+      <a class="bouton fant" href="<?= e(url('?p=blog')) ?>">Effacer</a>
     <?php endif; ?>
   </form>
 
@@ -35,7 +52,7 @@
           <a href="<?= e(url('?p=blog')) ?>">Voir tout le blog</a>.
         <?php else: ?>
           Rien de publié pour l’instant. Revenez bientôt,
-          ou <a href="<?= e(url('?p=decors')) ?>">allez voir les décors</a> en attendant.
+          ou <a href="<?= e(url('?p=decors')) ?>">allez voir les badges</a> en attendant.
         <?php endif; ?>
       </p>
     </div>

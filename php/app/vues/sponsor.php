@@ -38,7 +38,7 @@ $nb = static fn(int $n): string => number_format($n, 0, ',', ' ');
     <section class="carte">
       <h2>Nom, logo, lien</h2>
       <p class="aide" style="margin:4px 0 16px">
-        Trois champs. Effacer le nom retire le sponsor de ce décor.
+        Trois champs. Effacer le nom retire le sponsor de ce badge.
       </p>
 
       <form method="post" enctype="multipart/form-data"

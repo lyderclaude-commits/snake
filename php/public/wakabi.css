@@ -94,9 +94,15 @@ a{color:var(--primary-d);text-underline-offset:3px}
   background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);
   padding:7px;box-shadow:0 20px 44px -20px rgba(15,23,42,.4);z-index:40;
 }
-.deroulant > .volet a{padding:9px 11px;border-radius:var(--r10)}
+.deroulant > .volet a{
+  padding:9px 11px;border-radius:var(--r10);
+  color:var(--ink);text-decoration:none;font-size:.9rem;font-weight:500;
+}
 .deroulant > .volet a:hover,
 .deroulant > .volet a[aria-current]{background:var(--bg2)}
+.bord-nouveau > .volet a{display:flex;align-items:center;gap:9px}
+.bord-nouveau > .volet a svg{width:16px;height:16px;flex:none;color:var(--text2)}
+.bord-nouveau > .volet a:hover svg{color:var(--primary-d)}
 
 /* Chrome récent masque le contenu d'un <details> replié avec
    `content-visibility`, que `display` ne peut pas contredire. Sur grand
@@ -256,7 +262,7 @@ p.aide[style*="text-align:center"]{margin-left:auto;margin-right:auto}
    hauteur : les agrandir casserait la ligne de texte, et la norme les
    dispense pour cette raison même. */
 @media (max-width:620px){
-  main p > a:only-child, main .etroit p > a:only-child{
+  main p > a:only-child:not(.retour):not(.bouton), main .etroit p > a:only-child:not(.retour):not(.bouton){
     display:inline-block;padding:11px 8px;margin:-9px -8px;
   }
 }
@@ -287,7 +293,12 @@ p.aide[style*="text-align:center"]{margin-left:auto;margin-right:auto}
 .retour:hover{border-color:var(--primary);color:var(--primary-d);transform:translateX(-2px)}
 .retour:hover i{background:var(--primary);color:#fff}
 .retour:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.fil{margin:0 0 16px}
+/* Une marge au-dessus du fil : le bouton collait au header et se lisait
+   comme en faire partie, un détail de navigation, pas la marche à suivre.
+   Un souffle le présente comme un geste de la PAGE, sous la fenêtre du
+   site ; sur une page de lecture, on descend encore d'un cran, sous la
+   ligne de titre avant de retomber d'où l'on vient. */
+.fil{margin:16px 0 18px}
 
 /* messages */
 .msg{border-radius:var(--r10);padding:13px 16px;font-size:.92rem;margin-bottom:16px;border:1px solid}
@@ -546,6 +557,13 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
   .chercher input[type=text],.chercher input[type=search]{width:auto;flex:1;min-width:0}
 }
 
+/* La recherche du blog partage la forme du catalogue ENTIÈREMENT : le
+   champ, le sélecteur de suggestions et le bouton dans la même rangée,
+   comme les réglages du catalogue à droite du champ. La rangée se
+   replie d'elle-même sur un écran étroit, celle du catalogue aussi. */
+.blogue-recherche{margin:0 0 20px;gap:10px}
+.blogue-recherche select{flex:none;width:auto;min-width:0}
+
 .bloc-comptes{margin-top:22px}
 .bloc-comptes:first-of-type{margin-top:14px}
 .titre-liste{font-size:1.02rem;margin:0 0 2px}
@@ -553,6 +571,31 @@ thead th{border-top:0;background:var(--bg2);font-size:.74rem;letter-spacing:.07e
 /* La recherche des clients est un titre de section, pas un filtre en bout de
    rangée : elle se place à gauche, sous le titre. */
 .chercher-comptes{margin:0 0 10px;margin-left:0;--recherche:270px}
+
+/* ---- la recherche du catalogue des badges ----
+   Une grande barre du vitrail, pas un champ de plus au bord de la liste :
+   c'est la porte d'entree du catalogue, et elle avait la forme d'un
+   champ discret de trois cents pixels. La loupe vit a gauche du champ —
+   et il n'y a qu'UN rang : la barre retrecit, les reglages (ou les
+   suggestions du blogue) se rangent a sa droite, et la page se lit
+   d'un seul regard. Sur un ecran etroit, la rangee se replie d'elle-meme,
+   les filtres passant sous le champ. */
+.catalogue-recherche{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 18px}
+.catalogue-champ{flex:1 1 300px;min-width:0;display:flex;align-items:center;gap:10px;background:var(--paper);
+  border:1px solid var(--border);border-radius:99px;padding:8px 18px;
+  box-shadow:var(--ombre)}
+.catalogue-champ:focus-within{border-color:var(--primary)}
+.catalogue-champ svg{width:18px;height:18px;flex:none;color:var(--text3)}
+.catalogue-champ input[type=search]{flex:1;min-width:0;border:0;background:transparent;
+  padding:6px 0;font:inherit;color:var(--ink)}
+.catalogue-champ input[type=search]:focus{outline:none}
+.catalogue-filtres{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.catalogue-filtres select{flex:none;width:auto;min-width:0}
+@media(max-width:640px){
+  .catalogue-filtres{flex:1 1 100%;flex-wrap:wrap}
+  .catalogue-filtres select{flex:1 1 120px}
+  .catalogue-filtres .bouton{flex:1 1 auto;justify-content:center}
+}
 .liste-comptes{list-style:none;padding:0;margin:0}
 .liste-comptes li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:9px 0;border-top:1px solid var(--border)}
@@ -825,7 +868,7 @@ input[type=file].fichier-natif{
    ici, on ne remplit pas un formulaire. */
 
 .lecture{max-width:780px}
-.lecture .fil{margin:0 0 18px}
+.lecture .fil{margin:26px 0 18px}
 
 .lecture h1{
   font-family:var(--display);font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.12;
@@ -1305,31 +1348,6 @@ tr.pale td a{color:inherit}
   .fmt-pas,.lien-bouton{min-height:40px;padding-top:9px;padding-bottom:9px}
 }
 
-/* ============ le retour en tête de page ============
-   Il flotte au-dessus du contenu, mais du côté du pouce et jamais sur
-   le texte : à droite, à la hauteur où la main tient le téléphone. */
-.haut-de-page{position:fixed;right:18px;bottom:18px;z-index:40;
-  width:46px;height:46px;border-radius:999px;border:1px solid var(--border);
-  background:var(--paper);color:var(--primary);
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:var(--ombre);cursor:pointer;
-  transition:transform .18s,box-shadow .18s,background .18s}
-.haut-de-page svg{width:20px;height:20px}
-.haut-de-page:hover{background:var(--primary);color:#fff;
-  transform:translateY(-2px);box-shadow:0 6px 20px -6px rgba(37,99,235,.5)}
-.haut-de-page:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
-.haut-de-page:active{transform:translateY(0)}
-
-@media (max-width:620px){
-  /* Plus bas et plus petit : le pouce y arrive sans traverser l'écran,
-     et le bouton ne recouvre pas la dernière ligne du pied de page. */
-  .haut-de-page{right:14px;bottom:14px;width:42px;height:42px}
-}
-@media (prefers-reduced-motion:reduce){
-  .haut-de-page{transition:none}
-  .haut-de-page:hover{transform:none}
-}
-
 /* ============ l'invitation aux notifications ============
    Elle partage ce bas d'écran avec le retour en tête : elle à gauche, lui
    à droite, et ils ne se croisent jamais sur un écran large. Sur
@@ -1361,8 +1379,9 @@ tr.pale td a{color:inherit}
 @media (max-width:560px){
   .push-invite{left:12px;right:12px;bottom:12px;width:auto;max-width:none}
   /* La hauteur est posée par le script au moment où la carte s'ouvre :
-     elle dépend du texte, qui dépend de la largeur de l'écran. */
-  body.push-invite-ouverte .haut-de-page{bottom:calc(26px + var(--push-invite-h,180px))}
+     elle dépend du texte, qui dépend de la largeur de l'écran.
+     Le retour en tête, lui, ne se rend que sur l'accueil — une page de
+     guide.css, qui porte désormais ses règles et cette poussée. */
 }
 @media (prefers-reduced-motion:reduce){
   .push-invite{transition:none}
@@ -1824,8 +1843,6 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
    sache lequel il annonce. */
 .bord > .titre-bloc,
 .bord > .bord-tete{margin:30px 0 12px}
-.bord > .bord-onglets + .titre-bloc,
-.bord > .bord-onglets + .bord-tete,
 .bord > .bord-barre + .titre-bloc{margin-top:0}
 
 /* La barre de commande : qui je suis, ce que je cherche, ce que je crée. */
@@ -1858,25 +1875,10 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
 .bord-nouveau > summary:hover{background:var(--primary-d);color:#fff}
 .bord-nouveau[open] > summary{background:var(--primary-d);color:#fff}
 
-/* Les onglets. Une ligne, et la barre bleue dessous : c'est la forme que
-   tout le monde connaît, et elle dit « il y a autre chose à côté ». */
-.bord-onglets{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
-.bord-onglets a{
-  display:inline-flex;align-items:center;gap:7px;padding:10px 16px 12px;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  color:var(--text2);font-size:.92rem;font-weight:600;text-decoration:none;
-}
-.bord-onglets a:hover{color:var(--ink)}
-.bord-onglets a[aria-current]{color:var(--ink);font-weight:700;border-bottom-color:var(--primary)}
-.bord-compte{
-  padding:1px 8px;border-radius:999px;background:var(--rouge);
-  color:#fff;font-size:.75rem;font-weight:700;
-}
-
 /* Un intertitre et sa glose, sur la même ligne. */
 .bord-tete{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .bord-tete h2{margin:0;font-family:var(--display);font-size:1.05rem}
-.bord-tete > a{margin-left:auto;color:var(--primary-d);font-weight:600}
+.bord-tete > a{margin-left:auto;color:var(--primary-d);font-weight:600;text-decoration:none}
 
 /* Sur la page de recherche, la note DIT le résultat — l'adresse du décor,
    l'e-mail du compte. Serrée dans la colonne d'auteur d'une file, elle se
@@ -1951,7 +1953,112 @@ table td.num small{font-weight:400;margin-left:6px;color:var(--text3)}
 .bord-mesure b{font-family:var(--display);font-size:1.2rem}
 .bord-mesure > span:first-of-type{font-size:.82rem;color:var(--text2)}
 
+/* ---- Le tableau de bord refondu --------------------------------
+   Habille a la TailAdmin, menu en haut : fond gris, cartes blanches
+   a l'ombre douce, indicateurs en deux temps (corps + tuile lavee),
+   la file en tableau, le resume de semaine en barres. La structure
+   et les donnees restent celles de la maison. */
+/* Le tableau de bord finit sur une carte : les 80 px de respiration
+   des pages longues n'ont rien a y faire, ils lisaient comme un
+   trou avant le pied de page. */
+.contenu.bord{padding-bottom:24px}
+.bord-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin-bottom:20px}
+.bord-kpi{display:flex;justify-content:space-between;gap:12px;padding:20px 22px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--r16);box-shadow:var(--ombre);
+  text-decoration:none;color:inherit;transition:border-color .15s ease, box-shadow .15s ease}
+.bord-kpi:hover{border-color:var(--primary);box-shadow:0 4px 14px rgba(15,23,42,.1)}
+.bord-kpi-corps{display:flex;flex-direction:column;gap:3px;min-width:0}
+.bord-kpi-nom{font-size:.84rem;font-weight:500;color:var(--text2)}
+.bord-kpi-valeur{font-family:var(--display);font-size:1.7rem;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.bord-kpi-variation{font-size:.79rem;font-weight:600;color:var(--primary)}
+.bord-kpi-variation.haut{color:#15803D}
+.bord-kpi-variation.bas{color:#B91C1C}
+.bord-kpi-tuile{flex:none;width:46px;height:46px;border-radius:11px;display:grid;place-items:center;align-self:flex-start}
+.bord-kpi-tuile svg{width:22px;height:22px}
+.bord-kpi.badges .bord-kpi-tuile{background:var(--primary-wash);color:var(--primary-d)}
+.bord-kpi.telechargements .bord-kpi-tuile{background:#F4F3FF;color:#6D28D9}
+.bord-kpi.campagnes .bord-kpi-tuile{background:#E9F9F0;color:#15803D}
+.bord-kpi.comptes .bord-kpi-tuile{background:#FFF4E8;color:#B45309}
+
+.bord-deux{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:20px;margin-bottom:20px}
+.bord-deux-seul{grid-template-columns:1fr}
+.bord-file{padding:0}
+.bord-file .bord-tete{padding:16px 18px 0;margin-bottom:4px}
+.bord-file .bord-vide{padding:8px 18px 14px}
+.bord-file .bord-calme{margin:0 18px;padding:12px 0 14px;border-top:1px solid var(--border)}
+.bord-table{width:100%;border-collapse:collapse}
+.bord-table th{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text3);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border)}
+.bord-table td{padding:12px;border-bottom:1px solid var(--border);font-size:.88rem;vertical-align:middle}
+.bord-table tr:last-child td{border-bottom:0}
+.bord-table th:first-child,.bord-table td:first-child{padding-left:18px}
+.bord-table th:last-child,.bord-table td:last-child{padding-right:18px}
+.bord-t-td{font-weight:600}
+.bord-t-auteur{color:var(--text2);white-space:nowrap}
+.bord-table .bord-age{width:auto;white-space:nowrap}
+.bord-t-action{text-align:right;white-space:nowrap}
+.bord-table th.bord-t-n,.bord-table td.bord-t-n{text-align:right;font-variant-numeric:tabular-nums}
+.bord-t-lien{font-weight:600;color:var(--ink);text-decoration:none}
+.bord-t-lien:hover{color:var(--primary-d)}
+.bord-t-badge .aide{display:block;margin:2px 0 0}
+.bord-inscrits{display:flex;flex-direction:column}
+.bord-inscrits .liste-comptes{flex:1;display:flex;flex-direction:column}
+.bord-inscrits-sous{margin:0 0 6px;font-size:.8rem;color:var(--text3)}
+
+.bord-reprendre-carte{padding:0}
+.bord-reprendre-carte .bord-tete{padding:16px 18px 0;margin-bottom:4px}
+.bord-reprendre-ligne{display:flex;align-items:center;gap:13px;padding:12px 18px;
+  border-top:1px solid var(--border);text-decoration:none;color:inherit}
+.bord-reprendre-ligne:first-of-type{border-top:0}
+.bord-reprendre-ligne:hover b{color:var(--primary-d)}
+.bord-reprendre-icone{flex:none;width:40px;height:40px;border-radius:10px;
+  background:var(--primary-wash);color:var(--primary-d);display:grid;place-items:center}
+.bord-reprendre-icone svg{width:19px;height:19px}
+.bord-reprendre-quoi{flex:1;min-width:0}
+.bord-reprendre-quoi b{display:block;font-size:.9rem;font-weight:600;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bord-reprendre-quoi small{font-size:.78rem;color:var(--text3)}
+.bord-chev{color:var(--text3);font-size:1.1rem;line-height:1}
+
+a.bord-activite{display:flex;gap:26px;padding:20px 22px;box-shadow:var(--ombre);
+  color:var(--ink);text-decoration:none}
+a.bord-activite:hover{border-color:var(--primary)}
+.bord-activite-graph{flex:1;min-width:0;display:flex;flex-direction:column}
+.bord-activite-tete{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.bord-semaine-titre{font-family:var(--display);font-size:1rem;font-weight:700;color:var(--ink);
+  text-transform:none;letter-spacing:normal}
+.bord-histo{display:flex;gap:14px;align-items:flex-end;flex:1;min-height:120px}
+.bord-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end;min-width:0}
+.bord-col i{width:100%;max-width:44px;border-radius:7px;background:var(--primary-wash);display:block}
+.bord-col i.aujourdhui{background:var(--primary)}
+.bord-col small{font-size:.7rem;color:var(--text3);font-weight:500}
+.bord-histo-vide{display:flex;align-items:center;flex:1;min-height:120px;font-size:.88rem;color:var(--text3);
+  background:var(--bg2);border-radius:10px;padding:0 16px}
+.bord-activite-resume{flex:none;width:270px;border-left:1px solid var(--border);padding-left:22px;display:block}
+.bord-resume-titre{display:block;font-size:.95rem;font-weight:700;color:var(--ink);text-decoration:none}
+.bord-resume-sous{display:block;font-size:.78rem;color:var(--text3);margin:2px 0 13px;text-decoration:none}
+.bord-resume-barre{display:block;margin-bottom:12px}
+.bord-barre-l{display:flex;justify-content:space-between;font-size:.84rem;font-weight:500;margin-bottom:5px;color:var(--ink);text-decoration:none}
+.bord-barre-l span:last-child{color:var(--text2);font-variant-numeric:tabular-nums}
+.bord-barre-f{display:block;height:8px;border-radius:99px;background:var(--bg2);overflow:hidden}
+.bord-barre-f i{display:block;height:100%;border-radius:99px;background:var(--primary)}
+.bord-barre-f i.violet{background:#7C3AED}
+.bord-barre-f i.vert{background:#16A34A}
+.bord-barre-f i.orange{background:#F59E0B}
+
 @media(max-width:1000px){
+  .bord-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bord-deux{grid-template-columns:1fr}
+  .bord-activite{flex-direction:column;gap:16px}
+  .bord-activite-resume{width:auto;border-left:0;padding-left:0;
+    border-top:1px solid var(--border);padding-top:12px}
+}
+@media(max-width:640px){
+  .bord-table th:nth-child(3),.bord-table td:nth-child(3){display:none}
+  .bord-table th,.bord-table td{padding:9px 8px}
+  .bord-table th:first-child,.bord-table td:first-child{padding-left:14px}
+  .bord-table th:last-child,.bord-table td:last-child{padding-right:14px}
+}@media(max-width:1000px){
   .bord-mesures{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:900px){

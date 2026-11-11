@@ -68,7 +68,7 @@ if ($post) {
             /* Pas de `e()` ici : la vue échappe tout ce qu'elle affiche, et
                échapper deux fois rendrait « &amp;lt; » à l'écran. */
             $erreur = 'Les deux préfixes doivent différer : avec le même, « /' . $b
-                    . '/quelque-chose » pourrait désigner un article ou un décor.';
+                    . '/quelque-chose » pourrait désigner un article ou un badge.';
         } elseif (in_array($b, PERMALIENS_FIXES, true) || in_array($d, PERMALIENS_FIXES, true)) {
             $erreur = 'Ce préfixe est déjà l’adresse d’une page du site. '
                     . 'Choisissez-en un autre, sinon cette page deviendrait inatteignable.';

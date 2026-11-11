@@ -50,7 +50,14 @@ function icone(string $nom): string
                   . '<circle cx="9" cy="9.5" r="1.9"/>'
                   . '<path d="M3.6 17.2 8.4 12.6a2 2 0 0 1 2.7-.1l5.1 4.7"/>'
                   . '<path d="M14.6 14.2l1.7-1.6a2 2 0 0 1 2.7 0l1.4 1.3"/>',
-    ];
+
+// Fleche vers le bas posee sur un plateau - le telechargement
+        'telechargement' => '<path d="M12 4.5v10.5"/><path d="M7.5 10.5 12 15l4.5-4.5"/>'
+                          . '<path d="M4.5 19.5h15"/>',
+
+        // Curseurs sur deux reglettes - les reglages
+        'reglage' => '<line x1="4" y1="7.5" x2="20" y2="7.5"/><circle cx="9.5" cy="7.5" r="2.2"/>'
+                   . '<line x1="4" y1="16.5" x2="20" y2="16.5"/><circle cx="14.5" cy="16.5" r="2.2"/>',    ];
 
     $d = $chemins[$nom] ?? '';
     return $d === ''

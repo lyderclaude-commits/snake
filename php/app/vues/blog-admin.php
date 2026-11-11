@@ -101,38 +101,96 @@ $etats = [
   <?php if ($equipe): ?>
     <?php
     /**
-     * La source du guide, et l'état de la fusion.
+     * Le panneau d'import : le guide entre ici, et il ne repart plus.
      *
-     * Le blog public mêle les articles d'ici à ceux du WordPress de
-     * wakabileguide.com, triés par date. Le lecteur ne voit qu'un blog ;
-     * la rédaction, elle, a besoin de savoir d'où vient l'autre moitié et
-     * de pouvoir la débrancher — sinon le jour de la panne, personne ne
-     * sait quoi regarder.
+     * Les articles du guide ne sont plus projetés à la volée sur le blog
+     * public : ils SAISISSENT ici — texte converti, images téléchargées
+     * et hébergées chez nous, dates du guide — puis vivent comme les
+     * articles écrits dans Boost. Ce panneau est leur salle d'arrivée ;
+     * il n'est ouvert qu'à l'équipe, parce que c'est elle qui répond de
+     * ce qui paraît ici.
      */
     $_ok = $wp_etat !== null && $wp_etat['total'] > 0;
+    $_nb_importes = 0;
+    foreach ($liste_guide as $g) {
+        if ($g['importe_id'] !== '') {
+            $_nb_importes++;
+        }
+    }
     ?>
     <div class="carte" style="margin-top:16px">
-      <h3 style="margin:0 0 6px">Les articles du guide</h3>
-      <p class="aide" style="margin:0 0 14px">Le blog public montre ces articles-là et les vôtres
-      dans une seule liste, du plus récent au plus ancien. Ils sont lus depuis le WordPress du
-      guide et gardés en mémoire dix minutes, donc une correction là-bas met au plus dix minutes
-      à paraître ici.</p>
+      <h3 style="margin:0 0 6px">Importer les articles du guide</h3>
+      <p class="aide" style="margin:0 0 14px">Le blog public ne lit plus le WordPress du guide :
+      ce qui paraît ici est écrit dans notre base. Un article du guide S’IMPORTE — texte
+      converti au format de la maison, images téléchargées et hébergées ici, dates du guide gardées —
+      puis il vit comme un article à vous, modifiable et relectable. Un article déjà importé ne se
+      réimporte jamais : cochez, cliquez, et si un chargement tombe à court de temps, relancez —
+      le travail achevé est gardé, il ne reste que ce qui manque.</p>
 
       <?php if ($wp_etat === null): ?>
-        <p class="msg" style="margin:0 0 14px">Source débranchée : le blog ne montre que vos articles.</p>
+        <p class="msg" style="margin:0 0 14px">Source débranchée : rien à importer tant que
+        l’adresse de l’API n’est pas enregistrée.</p>
       <?php elseif ($_ok): ?>
         <p class="msg ok" style="margin:0 0 14px" role="status">
-          <strong><?= (int) $wp_etat['total'] ?> article<?= $wp_etat['total'] > 1 ? 's' : '' ?></strong>
-          repris du guide<?= $wp_etat['frais'] ? '' : ', d’après la dernière lecture réussie' ?>.
+          <strong><?= (int) $wp_etat['total'] ?> article<?= (int) $wp_etat['total'] > 1 ? 's' : '' ?> au catalogue</strong>
+          du guide<?= $_nb_importes > 0 ? ' — déjà ' . $_nb_importes . ' chez nous' : ''
+          ?><?= $wp_etat['frais'] ? '' : ', d’après la dernière lecture réussie' ?>.
         </p>
       <?php else: ?>
         <p class="msg err" style="margin:0 0 14px" role="alert">
-          <strong>Le guide ne répond pas.</strong> Le blog reste en ligne avec vos articles seuls.
-          Vérifiez l’adresse ci-dessous, ou laissez le champ vide pour débrancher la source.
+          <strong>Le guide ne répond pas.</strong> Vérifiez l’adresse ci-dessous — le blog public,
+          lui, reste en ligne sans rien réclamer à personne.
         </p>
       <?php endif; ?>
 
-      <form method="post" action="<?= e(url('?p=blog-admin')) ?>">
+      <?php if ($_ok): ?>
+        <form method="post" action="<?= e(url('?p=blog-import')) ?>">
+          <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+          <div class="tableau" style="margin-bottom:14px">
+            <table>
+              <thead>
+                <tr><th style="width:30px"></th><th>Titre</th><th>Publié</th><th>Auteur</th><th>État</th></tr>
+              </thead>
+              <tbody>
+                <?php foreach ($liste_guide as $g): ?>
+                  <?php $_imp = $g['importe_id'] !== ''; ?>
+                  <tr<?= $_imp ? ' style="opacity:.55"' : '' ?>>
+                    <td><?= $_imp ? '' : '<input type="checkbox" name="ids[]" value="' . (int) $g['idwp'] . '">' ?></td>
+                    <td>
+                      <a href="<?= e((string) ($g['lien_source'] ?: '#')) ?>" target="_blank" rel="noopener noreferrer">
+                        <?= e($g['titre']) ?></a>
+                      <?php if ($g['rubrique']): ?>
+                        <span class="aide" style="display:block"><?= e($g['rubrique']) ?></span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="aide"><?= $g['publie_le'] ? e(gmdate('d/m/Y', strtotime((string) $g['publie_le']))) : '?' ?></td>
+                    <td class="aide"><?= e($g['auteur_nom'] ?: '—') ?></td>
+                    <td><?php if ($_imp): ?>
+                      <a class="pastille publie" href="<?= e(url('?p=blog&a=' . urlencode($g['slug_local']))) ?>">Importé · voir</a>
+                    <?php else: ?>
+                      <span class="aide">À importer</span>
+                    <?php endif; ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <div class="rangee" style="gap:10px;flex-wrap:wrap">
+            <button class="bouton" type="submit"
+                    onclick="return confirm('Importer les articles cochés : leurs textes et leurs images seront recopiés ici, puis publiés. Continuer ?')">
+              Importer la sélection</button>
+            <span class="aide">25 articles au plus par clic — relancez pour la suite.</span>
+          </div>
+        </form>
+      <?php endif; ?>
+
+      <?php
+      /* L'adresse de l'API reste réglable ici : c'est le seul bouton qui
+         répare le panneau quand WordPress déménage, sans FTP, depuis un
+         téléphone. Laisser le champ vide débranche tout — le blog ne
+         dépend plus de ce réglage, l'import seul, oui. */
+      ?>
+      <form method="post" action="<?= e(url('?p=blog-admin')) ?>" style="margin-top:18px">
         <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
         <div class="champ">
           <label for="wp_racine">Adresse de l’API WordPress</label>
@@ -140,10 +198,10 @@ $etats = [
                  placeholder="<?= e($wp_defaut) ?>" inputmode="url" spellcheck="false"
                  autocapitalize="off" autocomplete="off">
           <p class="aide">Par défaut&nbsp;: <code><?= e($wp_defaut) ?></code>.
-          Videz le champ pour ne plus rien demander au guide.</p>
+          Videz le champ pour débrancher l’import du guide.</p>
         </div>
         <div class="rangee" style="gap:10px;flex-wrap:wrap">
-          <button class="bouton" type="submit">Enregistrer</button>
+          <button class="bouton fant" type="submit">Enregistrer l’adresse</button>
           <a class="bouton fant" href="<?= e(url('?p=blog')) ?>">Voir le blog</a>
         </div>
       </form>

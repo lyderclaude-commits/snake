@@ -87,10 +87,10 @@ $etats = [
     </div>
 
     <div class="carte" style="margin-top:16px">
-      <h3 style="margin:0 0 4px">Le décor dont parle l’article <span style="font-weight:400">(facultatif)</span></h3>
+      <h3 style="margin:0 0 4px">Le badge dont parle l’article <span style="font-weight:400">(facultatif)</span></h3>
       <p class="aide" style="margin:0 0 14px">Il apparaît en bas de l’article, avec un bouton
       pour faire son badge. Un récit de soirée qui ne mène nulle part est une belle page ;
-      le même récit qui mène au décor est une campagne.</p>
+      le même récit qui mène au badge est une campagne.</p>
 
       <?php
       /**
@@ -103,7 +103,7 @@ $etats = [
        */
       ?>
       <div class="champ">
-        <label for="a-decor">Le décor</label>
+        <label for="a-decor">Le badge</label>
         <select id="a-decor" name="decor_id">
           <option value="">Aucun</option>
           <?php foreach ($liables as $d): ?>
@@ -114,11 +114,11 @@ $etats = [
           <?php endforeach; ?>
         </select>
         <?php if (!$liables): ?>
-          <p class="aide">Vous n’avez encore aucun décor, et aucun n’est publié.
+          <p class="aide">Vous n’avez encore aucun badge, et aucun n’est publié.
           <a href="<?= e(url('?p=creer')) ?>">En créer un</a>.</p>
         <?php else: ?>
-          <p class="aide">Un décor pas encore publié peut être choisi : la carte n’apparaîtra
-          au lecteur qu’une fois le décor en ligne.</p>
+          <p class="aide">Un badge pas encore publié peut être choisi : la carte n’apparaîtra
+          au lecteur qu’une fois le badge en ligne.</p>
         <?php endif; ?>
       </div>
     </div>

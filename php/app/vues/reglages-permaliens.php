@@ -79,7 +79,7 @@ $racine = base_url() . '/';
     <div class="carte" style="margin-top:16px">
       <h3 style="margin:0 0 4px">Les deux préfixes</h3>
       <p class="aide" style="margin:0 0 16px">Ce qui précède le nom d’un article ou d’un
-      décor. Ils doivent différer : avec le même mot, <code>/x/soiree-blanche</code>
+      badge. Ils doivent différer : avec le même mot, <code>/x/soiree-blanche</code>
       pourrait désigner l’un ou l’autre.</p>
 
       <div class="grille g2">
@@ -90,7 +90,7 @@ $racine = base_url() . '/';
           <p class="aide"><code><?= e($racine) ?><span data-apercu-blog><?= e($base_blog) ?></span>/mon-article</code></p>
         </div>
         <div class="champ">
-          <label for="permaliens_decors">Préfixe des décors</label>
+          <label for="permaliens_decors">Préfixe des badges</label>
           <input id="permaliens_decors" name="permaliens_decors" type="text" autocomplete="off"
                  data-base="decors" placeholder="decors" value="<?= e($base_decors) ?>">
           <p class="aide"><code><?= e($racine) ?><span data-apercu-decors><?= e($base_decors) ?></span>/soiree-blanche</code></p>
@@ -216,11 +216,11 @@ $racine = base_url() . '/';
     var fin = (barre && barre.checked) ? '/' : '';
 
     var lignes = lisible
-      ? [['Le catalogue', d + fin], ['Un décor', d + '/soiree-blanche-lome' + fin],
+      ? [['Le catalogue', d + fin], ['Un badge', d + '/soiree-blanche-lome' + fin],
          ['Le blog', b + fin], ['Un article', b + '/remplir-une-salle-a-lome' + fin],
          ['Devenir partenaire', 'partenaires' + fin]]
       : [['Le catalogue', 'index.php?p=decors'],
-         ['Un décor', 'index.php?p=decor&slug=soiree-blanche-lome'],
+         ['Un badge', 'index.php?p=decor&slug=soiree-blanche-lome'],
          ['Le blog', 'index.php?p=blog'],
          ['Un article', 'index.php?p=blog&a=remplir-une-salle-a-lome'],
          ['Devenir partenaire', 'index.php?p=partenaires']];

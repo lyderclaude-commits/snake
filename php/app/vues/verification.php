@@ -37,7 +37,7 @@ $moi = utilisateur_courant();
           messageries le suivent avant vous pour vérifier où il mène. Que ce soit vous ou eux
           qui l’ayez ouvert en premier ne change rien : <strong>l’adresse est confirmée</strong>.
         <?php else: ?>
-          Vous pouvez maintenant soumettre vos décors à la relecture. L’équipe s’engage à
+          Vous pouvez maintenant soumettre vos badges à la relecture. L’équipe s’engage à
           répondre sous 24 heures ouvrées, et sa décision vous parviendra à cette adresse.
         <?php endif; ?>
       </p>

@@ -5,7 +5,7 @@
  * Un seul formulaire, court, et le prix annoncé avant le premier champ.
  * L'adresse courte montrée en bas n'est PAS le vrai code : il se tire au
  * moment de la création. C'est un exemple, et l'écran le dit, parce
- * qu'afficher « wkb.link/Gk7mQa » comme un fait donnerait une adresse que
+ * qu'afficher « wkb.tg/Gk7mQa » comme un fait donnerait une adresse que
  * personne ne pourra jamais utiliser.
  */
 $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
@@ -74,20 +74,29 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
         parmi les autres.</p>
       </div>
 
+      <?php
+      /* Le domaine se choisit ICI, avant même d'avoir un compte : on ne
+         pose pas une question d'affiche après le mur. L'exemple suit le
+         choix, sans recharger la page. */
+      ?>
+      <div class="champ">
+        <label for="domaine">Domaine du lien</label>
+        <select id="domaine" name="domaine">
+          <option value="">Automatique — le domaine du site</option>
+          <?php foreach (DOMAINES_LIENS_COURTS as $_d): ?>
+            <option value="<?= e($_d) ?>" <?= $valeurs['domaine'] === $_d ? 'selected' : '' ?>><?= e($_d) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <p class="aide">Choisissez le domaine qui va là où vous collerez l'affiche :
+        par exemple <code id="exemple-lien"><?= e(lien_court_url('AbC123', $valeurs['domaine'] ?: null)) ?></code>.</p>
+      </div>
+
       <div class="champ">
         <label for="campagne-plus-tard">Campagne liée</label>
         <input id="campagne-plus-tard" type="text" disabled
                value="Vous la choisirez une fois connecté">
         <p class="aide">Un lien peut se rattacher à une de vos campagnes, pour que ses clics
         apparaissent dans son rapport. Vos campagnes n’existent pas encore.</p>
-      </div>
-
-      <div class="champ">
-        <span class="champ-titre">Votre adresse courte</span>
-        <p class="mono" style="font-weight:700;font-size:1.05rem;color:var(--primary-d);margin:0">
-          <?= e(lien_court_url('AbC123')) ?>
-        </p>
-        <p class="aide">Un exemple : le vôtre se tire à la création, et ne change plus.</p>
       </div>
 
       <button class="bouton" type="submit" style="width:100%;justify-content:center;margin-top:6px">
@@ -116,6 +125,23 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
   </div>
 
   <p class="aide" style="text-align:center;margin-top:14px">
-    <a href="<?= e(url('?p=accueil')) ?>">Retour à l’accueil</a>
+    <a href="<?= e(url('?p=accueil')) ?>">Retour à l'accueil</a>
   </p>
+
+  <script>
+  (function () {
+    var s = document.getElementById('domaine');
+    var ex = document.getElementById('exemple-lien');
+    if (!s || !ex) { return; }
+    var maj = function () {
+      var d = s.value;
+      ex.textContent = (d ? 'https://' + d : ex.dataset.auto) + '/AbC123';
+    };
+    /* La forme « automatique » dépend de l'installation ; elle arrive toute
+       prête dans une donnée du champ, écrite par le serveur. */
+    ex.dataset.auto = <?= json_encode((string) preg_replace('~/AbC123$~', '', lien_court_url('AbC123')), JSON_UNESCAPED_UNICODE) ?>;
+    s.addEventListener('change', maj);
+    maj();
+  })();
+  </script>
 </div>

@@ -40,6 +40,7 @@ require __DIR__ . '/app/sponsor.php';
 require __DIR__ . '/app/sondage.php';
 require __DIR__ . '/app/brouillon.php';
 require __DIR__ . '/app/vitrine.php';
+require __DIR__ . '/app/guide-api.php';
 require __DIR__ . '/app/icones-guide.php';
 require __DIR__ . '/app/wordpress.php';
 require __DIR__ . '/app/bord.php';
@@ -145,7 +146,7 @@ switch ($page) {
 
     case 'accueil':
         vue('accueil', [
-            'titre' => seo_reglage('seo_nom_site') . ' · le badge qui remplit la salle',
+            'titre' => seo_reglage('seo_nom_site') . ' - Le guide des bons coins',
             'description' => seo_reglage('seo_description'),
             /**
              * `WebSite` sur la seule page d'accueil, et nulle part ailleurs.
@@ -236,7 +237,13 @@ switch ($page) {
          */
         $_page_n = max(1, (int) ($_GET['n'] ?? 1));
         $_cherche = trim((string) ($_GET['q'] ?? ''));
-        $_cat = decors_page($_page_n, DECORS_PAR_PAGE, $_cherche);
+        $_ville = trim((string) ($_GET['ville'] ?? ''));
+        $_tri = trim((string) ($_GET['tri'] ?? ''));
+        $_cat = decors_page($_page_n, DECORS_PAR_PAGE, $_cherche, $_ville, $_tri);
+        // Celle qui a VRAIMENT été servie : un filtre inconnu se perd en
+        // route comme une page 40 d'un catalogue qui en a dix-huit.
+        $_ville = $_cat['ville'];
+        $_tri = $_cat['tri'];
         $_liste = $_cat['liste'];
         // Celle qui a VRAIMENT été servie : un lien vieilli vers la page 40
         // d'un catalogue qui en a dix-huit ramène la dernière, et l'écran
@@ -244,24 +251,26 @@ switch ($page) {
         $_page_n = $_cat['page'];
         vue('decors', [
             'titre' => $_cherche !== ''
-                ? 'Recherche « ' . $_cherche . ' » · Les décors'
+                ? 'Recherche « ' . $_cherche . ' » · Les Badges'
                 : ($_page_n > 1
-                    ? 'Les décors, page ' . $_page_n . ' · ' . seo_reglage('seo_nom_site')
-                    : 'Les décors · ' . seo_reglage('seo_nom_site')),
+                    ? 'Les Badges, page ' . $_page_n . ' · ' . seo_reglage('seo_nom_site')
+                    : 'Les Badges · ' . seo_reglage('seo_nom_site')),
             'page_n' => $_page_n,
             'cherche' => $_cherche,
+            'ville' => $_ville,
+            'tri' => $_tri,
             'pages' => $_cat['pages'],
             'total' => $_cat['total'],
-            'description' => 'Choisissez un décor, ajoutez votre photo, partagez votre badge. '
+            'description' => 'Choisissez un badge, ajoutez votre photo, partagez-le. '
                 . 'Sans compte, en trente secondes. Lomé, Cotonou, Abidjan.',
             'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
-                      ['Les décors', url_canonique(['p' => 'decors'])]],
+                      ['Les Badges', url_canonique(['p' => 'decors'])]],
             // Une liste ordonnée plutôt qu'un `Product` par décor : on ne
             // vend rien au visiteur, et annoncer un produit sans prix ni
             // disponibilité fabrique un balisage que Google signale.
             'jsonld' => [
                 '@type' => 'ItemList',
-                'name' => 'Les décors Wakabi',
+                'name' => 'Les Badges Wakabi',
                 'numberOfItems' => count($_liste),
                 'itemListElement' => array_values(array_map(
                     fn(int $i, array $d) => [
@@ -322,6 +331,7 @@ switch ($page) {
     case 'blog-editer':
     case 'blog-relecture':
     case 'blog-action':
+    case 'blog-import':
         require RACINE . '/app/actions/blog-admin.php';
 
     /**
@@ -400,7 +410,7 @@ switch ($page) {
                 'description' => seo_description(
                     (string) $d['sous_titre'],
                     (string) $d['titre'],
-                    'Cette campagne est terminée. Retrouvez les décors du moment sur '
+                    'Cette campagne est terminée. Retrouvez les badges du moment sur '
                         . seo_reglage('seo_nom_site') . '.'
                 ),
                 'og_titre' => $d['titre'],
@@ -462,8 +472,8 @@ switch ($page) {
         }
         if ($_couche_cadre !== null && $_couche_cadre !== ''
             && chemin_cadre($_couche_cadre) === null) {
-            $_cadre_manque = 'Le fichier du cadre de ce décor est introuvable sur le serveur : '
-                . 'le badge ne peut pas être fabriqué. L’organisateur doit le téléverser à nouveau '
+            $_cadre_manque = 'Le fichier du cadre de ce badge est introuvable sur le serveur : '
+                . 'le badge ne peut pas être fabriqué. Le Partenaire doit le téléverser à nouveau '
                 . 'depuis « Modifier », ou restaurer une sauvegarde.';
         }
 
@@ -512,7 +522,7 @@ switch ($page) {
             'og_image' => url_og($d),
             'canonique' => $_dcan,
             'fil' => [[seo_reglage('seo_nom_site'), base_url() . '/'],
-                      ['Les décors', url_canonique(['p' => 'decors'])],
+                      ['Les Badges', url_canonique(['p' => 'decors'])],
                       [(string) $d['titre'], $_dcan]],
             'jsonld' => [
                 '@type' => 'CreativeWork',
@@ -723,6 +733,10 @@ switch ($page) {
     case 'diffusion':
         require RACINE . '/app/actions/diffusion.php';
 
+    /* La page Notification : push, Telegram et WhatsApp d'un seul geste. */
+    case 'notification':
+        require RACINE . '/app/actions/notification.php';
+
     case 'regie':
     case 'regie-ecrire':
     case 'regie-campagne':
@@ -926,6 +940,11 @@ switch ($page) {
     case 'tarifs':
     case 'cgu':
     case 'confidentialite':
+    case 'sortir-lome':
+    case 'sortir-cotonou':
+    case 'lieux':
+    case 'agenda':
+    case 'tickets':
         [$_v, $_t, $_d] = PAGES_CONTENU[$page];
         vue($_v, ['titre' => $_t . ' · ' . seo_reglage('seo_nom_site'), 'description' => $_d]);
 
@@ -938,6 +957,33 @@ switch ($page) {
      */
     case 'contact':
         require RACINE . '/app/actions/contact.php';
+
+    /**
+     * La fiche d'un lieu du guide.
+     *
+     * La liste des lieux mène ici : cliquer une rangée ouvre la fiche,
+     * comme dans l'application, au lieu d'envoyer le visiteur sur Google
+     * Maps avant qu'il ait lu. Le lieu vient de l'API du backend officiel
+     * (api_lieu_par_id) ; inconnu, 404 — une adresse qui ne promet rien
+     * ne doit rien servir, comme pour un décor non publié.
+     */
+    case 'lieu':
+        $_lieu = api_lieu_par_id((string) ($_GET['id'] ?? ''));
+        if (!$_lieu) {
+            http_response_code(404);
+            vue('introuvable', ['titre' => 'Lieu introuvable', 'indexable' => false]);
+        }
+        $_ville_label = $_lieu['ville'] === 'cotonou' ? 'Cotonou' : 'Lomé';
+        vue('guide-lieu', [
+            'titre' => $_lieu['nom'] . ' — ' . seo_reglage('seo_nom_site'),
+            'description' => seo_description(
+                $_lieu['description'],
+                $_lieu['info'],
+                $_lieu['nom'] . ', ' . $_ville_label . '. Lieux et événements sur ' . seo_reglage('seo_nom_site') . '.'
+            ),
+            'li' => $_lieu,
+            'ville_page' => $_lieu['ville'] === 'cotonou' ? 'sortir-cotonou' : 'sortir-lome',
+        ]);
 
     case 'creer':
         require RACINE . '/app/actions/creer.php';
@@ -1003,7 +1049,6 @@ switch ($page) {
         $_commun = [
             'stats' => $_stats,
             'semaine' => indicateurs(7),
-            'a_traiter' => count($_a_faire),
             'nouveau' => bord_nouveau($u),
         ];
 
@@ -1025,8 +1070,13 @@ switch ($page) {
             'titre' => 'Tableau de bord',
             'a_faire' => $_a_faire,
             'sans_urgence' => bord_sans_urgence($u, $_stats, regie_en_attente_denvoi()),
-            'reprendre' => bord_reprendre($u),
-            'ou_aller' => bord_ou_aller($u, $_stats),
+            'reprendre' => bord_reprendre($u, 3),
+            'serie' => telechargements_par_jour(7),
+            // Les deux sections venues de « Les chiffres » : ce que le
+            // catalogue porte, et qui vient de signer.
+            'tetes' => decors_en_tete(6),
+            'nouveaux' => comptes_recents(4),
+            'roles' => comptes_par_role(),
         ]);
 
     /**
@@ -1471,7 +1521,7 @@ switch ($page) {
     case 'api-calque-image':
         $u = utilisateur_courant();
         if ($u !== null && !droit($u, 'decors_siens')) {
-            json_repondre(['erreur' => 'Ce compte ne crée pas de décors.']);
+            json_repondre(['erreur' => 'Ce compte ne crée pas de badges.']);
         }
         verifier_csrf();
 

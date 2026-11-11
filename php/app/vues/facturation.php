@@ -214,7 +214,7 @@ $regler = static function (array $f): string {
     <div class="tableau">
       <table>
         <thead>
-          <tr><th>Organisateur</th><th>Offre</th><th>Période en cours</th><th>Reste</th>
+          <tr><th>Partenaire</th><th>Offre</th><th>Période en cours</th><th>Reste</th>
           <th class="chiffre">Dernier document</th><th></th></tr>
         </thead>
         <tbody>

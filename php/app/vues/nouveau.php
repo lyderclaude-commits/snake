@@ -104,12 +104,12 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
 ?>
 <div class="contenu">
   <section class="entete" style="padding-bottom:12px">
-    <h1><?= $modifie ? 'Modifier le décor' : 'Nouveau décor' ?></h1>
+    <h1><?= $modifie ? 'Modifier le badge' : 'Nouveau badge' ?></h1>
     <?php if ($modifie): ?>
       <p><?= e($modifie['titre']) ?>
         <span class="pastille <?= e($modifie['statut']) ?>"><?= e(statut_libelle($modifie['statut'])) ?></span>
       </p>
-      <p class="aide">L’adresse du décor (<code>/<?= e($modifie['slug']) ?></code>) ne change pas :
+      <p class="aide">L’adresse du badge (<code>/<?= e($modifie['slug']) ?></code>) ne change pas :
       elle vit dans des liens déjà partagés et dans les QR des badges déjà téléchargés.</p>
     <?php elseif ($par_fichier): ?>
       <p>Votre cadre, la fenêtre photo, et les textes de la campagne.
@@ -124,7 +124,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
 
   <?php if ($repris): ?>
     <div class="msg ok" role="status">
-      <strong>Votre décor vous attendait, le voici.</strong>
+      <strong>Votre badge vous attendait, le voici.</strong>
       Rien n’a été perdu : vérifiez, puis publiez.
     </div>
   <?php endif; ?>
@@ -176,7 +176,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
        * depuis n'importe quelle étape.
        */
       $etapes = $par_fichier ? [
-        'cadre'     => ['Votre décor',  'Le fichier que vous avez préparé'],
+        'cadre'     => ['Votre badge',  'Le fichier que vous avez préparé'],
         'campagne'  => ['La campagne',  'Textes, ville, destination'],
         'apparence' => ['L’apparence',  'Placement et tailles'],
       ] : [
@@ -248,7 +248,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
         ?>
         <div class="champ sd-galerie-champ"<?= $par_fichier ? ' hidden' : '' ?>>
           <span class="champ-titre">Modèle</span>
-          <div class="sd-galerie" role="radiogroup" aria-label="Modèle de décor">
+          <div class="sd-galerie" role="radiogroup" aria-label="Modèle de badge">
             <?php foreach ($par_nature as $nature => $ids): ?>
               <?php foreach ($ids as $id): if (!isset($fiches[$id])) { continue; } $d = $fiches[$id]; ?>
                 <button type="button" class="sd-modele<?= $valeurs['disposition'] === $id ? ' actif' : '' ?>"
@@ -342,7 +342,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
                  aurait rouvert ce qu'on vient de fermer. */ ?>
         <p class="aide<?= $par_fichier ? '' : ' si-vierge' ?>"<?= $par_fichier
               || $valeurs['disposition'] !== 'vierge' ? ' hidden' : '' ?>>
-          La page blanche n’en demande pas : son décor tient au fond, à la fenêtre photo et au texte.
+          La page blanche n’en demande pas : son badge tient au fond, à la fenêtre photo et au texte.
           Vous pouvez tout de même en ajouter un.
         </p>
 
@@ -393,7 +393,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
          */
         ?>
         <div class="reglages"<?= $par_fichier ? ' hidden' : '' ?>>
-          <?php $liste('format', 'Format du décor', FORMATS, (string) $valeurs['format'],
+          <?php $liste('format', 'Format du badge', FORMATS, (string) $valeurs['format'],
                        'Celui du cadre, sans quoi il serait étiré.'); ?>
         </div>
 
@@ -472,7 +472,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
             <input id="champ_libelle" name="champ_libelle" type="text" value="<?= e($valeurs['champ_libelle']) ?>">
           </div>
         </div>
-        <p class="aide" style="margin-top:-6px">Laissez les deux vides pour un décor sans aucun texte :
+        <p class="aide" style="margin-top:-6px">Laissez les deux vides pour un badge sans aucun texte :
         le cadre parle tout seul, et l’invité n’a rien à saisir.</p>
 
         <?php
@@ -508,7 +508,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
           </div>
           <div class="champ"><label for="expire_le">Expiration <span style="font-weight:400">(facultatif)</span></label>
             <input id="expire_le" name="expire_le" type="date" value="<?= e($valeurs['expire_le']) ?>">
-            <p class="aide">Passée cette date, le décor cesse de produire des badges.</p></div>
+            <p class="aide">Passée cette date, plus aucun badge ne peut être pris.</p></div>
         </div>
 
         <?php
@@ -544,7 +544,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
             <input id="redirection" name="redirection" type="url" required
                    value="<?= e($valeurs['redirection']) ?>">
             <p class="aide">Une campagne de la maison peut renvoyer où elle veut : la fiche
-            d’un lieu, le site d’un partenaire. Les décors des organisateurs, eux, ramènent
+            d’un lieu, le site d’un partenaire. Les badges des organisateurs, eux, ramènent
             au guide sans qu’on le leur demande.</p>
           </div>
         <?php endif; ?>
@@ -719,7 +719,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
             <span>Afficher le QR Code sur le badge</span>
           </label>
           <p class="aide" id="qr-consequence" style="margin:-4px 0 12px"<?= $qr_on ? ' hidden' : '' ?>>
-            Sans QR Code, ce décor ne contrôle aucune entrée : pas de présences scannées,
+            Sans QR Code, ce badge ne contrôle aucune entrée : pas de présences scannées,
             pas de segment « est venu », pas de Koris. Les vues et les téléchargements, eux,
             se comptent toujours.
           </p>
@@ -775,7 +775,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
       <div class="carte sd-carte-apercu">
 
         <div class="apercu-boite">
-          <canvas id="apercu" width="560" height="560" aria-label="Aperçu du décor"></canvas>
+          <canvas id="apercu" width="560" height="560" aria-label="Aperçu du badge"></canvas>
           <p class="aide" id="apercu-etat">Aperçu en cours…</p>
         </div>
 
@@ -802,7 +802,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
                   formnovalidate style="margin-top:8px">
             J’ai déjà un compte, me connecter
           </button>
-          <p class="aide sd-note">Dans les deux cas, votre décor vous suit.</p>
+          <p class="aide sd-note">Dans les deux cas, votre badge vous suit.</p>
         <?php else: ?>
           <p class="aide sd-note">Vous pouvez enregistrer depuis n’importe quelle étape.</p>
         <?php endif; ?>
@@ -845,7 +845,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
        */
       ?>
       <div class="carte sd-sante" id="sd-sante"<?= $par_fichier ? ' hidden' : '' ?>>
-        <p class="pas" style="margin:0 0 10px">Santé du décor</p>
+        <p class="pas" style="margin:0 0 10px">Santé du badge</p>
         <ul class="sd-sante-liste" id="sd-sante-liste">
           <li class="sd-ct attente">La zone photo reste visible</li>
           <li class="sd-ct attente">Les textes tiennent dans le cadre</li>
@@ -874,7 +874,7 @@ $couleur = function (string $nom, string $libelle, string $valeur, string $aide 
     <div class="carte" style="margin-top:18px">
       <h3 style="margin:0 0 4px">Qui travaille sur cette campagne</h3>
       <p class="aide" style="margin:0 0 14px">Invitez un graphiste, un stagiaire, un
-      co-organisateur : la personne pourra modifier <strong>cette campagne uniquement</strong>
+      co-Partenaire : la personne pourra modifier <strong>cette campagne uniquement</strong>
       et la soumettre à la relecture. Elle ne verra ni vos autres campagnes, ni vos liens, ni
       votre régie, ni vos factures.</p>
 
@@ -1413,7 +1413,7 @@ window.WAKABI_APERCU = {
       b.className = 'fmt-pas' + (r === n ? ' natif' : (declinee ? ' declinee' : ''));
       b.textContent = LIBELLES[r] + ' ' + r;
       b.title = r === n
-        ? 'Le format du décor'
+        ? 'Le format du badge'
         : (declinee ? 'Retirer cette déclinaison' : 'Ajouter ce format');
       b.addEventListener('click', function () {
         if (r === n) { return; }
@@ -1434,7 +1434,7 @@ window.WAKABI_APERCU = {
     if (!aide.textContent || n2 === 0) {
       aide.textContent = n2
         ? n2 + ' déclinaison' + (n2 > 1 ? 's' : '') + ', une seule place de quota.'
-        : 'Ajoutez un format pour couvrir la story sans créer un second décor.';
+        : 'Ajoutez un format pour couvrir la story sans créer un second badge.';
     }
   }
 
@@ -1478,7 +1478,7 @@ window.WAKABI_APERCU = {
           if (f) {
             v2[r].photo = { x: f.x, y: f.y, w: f.w, h: f.h };
             ecrire(v2);
-            aide.textContent = LIBELLES[r] + ' ajouté, et son ouverture relevée. Le décor se prend'
+            aide.textContent = LIBELLES[r] + ' ajouté, et son ouverture relevée. Le badge se prend'
               + ' maintenant dans ' + (Object.keys(v2).length + 1)
               + ' formats, pour une seule place de quota.';
           } else {

@@ -177,72 +177,24 @@
       <div class="value-card accent a-vert" style="border-color:#BBF7D0;background:#F7FEF9">
         <div class="jeton"><?= icone_guide('coche', 26) ?></div>
         <div class="value-title">Est réellement venu</div>
-        <div class="value-desc">Son badge a été scanné à l’entrée. C’est la règle que
-        personne d’autre ne peut vous donner, parce qu’elle vient du contrôle d’accès.</div>
+        <div class="value-desc">Son badge a été scanné à l'entrée. C'est la règle que
+        personne d'autre ne peut vous donner, parce qu'elle vient du contrôle d'accès.</div>
+      </div>
+
+      <?php
+      /* Le sixième carreau, dans la même grille que les cinq règles :
+         l'exemple se lit à côté d'elles, en trois-deux, au lieu de flotter
+         en dessous dans un encart à part. */
+      ?>
+      <div class="value-card accent a-bleu">
+        <div class="jeton"><?= icone_guide('enveloppe', 26) ?></div>
+        <div class="value-title">Un exemple qu'on écrit en quinze secondes</div>
+        <div class="value-desc">La ville, la rubrique, la date d’inscription. Vous répondez à quatre questions, et le message part aux 428 personnes concernées.</div>
       </div>
     </div>
 
-    <div class="colonne-etroite fade-up" style="margin-top:30px">
-      <div class="encart">
-        <div class="encart-titre">Un exemple qu’on écrit en quinze secondes</div>
-        <div class="feature-pills" style="margin:0 0 12px">
-          <span class="pill"><span class="pill-dot"></span>Ville : Lomé</span>
-          <span class="pill"><span class="pill-dot"></span>Rubrique : Concerts</span>
-          <span class="pill"><span class="pill-dot"></span>Venu depuis : 6 mois</span>
-          <span class="pill"><span class="pill-dot"></span>Scanné à l’entrée : oui</span>
-        </div>
-        <p><strong style="color:var(--primary)">428 personnes</strong> recevront ce message.
-        Elles sont venues, elles sont entrées, et c’était chez vous.</p>
-      </div>
-      <p class="legende">Chiffre d’illustration. L’écran compte les vôtres pendant que vous
-      posez les règles.</p>
-    </div>
-  </div>
-</section>
-
-<section class="section section-sombre">
-  <div class="container">
-    <div class="app-showcase fade-up">
-      <div>
-        <div class="encart">
-          <div class="encart-titre">Ce que Gmail verra de votre domaine</div>
-          <div class="kb-item"><span class="kb-icon kb-vert">✓</span>
-            <div class="kb-text"><strong>SPF</strong>
-            <span class="kb-sous">Le serveur d’envoi est déclaré dans votre DNS.</span></div></div>
-          <div class="kb-item" style="margin-top:10px"><span class="kb-icon kb-vert">✓</span>
-            <div class="kb-text"><strong>DKIM</strong>
-            <span class="kb-sous">Vos messages sont signés, et la signature est vérifiable.</span></div></div>
-          <div class="kb-item" style="margin-top:10px"><span class="kb-icon kb-orange">!</span>
-            <div class="kb-text"><strong>DMARC</strong>
-            <span class="kb-sous">Absent. L’écran donne la ligne exacte à poser dans votre zone DNS.</span></div></div>
-          <div class="kb-item" style="margin-top:10px"><span class="kb-icon kb-vert">✓</span>
-            <div class="kb-text"><strong>Adresse expéditrice</strong>
-            <span class="kb-sous">Du même domaine que le serveur d’envoi.</span></div></div>
-        </div>
-        <p class="legende">Relevé d’exemple. Le vôtre se fait depuis vos réglages.</p>
-      </div>
-
-      <div>
-        <div class="tag tag-orange">Ce qui a changé en 2024</div>
-        <h2 class="headline" style="margin:10px 0 16px">Un message mal authentifié<br>
-        <span>n’est plus rangé en indésirables</span></h2>
-        <p style="line-height:1.85;margin-bottom:16px">
-          Il est refusé. Chez Gmail et Yahoo depuis 2024, chez Outlook depuis 2025. C’est le
-          genre de règle qu’on découvre le jour où mille messages ne sont jamais arrivés, et
-          dont personne ne vous prévient.
-        </p>
-        <p style="line-height:1.85;margin-bottom:22px">
-          L’écran des réglages relève votre domaine et vous dit ce qui manque, avec la ligne
-          à poser. C’est trois minutes chez votre hébergeur, une fois pour toutes, et c’est
-          la différence entre une campagne qui arrive et une campagne qui disparaît.
-        </p>
-        <div class="feature-pills">
-          <span class="pill"><span class="pill-dot"></span>Votre serveur d’envoi, ou le nôtre</span>
-          <span class="pill"><span class="pill-dot"></span>Rythme d’envoi réglable</span>
-          <span class="pill"><span class="pill-dot"></span>Essai avant campagne</span>
-        </div>
-      </div>
-    </div>
+    <p class="legende" style="margin-top:18px">Chiffre d'illustration. L'écran compte les vôtres
+    pendant que vous posez les règles.</p>
   </div>
 </section>
 
@@ -346,7 +298,7 @@
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">La liste commence <span>au premier badge</span></h2>
       <p style="margin:14px 0 24px;line-height:1.8">
-        Publiez un décor ce soir, et vous aurez une audience demain matin.
+        Publiez un badge ce soir, et vous aurez une audience demain matin.
       </p>
       <div class="hero-ctas" style="justify-content:center">
         <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>

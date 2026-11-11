@@ -509,7 +509,7 @@ function push_combien(string $segment, ?string $auteur_id = null): int
 
 const PUSH_SEGMENTS = [
     'tous' => 'Tout le monde',
-    'organisateurs' => 'Les organisateurs',
+    'organisateurs' => 'Les Partenaires',
     'lome' => 'Lomé',
     'cotonou' => 'Cotonou',
     'abidjan' => 'Abidjan',

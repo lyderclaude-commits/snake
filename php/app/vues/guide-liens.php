@@ -59,13 +59,13 @@
     <div class="colonne-lecture fade-up" style="max-width:780px">
       <div class="encart" style="text-align:center;padding:36px 24px">
         <div class="adresse-geante">
-          <span class="domaine">wkb.link</span><span class="barre">/</span><span class="code">AbC123</span>
+          <span class="domaine">wkb.tg</span><span class="barre">/</span><span class="code">AbC123</span>
         </div>
         <div style="display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin-top:18px;text-align:left">
           <div style="max-width:260px">
-            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Votre domaine, ou le nôtre</div>
-            <div style="color:var(--text2);font-size:13px;line-height:1.7">Un domaine dédié se
-            branche dans les réglages, et les liens déjà créés continuent de marcher.</div>
+            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Trois domaines au choix</div>
+            <div style="color:var(--text2);font-size:13px;line-height:1.7">wkb.tg, wkb.bj ou wkb.sn se choisissent
+            au moment de créer le lien, selon là où l'affiche va aller.</div>
           </div>
           <div style="max-width:260px">
             <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Six caractères sans piège</div>
@@ -84,8 +84,8 @@
         </div>
         <div class="anatomie-bloc apres">
           <div class="anatomie-quoi">Après</div>
-          <div class="anatomie-adresse">https://wkb.link/AbC123</div>
-          <div class="anatomie-compte">23 caractères, et un compteur</div>
+          <div class="anatomie-adresse">https://wkb.tg/AbC123</div>
+          <div class="anatomie-compte">21 caractères, et un compteur</div>
         </div>
       </div>
     </div>

@@ -19,13 +19,20 @@
     <div class="champ">
       <label for="role">Type de compte</label>
       <select id="role" name="role">
-        <option value="participant" <?= $valeurs['role'] === 'participant' ? 'selected' : '' ?>>Participant : je crée des badges</option>
-        <option value="partenaire" <?= $valeurs['role'] === 'partenaire' ? 'selected' : '' ?>>Organisateur : je crée des campagnes</option>
+        <option value="participant" <?= $valeurs['role'] === 'participant' ? 'selected' : '' ?>>Utilisateur : je crée des badges</option>
+        <option value="partenaire" <?= $valeurs['role'] === 'partenaire' ? 'selected' : '' ?>>Partenaire : je crée des campagnes</option>
       </select>
     </div>
     <div class="champ"><label for="nom">Nom</label>
       <input id="nom" name="nom" type="text" required value="<?= e($valeurs['nom']) ?>"></div>
-    <div class="champ"><label for="org">Structure <span style="font-weight:400">(organisateurs)</span></label>
+    <?php
+    /* Le formulaire PARLE le type de compte choisi : un Utilisateur n'a pas
+       de structure à déclarer, le champ la lui montre seulement quand il
+       choisit Partenaire. Le script en bas de page bascule le champ au
+       changement de rôle, et il tourne dès l'ouverture — un renvoi d'erreur
+       qui repeuple le formulaire retrouve aussi le bon affichage. */
+    ?>
+    <div class="champ" id="champ-structure"><label for="org">Structure <span style="font-weight:400">(Partenaires)</span></label>
       <input id="org" name="organisation" type="text" value="<?= e($valeurs['organisation']) ?>"></div>
     <div class="champ"><label for="email">Adresse e-mail</label>
       <input id="email" name="email" type="email" required autocomplete="email" value="<?= e($valeurs['email']) ?>"></div>
@@ -49,4 +56,26 @@
     Déjà un compte ? <a href="<?= e(url($_cx)) ?>">Se connecter</a><?php
     if (($suite ?? '') !== ''): ?>, votre travail vous suivra<?php endif; ?>
   </p>
+
+  <?php
+  /**
+   * Le champ « Structure » suit le rôle, sur place.
+   *
+   * Un retour d'écran (e-mail déjà pris, mot de passe trop court) repeuple
+   * le formulaire avec ce qui a été posté : le script s'ouvre SUR le rôle
+   * envoyé, pas sur la valeur que la liste propose par défaut. Sans
+   * JavaScript, le champ reste visible pour tout le monde — aucun champ
+   * n'est jamais pulvérisé par une page qui ne se pilote plus.
+   */
+  ?>
+  <script>
+  (function () {
+    var role = document.getElementById('role');
+    var bloc = document.getElementById('champ-structure');
+    if (!role || !bloc) { return; }
+    var ajuster = function () { bloc.hidden = role.value !== 'partenaire'; };
+    role.addEventListener('change', ajuster);
+    ajuster();
+  })();
+  </script>
 </div>

@@ -124,7 +124,7 @@ function api_appelant(): array
      * c'est une politesse.
      */
     if (!droit($u, 'api')) {
-        api_erreur('Ce rôle n’ouvre pas l’API. Elle s’adresse aux organisateurs '
+        api_erreur('Ce rôle n’ouvre pas l’API. Elle s’adresse aux Partenaires '
             . 'et à l’équipe.', 403, 'role_insuffisant');
     }
     if (!capacite($u, 'api')) {
@@ -305,10 +305,11 @@ function api_servir(): never
         if ($max >= 0 && count(liens_de((string) $u['id'])) >= $max) {
             api_erreur('Le quota de liens courts de votre offre est atteint.', 409, 'quota_atteint');
         }
-        // Le même garde-fou qu'à l'écran : un partenaire ne redirige que
-        // vers les domaines Wakabi. L'API n'est pas une porte dérobée.
-        if (!droit($u, 'valider') && !redirection_autorisee($cible)) {
-            api_erreur('La cible doit être un domaine Wakabi.', 422, 'domaine_refuse');
+        // Le même garde-fou qu'à l'écran et pour tout le monde : on ne
+        // raccourcit que du Wakabi. L'API n'est pas une porte dérobée.
+        if (!lien_cible_autorisee($cible)) {
+            api_erreur('La cible doit mener vers '
+                . implode(' ou ', DOMAINES_CIBLES_LIENS) . '.', 422, 'domaine_refuse');
         }
         $code = creer_lien((string) $u['id'], $cible, $titre);
         json_repondre(['ok' => true, 'code' => $code, 'adresse' => lien_court_url($code)], 201);

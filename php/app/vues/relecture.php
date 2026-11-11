@@ -10,7 +10,7 @@
   <?php if (!$file): ?>
     <div class="carte" style="text-align:center">
       <h3>La file est vide</h3>
-      <p style="color:var(--text2);margin:.4em 0 0">Aucun décor n’attend de relecture.</p>
+      <p style="color:var(--text2);margin:.4em 0 0">Aucun badge n’attend de relecture.</p>
     </div>
   <?php else: foreach ($file as $d): $r = $rapports[$d['id']] ?? null; ?>
     <div class="carte" style="margin-bottom:16px">

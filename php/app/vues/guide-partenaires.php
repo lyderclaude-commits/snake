@@ -40,54 +40,51 @@
         <div class="tag">Offres partenaires</div>
         <h2 class="headline">Choisissez votre <span>formule</span></h2>
       </div>
-      <div class="pricing-grid fade-up">
-        <div class="pricing-card">
-          <div class="pricing-tier">Starter</div><div class="pricing-name">Basic</div>
-          <div class="pricing-price"><span class="price-curr">XOF</span><span class="price-val">0</span></div>
-          <div class="price-period">Gratuit pour toujours</div>
-          <div class="pricing-desc">Pour tester et commencer à vous faire connaître.</div>
+            <?php
+      /* Les offres viennent de la meme source que la page tarifs :
+         offres_vitrine() lit la table que le produit applique, et les
+         deux pages ne peuvent pas diverger. */
+      $_offres = offres_vitrine();
+      $_fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
+      ?>
+      <div class="pricing-grid pricing-auto fade-up">
+      <?php foreach ($_offres as $o): ?>
+        <div class="pricing-card<?= $o['phare'] ? ' featured' : '' ?>">
+          <?php if ($o['phare']): ?><div class="featured-label">Le plus choisi</div><?php endif; ?>
+          <?php if ($o['tag'] !== ''): ?><div class="pricing-tier"><?= e($o['tag']) ?></div><?php endif; ?>
+          <div class="pricing-name"><?= e($o['nom']) ?></div>
+          <?php if ($o['prix'] === 0): ?>
+            <div class="pricing-price"><span class="price-val">Gratuit</span></div>
+            <div class="price-period">à vie, sans carte bancaire</div>
+          <?php else: ?>
+            <div class="pricing-price">
+              <span class="price-val"><?= e($_fr($o['lancement'] ?: $o['prix'])) ?></span>
+              <span class="price-curr">FCFA</span>
+            </div>
+            <div class="price-period">
+              <?php if ($o['lancement'] > 0 && $o['lancement'] < $o['prix']): ?>
+                par mois les 3 premiers, puis <?= e($_fr($o['prix'])) ?>
+              <?php else: ?>
+                par mois, sans engagement
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
           <div class="pricing-divider"></div>
+          <?php if ($o['prefixe']): ?>
+            <div class="pricing-desc"><strong><?= e($o['prefixe']) ?></strong></div>
+          <?php endif; ?>
           <div class="pricing-features">
-            <div class="pf-item"><span class="pf-check">✓</span>Profil référencé dans l'annuaire</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Informations de base</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Réception d'avis clients</div>
-            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Galerie photos complète</div>
-            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Mise en avant résultats</div>
-            <div class="pf-item pf-dim"><span class="pf-check" aria-label="Non compris">×</span>Intégration Carte Wakabi</div>
+            <?php foreach ($o['lignes'] as [$texte, $inclus]): ?>
+              <div class="pf-item<?= $inclus ? '' : ' pf-dim' ?>">
+                <span class="pf-check"<?= $inclus ? '' : ' aria-label="Non compris"' ?>><?= $inclus ? '✓' : '×' ?></span><?= e($texte) ?>
+              </div>
+            <?php endforeach; ?>
           </div>
-          <a class="btn btn-outline" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Commencer gratuitement</a>
-        </div>
-        <div class="pricing-card featured">
-          <div class="featured-label">🤍 Le plus populaire</div>
-          <div class="pricing-name">Pro</div>
-          <div class="pricing-price"><span class="price-curr">XOF</span><span class="price-val">9 900</span></div>
-          <div class="price-period">par an · sans engagement</div>
-          <div class="pricing-desc">Pour les établissements qui veulent dominer leur quartier.</div>
-          <div class="pricing-divider"></div>
-          <div class="pricing-features">
-            <div class="pf-item"><span class="pf-check">✓</span>Tout ce qui est dans Basic</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Galerie photos (20 photos)</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Mise en avant dans les résultats</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Notifications push audience</div>
+            <a class="btn <?= $o['phare'] ? 'btn-white' : 'btn-outline' ?>"
+               style="width:100%;justify-content:center"
+               href="<?= e(url('?p=inscription&offre=' . $o['cle'])) ?>"><?= e($o['cta']) ?></a>
           </div>
-          <a class="btn btn-white" style="width:100%;justify-content:center;" href="<?= e(url('?p=contact')) ?>">Devenir partenaire Pro</a>
-        </div>
-        <div class="pricing-card">
-          <div class="pricing-tier">Enterprise</div><div class="pricing-name">Premium</div>
-          <div class="pricing-price"><span class="price-curr">XOF</span><span class="price-val">99 000</span></div>
-          <div class="price-period">a vie · accompagnement inclus</div>
-          <div class="pricing-desc">Pour les marques et chaînes qui veulent dominer le marché.</div>
-          <div class="pricing-divider"></div>
-          <div class="pricing-features">
-            <div class="pf-item"><span class="pf-check">✓</span>Tout ce qui est dans Pro</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Placement publicitaire ciblé</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Article sponsorisé blog Wakabi</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Co-branding réseaux sociaux</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Campagnes personnalisées</div>
-            <div class="pf-item"><span class="pf-check">✓</span>Account manager dédié</div>
-          </div>
-          <a class="btn btn-outline" style="width:100%;justify-content:center;border-color:var(--primary);color:var(--primary);" href="<?= e(url('?p=contact')) ?>">Nous contacter</a>
-        </div>
+        <?php endforeach; ?>
       </div>
     </div>
   </section>

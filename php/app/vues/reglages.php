@@ -175,8 +175,10 @@ $branche = courriel_branche();
 
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 4px">Les liens courts</h3>
-    <p class="aide" style="margin:0 0 16px">Aujourd’hui, vos liens s’écrivent
-    <code><?= e($exemple_lien) ?></code>.</p>
+    <p class="aide" style="margin:0 0 16px">Trois domaines hébergent vos liens :
+    <strong>wkb.tg</strong>, <strong>wkb.bj</strong> et <strong>wkb.sn</strong> — Togo, Bénin,
+    Sénégal. La personne choisit le sien au moment de créer un lien, sur l'écran de création.
+    Aujourd'hui, un lien sans domaine choisi s'écrit <code><?= e($exemple_lien) ?></code>.</p>
 
     <form method="post" action="<?= e(url('?p=reglages')) ?>">
       <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
@@ -189,10 +191,11 @@ $branche = courriel_branche();
       <?php endforeach; ?>
 
       <div class="champ">
-        <label for="domaine_liens">Domaine dédié <span style="font-weight:400">(facultatif)</span></label>
-        <input id="domaine_liens" name="domaine_liens" type="text" placeholder="wkb.link"
+        <label for="domaine_liens">Domaine d'accueil des liens <span style="font-weight:400">(facultatif)</span></label>
+        <input id="domaine_liens" name="domaine_liens" type="text" placeholder="wkb.tg"
                value="<?= e($domaine_liens) ?>">
-        <p class="aide">Laissez vide pour utiliser le domaine du site.</p>
+        <p class="aide">Les trois domaines courts servent déjà tout le site : ce champ réserve un
+        quatrième, pour une installation qui vit à part. Laissez vide sinon.</p>
       </div>
 
       <div class="rangee" style="margin-top:12px;gap:10px">
@@ -209,22 +212,25 @@ $branche = courriel_branche();
     </p>
 
     <details style="margin-top:12px">
-      <summary class="aide" style="cursor:pointer">Brancher <code>wkb.link</code> : la marche à suivre</summary>
+      <summary class="aide" style="cursor:pointer">Brancher <code>wkb.tg</code>, <code>wkb.bj</code> ou <code>wkb.sn</code> : la marche à suivre</summary>
       <div class="aide" style="margin-top:10px;line-height:1.7">
-        <p style="margin:0 0 8px"><strong>Le domaine ne s’invente pas côté logiciel :</strong> il faut
+        <p style="margin:0 0 8px"><strong>Le domaine ne s'invente pas côté logiciel :</strong> il faut
         le posséder et le faire pointer ici. Trois gestes, une fois pour toutes.</p>
         <ol style="margin:0;padding-left:1.2em">
-          <li>Achetez <code>wkb.link</code> chez un registraire (le TLD <code>.link</code>
-          coûte une dizaine d’euros par an).</li>
-          <li>Chez LWS, dans cPanel → <strong>Domaines</strong>, ajoutez-le en
-          <em>domaine additionnel</em> et faites-le pointer vers <strong>ce même dossier</strong>,
+          <li>Achetez chaque domaine chez un registraire — wkb.tg, wkb.bj et wkb.sn
+          se règlent l'un après l'autre, avec le même soin.</li>
+          <li>Chez LWS, dans cPanel → <strong>Domaines</strong>, ajoutez-les comme
+          <em>domaines additionnels</em> et faites-les pointer vers <strong>ce même dossier</strong>,
           celui qui contient <code>index.php</code>. Puis chez le registraire, réglez les
           serveurs DNS sur ceux de LWS.</li>
-          <li>Revenez ici, saisissez <code>wkb.link</code> ci-dessus, et cliquez
+          <li>Revenez ici et cliquez
           <em>Vérifier la forme courte</em>.</li>
         </ol>
-        <p style="margin:8px 0 0">Les liens déjà créés continuent de fonctionner : c’est le code
+        <p style="margin:8px 0 0">Les liens déjà créés continuent de fonctionner : c'est le code
         à six caractères qui compte, pas le domaine par lequel on arrive.</p>
+        <p style="margin:8px 0 0">Un lien sur <code>wkb.tg</code> se lit aussi par
+        <code>wkb.bj</code> et <code>wkb.sn</code> : le domaine porte l'affiche, le code
+        porte le lien.</p>
       </div>
     </details>
   </div>
@@ -327,11 +333,58 @@ $branche = courriel_branche();
     vérifier à votre place.</p>
   </div>
 
+  <?php
+  /**
+   * Le contact WhatsApp : le numéro que le bouton flottant du site
+   * public fait composer. Le champ montre la valeur BRUTE, pas le
+   * défaut : préremplir le message ferait croire à une saisie qui
+   * n'existe pas, et le jour où le défaut change, le champ changerait
+   * avec lui sans qu'on l'ait voulu — la raison d'être d'
+   * `identite_legale_brute()` vaut ici aussi.
+   */
+  $wa_lus = reglages_bdd(array_keys(WHATSAPP_DEFAUTS));
+  ?>
+  <div class="carte" style="margin-top:16px">
+    <h3 style="margin:0 0 4px">Le contact WhatsApp</h3>
+    <p class="aide" style="margin:0 0 12px">Le bouton vert qui flotte en bas à droite du site
+    public, et ouvre une discussion avec le message ci-dessous déjà écrit. Numéro vide,
+    bouton absent : rien ne mène nulle part. Le numéro se tape au format international,
+    les espaces et le « + » sont tolérés.</p>
+
+    <form method="post" action="<?= e(url('?p=reglages')) ?>">
+      <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
+      <?php foreach (array_keys(COURRIEL_DEFAUTS) as $cle):
+          if ($cle === 'smtp_motdepasse') { continue; } ?>
+        <input type="hidden" name="<?= e($cle) ?>" value="<?= e((string) $valeurs[$cle]) ?>">
+      <?php endforeach; ?>
+
+      <div class="grille g2">
+        <div class="champ">
+          <label for="whatsapp_numero">Numéro WhatsApp</label>
+          <input id="whatsapp_numero" name="whatsapp_numero" type="text"
+                 placeholder="+228 90 12 34 56"
+                 value="<?= e(trim((string) ($wa_lus['whatsapp_numero'] ?? ''))) ?>">
+        </div>
+        <div class="champ">
+          <label for="whatsapp_message">Message proposé au visiteur</label>
+          <input id="whatsapp_message" name="whatsapp_message" type="text"
+                 placeholder="<?= e(WHATSAPP_DEFAUTS['whatsapp_message']) ?>"
+                 value="<?= e(trim((string) ($wa_lus['whatsapp_message'] ?? ''))) ?>">
+          <p class="aide">Vide, le message ci-dessus en gris part à sa place.</p>
+        </div>
+      </div>
+
+      <div class="rangee" style="margin-top:14px">
+        <button class="bouton" type="submit" name="action" value="enregistrer">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 8px">Ce que le transport change</h3>
     <ul style="margin:0;padding-left:1.1em;line-height:1.7">
-      <li>Un partenaire reçoit la décision sur son décor : approuvé, à corriger, refusé, avec le motif.</li>
-      <li>L’équipe est prévenue qu’un décor attend sa relecture.</li>
+      <li>Un partenaire reçoit la décision sur son badge : approuvé, à corriger, refusé, avec le motif.</li>
+      <li>L’équipe est prévenue qu’un badge attend sa relecture.</li>
       <li>Une nouvelle inscription reçoit un lien de confirmation, valable <?= VERIF_HEURES ?> heures.</li>
       <li><strong>Tant que le transport est éteint</strong>, la confirmation d’adresse n’est pas exigée :
       on ne bloque personne derrière un message qu’on ne sait pas envoyer.</li>

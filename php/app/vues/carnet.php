@@ -27,7 +27,7 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
 };
 ?>
 <div class="contenu">
-  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>Campagne</a></p>
 
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
@@ -39,7 +39,17 @@ $vers = function (array $sup = []) use ($filtres, $liste): string {
       </div>
       <div class="rangee" style="gap:8px">
         <a class="bouton fant" href="<?= e(url('?p=regie-carnet-export' . ($liste ? '&l=' . urlencode((string) $liste['id']) : ''))) ?>">Exporter (CSV)</a>
-        <a class="bouton" href="<?= e(url('?p=regie-ecrire' . ($liste ? '&l=' . urlencode((string) $liste['id']) : ''))) ?>">
+        <?php
+        /**
+         * Écrire va à la page « Campagne Email », dont le composer est en
+         * tête : on y arrive avec la liste déjà choisie, et la destination
+         * du bouton reste UNIQUEMENT la liste de campagnes. L'atelier
+         * d'écriture complet reste accessible depuis là, pour un message
+         * plus long que le composer — mais ce n'est plus le chemin par
+         * défaut.
+         */
+        ?>
+        <a class="bouton" href="<?= e(url('?p=regie' . ($liste ? '&l=' . urlencode((string) $liste['id']) : ''))) ?>">
           <?= $liste ? 'Écrire à cette liste' : 'Écrire une campagne' ?></a>
       </div>
     </div>

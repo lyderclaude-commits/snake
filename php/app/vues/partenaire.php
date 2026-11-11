@@ -20,7 +20,7 @@
         <?php if (droit($me, 'regie')): ?>
           <a class="bouton fant" href="<?= e(url('?p=rapports')) ?>">Mon rapport</a>
         <?php endif; ?>
-        <a class="bouton" href="<?= e(url('?p=creer')) ?>">Nouveau décor</a>
+        <a class="bouton" href="<?= e(url('?p=creer')) ?>">Nouveau badge</a>
       </div>
     </div>
   </section>
@@ -117,7 +117,7 @@
 
     <?php if (interne($me)): ?>
       <p class="aide" style="margin:10px 0 0"><?= e(role_aide($me['role'] ?? null)) ?>
-      Les compteurs ci-dessous sont ceux de vos propres décors : ils ne butent sur rien.</p>
+      Les compteurs ci-dessous sont ceux de vos propres badges : ils ne butent sur rien.</p>
     <?php endif; ?>
 
     <?php
@@ -237,7 +237,7 @@
   <?php endif; ?>
 
   <?php if (!$liste): ?>
-    <div class="carte"><p style="margin:0;color:var(--text2)">Aucune campagne. Créez votre premier décor.</p></div>
+    <div class="carte"><p style="margin:0;color:var(--text2)">Aucune campagne. Créez votre premier badge.</p></div>
   <?php else: foreach ($liste as $d):
       $p = presence($d['id']); $rapport = lire_prevol($d['id']); ?>
     <div class="carte" style="margin-bottom:14px">
@@ -303,7 +303,7 @@
           <div>
             <strong><?= e((string) $d['titre']) ?></strong>
             <span class="pastille <?= e((string) $d['statut']) ?>"><?= e(statut_libelle((string) $d['statut'])) ?></span>
-            <br><span class="aide">de <?= e((string) ($d['auteur_nom'] ?: 'un autre organisateur')) ?></span>
+            <br><span class="aide">de <?= e((string) ($d['auteur_nom'] ?: 'un autre Partenaire')) ?></span>
           </div>
           <a class="bouton fant petit" href="<?= e(url('?p=modifier&id=' . rawurlencode((string) $d['id']))) ?>">Ouvrir</a>
         </div>
@@ -327,10 +327,10 @@
    * son écran d'accueil, deux portes qui se referment au clic.
    */
   $raccourcis = array_filter([
-      ['?p=creer', 'Nouveau décor', 'Créer une campagne', 'decors_siens'],
+      ['?p=creer', 'Nouveau badge', 'Créer une campagne', 'decors_siens'],
       ['?p=liens', 'Liens courts', 'Adresses traçables, clics comptés', 'liens'],
-      ['?p=regie', 'Régie e-mail', 'Écrire à vos invités', 'regie'],
-      ['?p=diffusion', 'Notifications push', 'Une alerte, même site fermé', 'push'],
+      ['?p=regie', 'Campagne Email', 'Écrire à vos invités', 'regie'],
+      ['?p=notification', 'Notification', 'Push, Telegram, WhatsApp', 'push'],
       ['?p=blog-admin', 'Mes articles', 'Proposer un article au blog', 'articles'],
       ['?p=api-doc', 'L’API', 'Vos chiffres, par programme', 'api'],
       ['?p=profil', 'Mon profil', 'Nom, adresse, mot de passe', null],

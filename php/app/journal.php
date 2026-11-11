@@ -30,11 +30,11 @@ declare(strict_types=1);
  * absente d'ici n'est journalisée nulle part.
  */
 const JOURNAL_ACTIONS = [
-    'decor.publie'        => 'a publié un décor',
-    'decor.refuse'        => 'a refusé un décor',
-    'decor.corrections'   => 'a renvoyé un décor en corrections',
-    'decor.archive'       => 'a archivé un décor',
-    'decor.supprime'      => 'a supprimé un décor',
+    'decor.publie'        => 'a publié un badge',
+    'decor.refuse'        => 'a refusé un badge',
+    'decor.corrections'   => 'a renvoyé un badge en corrections',
+    'decor.archive'       => 'a archivé un badge',
+    'decor.supprime'      => 'a supprimé un badge',
     'article.publie'      => 'a publié un article',
     'article.refuse'      => 'a refusé un article',
     'article.corrections' => 'a renvoyé un article à son auteur',
@@ -55,7 +55,7 @@ const JOURNAL_ACTIONS = [
     'rapport.export'      => 'a exporté un rapport',
     'segment.export'      => 'a exporté un segment',
     'sponsor.export'      => 'a exporté un rapport d’exposition',
-    'sponsor.modifie'     => 'a changé le sponsor d’un décor',
+    'sponsor.modifie'     => 'a changé le sponsor d’un badge',
     'sauvegarde.restauree' => 'a restauré une sauvegarde',
     'reglages.modifies'   => 'a modifié les réglages',
     'offre.creee'         => 'a créé une offre',

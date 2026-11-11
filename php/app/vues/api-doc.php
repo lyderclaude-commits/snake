@@ -108,8 +108,8 @@ $exemple = $cle_neuve ?: 'VOTRE_CLE';
       </table>
     </div>
     <p class="aide" style="margin:12px 0 0">L’API <strong>lit</strong>, et ne publie pas.
-    Créer un décor ou le mettre en ligne passe par la relecture, comme pour tout le monde :
-    c’est la garantie qu’on donne à chaque organisateur, et une API qui la contournerait la
+    Créer un badge ou le mettre en ligne passe par la relecture, comme pour tout le monde :
+    c’est la garantie qu’on donne à chaque Partenaire, et une API qui la contournerait la
     retirerait à tous.</p>
   </div>
 
@@ -146,6 +146,7 @@ $exemple = $cle_neuve ?: 'VOTRE_CLE';
               ['404', 'introuvable', 'Cette campagne n’existe pas, ou n’est pas la vôtre.'],
               ['409', 'quota_atteint', 'Le quota de liens courts de votre offre est plein.'],
               ['422', 'cible_invalide', 'L’adresse envoyée n’en est pas une, ou sort des domaines Wakabi.'],
+              ['422', 'domaine_refuse', 'La cible ne mène ni vers wakabileguide.com, ni vers boost.wakabileguide.com.'],
               ['429', 'debit_depasse', 'Plus de ' . API_APPELS_MAX . ' appels en un quart d’heure.'],
           ] as [$code, $genre, $quoi]): ?>
             <tr>

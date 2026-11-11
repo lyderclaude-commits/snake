@@ -17,7 +17,7 @@ if ($page === 'statut') {
     $vers = (string) ($_POST['vers'] ?? '');
     $d = decor_par_id($id);
     if (!$d) {
-        rediriger('?p=catalogue&err=' . urlencode('Décor introuvable.'));
+        rediriger('?p=catalogue&err=' . urlencode('Badge introuvable.'));
     }
     try {
         decor_transition($id, $vers, $u, (string) ($_POST['motif'] ?? ''));
@@ -25,7 +25,7 @@ if ($page === 'statut') {
         rediriger('?p=catalogue&err=' . urlencode($e->getMessage()));
     }
     if ($d['auteur_id'] && $d['auteur_id'] !== $u['id']) {
-        notifier($d['auteur_id'], 'decision', 'Votre décor a changé de statut',
+        notifier($d['auteur_id'], 'decision', 'Votre badge a changé de statut',
                  $d['titre'] . ' : ' . statut_libelle($vers), '?p=partenaire');
     }
     rediriger('?p=catalogue&ok=' . urlencode($d['titre'] . ' : ' . statut_libelle($vers)));
@@ -38,7 +38,7 @@ if ($page === 'supprimer') {
     $id = (string) ($_POST['id'] ?? '');
     $d = decor_par_id($id);
     if (!$d) {
-        rediriger('?p=catalogue&err=' . urlencode('Décor introuvable.'));
+        rediriger('?p=catalogue&err=' . urlencode('Badge introuvable.'));
     }
 
     // Deuxième garde-fou : le formulaire exige de retaper le titre. Supprimer
@@ -77,7 +77,7 @@ $page_n = max(1, (int) ($_GET['n'] ?? 1));
 $combien = decors_catalogue_combien($filtre ?: null, $cherche);
 
 vue('catalogue', [
-    'titre' => 'Tous les décors',
+    'titre' => 'Tous les badges',
     'liste' => decors_catalogue($filtre ?: null, $cherche, $page_n),
     'compteurs' => decors_par_statut(),
     'filtre' => $filtre,

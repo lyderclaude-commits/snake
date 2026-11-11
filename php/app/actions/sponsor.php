@@ -47,7 +47,7 @@ if ($post) {
         exiger_droit('valider');
         sponsor_valider($d, $u);
         rediriger('?p=sponsor&decor=' . rawurlencode((string) $d['slug'])
-            . '&ok=' . rawurlencode('Lien approuvé : il est en service sur la page du décor.'));
+            . '&ok=' . rawurlencode('Lien approuvé : il est en service sur la page du badge.'));
     }
 
     /**

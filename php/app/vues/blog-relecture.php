@@ -6,7 +6,7 @@ $message = $message ?? null;
 <div class="contenu">
   <section class="entete">
     <h1>Relecture du blog</h1>
-    <p><?= count($liste) ?> article(s) proposés par des organisateurs, le plus ancien d’abord.</p>
+    <p><?= count($liste) ?> article(s) proposés par des Partenaires, le plus ancien d’abord.</p>
   </section>
 
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>

@@ -37,7 +37,7 @@ function bord_a_traiter(?array $u): array
     if (droit($u, 'valider')) {
         foreach (decors_en_attente() as $d) {
             $lignes[] = [
-                'genre' => 'Décor', 'ton' => 'decor',
+                'genre' => 'Badge', 'ton' => 'decor',
                 'titre' => (string) $d['titre'],
                 'qui' => (string) ($d['auteur_nom'] ?: 'Équipe Wakabi'),
                 'depuis' => (string) ($d['soumis_le'] ?: $d['maj_le']),
@@ -129,7 +129,7 @@ function bord_sans_urgence(?array $u, array $stats, int $regie_en_file): array
     }
     if (droit($u, 'decors_tous') && $stats['corrections']) {
         $out[] = ['?p=catalogue&statut=corrections', (int) $stats['corrections'],
-                  'décor' . ($stats['corrections'] > 1 ? 's' : '') . ' en correction chez leur auteur'];
+                  'badge' . ($stats['corrections'] > 1 ? 's' : '') . ' en correction chez leur auteur'];
     }
     if (droit($u, 'regie') && $regie_en_file) {
         $out[] = ['?p=regie', $regie_en_file,
@@ -193,7 +193,7 @@ function bord_reprendre(?array $u, int $combien = 4): array
 function bord_genre_libelle(string $type): string
 {
     return match ($type) {
-        'decor' => 'Décor',
+        'decor' => 'Badge',
         'article' => 'Article',
         'compte' => 'Compte',
         'campagne' => 'Campagne',
@@ -233,53 +233,6 @@ function bord_lien_objet(string $type, string $id): string
 }
 
 /**
- * Où aller, et combien il y en a.
- *
- * Une pastille chiffrée dit deux choses d'un coup : la destination, et s'il
- * s'y passe quelque chose. « Comptes 340 » se lit plus vite que « Comptes /
- * Rôles, offres, suspensions », et occupe le quart de la place — ce qui
- * permet de tout montrer sans faire défiler.
- *
- * Chaque entrée porte le droit qui ouvre son écran, et la liste est filtrée
- * dessus : un raccourci qui refuse est pire qu'un raccourci absent, parce
- * qu'on le réessaie.
- */
-function bord_ou_aller(?array $u, array $stats): array
-{
-    $n = static function (string $sql): ?int {
-        try {
-            return (int) db()->query($sql)->fetchColumn();
-        } catch (PDOException) {
-            return null;
-        }
-    };
-
-    $tout = [
-        ['?p=catalogue', 'Décors', (int) $stats['publies'], 'decors_tous'],
-        ['?p=comptes', 'Comptes', (int) $stats['comptes'], 'comptes'],
-        ['?p=blog-admin', 'Le blog', $n("SELECT COUNT(*) FROM articles WHERE statut='publie'"), 'articles'],
-        ['?p=regie', 'Régie e-mail', $n("SELECT COUNT(*) FROM campagnes_email"), 'regie'],
-        ['?p=liens', 'Liens courts', $n('SELECT COUNT(*) FROM liens'), 'liens'],
-        ['?p=offres', 'Les offres', count(formules_actives()), 'reglages'],
-        ['?p=diffusion', 'Notifications push', null, 'push'],
-        ['?p=scan', 'Contrôle d’entrée', null, 'scan'],
-        /* Les rapports et la facturation ne refusent personne : l'équipe y
-           voit la plateforme entière, un organisateur ses propres décors et
-           ses propres factures. Ils n'ont donc pas de droit à porter. */
-        ['?p=rapports', 'Rapports', null, ''],
-        ['?p=facturation', 'Facturation', null, ''],
-        ['?p=reglages', 'Réglages', null, 'reglages'],
-        ['?p=sauvegardes', 'Sauvegardes', null, 'reglages'],
-        ['?p=journal', 'Le journal', null, 'comptes'],
-    ];
-
-    return array_values(array_filter(
-        $tout,
-        static fn(array $e): bool => $e[3] === '' || droit($u, $e[3])
-    ));
-}
-
-/**
  * Ce que « + Nouveau » propose, selon ce qu'on a le droit de fabriquer.
  *
  * Un seul bouton plutôt que quatre : la barre de commande porte déjà un
@@ -293,9 +246,11 @@ function bord_nouveau(?array $u): array
         // celui-ci s'ouvre sur le Studio par défaut, et quelqu'un dont le
         // graphiste a rendu un PNG se retrouvait devant une galerie de
         // modèles sans voir où déposer son fichier.
-        ['?p=creer', 'Un décor', 'decors_siens'],
+        ['?p=creer', 'Un badge', 'decors_siens'],
         ['?p=blog-editer', 'Un article', 'articles'],
-        ['?p=regie-ecrire', 'Une campagne e-mail', 'regie'],
+        // L'e-mail n'est pas ici : le composer de « Campagne Email » est
+        // en tête de sa page, on écrit depuis là plutôt que de détourner
+        // le menu « + Nouveau », qui ne crée que des objets.
         ['?p=liens', 'Un lien court', 'liens'],
         ['?p=comptes', 'Un compte', 'comptes'],
     ];
@@ -383,7 +338,7 @@ function bord_chercher(?array $u, string $q): array
                        WHERE titre LIKE ? OR slug LIKE ?
                        ORDER BY maj_le DESC LIMIT $n", [$m, $m]);
         if ($r) {
-            $out[] = ['famille' => 'Décors', 'tout' => '?p=catalogue&q=' . rawurlencode($q),
+            $out[] = ['famille' => 'Badges', 'tout' => '?p=catalogue&q=' . rawurlencode($q),
                 'lignes' => array_map(static fn(array $d): array => [
                     'titre' => (string) $d['titre'],
                     'note' => '/' . $d['slug'] . ' · ' . statut_libelle((string) $d['statut']),

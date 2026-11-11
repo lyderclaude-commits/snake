@@ -40,8 +40,8 @@ const KORIS_PAR_SCAN = 50;
  */
 const DROITS = [
     'scan'          => 'Contrôle d’entrée',
-    'decors_siens'  => 'Créer et modifier ses décors',
-    'decors_tous'   => 'Voir et modifier tous les décors',
+    'decors_siens'  => 'Créer et modifier ses badges',
+    'decors_tous'   => 'Voir et modifier tous les badges',
     'articles'      => 'Écrire des articles',
     'valider'       => 'Publier et arbitrer ce que les autres proposent',
     'liens'         => 'Liens courts',
@@ -366,7 +366,7 @@ const OFFRE_LIGNES = [
      */
     'redirection' => ['Redirection après téléchargement', 'capacite',
         'Après son badge, l’invité part sur le guide Wakabi plutôt que sur la '
-        . 'liste des décors, où il croiserait les campagnes des autres.'],
+        . 'liste des badges, où il croiserait les campagnes des autres.'],
     'stats' => ['Statistiques complètes', 'capacite',
         'Présences réelles, taux de conversion et courbe sur 14 jours, en plus des vues et téléchargements.'],
     'ciblage' => ['Ciblage ville et rubrique', 'capacite',
@@ -390,8 +390,8 @@ const OFFRE_LIGNES = [
 function role_libelle(?string $r): string
 {
     return [
-        'participant' => 'Participant',
-        'partenaire' => 'Organisateur',
+        'participant' => 'Utilisateur',
+        'partenaire' => 'Partenaire',
         'scanner' => 'Scanner',
         'editeur' => 'Éditeur',
         'coordinateur' => 'Coordinateur',
@@ -407,7 +407,7 @@ function role_aide(?string $r): string
         'participant' => 'Fait des badges, garde ses Koris. C’est le compte d’un invité.',
         'partenaire' => 'Crée ses campagnes, les soumet à la relecture, suit ses chiffres. Une offre commerciale s’y attache.',
         'scanner' => 'Le contrôle d’entrée, et rien d’autre. Pour le téléphone qui tient la porte.',
-        'editeur' => 'Écrit décors et articles, les soumet à la relecture. Ne publie pas lui-même.',
+        'editeur' => 'Écrit badges et articles, les soumet à la relecture. Ne publie pas lui-même.',
         'coordinateur' => 'Tout ce que font les trois précédents, et il arbitre : il publie, renvoie, refuse.',
         'equipe' => 'Tout le produit, les comptes clients et les réglages. Ne peut pas créer de compte d’équipe.',
         'super_admin' => 'Tout, y compris créer et défaire les comptes de l’équipe. Un ou deux, pas plus.',

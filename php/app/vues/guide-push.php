@@ -31,7 +31,8 @@
       <span>Boost · Push</span>
     </div>
     <h1>Parler à ceux qui sont déjà venus</h1>
-    <p>WhatsApp, Telegram et les notifications du navigateur, depuis un seul écran.
+    <p>WhatsApp, Telegram et les notifications, du navigateur comme de
+    l'application Wakabi, depuis un seul écran.
     Vous écrivez une fois, vous choisissez qui reçoit, et vous voyez ce qui est arrivé.</p>
     <div class="hero-ctas" style="justify-content:center;margin-top:26px">
       <a class="btn btn-white btn-lg" href="<?= e(url('?p=inscription')) ?>">Créer mon compte</a>
@@ -78,8 +79,8 @@
       <div class="step-card">
         <div class="step-num">3</div>
         <div class="step-title">Vous choisissez par où</div>
-        <div class="step-desc">WhatsApp, Telegram, le navigateur. Une case par canal, et le
-        compte des destinataires joignables sur chacun.</div>
+        <div class="step-desc">WhatsApp, Telegram, le navigateur et l'application. Une case
+        par canal, et le compte des destinataires joignables sur chacun.</div>
       </div>
       <div class="step-card">
         <div class="step-num">4</div>
@@ -108,7 +109,7 @@
 <section class="section section-sombre">
   <div class="container">
     <div style="text-align:center;margin-bottom:46px" class="fade-up">
-      <div class="tag">Trois canaux</div>
+      <div class="tag">Quatre canaux</div>
       <h2 class="headline">Le message part <span>là où on le lit</span></h2>
       <p style="max-width:64ch;margin:14px auto 0;line-height:1.8">
         Chacun demande quelque chose de différent pour s’ouvrir. C’est écrit ici plutôt que
@@ -124,12 +125,12 @@
               <div class="telephone-avatar">SB</div>
               <div>
                 <div class="telephone-nom">Soirée Blanche</div>
-                <div class="telephone-sous">Message de l’organisateur</div>
+                <div class="telephone-sous">Message du Partenaire</div>
               </div>
             </div>
             <div class="telephone-fil">
               <div class="message">
-                <div class="message-image">VOTRE DÉCOR</div>
+                <div class="message-image">VOTRE BADGE</div>
                 Samedi 12 avril, 21 h, Lomé. Votre badge est déjà prêt :
                 il ne vous reste qu’à y mettre votre photo.
                 <div class="message-bouton">Faire mon badge</div>
@@ -177,12 +178,28 @@
           <div class="jeton"><?= icone_guide('push-notifications', 26) ?></div>
           <div>
             <div class="carte-titre">Notifications navigateur</div>
-            <div class="carte-texte">La personne accepte une fois, depuis votre page de décor,
-            et vous la joignez ensuite sans connaître ni son numéro ni son adresse.</div>
+            <div class="carte-texte">La personne accepte une fois, depuis votre page de badge,
+            et vous la joignez ensuite sans connaître ni son numéro ni son adresse. Elles
+            partent aussi bien du navigateur que de l'application Wakabi : deux
+            supports, un même envoi.</div>
             <div class="feature-pills" style="margin:16px 0 0">
               <span class="pill"><span class="pill-dot"></span>Rien à configurer</span>
               <span class="pill"><span class="pill-dot"></span>Anonyme</span>
               <span class="pill"><span class="pill-dot"></span>Compris dans l’offre</span>
+            </div>
+          </div>
+        </div>
+        <div class="carte-nuit accent a-violet">
+          <div class="jeton"><?= icone_guide('telephone', 26) ?></div>
+          <div>
+            <div class="carte-titre">L’application Wakabi</div>
+            <div class="carte-texte">L’invité l’installe une fois, et tout arrive au même endroit :
+            le badge, le code d’entrée, les rappels du Partenaire, les notifications. Ceux qui
+            n’ont rien installé continuent par WhatsApp, Telegram ou le navigateur.</div>
+            <div class="feature-pills" style="margin:16px 0 0">
+              <span class="pill"><span class="pill-dot"></span>Badge emporté partout</span>
+              <span class="pill"><span class="pill-dot"></span>Sans compte à créer</span>
+              <span class="pill"><span class="pill-dot"></span>Notifications comprises</span>
             </div>
           </div>
         </div>
@@ -275,33 +292,16 @@
             <tr><td>+229 97 ** ** 44</td><td>WhatsApp</td>
                 <td><span class="badge badge-orange">Débit dépassé</span></td>
                 <td>Relancer</td></tr>
+            <tr><td>@fatou***</td><td>Telegram</td>
+                <td><span class="badge badge-blue">Refus des inconnus</span></td>
+                <td>Repasse par WhatsApp</td></tr>
+            <tr><td>App Wakabi, +228 91 ** ** 07</td><td>Application</td>
+                <td><span class="badge badge-gray">Notifications coupées</span></td>
+                <td>Reviennent à la réouverture</td></tr>
           </tbody>
         </table>
       </div>
       <p class="legende">Exemples de motifs. Le rapport affiche les vôtres, avec leur compte.</p>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <div style="text-align:center;margin-bottom:36px" class="fade-up">
-      <h2 class="headline">Et par rapport à <span>ce que vous faites déjà</span></h2>
-    </div>
-    <div class="admin-table-wrap colonne-large fade-up">
-      <table class="admin-table">
-        <thead><tr><th></th><th>Une affiche</th><th>Une story</th><th>Push Wakabi</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Qui la voit</strong></td><td>Qui passe devant</td>
-              <td>Qui ouvre dans les 24 h</td><td><strong>Qui est déjà venu chez vous</strong></td></tr>
-          <tr><td><strong>Ce que ça coûte</strong></td><td>L’impression</td>
-              <td>Gratuit, puis la publicité</td><td><strong>Compris dans l’offre</strong></td></tr>
-          <tr><td><strong>Ce que vous mesurez</strong></td><td>Rien</td>
-              <td>Des vues</td><td><strong>Reçu, ouvert, suivi, venu</strong></td></tr>
-          <tr><td><strong>À qui appartient l’audience</strong></td><td>À personne</td>
-              <td>Au réseau social</td><td><strong>À vous</strong></td></tr>
-        </tbody>
-      </table>
     </div>
   </div>
 </section>
@@ -318,11 +318,11 @@
           <div class="faq-a">Oui, pour ce canal-là : un numéro vérifié et des gabarits validés par
           le fournisseur. L’écran des canaux vous dit à quelle étape vous en êtes. Les
           notifications du navigateur, elles, ne demandent rien : elles marchent dès le premier
-          décor publié.</div></details>
+          badge publié.</div></details>
         <details class="faq-item"><summary class="faq-q">Et si je n’ai aucun numéro de téléphone ?<span>+</span></summary>
-          <div class="faq-a">C’est le cas le plus fréquent au départ, et c’est exactement ce que les
+          <div class="faq-a">C'est le cas le plus fréquent au départ, et c'est exactement ce que les
           notifications du navigateur résolvent : la personne accepte une fois depuis votre page de
-          décor, et vous pouvez la prévenir sans jamais connaître ni son numéro ni son
+          badge, et vous pouvez la prévenir sans jamais connaître ni son numéro ni son
           adresse.</div></details>
         <details class="faq-item"><summary class="faq-q">Combien de messages par mois ?<span>+</span></summary>
           <div class="faq-a">Cela dépend de l’offre, et chaque canal a son propre compteur. Le détail

@@ -100,7 +100,7 @@ function sponsor_enregistrer(array $decor, array $u, array $champs): array
                        sponsor_lien = NULL, sponsor_statut = 'a_relire', maj_le = ?
                        WHERE id = ?")
             ->execute([maintenant(), (string) $decor['id']]);
-        return ['ok' => true, 'message' => 'Sponsor retiré de ce décor.', 'relire' => false];
+        return ['ok' => true, 'message' => 'Sponsor retiré de ce badge.', 'relire' => false];
     }
 
     if ($lien !== '' && !filter_var($lien, FILTER_VALIDATE_URL)) {
@@ -111,7 +111,15 @@ function sponsor_enregistrer(array $decor, array $u, array $champs): array
                 'relire' => false];
     }
 
-    $sans_relecture = $lien === '' || droit($u, 'valider') || redirection_autorisee($lien);
+    // Le garde-fou des cibles : le lien du sponsor devient un lien court
+    // Wakabi, donc il ne peut mener que vers du Wakabi. La règle tient
+    // pour tout le monde, l'équipe incluse.
+    if ($lien !== '' && !lien_cible_autorisee($lien)) {
+        return ['ok' => false, 'message' => 'Le lien du sponsor doit mener vers '
+            . implode(' ou ', DOMAINES_CIBLES_LIENS) . '.', 'relire' => false];
+    }
+
+    $sans_relecture = $lien === '' || lien_cible_autorisee($lien);
     $statut = $sans_relecture ? 'valide' : 'a_relire';
 
     /**
@@ -141,7 +149,7 @@ function sponsor_enregistrer(array $decor, array $u, array $champs): array
 
     if ($statut === 'a_relire') {
         notifier_equipe('regie', 'Un lien de sponsor attend la relecture',
-            '« ' . $nom .' » sur le décor ' . $decor['titre'] . ' · ' . $lien,
+            '« ' . $nom .' » sur le badge ' . $decor['titre'] . ' · ' . $lien,
             '?p=sponsor&decor=' . $decor['slug']);
         return ['ok' => true, 'relire' => true,
                 'message' => 'Sponsor enregistré. Son lien devient cliquable une fois relu '
@@ -160,7 +168,7 @@ function sponsor_valider(array $decor, array $u): void
         (string) $decor['titre'], 'Lien de sponsor approuvé');
     if (($decor['auteur_id'] ?? null)) {
         notifier((string) $decor['auteur_id'], 'regie', 'Le lien de votre sponsor est approuvé',
-            '« ' . $decor['sponsor_nom'] . ' » est maintenant cliquable sur la page du décor.',
+            '« ' . $decor['sponsor_nom'] . ' » est maintenant cliquable sur la page du badge.',
             '?p=sponsor&decor=' . $decor['slug']);
     }
 }
@@ -287,7 +295,7 @@ function sponsor_pdf(array $decor, array $c): string
     /* ---- où le logo a été vu ---- */
     $y = rapport_pdf_titre($pdf, $g, $y, 'Où votre nom a été vu');
     $lignes = [
-        'Sur la page du décor « ' . $decor['titre'] . ' », ouverte '
+        'Sur la page du badge « ' . $decor['titre'] . ' », ouverte '
             . $n($c['vues']) . ' fois. C’est là que se trouve votre bloc : votre nom, '
             . 'votre logo et votre lien.',
         $c['campagnes'] > 0

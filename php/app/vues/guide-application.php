@@ -40,7 +40,44 @@
             <span class="pill"><span class="pill-dot"></span>Avis communauté</span>
             <span class="pill"><span class="pill-dot"></span>Mode hors ligne</span>
           </div>
-          <a href="<?= e(APPLICATION_URL) ?>" target="_blank" class="btn btn-primary btn-lg">Télécharger gratuitement</a>
+          <?php
+          /**
+           * Les DEUX magasins, côte à côte.
+           *
+           * L'application se télécharge aujourd'hui depuis Google Play ;
+           * la version Apple est en cours, mais le bouton se montre
+           * déjà — grisé, non cliquable, avec sa date d'ouverture à
+           * venir. Un seul bouton posait la question « et sur iPhone ? »
+           * sans y répondre ; un lien mort la répondrait mal.
+           *
+           * Tout est piloté par `APP_STORE_URL` (`app/vitrine.php`) :
+           * le jour où l'adresse existe, ce bloc-ci ne change pas — le
+           * `span` grisé devient le vrai lien, tout seul.
+           */
+          ?>
+          <div class="store-btns" style="margin-top:26px">
+            <a class="store-btn" href="<?= e(APPLICATION_URL) ?>" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+                   style="width:24px;height:24px;flex:none"><polygon points="6,3.5 20,12 6,20.5"></polygon></svg>
+              <span class="store-btn-text"><small>Télécharger sur</small><strong>Google&nbsp;Play</strong></span>
+            </a>
+            <?php if (APP_STORE_URL !== ''): ?>
+              <a class="store-btn" href="<?= e(APP_STORE_URL) ?>" target="_blank" rel="noopener">
+            <?php else: ?>
+              <span class="store-btn est-grise" aria-disabled="true" title="Bientôt disponible sur l’App Store">
+            <?php endif; ?>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+                   style="width:24px;height:24px;flex:none"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.042 3.536-.538 8.77 1.473 11.641.975 1.402 2.135 2.973 3.663 2.916 1.468-.058 2.023-.944 3.799-.944 1.757 0 2.27.944 3.8.915 1.569-.027 2.563-1.42 3.518-2.828 1.114-1.624 1.573-3.198 1.598-3.282-.035-.016-3.086-1.186-3.117-4.666-.024-2.93 2.396-4.336 2.509-4.407-1.375-2.008-3.49-2.245-4.224-2.278-1.903-.145-3.499 1.03-4.398 1.03zM15.63 3.905c.805-.975 1.349-2.332 1.199-3.685-1.161.047-2.567.774-3.402 1.748-.745.86-1.397 2.238-1.222 3.556 1.294.101 2.618-.644 3.425-1.619z"></path></svg>
+              <span class="store-btn-text"><small><?php if (APP_STORE_URL !== ''): ?>Télécharger sur l’<?php else: ?>Bientôt sur l’<?php endif; ?></small><strong>App&nbsp;Store</strong></span>
+            <?php if (APP_STORE_URL !== ''): ?>
+              </a>
+            <?php else: ?>
+              </span>
+            <?php endif; ?>
+          </div>
+          <?php if (APP_STORE_URL === ''): ?>
+            <p style="margin-top:8px;font-size:12px;color:var(--text3);">La version iPhone arrive bientôt.</p>
+          <?php endif; ?>
         </div>
         <div class="phones-wrap fade-up fade-up-d2">
           <div class="phone-side phone-left"><img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/MOKE-2.png"
@@ -58,7 +95,7 @@
   </section>
   <section class="section" style="background:var(--bg2);">
     <div class="container">
-      <div style="text-align:center;margin-bottom:50px;" class="fade-up">
+      <div style="text-align:center;margin-bottom:30px;" class="fade-up">
         <h2 class="headline">4 niveaux <span>d'explorateur</span></h2>
       </div>
       <div class="features-grid fade-up">
@@ -91,7 +128,7 @@
   </section>
   <section class="section" style="background:var(--bg2);">
     <div class="container">
-      <div style="text-align:center;margin-bottom:54px;" class="fade-up">
+      <div style="text-align:center;margin-bottom:30px;" class="fade-up">
         <div class="tag">Fonctionnalités</div>
         <h2 class="headline">Tout ce dont tu as <span>besoin</span></h2>
       </div>

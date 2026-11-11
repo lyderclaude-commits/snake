@@ -1,26 +1,29 @@
 <?php
 /**
- * Les articles du guide, tirés de son WordPress.
+ * Les articles du guide, et comment ils arrivent ici.
  *
  * Le blog de wakabileguide.com allait les chercher DEPUIS LE NAVIGATEUR :
  * la page arrivait vide, un script appelait `wp-json/wp/v2/posts?_embed`,
- * puis fabriquait les cartes. Ça marche à l'oeil, et ça coûte trois
- * choses qui comptent ici.
+ * puis fabriquait les cartes. Le référencement en souffrait d'abord : un
+ * moteur de recherche recevait une page vide. Puis la lecture côté serveur
+ * a réglé cela, en affichant au fil de l'eau les articles de WordPress à
+ * côté des nôtres.
  *
- * D'abord le référencement : un moteur de recherche reçoit une page vide.
- * Le blog du guide est donc aujourd'hui INVISIBLE dans les résultats —
- * pour un guide dont tout le métier est de se faire trouver, c'est le
- * contraire du but. Ensuite la 3G : chaque visiteur paie l'aller-retour
- * vers WordPress, plus la charge `_embed` qui traîne les médias et les
- * catégories. Enfin la fusion elle-même : le blog de Boost est rendu par
- * le serveur, avec ses articles et sa relecture ; pour ranger les deux
- * sources dans une seule liste triée par date, il faut qu'elles se
- * rencontrent quelque part, et ce quelque part est ici.
+ * C'est fini, et dans l'autre sens. À l'affichage, le blog ne lit PLUS
+ * WordPress : tout ce qui paraît ici est un article de la table `articles`,
+ * avec son texte à nous, ses images hébergées ici, ses dates propres. Ce
+ * qui vient du guide est IMPORTÉ — à la demande, depuis l'écran du blog de
+ * l'administration — et une fois importé, il ne se distingue d'un article
+ * écrit ici d'aucune façon visible pour un lecteur.
  *
- * On lit donc côté serveur, on garde en cache, et l'on rend du HTML déjà
- * écrit. Si WordPress ne répond pas, le cache périmé sert quand même :
- * un blog qui affiche les articles d'hier vaut infiniment mieux qu'un
- * blog vide, et c'est exactement ce que le visiteur attend.
+ * Ce qui reste dans ce fichier est le matériel de l'import : le client de
+ * l'API (`wp_get`), la traduction du HTML de WordPress vers le texte du
+ * projet (`wp_html_vers_texte`), et le rapatriement des images. Un article
+ * non importé n'apparaît nulle part côté public : sa seule existence pour
+ * le site est la liste du panneau d'import.
+ *
+ * Si WordPress ne répond pas pendant un import, on le dit à l'écran ; le
+ * site, lui, ne dépend plus de lui pour rien.
  */
 
 declare(strict_types=1);
@@ -34,26 +37,31 @@ const WP_FRAICHEUR = 600;
 /**
  * La taille d'un lot, et combien on en demande au plus.
  *
- * Vingt articles par appel plutôt que cent : la page 1 du blog en montre
- * neuf, et `_embed` traîne derrière chaque article ses médias et ses
- * catégories. Demander cent objets pour en afficher neuf, c'est faire
+ * Vingt articles par appel : `_embed` traîne derrière chaque article ses
+ * médias et ses catégories, et demander cent objets à la fois ferait
  * payer à WordPress — et à la connexion — dix fois ce qu'on utilise.
  *
- * Dix lots au plus, soit deux cents articles du guide atteignables. Au
- * delà, la page profonde du blog ne montre plus que les articles d'ici :
- * c'est une limite écrite, pas une surprise, et elle borne le temps qu'une
- * seule page peut passer à attendre WordPress.
+ * Dix lots au plus, soit deux cents articles proposés à l'import. Au
+ * delà, le panneau coupe : c'est une limite écrite, pas une surprise, et
+ * elle borne le temps qu'un écran d'administration peut passer à
+ * attendre WordPress.
  */
 const WP_PAR_LOT = 20;
 const WP_LOTS_MAX = 10;
+
+/** Le poids au delà duquel une image du guide est jugée trop lourde pour venir ici. */
+const WP_IMAGE_MAX = 6 * 1024 * 1024;
+
+/** Combien d'articles un clic d'import traite au plus. */
+const WP_IMPORT_LOT_MAX = 25;
 
 /**
  * Après une panne, on laisse WordPress tranquille cinq minutes.
  *
  * Sans ce répit, un hébergement sans sortie réseau — cas banal sur un
- * mutualisé — ferait attendre le délai de connexion À CHAQUE affichage du
- * blog, pour toujours échouer pareil. Le blog resterait lisible, mais lent
- * à en être inutilisable, et rien ne dirait pourquoi.
+ * mutualisé — ferait attendre le délai de connexion À CHAQUE lecture,
+ * pour toujours échouer pareil. Sur l'écran d'import, le message le dit ;
+ * côté public, personne n'attend plus rien de WordPress.
  */
 const WP_REPIT = 300;
 
@@ -63,7 +71,7 @@ const WP_REPIT = 300;
  * Trois sources, dans cet ordre : ce que l'équipe a réglé en ligne, ce que
  * `config.php` impose, puis le défaut. Le réglage en ligne passe devant
  * parce que c'est le seul qui se corrige sans FTP le jour où l'adresse de
- * WordPress change — et ce jour-là, le blog est à moitié vide.
+ * WordPress change.
  *
  * Vide, c'est un arrêt volontaire : plus aucun appel ne part.
  */
@@ -96,16 +104,29 @@ function wp_actif(): bool
  * un mouchard posé sur la page de quelqu'un d'autre et une image qui
  * meurt le jour où le site d'origine ferme.
  *
- * Ces articles-ci font exception, sur décision explicite : leurs images
- * vivent dans la médiathèque du guide et les rapatrier demanderait un
- * import que personne n'a demandé. L'exception est BORNÉE à l'hôte de
- * l'API — pas « n'importe quelle adresse », l'hôte du guide et lui seul.
- * La différence est tout le sujet : on fait confiance à son propre
- * serveur, pas au web entier.
+ * L'exception est BORNÉE aux adresses du guide : l'hôte de l'API, le
+ * domaine qui le porte, et leurs sous-domaines. Pas « n'importe quelle
+ * adresse » — l'hôte du guide et lui seul. La différence est tout le
+ * sujet : on fait confiance à son propre serveur, pas au web entier.
+ *
+ * Pourquoi l'élargissement : la médiathèque du guide sert des images
+ * depuis l'API (`admin.wakabileguide.com`) depuis l'apex
+ * (`wakabileguide.com`) selon le billet. N'accepter que l'hôte exact de
+ * l'API laissait la moitié du catalogue en images refusées, et c'est le
+ * même éditeur qui les a posées — le domaine de base est la frontière, pas
+ * le sous-domaine.
  */
 function wp_hote(): string
 {
     return strtolower((string) parse_url(wp_racine(), PHP_URL_HOST));
+}
+
+/** Le domaine de base de l'API : les deux derniers étiquettes de son hôte. */
+function wp_domaine(): string
+{
+    $t = explode('.', wp_hote());
+    $n = count($t);
+    return $n >= 2 ? $t[$n - 2] . '.' . $t[$n - 1] : wp_hote();
 }
 
 /** Cette adresse d'image vient-elle bien du guide ? */
@@ -115,9 +136,18 @@ function wp_image_permise(string $url): bool
     if (!$u || !in_array(strtolower($u['scheme'] ?? ''), ['http', 'https'], true)) {
         return false;
     }
-    $h = strtolower($u['host'] ?? '');
+    $h = strtolower(preg_replace('/\.$/', '', (string) ($u['host'] ?? '')));
+    if ($h === '') {
+        return false;
+    }
     $ref = wp_hote();
-    return $ref !== '' && ($h === $ref || str_ends_with($h, '.' . $ref));
+    $dom = wp_domaine();
+    if ($ref === '') {
+        return false;
+    }
+    $sous_ref = str_ends_with($h, '.' . $ref);
+    $sous_dom = $dom === $ref ? false : (str_ends_with($h, '.' . $dom) || $h === $dom);
+    return $h === $ref || $sous_ref || $sous_dom;
 }
 
 function dossier_cache(): string
@@ -147,15 +177,12 @@ function wp_panne_noter(bool $echec): void
 }
 
 /**
- * Un GET JSON, avec repli quand cURL manque.
+ * Un GET, avec repli quand cURL manque.
  *
- * Même forme que `canal_http()`, qui ne sait que poster. Sur un
- * mutualisé, `curl` est parfois désactivé ; le repli par flux fait la
- * même chose en moins bavard sur les erreurs, d'où l'ordre.
- *
- * Les délais sont courts VOLONTAIREMENT : cette requête est sur le chemin
- * d'une page publique. Six secondes d'attente, c'est déjà un visiteur
- * perdu ; mieux vaut servir le cache périmé.
+ * Sur un mutualisé, `curl` est parfois désactivé ; le repli par flux fait
+ * la même chose en moins bavard sur les erreurs, d'où l'ordre. Les
+ * en-têtes de réponse l'accompagnent : l'import lit `X-WP-Total` comme
+ * la liste du blog le faisait.
  *
  * @return array{ok: bool, code: int, corps: mixed, pages: int, total: int}
  */
@@ -202,12 +229,8 @@ function wp_get(string $url, int $delai = 6): array
 
     /**
      * `X-WP-Total` dit combien d'articles répondent, `X-WP-TotalPages`
-     * combien de pages ils font.
-     *
-     * Sans le premier, la pagination du blog fusionné serait fausse : on
-     * ne saurait pas combien d'articles du guide viennent s'ajouter aux
-     * nôtres, donc pas combien de pages annoncer. Sans le second, on
-     * demanderait des lots après le dernier, pour rien.
+     * combien de pages ils font. Sans le premier, le panneau d'import
+     * ne saurait pas combien d'articles proposer au total.
      */
     $pages = 0;
     $total = 0;
@@ -230,12 +253,71 @@ function wp_get(string $url, int $delai = 6): array
 }
 
 /**
+ * Un GET qui ne parle pas JSON : le corps binaire d'une image.
+ *
+ * Même client que `wp_get`, mais la réponse est gardée entière — c'est
+ * l'image qu'on vient rapporter, pas un document à décoder. Le délai est
+ * bien plus long que la lecture live, ET VOLONTAIREMENT : une image de
+ * la médiathèque du guide peut peser des mégaoctets, et cette requête
+ * n'est plus sur le chemin d'aucune page publique — elle part au clic
+ * d'un bouton tenu par l'équipe, qui voit le chargement patienter.
+ *
+ * @return array{ok: bool, code: int, corps: ?string, type: string}
+ */
+function wp_telecharge(string $url, int $delai = 20): array
+{
+    $brut = null;
+    $code = 0;
+    $type = '';
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $delai,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_USERAGENT => 'Wakabi/' . VERSION,
+            CURLOPT_MAXFILESIZE => WP_IMAGE_MAX,
+        ]);
+        $brut = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $type = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        curl_close($ch);
+    } else {
+        $ctx = stream_context_create(['http' => [
+            'method' => 'GET',
+            'timeout' => $delai,
+            'ignore_errors' => true,
+            'header' => 'User-Agent: Wakabi/' . VERSION,
+        ]]);
+        $brut = @file_get_contents($url, false, $ctx, 0, WP_IMAGE_MAX);
+        foreach ($http_response_header ?? [] as $l) {
+            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $l, $m)) {
+                $code = (int) $m[1];
+            } elseif (stripos($l, 'content-type:') === 0) {
+                $type = trim(substr($l, 13));
+            }
+        }
+    }
+
+    return [
+        'ok' => $code >= 200 && $code < 300 && is_string($brut) && $brut !== '',
+        'code' => $code,
+        'corps' => is_string($brut) ? $brut : null,
+        'type' => $type,
+    ];
+}
+
+/**
  * Le cache d'une requête, et le repli sur du périmé.
  *
  * Trois états, et le troisième est celui qui compte : frais (on sert),
  * périmé mais WordPress répond (on rafraîchit), périmé et WordPress muet
- * (ON SERT LE PÉRIMÉ). Le dernier cas est le seul qu'on ne voit jamais en
- * recette et le seul qui arrive vraiment un dimanche soir.
+ * (ON SERT LE PÉRIMÉ). Pour l'écran d'import, le périmé vaut mieux qu'un
+ * panneau vide : la liste des articles à importer est une liste, pas une
+ * écriture.
  */
 function wp_cache(string $cle, callable $chercher): array
 {
@@ -284,12 +366,14 @@ function wp_cache(string $cle, callable $chercher): array
  * cette règle interdit, et la faille serait d'autant plus vicieuse qu'elle
  * passerait par un serveur de confiance : il suffirait d'un compte
  * d'auteur WordPress compromis pour poser un script sur toutes les pages
- * du site fusionné.
+ * du site.
  *
  * On traduit donc : les titres deviennent `##`, les listes `-`, les
  * citations `>`, les liens `[texte](url)`, les images `![légende](url)`.
  * Ce qu'on ne reconnaît pas devient du texte nu. Les balises finales sont
- * toutes écrites par `texte_riche()`, comme pour un article d'ici.
+ * toutes écrites par `texte_riche()`, comme pour un article d'ici. Les
+ * images ainsi citées restent aux adresses du guide : c'est
+ * `wp_rapatrier_images()` qui les ramène à l'import.
  */
 function wp_html_vers_texte(string $html): string
 {
@@ -385,10 +469,10 @@ function wp_nu(string $html): string
  * Une date de WordPress, écrite comme les nôtres.
  *
  * `date_gmt` arrive sans fuseau : « 2026-09-20T14:32:11 ». Laissée telle
- * quelle, `strtotime()` la lit dans le fuseau du serveur, et un article du
- * guide se range une heure trop tôt ou trop tard au milieu des nôtres. On
- * lui rend son `Z`, et les deux sources se trient alors par simple
- * comparaison de chaînes — même forme, même ordre.
+ * quelle, `strtotime()` la lit dans le fuseau du serveur, et un article
+ * importé se range une heure trop tôt ou trop tard au milieu des nôtres.
+ * On lui rend son `Z`, et tout se trie par simple comparaison de chaînes
+ * — même forme, même ordre.
  */
 function wp_date(string $brut): string
 {
@@ -401,12 +485,13 @@ function wp_date(string $brut): string
 }
 
 /**
- * Un article WordPress rangé comme un article d'ici.
+ * Un article de l'API WordPress, rangé comme un article d'ici.
  *
- * Même forme que la table `articles`, pour que la liste du blog et la
- * page d'article n'aient pas à savoir d'où vient ce qu'elles affichent.
- * `source` est le seul champ en plus, et il ne sert qu'à fabriquer la
- * bonne adresse.
+ * Même forme que la table `articles`, pour que le panneau d'import et
+ * l'importeur eux-mêmes n'aient qu'une seule manière de lire un article
+ * du guide. `source` et `id` en `'wp-…'` n'existent qu'ICI, pour la liste
+ * : ce qui est écrit dans la table a un vrai identifiant de la maison, et
+ * n'est plus jamais appelé « guide ».
  */
 function wp_normaliser(array $p): array
 {
@@ -422,6 +507,7 @@ function wp_normaliser(array $p): array
     return [
         'source' => 'guide',
         'id' => 'wp-' . (int) ($p['id'] ?? 0),
+        'idwp' => (int) ($p['id'] ?? 0),
         'slug' => (string) ($p['slug'] ?? ''),
         'titre' => wp_nu((string) ($p['title']['rendered'] ?? '')),
         'chapo' => $chapo !== '' ? $chapo : texte_extrait($corps),
@@ -436,22 +522,20 @@ function wp_normaliser(array $p): array
         'maj_le' => $maj !== '' ? $maj : $date,
         'vues' => 0,
         'decor_id' => null,
-        /* L'adresse de l'article chez WordPress. On ne s'en sert pas pour
-           le lien canonique — après la fusion, la page qui fait foi est
-           celle-ci — mais la garder coûte un champ et évite de refaire
-           l'appel le jour où la rédaction voudra y retourner. */
+        /* L'adresse de l'article chez le guide : la référence qui marque
+           l'import dans `importe_de` — c'est par elle qu'on sait qu'un
+           article est déjà entré, sans relire tout le blog au deuxième
+           clic. Et elle laisse un retour vers l'original, pour la relecture. */
         'lien_source' => (string) ($p['link'] ?? ''),
     ];
 }
 
 /**
- * L'adresse d'un article, selon d'où il vient.
+ * L'adresse d'un article.
  *
- * Deux paramètres distincts, `a` pour les nôtres et `g` pour ceux du
- * guide, plutôt qu'un seul : rien n'empêche un article d'ici et un article
- * de WordPress de porter le même slug, et le jour où cela arrive, l'un des
- * deux disparaîtrait derrière l'autre sans un mot. Deux portes, aucune
- * collision possible.
+ * `?p=blog&a=…` pour tout le monde maintenant : un article importé EST un
+ * article de la maison. La clé `source` n'a d'existence que dans la
+ * liste du panneau d'import, et elle ne sert plus à choisir une porte.
  */
 function url_article(array $a): string
 {
@@ -462,10 +546,10 @@ function url_article(array $a): string
 /**
  * Les articles du guide, jusqu'au rang demandé.
  *
- * On demande des lots jusqu'à en avoir assez pour la page affichée, et pas
- * un de plus : la page 1 en montre neuf, elle ne fait donc qu'un appel.
- * Chaque lot a son cache, si bien qu'aller plus loin dans le blog ne
- * redemande que ce qui manque.
+ * On demande des lots jusqu'à en avoir assez, et pas un de plus : chaque
+ * lot a son cache, si bien que relancer le panneau ne redemande que ce
+ * qui manque. N'est plus qu'ICI que WordPress est appelé — la liste du
+ * panneau d'import et son état de connexion.
  *
  * @return array{articles: list<array>, total: int, frais: bool}
  */
@@ -494,7 +578,11 @@ function wp_jusqua(int $rang, string $cherche = ''): array
         $url = wp_racine() . '/posts?' . http_build_query($params);
         $cle = 'posts-' . $lot . '-' . substr(sha1(wp_racine() . '|' . $cherche), 0, 12);
 
-        $r = wp_cache($cle, static fn(): array => wp_get($url));
+        /* Vingt secondes, pas six : plus rien de public ne passe par ici,
+           et le premier appel apres une cache morte peut dépasser largement
+           six secondes sur un WordPress charge. Le cache périmé reste là
+           pour le pire cas. */
+        $r = wp_cache($cle, static fn(): array => wp_get($url, 20));
         $frais = $frais && (bool) ($r['frais'] ?? false);
         if ((int) ($r['total'] ?? 0) > 0) {
             $total = (int) $r['total'];
@@ -521,35 +609,205 @@ function wp_jusqua(int $rang, string $cherche = ''): array
     ];
 }
 
+/* ------------------------------------------------------------------ */
+/* L'import : télécharger, héberger, écrire ici                        */
+/* ------------------------------------------------------------------ */
+
 /**
- * Un article du guide par son slug.
+ * Une image du guide, rapportée et hébergée chez nous.
  *
- * WordPress sait chercher par slug : `?slug=…` rend une LISTE d'un
- * élément. On passe par là plutôt que par l'identifiant numérique, pour
- * que l'adresse d'un article du guide ait la même forme que celle d'un
- * article d'ici.
+ * Le test qui décide est `getimagesizefromstring()` : une extension est
+ * une déclaration, un contenu d'image est une preuve. Le fichier reçoit
+ * alors un identifiant de la maison, la même recompression qu'un
+ * téléversement dans l'éditeur — une photo de 4000 px s'affiche en 900,
+ * autant ne plus la transférer entière à chaque lecture — puis le fanion
+ * `.opt` de la convention des cadres.
+ *
+ * Â tout échec — hors hôte, trop lourde, pas une image, téléchargement
+ * mort — '' : l'appelant garde alors l'adresse du guide, et rien ne
+ * casse au pire.
+ *
+ * @return string l'adresse locale du média, ou '' si rien n'a été rapporté
  */
-function wp_article(string $slug): ?array
+function wp_importer_media(string $url): string
 {
-    $slug = trim($slug);
-    if (!wp_actif() || $slug === '' || !preg_match('/^[\w%-]{1,200}$/u', $slug)) {
-        return null;
+    $url = trim($url);
+    if ($url === '' || !wp_image_permise($url)) {
+        return '';
     }
-    $url = wp_racine() . '/posts?' . http_build_query(['slug' => $slug, '_embed' => '1']);
-    $r = wp_cache('post-' . substr(sha1(wp_racine() . '|' . $slug), 0, 16),
-                  static fn(): array => wp_get($url));
-    $l = (array) ($r['corps'] ?? []);
-    return isset($l[0]) && is_array($l[0]) ? wp_normaliser($l[0]) : null;
+
+    $r = wp_telecharge($url);
+    if (!$r['ok'] || strlen((string) $r['corps']) > WP_IMAGE_MAX) {
+        return '';
+    }
+    $info = @getimagesizefromstring($r['corps']);
+    $ext = match ($info[2] ?? 0) {
+        IMAGETYPE_JPEG => 'jpg',
+        IMAGETYPE_PNG => 'png',
+        IMAGETYPE_WEBP => 'webp',
+        default => null,
+    };
+    if (!$ext) {
+        return '';
+    }
+
+    $dossier = dossier_medias();
+    $nom = nouvel_id() . '.' . $ext;
+    if (@file_put_contents($dossier . '/' . $nom, (string) $r['corps']) === false) {
+        return '';
+    }
+    /* Un fichier qu'on ne peut pas recomprimer reste en l'état : une
+       image un peu lourde vaut infiniment mieux qu'un média perdu. */
+    $nom = compresser_cadre($dossier, $nom)['nom'];
+    @touch($dossier . '/' . $nom . '.opt');
+    return url('?p=media&f=' . $nom);
 }
 
 /**
- * Les deux blogs en une seule liste, triée par date.
+ * Les images d'un corps converti, ramenées chez nous une à une.
  *
- * C'est ici que la fusion a lieu, et elle tient en trois gestes : prendre
- * de chaque source les `rang` articles les plus récents, les trier
- * ensemble, découper la tranche demandée. Le premier geste est ce qui rend
- * le découpage EXACT : le k-ième article de la liste fusionnée est
- * forcément dans les k premiers de l'une des deux sources.
+ * `wp_html_vers_texte()` a laissé `![alt](https://…)` aux adresses du
+ * guide : on les passe une à une à `wp_importer_media()`, et l'adresse
+ * locale remplace la sienne dans la marque. Une adresse déjà de la
+ * maison — reconnue par `cle_image()` — n'est pas retouchée ; une image
+ * qui refuse de venir reste au guide, et `texte.php` la rend encore —
+ * la dérogation de lecture perdure, à défaut du media lui-même.
+ *
+ * Chaque adresse ne part qu'UNE FOIS, par dédoublonnage : un article
+ * WordPress cite volontiers trois fois la même image (couverture répétée
+ * en corps), et un article de huit images à quatre exemplaires
+ * coûterait autant de téléchargements pour rien.
+ *
+ * @return string le même corps, aux adresses locales quand il s'a pu
+ */
+function wp_rapatrier_images(string $corps): string
+{
+    $faites = [];
+    return (string) preg_replace_callback(
+        '/!\[([^\]]*)\]\(([^)\s]+)\)/',
+        static function (array $m) use (&$faites): string {
+            $url = trim($m[2]);
+            if ($url === '' || cle_image($url) !== null || !wp_image_permise($url)) {
+                return $m[0];
+            }
+            if (!array_key_exists($url, $faites)) {
+                $faites[$url] = wp_importer_media($url);
+            }
+            return $faites[$url] !== ''
+                ? '![' . $m[1] . '](' . $faites[$url] . ')'
+                : $m[0];
+        },
+        $corps
+    );
+}
+
+/**
+ * Un article du guide est-il déjà entré chez nous ?
+ *
+ * La référence est le lien d'origine, écrit dans `importe_de` à chaque
+ * import. Un article du guide sans lien n'a pas de référence fiable :
+ * `null` dit « je ne sais pas », et l'importeur préfère alors une
+ * écriture plutôt qu'une perte — un doublon se voit, on le supprime ;
+ * un article jamais arrivé, personne ne le cherche.
+ */
+function article_deja_importe(string $reference): ?array
+{
+    $reference = trim($reference);
+    if ($reference === '') {
+        return null;
+    }
+    $s = db()->prepare('SELECT * FROM articles WHERE importe_de = ? LIMIT 1');
+    $s->execute([$reference]);
+    $r = $s->fetch();
+    return $r ?: null;
+}
+
+/**
+ * Un article du guide, écrit dans la table, en état de paraître.
+ *
+ * PAS par `article_creer()` — qui force le statut brouillon, et à raison
+ * : le circuit de relecture est fait pour un auteur inconnu de soi. Ici
+ * l'article a DÉJÀ été relu : c'est celui du guide, publié là-bas par la
+ * rédaction qui porte son nom. Il entre donc publié, avec ses dates à
+ * lui datant d'avant son arrivée — un article de septembre se rangerait
+ * mal derrière les notres juste à cause du jour de son import.
+ *
+ * `importe_de` porte le lien d'origine : c'est l'inscription au registre
+ * des imports, celle qui rend un deuxième clic inoffensif.
+ *
+ * @param array $d un article normalisé par `wp_normaliser()`
+ * @param string $auteur_id le compte qui a cliqué sur « Importer »
+ * @return array{ok: bool, id: ?string, deja: bool, erreur: string}
+ */
+function wp_importer_article(array $d, string $auteur_id): array
+{
+    $ref = trim((string) ($d['lien_source'] ?? ''));
+
+    $deja = article_deja_importe($ref);
+    if ($deja) {
+        return ['ok' => true, 'id' => (string) $deja['id'], 'deja' => true, 'erreur' => ''];
+    }
+
+    $titre = trim((string) ($d['titre'] ?? ''));
+    if ($titre === '') {
+        return ['ok' => false, 'id' => null, 'deja' => false, 'erreur' => 'L’article n’a pas de titre.'];
+    }
+
+    /* Le slug du guide passe DE PREMIER : les adresses déjà partagées de
+       ses articles pointant vers `?p=blog&g=…` avec CE slug, les garder
+       ici rend la redirection de secours immédiate et juste. */
+    $base_slug = trim((string) ($d['slug'] ?? ''));
+    $slug = slug_article_libre($base_slug !== '' ? $base_slug : $titre);
+
+    /* Les images du corps sont rapatriées AVANT l'écriture : si le
+       téléchargement échoue, une écriture n'a jamais commencé — un
+       article moitié aux adresses du guide moitié introuvable serait le
+       pire des deux mondes. À l'échec total, les adresses du guide
+       restent, et le corps reste lisible tant qu'il dure. */
+    $corps = wp_rapatrier_images((string) ($d['corps'] ?? ''));
+    if (mb_strlen(trim($corps)) < 40) {
+        return ['ok' => false, 'id' => null, 'deja' => false, 'erreur' => 'Le corps de l’article est vide ou trop court.'];
+    }
+
+    $couverture = wp_importer_media((string) ($d['couverture'] ?? ''));
+    $publie_le = (string) ($d['publie_le'] ?? '') ?: null;
+    $now = $publie_le !== null ? (string) $d['publie_le'] : maintenant();
+    $maj_le = (string) ($d['maj_le'] ?? '') !== '' ? (string) $d['maj_le'] : $now;
+    $auteur_nom = trim((string) ($d['auteur_nom'] ?? ''));
+
+    $id = nouvel_id();
+    db()->prepare('INSERT INTO articles
+        (id, slug, titre, chapo, corps, couverture, decor_id, statut, auteur_id, auteur_nom,
+         publie_le, importe_de, cree_le, maj_le)
+        VALUES (?,?,?,?,?,?,NULL,\'publie\',?,?,?,?,?,?)')
+        ->execute([
+            $id, $slug, $titre,
+            trim((string) ($d['chapo'] ?? '')) !== '' ? (string) $d['chapo'] : texte_extrait($corps),
+            $corps, $couverture !== '' ? $couverture : null,
+            $auteur_id, $auteur_nom !== '' ? $auteur_nom : 'La rédaction Wakabi',
+            $publie_le, $ref !== '' ? $ref : ('wp:' . (int) ($d['idwp'] ?? 0)),
+            $now, $maj_le,
+        ]);
+
+    return ['ok' => true, 'id' => $id, 'deja' => false, 'erreur' => ''];
+}
+
+/* ------------------------------------------------------------------ */
+/* La liste publique                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * La liste du blog — les articles d'ici, et rien que les articles d'ici.
+ *
+ * Le nom raconte une histoire : le temps où deux sources se mélangeaient
+ * à la volée. Aujourd'hui une seule table fournit la liste, triée par
+ * ses dates, et les articles importés du guide s'y tiennent à leur date
+ * PUBLIÉE — au rang auquel ils appartenaient depuis toujours.
+ *
+ * La forme de retour ne change pas — `liste`, `total`, `pages` et
+ * `frais` — parce que la vue du blog et ses appelants n'ont pas à savoir
+ * qu'il n'y a plus qu'une seule source. `frais` est vrai par définition :
+ * il n'y a plus de cache susceptible d'être périmé.
  *
  * @return array{liste: list<array>, total: int, pages: int, frais: bool}
  */
@@ -557,20 +815,14 @@ function blog_fusionne(int $page, int $par_page, string $cherche = ''): array
 {
     $page = max(1, $page);
     $par_page = max(1, $par_page);
-    $rang = $page * $par_page;
 
-    $guide = wp_jusqua($rang, $cherche);
-    $miens = articles_publies_jusqua($rang, $cherche);
+    $tout = articles_publies_jusqua($page * $par_page, $cherche);
+    $total = compter_articles_publies_cherches($cherche);
 
-    $tout = array_merge($miens, $guide['articles']);
-    usort($tout, static fn(array $x, array $y): int
-        => strcmp((string) ($y['publie_le'] ?? ''), (string) ($x['publie_le'] ?? '')));
-
-    $total = compter_articles_publies_cherches($cherche) + $guide['total'];
     return [
         'liste' => array_slice($tout, ($page - 1) * $par_page, $par_page),
         'total' => $total,
         'pages' => max(1, (int) ceil($total / $par_page)),
-        'frais' => $guide['frais'],
+        'frais' => true,
     ];
 }

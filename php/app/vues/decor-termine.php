@@ -27,13 +27,13 @@ $vignette = url_og($d);
   <?php endif; ?>
 
   <p style="color:var(--text2);max-width:44ch;margin:14px auto 22px">
-    Ce décor n’est plus en ligne : la campagne est terminée, et les badges
+    Ce badge n’est plus en ligne : la campagne est terminée, et les badges
     ne peuvent plus être créés. Les badges déjà téléchargés, eux, restent
     valables.
   </p>
 
   <div class="rangee" style="justify-content:center;gap:10px">
-    <a class="bouton" href="<?= e(url('?p=decors')) ?>">Les décors du moment</a>
+    <a class="bouton" href="<?= e(url('?p=decors')) ?>">Les badges du moment</a>
     <a class="bouton fant" href="<?= e(url('')) ?>">Créer ma campagne</a>
   </div>
 </div>

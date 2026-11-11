@@ -64,6 +64,94 @@ if ($page === 'blog-admin' && $post) {
         $racine === '' ? 'Source du guide débranchée.' : 'Source du guide enregistrée.'));
 }
 
+/* ---------------- importer depuis le guide ---------------- */
+
+/**
+ * Le clic d'import : un lot d'articles du guide entre ici pour toujours.
+ *
+ * Chaque article est repris UN PAR UN, et l'importeur est volontairement
+ * rangé : fetch l'article, le traduire, télécharger ses images, écrire,
+ * article suivant. Un chargement de page mutualisée meurt au bout de
+ * trente à cent vingt secondes ; vingt-cinq articles de suite dépassent
+ * rarement ceci, et SINON rien n'est perdu : les imports se voient à
+ * `importe_de`, un article commencé reste entier, et relancer le même
+ * clic pour les suivants passe au-dessus de ceux qui sont déjà entrés.
+ *
+ * L'import est écrit PUBLIÉ d'emblée, avec les dates du guide : un
+ * article relu et publié là-bas n'a pas à repasser par le circuit
+ * brouillon-relecture — sa revoyure a déjà eu lieu chez son auteur.
+ */
+if ($page === 'blog-import') {
+    exiger_droit('valider');
+    if (!$post) {
+        rediriger('?p=blog-admin');
+    }
+    verifier_csrf();
+
+    $ids = array_values(array_map('intval', (array) ($_POST['ids'] ?? [])));
+    $ids = array_slice(array_values(array_filter($ids, static fn(int $i): bool => $i > 0)), 0, WP_IMPORT_LOT_MAX);
+    if (!$ids) {
+        rediriger('?p=blog-admin&err=' . rawurlencode('Cochez au moins un article à importer.'));
+    }
+    if (!wp_actif()) {
+        rediriger('?p=blog-admin&err=' . rawurlencode(
+            'L’adresse de l’API du guide est vide : réglez-la d’abord.'));
+    }
+
+    /* L'import peut être long — des images à télécharger — et l'écran
+       demande tout ce que le mutalisé accorde. */
+    @set_time_limit(0);
+    ignore_user_abort(false);
+
+    $faits = [];
+    $rates = [];
+    foreach ($ids as $idwp) {
+        $titre = 'l’article #' . $idwp;
+        $r = wp_get(wp_racine() . '/posts/' . $idwp . '?' . http_build_query(['_embed' => '1']), 20);
+
+        /* WordPress rend un OBJET erreur (`code`, `message`) sur un
+           identifiant inconnu, et un tableau seulement sur un article. */
+        if (!$r['ok'] || !is_array($r['corps']) || isset($r['corps']['code'])) {
+            $rates[] = $titre;
+            continue;
+        }
+        $d = wp_normaliser($r['corps']);
+        if ($d['titre'] !== '') {
+            $titre = '« ' . $d['titre'] . ' »';
+        }
+        $import = wp_importer_article($d, (string) $u['id']);
+        if (!$import['ok']) {
+            $rates[] = $titre;
+            continue;
+        }
+        if (!$import['deja']) {
+            journal_ecrire($u, 'article.importe', 'article', (string) $import['id'],
+                'Article importé du guide : ' . $d['titre']);
+            $faits[] = $titre;
+        }
+    }
+
+    $n = count($faits);
+    $m = count($rates);
+    $ok_msg = '';
+    $err_msg = '';
+    if ($n > 0) {
+        $ok_msg = $n . ' article' . ($n > 1 ? 's' : '') . ' importé' . ($n > 1 ? 's' : '')
+            . ' du guide, avec ses images.';
+    } elseif ($m === 0) {
+        $ok_msg = 'Rien à importer : tous ces articles sont déjà chez nous.';
+    }
+    if ($m > 0) {
+        $err_msg = $m . ' article' . ($m > 1 ? 's' : '') . ' n’' . ($m > 1 ? 'ont' : 'a')
+            . ' pas pu être ' . ($m > 1 ? 'importés' : 'importé') . ' — '
+            . implode(', ', array_slice($rates, 0, 3)) . ($m > 3 ? ' et d’autres' : '')
+            . '. WordPress a pu être injoignable : réessayez — un article déjà entré n’est jamais importé deux fois.';
+    }
+    rediriger('?p=blog-admin'
+        . ($ok_msg !== '' ? '&ok=' . rawurlencode($ok_msg) : '')
+        . ($err_msg !== '' ? '&err=' . rawurlencode($err_msg) : ''));
+}
+
 /* ---------------- soumettre, décider, supprimer ---------------- */
 
 if ($page === 'blog-action') {
@@ -329,6 +417,30 @@ if ($page === 'blog-editer') {
 
 /* ---------------- la liste ---------------- */
 
+/**
+ * Le catalogue du guide, vu du panneau d'import.
+ *
+ * Chaque article du guide porte son drapeau : s'il a DÉJÀ un import à
+ * son nom, il est affiché « importé » avec son lien local — cliquable,
+ * pour relire le résultat ici plutôt que là-bas. La liste vient du cache
+ * habituel, donc relancer l'écran coûte au pire un clic.
+ *
+ * `$wp_etat` vient de la LECTURE du catalogue plutôt que d'un appel à
+ * part : le même `wp_jusqua` remplit les deux — le billet de connexion
+ * (« 42 articles, frais ») et la liste elle-même.
+ */
+$guide = $equipe && wp_actif() ? wp_jusqua(WP_LOTS_MAX * WP_PAR_LOT) : null;
+$liste_guide = [];
+foreach ((array) ($guide['articles'] ?? []) as $g) {
+    $deja = article_deja_importe((string) $g['lien_source']);
+    $liste_guide[] = $g + [
+        'idwp' => (int) ($g['idwp'] ?? 0),
+        'importe_id' => $deja ? (string) $deja['id'] : '',
+        'importe_le' => $deja ? (string) $deja['maj_le'] : '',
+        'slug_local' => $deja ? (string) $deja['slug'] : '',
+    ];
+}
+
 vue('blog-admin', [
     'titre' => $equipe ? 'Le blog' : 'Mes articles',
     'wp_racine' => wp_racine(),
@@ -336,7 +448,9 @@ vue('blog-admin', [
     /* Un chiffre vaut mieux qu'une case cochée : « 42 articles » dit que
        l'adresse répond, que le format est le bon et que le cache est
        chaud. Une case « source active » n'aurait dit que ce qu'on a tapé. */
-    'wp_etat' => $equipe && wp_actif() ? wp_jusqua(1) : null,
+    'wp_etat' => $equipe ? ['total' => $guide ? (int) $guide['total'] : 0,
+                           'frais' => $guide ? (bool) $guide['frais'] : false] : null,
+    'liste_guide' => $liste_guide,
     'liste' => $equipe ? articles_tous() : articles_de((string) $u['id']),
     'equipe' => $equipe,
     'a_relire' => $equipe ? articles_a_relire() : 0,

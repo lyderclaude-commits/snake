@@ -13,6 +13,12 @@ $_pas = 0;
 $pas = function () use (&$_pas) { return ++$_pas; };
 ?>
 <div class="contenu">
+  <?php
+  /* Le retour vers le catalogue, tout en haut et comme sur un article :
+     il faut une marche dehors à toute page, sinon le visiteur qui débarque
+     par WhatsApp ne voit que la fermeture d'onglet. */
+  ?>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=decors')) ?>"><i>←</i>Les Badges</a></p>
   <section class="entete" style="padding-bottom:14px">
     <h1><?= e($d['titre']) ?></h1>
     <?php if ($d['sous_titre']): ?><p><?= e($d['sous_titre']) ?></p><?php endif; ?>
@@ -89,7 +95,7 @@ $pas = function () use (&$_pas) { return ++$_pas; };
             <input id="zoom" type="range" value="1" step="0.01"
                    min="<?= e((string) $emplacement['minScale']) ?>"
                    max="<?= e((string) $emplacement['maxScale']) ?>">
-            <p class="aide">Dézoomez pour faire tenir toute l’image : le fond du décor apparaît autour.</p>
+            <p class="aide">Dézoomez pour faire tenir toute l’image : le fond du badge apparaît autour.</p>
           </div>
           <div class="rangee">
             <button class="bouton fant petit" id="ajuster" type="button">Tout afficher</button>

@@ -7,12 +7,10 @@
  * texte, pas un formulaire de génération de badge. Le guide se fait
  * trouver par là.
  *
- * Depuis la fusion, DEUX sources arrivent ici : les articles écrits dans
- * Boost, et ceux du WordPress de wakabileguide.com. Le lecteur ne doit pas
- * les distinguer — c'est un seul blog — mais leurs adresses, si :
- * `&a=` pour les nôtres, `&g=` pour ceux du guide. Un seul paramètre aurait
- * suffi jusqu'au jour où deux articles portent le même slug, et ce jour-là
- * l'un des deux serait devenu inatteignable sans que rien ne le signale.
+ * TOUT ce qui paraît ici est un article de la table `articles` — écrit
+ * dans Boost ou importé depuis le WordPress du guide. Une fois importé,
+ * un article du guide EST un article d'ici : même rang, même page, même
+ * forme d'adresse.
  */
 
 /**
@@ -87,25 +85,30 @@ $montrer_article = function (array $a, string $canonique) use ($me): never {
     ]);
 };
 
-/* ---------------- un article du guide ---------------- */
+/* ---------------- une adresse à l'ancienne marque ---------------- */
 
+/**
+ * Les liens partagés avec `&g=…`, l'ancienne marque d'un article du
+ * guide, ont continué de fonctionner : le temps de l'import a pu être
+ * long, et une adresse partagée ne se casse pas parce que le Site a
+ * changé la sienne. Maintenant que l'article importé VIT ICI, l'adresse
+ * qui fait foi est `&a=` — on déclare la 301 et on laisse le lecteur
+ * suivre. Un doute guette : si le slug n'est pas chez nous pour un
+ * article du guide, c'est qu'il n'est pas (encore) importé — 404,
+ * comme pour n'importe quoi d'inconnu.
+ */
 $du_guide = trim((string) ($_GET['g'] ?? ''));
 if ($du_guide !== '') {
-    $a = wp_article($du_guide);
-    if (!$a) {
+    $a = article_par_slug($du_guide);
+    $visible = $a && ($a['statut'] === 'publie'
+        || droit($me, 'valider')
+        || ($me && $a['auteur_id'] === $me['id']));
+    if (!$visible) {
         http_response_code(404);
         vue('introuvable', ['titre' => 'Article introuvable']);
     }
-    /**
-     * L'adresse qui fait foi est CELLE-CI, pas celle de WordPress.
-     *
-     * Après la fusion, wakabileguide.com et Boost sont un seul site ; le
-     * WordPress n'en est plus que la salle de rédaction. Se déclarer
-     * canonique vers lui reviendrait à demander aux moteurs d'envoyer les
-     * lecteurs sur un backend — c'est-à-dire à rendre le blog fusionné
-     * invisible, ce qu'on est précisément en train de réparer.
-     */
-    $montrer_article($a, url_canonique(['p' => 'blog', 'g' => (string) $a['slug']]));
+    header('Location: ' . url_canonique(['p' => 'blog', 'a' => (string) $a['slug']]), true, 301);
+    exit;
 }
 
 /* ---------------- un article d'ici ---------------- */

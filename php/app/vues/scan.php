@@ -1,6 +1,6 @@
 <div class="contenu">
   <section class="entete">
-    <h1>Contrôle d’entrée</h1>
+    <h1>Scanner Qr</h1>
     <p>Visez le QR avec la caméra du téléphone. À défaut : une douchette se comporte
     comme un clavier, et le code se saisit à la main.</p>
   </section>

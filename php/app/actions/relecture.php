@@ -10,7 +10,7 @@ if ($page === 'decider') {
     $d = decor_par_id($id);
 
     if (!$d) {
-        rediriger('?p=relecture&err=' . urlencode('Décor introuvable.'));
+        rediriger('?p=relecture&err=' . urlencode('Badge introuvable.'));
     }
     try {
         decor_transition($id, $vers, $u, $motif);
@@ -20,10 +20,10 @@ if ($page === 'decider') {
 
     if ($d['auteur_id']) {
         [$titre, $corps] = match ($vers) {
-            'publie' => ['Votre décor est publié', $d['titre'] . ' est en ligne dans le catalogue.'],
+            'publie' => ['Votre badge est publié', $d['titre'] . ' est en ligne dans le catalogue.'],
             'corrections' => ['Corrections demandées', $motif],
-            'refuse' => ['Décor refusé', $motif],
-            default => ['Décor mis à jour', $d['titre']],
+            'refuse' => ['Badge refusé', $motif],
+            default => ['Badge mis à jour', $d['titre']],
         };
         notifier($d['auteur_id'], 'decision', $titre, $corps, '?p=partenaire');
     }

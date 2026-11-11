@@ -66,7 +66,7 @@ $ouvert = $ouvert ?? '';
   <details class="carte creer"<?= $ouvert === 'client' ? ' open' : '' ?>>
     <summary>
       <span class="bouton petit">+ Nouveau compte client</span>
-      <span class="aide">Un organisateur ou un participant. Il a une offre, des quotas, et ne voit que ce qui lui appartient.</span>
+      <span class="aide">Un Partenaire ou un Utilisateur. Il a une offre, des quotas, et ne voit que ce qui lui appartient.</span>
     </summary>
 
     <form method="post" action="<?= e(url('?p=creer-compte')) ?>" class="formulaire-compte">
@@ -312,7 +312,7 @@ $ouvert = $ouvert ?? '';
     pas : ils tiennent sur cet écran.</p>
     <div class="tableau">
       <table>
-        <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
+        <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Badges</th>
         <th class="chiffre">Ce mois</th><th>Rôle</th><th>État</th></tr></thead>
         <tbody>
         <?php foreach ($equipe as $c) { $ligne($c); } ?>
@@ -339,7 +339,7 @@ $ouvert = $ouvert ?? '';
     <?php else: ?>
       <div class="tableau">
         <table>
-          <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Décors</th>
+          <thead><tr><th>Compte</th><th>Structure</th><th class="chiffre">Badges</th>
           <th class="chiffre">Ce mois</th><th>Rôle et offre</th><th>État</th></tr></thead>
           <tbody>
           <?php foreach ($clients as $c) { $ligne($c); } ?>

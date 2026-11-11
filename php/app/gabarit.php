@@ -27,6 +27,10 @@ const GUIDE_URL = 'https://wakabileguide.com';
  * Extrait du validateur de gabarit parce que la règle sert désormais à deux
  * endroits — la redirection d'un décor, et le lien d'une notification push.
  * Deux copies de ce test, c'est une copie qu'on oubliera de corriger.
+ *
+ * Les cibles des LIENS COURTS ont un garde à elles (`lien_cible_autorisee`
+ * dans depot.php) : liste plus étroite, correspondance d'hôte exacte —
+ * ne pas le renvoyer ici.
  */
 function redirection_autorisee(string $url): bool
 {
@@ -1239,7 +1243,7 @@ function valider_gabarit(array $g): void
 
     $slots = array_filter($couches, fn($l) => ($l['type'] ?? '') === 'photoSlot');
     if (count($slots) !== 1) {
-        throw new GabaritInvalide('Un décor doit contenir exactement un emplacement photo.');
+        throw new GabaritInvalide('Un badge doit contenir exactement un emplacement photo.');
     }
 
     $r = reset($slots)['rect'] ?? null;
@@ -1272,7 +1276,7 @@ function valider_gabarit(array $g): void
     }
 
     if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', (string) ($g['slug'] ?? ''))) {
-        throw new GabaritInvalide('L’adresse du décor ne peut contenir que des minuscules, des chiffres et des tirets.');
+        throw new GabaritInvalide('L’adresse du badge ne peut contenir que des minuscules, des chiffres et des tirets.');
     }
 
     foreach ($couches as $l) {
@@ -1297,7 +1301,7 @@ function valider_gabarit(array $g): void
     if (($g['createdBy'] ?? '') === 'partenaire') {
         if (!redirection_autorisee($redir)) {
             throw new GabaritInvalide(sprintf(
-                'Un décor de partenaire doit rediriger vers un domaine Wakabi (%s), pas vers « %s ».',
+                'Un badge de partenaire doit rediriger vers un domaine Wakabi (%s), pas vers « %s ».',
                 implode(', ', WAKABI_DOMAINES),
                 $hote
             ));
@@ -1306,7 +1310,7 @@ function valider_gabarit(array $g): void
 
     if (($g['status'] ?? '') === 'publie' && ($g['createdBy'] ?? '') === 'partenaire'
         && empty($g['moderation']['reluPar'])) {
-        throw new GabaritInvalide('Un décor de partenaire ne peut pas être publié sans relecture Wakabi.');
+        throw new GabaritInvalide('Un badge de partenaire ne peut pas être publié sans relecture Wakabi.');
     }
     if (in_array($g['status'] ?? '', ['refuse', 'corrections'], true) && empty($g['moderation']['motif'])) {
         throw new GabaritInvalide('Un refus ou une demande de correction exige un motif.');
@@ -1347,7 +1351,7 @@ function gabarit_selon_offre(array $gabarit, ?array $auteur): array
     // de l'organisateur est une ligne de l'offre, pas un acquis.
     if (!capacite($auteur, 'redirection')) {
         $gabarit['share']['redirectUrl'] = base_url() . '/index.php?p=decors';
-        $gabarit['share']['redirectLabel'] = 'Voir les autres décors';
+        $gabarit['share']['redirectLabel'] = 'Voir les autres badges';
     }
     return $gabarit;
 }

@@ -33,12 +33,12 @@ $v = $valeurs;
   <div class="carte" style="margin-bottom:16px">
     <h3 style="margin:0 0 4px">Ce que voit WhatsApp</h3>
     <p class="aide" style="margin:0 0 14px">L’aperçu d’un lien vers l’accueil, tel qu’il
-    apparaîtra dans une conversation. Chaque article et chaque décor porte le sien.</p>
+    apparaîtra dans une conversation. Chaque article et chaque badge porte le sien.</p>
 
     <div class="apercu-partage">
       <img src="<?= e($apercu['url']) ?>" alt="">
       <div class="apercu-texte">
-        <b><?= e($v['seo_nom_site']) ?> · le badge qui remplit la salle</b>
+        <b><?= e($v['seo_nom_site']) ?> - Le guide des bons coins</b>
         <span><?= e(mb_strimwidth($v['seo_description'], 0, 150, '…')) ?></span>
         <span class="apercu-hote"><?= e(parse_url(base_url(), PHP_URL_HOST) ?: base_url()) ?></span>
       </div>
@@ -56,7 +56,7 @@ $v = $valeurs;
   <!-- ---------- éprouver un lien précis ---------- -->
   <div class="carte" style="margin-bottom:16px">
     <h3 style="margin:0 0 4px">Éprouver un lien</h3>
-    <p class="aide" style="margin:0 0 14px">Collez l’adresse d’un article, d’un décor ou de
+    <p class="aide" style="margin:0 0 14px">Collez l’adresse d’un article, d’un badge ou de
     n’importe quelle page de ce site. On la lit <strong>comme le ferait WhatsApp</strong> :
     sans votre session, dans le HTML, et l’image est réellement téléchargée.</p>
 
@@ -139,7 +139,7 @@ $v = $valeurs;
         <textarea id="s-desc" name="seo_description" rows="3" maxlength="300"><?= e($v['seo_description']) ?></textarea>
         <p class="aide">Deux phrases, 150 caractères environ. C’est le texte gris sous le titre
         dans Google, et sous le titre dans WhatsApp, <strong>pour les pages qui n’ont pas la
-        leur</strong> : un article utilise son chapô, un décor son sous-titre.</p>
+        leur</strong> : un article utilise son chapô, un badge son sous-titre.</p>
       </div>
 
       <div class="champ">
@@ -309,7 +309,7 @@ $v = $valeurs;
        */
       if (rep.statut >= 400) {
         sortie.appendChild(ligne('mal', 'La page répond ' + rep.statut + '. Aucun aperçu ne '
-          + 's’affichera : ni image, ni titre, ni accroche. C’est le cas d’un décor jamais '
+          + 's’affichera : ni image, ni titre, ni accroche. C’est le cas d’un badge jamais '
           + 'publié, ou d’une adresse qui a changé.'));
         return;
       }

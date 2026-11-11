@@ -21,7 +21,7 @@ $equipe = droit($u, 'valider');
 $decor = decor_par_id((string) ($_GET['id'] ?? ''));
 if (!$decor || (!$equipe && (string) $decor['auteur_id'] !== $proprio)) {
     http_response_code(404);
-    vue('introuvable', ['titre' => 'Décor introuvable', 'indexable' => false]);
+    vue('introuvable', ['titre' => 'Badge introuvable', 'indexable' => false]);
 }
 
 $message = null;
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($quoi === 'poser') {
         if (!$decor['evenement_le']) {
-            $erreur = 'Ce décor n’a pas de date d’événement : c’est d’elle que se déduisent les rappels. '
+            $erreur = 'Ce badge n’a pas de date d’événement : c’est d’elle que se déduisent les rappels. '
                     . 'Ajoutez-la depuis « Modifier ».';
         } else {
             /**

@@ -64,23 +64,23 @@ $brouillon = $a['statut'] !== 'publie';
              alt="" loading="lazy" decoding="async">
       </a>
       <div class="decor-lie-texte">
-        <p class="decor-lie-sur">Le décor de cet article</p>
+        <p class="decor-lie-sur">Le badge de cet article</p>
         <h3><?= e((string) $decor['titre']) ?></h3>
         <p class="aide"><?= e((string) ($decor['sous_titre'] ?: ucfirst((string) $decor['ville']))) ?><?php
           if ((int) $decor['telechargements']): ?> · <?= (int) $decor['telechargements'] ?> badges déjà faits<?php endif; ?></p>
         <div class="rangee" style="gap:10px;margin-top:12px;flex-wrap:wrap">
           <a class="bouton" href="<?= e(url('?p=decor&slug=' . urlencode((string) $decor['slug']))) ?>">Faire mon badge</a>
-          <a class="bouton fant" href="<?= e(url('?p=decors')) ?>">Les autres décors</a>
+          <a class="bouton fant" href="<?= e(url('?p=decors')) ?>">Les autres badges</a>
         </div>
       </div>
     </aside>
   <?php else: ?>
     <div class="carte" style="margin-top:28px">
       <h3 style="margin:0 0 4px">Votre prochain événement</h3>
-      <p class="aide" style="margin:0 0 14px">Un décor, un badge, un QR à l’entrée. Vos invités
+      <p class="aide" style="margin:0 0 14px">Un badge, un QR à l’entrée. Vos invités
       font l’affiche eux-mêmes, et vous savez qui est venu.</p>
       <div class="rangee" style="gap:10px">
-        <a class="bouton" href="<?= e(url('?p=decors')) ?>">Voir les décors</a>
+        <a class="bouton" href="<?= e(url('?p=decors')) ?>">Voir les badges</a>
         <a class="bouton fant" href="<?= e(url('?p=inscription')) ?>">Créer une campagne</a>
       </div>
     </div>

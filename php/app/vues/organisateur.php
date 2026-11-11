@@ -272,7 +272,7 @@ $moi = $c['id'] === $me['id'];
       <input type="hidden" name="csrf" value="<?= e(jeton_csrf()) ?>">
       <input type="hidden" name="id" value="<?= e($c['id']) ?>">
       <div class="champ">
-        <label for="f-note">Note interne <span style="font-weight:400">(invisible pour l’organisateur)</span></label>
+        <label for="f-note">Note interne <span style="font-weight:400">(invisible pour le Partenaire)</span></label>
         <textarea id="f-note" name="note" rows="3"
                   placeholder="Payé jusqu’en décembre. Article sponsorisé publié le 12/09."><?= e((string) ($c['note_equipe'] ?? '')) ?></textarea>
       </div>

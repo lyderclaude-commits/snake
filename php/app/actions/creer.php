@@ -20,8 +20,8 @@
 declare(strict_types=1);
 
 vue('creer', [
-    'titre' => 'Créer un décor · ' . seo_reglage('seo_nom_site'),
-    'description' => 'Déposez le décor que vous avez déjà, ou composez-le dans le Studio. '
+    'titre' => 'Créer un badge · ' . seo_reglage('seo_nom_site'),
+    'description' => 'Déposez le fichier que vous avez déjà, ou composez votre badge dans le Studio. '
         . 'Sans compte pour commencer. Lomé, Cotonou, Abidjan.',
     'moi' => utilisateur_courant(),
 ]);

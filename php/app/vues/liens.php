@@ -83,8 +83,10 @@ foreach ($liste as $l) {
   <?php else: ?>
     <div class="carte">
       <h3 style="margin:0 0 4px">Créer un lien</h3>
-      <p class="aide" style="margin:0 0 16px">L’adresse peut mener n’importe où : votre billetterie,
-      votre page Facebook, une fiche Wakabi. Le lien, lui, reste court et se compte.</p>
+      <p class="aide" style="margin:0 0 16px">On ne raccourcit que des liens Wakabi :
+      l’adresse doit mener vers <strong>wakabileguide.com</strong> ou
+      <strong>boost.wakabileguide.com</strong> — la vitrine, le Boost, ou une de leurs
+      pages. Le lien, lui, reste court et se compte.</p>
 
       <?php if ($plein): ?>
         <div class="msg err" style="margin:0">
@@ -98,7 +100,10 @@ foreach ($liste as $l) {
           <div class="grille g2">
             <div class="champ" style="grid-column:1/-1">
               <label for="cible">Adresse de destination</label>
-              <input id="cible" name="cible" type="url" required placeholder="https://…">
+              <input id="cible" name="cible" type="url" required
+                     placeholder="https://wakabileguide.com/…">
+              <p class="aide">wakabileguide.com ou boost.wakabileguide.com, sous-pages
+              comprises. Une adresse d'ailleurs est refusée à l'envoi.</p>
             </div>
             <div class="champ">
               <label for="titre-lien">À quoi il sert <span style="font-weight:400">(pour vous)</span></label>
@@ -113,6 +118,39 @@ foreach ($liste as $l) {
                 <?php endforeach; ?>
               </select>
             </div>
+            <?php
+            /* Le domaine se choisit AU MOMENT de créer le lien, pas une fois
+               pour l'installation : l'affiche va au Togo, au Bénin ou au
+               Sénégal, et l'adresse que l'on y colle porte le pays. L'exemple
+               en dessous suit le choix, sans recharger la page. */
+            ?>
+            <div class="champ" style="grid-column:1/-1">
+              <label for="domaine">Domaine du lien</label>
+              <select id="domaine" name="domaine">
+                <option value="">Automatique — le domaine du site</option>
+                <?php foreach (DOMAINES_LIENS_COURTS as $_d): ?>
+                  <option value="<?= e($_d) ?>"><?= e($_d) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <p class="aide">Votre adresse s'écrira par exemple
+              <code id="exemple-lien"><?= e(lien_court_url('AbC123')) ?></code>.</p>
+            </div>
+            <script>
+            (function () {
+              var s = document.getElementById('domaine');
+              var ex = document.getElementById('exemple-lien');
+              if (!s || !ex) { return; }
+              /* La forme « automatique » dépend de l'installation (chemin
+                 court ou pas) : on lit le texte que le serveur a rendu. */
+              var auto = ex.textContent;
+              var maj = function () {
+                var d = s.value;
+                ex.textContent = d ? 'https://' + d + '/AbC123' : auto;
+              };
+              s.addEventListener('change', maj);
+              maj();
+            })();
+            </script>
           </div>
           <button class="bouton" type="submit" style="margin-top:12px">Créer le lien</button>
         </form>
@@ -127,8 +165,8 @@ foreach ($liste as $l) {
         <div style="border-top:1px solid var(--border);padding:12px 0">
           <div class="rangee" style="justify-content:space-between;gap:12px;align-items:baseline">
             <div style="min-width:0">
-              <a class="mono" href="<?= e(lien_court_url((string) $l['code'])) ?>"
-                 style="font-weight:700"><?= e(lien_court_url((string) $l['code'])) ?></a>
+              <a class="mono" href="<?= e(lien_court_url((string) $l['code'], $l['domaine'] ?? null)) ?>"
+                 style="font-weight:700"><?= e(lien_court_url((string) $l['code'], $l['domaine'] ?? null)) ?></a>
               <?php if ($l['titre']): ?>
                 <span class="aide" style="margin-left:8px"><?= e($l['titre']) ?></span>
               <?php endif; ?>

@@ -54,7 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$deja && !$bloquant) {
         $erreur = 'Indiquez votre nom.';
     } else {
         try {
-            $conf = ['sgbd' => $valeurs['sgbd'], 'dossier_donnees' => RACINE . '/donnees'];
+            $conf = ['sgbd' => $valeurs['sgbd'], 'dossier_donnees' => RACINE . '/donnees',
+                     /* L'adresse du backend officiel de l'application, d'où
+                        viennent les données des pages Sortir, de l'agenda
+                        et de la billetterie (cf. app/guide-api.php). Vide,
+                        ces pages affichent leur état vide. */
+                     'api_url' => ''];
             if ($valeurs['sgbd'] === 'mysql') {
                 $conf += [
                     'hote' => $valeurs['hote'],

@@ -130,8 +130,8 @@ $total = array_sum($compte);
                value="<?= e($saisie['lien']) ?>">
         <p class="aide">
           <?= $equipe
-            ? 'Vide : la page des décors.'
-            : 'Vide : la page des décors. Sinon une adresse ' . e(implode(' ou ', WAKABI_DOMAINES)) . '.' ?>
+            ? 'Vide : la page des Badges.'
+            : 'Vide : la page des Badges. Sinon une adresse ' . e(implode(' ou ', WAKABI_DOMAINES)) . '.' ?>
         </p>
       </div>
 

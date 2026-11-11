@@ -10,7 +10,7 @@
 <div class="contenu" style="max-width:880px">
 
   <section class="entete centre">
-    <h1>Votre décor, d’où part-il ?</h1>
+    <h1>Votre badge, d’où part-il ?</h1>
     <p>Les deux mènent au même résultat. Le chemin, lui, n’a rien à voir.</p>
   </section>
 
@@ -19,7 +19,7 @@
     <!-- ─────────── A · le fichier ─────────── -->
     <a class="chemin-carte" href="<?= e(url('?p=nouveau&depart=fichier')) ?>">
       <span class="chemin-ico"><?= icone('haut') ?></span>
-      <h2>J’ai déjà mon décor</h2>
+      <h2>J’ai déjà mon badge</h2>
       <p>Votre graphiste vous l’a rendu, ou vous l’avez fait ailleurs. Vous le déposez,
       on s’occupe du reste.</p>
       <ul>
@@ -35,7 +35,7 @@
     <a class="chemin-carte" href="<?= e(url('?p=nouveau&depart=studio')) ?>">
       <span class="chemin-ico"><?= icone('type') ?></span>
       <h2>Je pars de zéro</h2>
-      <p>Vous n’avez pas de fichier. Le Studio compose le décor avec vous, calque
+      <p>Vous n’avez pas de fichier. Le Studio compose le badge avec vous, calque
       par calque.</p>
       <ul>
         <li>Modèle, format, palette, police</li>
@@ -59,7 +59,7 @@
   <div class="carte" style="margin-top:20px">
     <h3 style="margin:0 0 6px">Des deux côtés</h3>
     <p class="aide" style="margin:0">
-      Le QR Code est facultatif des deux côtés : un décor qui ne contrôle aucune
+      Le QR Code est facultatif des deux côtés : un badge qui ne contrôle aucune
       entrée n’en a pas besoin. Les cadres fournis par Wakabi (« J’y serai »,
       « Bon plan », les trois formats réseaux) vivent en revanche dans le Studio
       seul : ce sont des points de départ, et qui arrive avec son fichier en a
@@ -72,6 +72,6 @@
 
   <p class="aide" style="text-align:center;margin-top:16px">
     Vous vouliez plutôt <a href="<?= e(url('?p=decors')) ?>">faire votre badge</a>
-    sur un décor existant ?
+    sur un badge existant ?
   </p>
 </div>

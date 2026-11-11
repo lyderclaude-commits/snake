@@ -53,7 +53,7 @@ $_courriel = identite_legale()['courriel'];
 
       <h2>1. Qui répond de ces données</h2>
       <?php require __DIR__ . '/partiels/identite-legale.php'; ?>
-      <p>Une exception importante, au point 4 : pour les contacts qu’un organisateur
+      <p>Une exception importante, au point 4 : pour les contacts qu’un Partenaire
       constitue dans son carnet, c’est lui qui décide et qui répond, et nous ne faisons que
       les héberger pour son compte.</p>
 
@@ -62,11 +62,11 @@ $_courriel = identite_legale()['courriel'];
       télécharger sans créer de compte et sans nous donner votre nom. Dans ce cas, voici
       tout ce qui est enregistré :</p>
       <ul>
-        <li><strong>Des compteurs par décor</strong> : une vue, un badge fabriqué, un badge
+        <li><strong>Des compteurs par badge</strong> : une vue, un badge fabriqué, un badge
         emporté. Ils comptent des gestes, pas des personnes : il n’y a ni nom, ni adresse,
         ni identifiant de visiteur dans cette table.</li>
         <li><strong>Le code de votre badge</strong>, avec la campagne et la date. C’est ce
-        code que le scanner de l’organisateur lit à l’entrée. Il n’est rattaché à aucune
+        code que le scanner du Partenaire lit à l’entrée. Il n’est rattaché à aucune
         identité si vous n’avez pas de compte.</li>
         <li><strong>Votre adresse IP</strong>, pour les plafonds qui protègent le service :
         nombre d’essais de connexion, nombre d’envois du formulaire de contact, nombre de
@@ -88,7 +88,7 @@ $_courriel = identite_legale()['courriel'];
         Le téléphone ne sert qu’à vous joindre au sujet de votre compte.</li>
         <li><strong>Votre offre et vos factures</strong> : l’offre en cours, son échéance,
         et les factures émises, que la comptabilité oblige à garder.</li>
-        <li><strong>Vos contenus</strong> : vos décors et leurs cadres, vos articles, vos
+        <li><strong>Vos contenus</strong> : vos badges et leurs cadres, vos articles, vos
         liens courts et leurs compteurs de clics, vos campagnes et leurs rapports.</li>
         <li><strong>Vos traces de sécurité</strong> : la date de création, la dernière
         journée où vous avez été vu (au jour près, pas à la seconde), la date de
@@ -99,22 +99,22 @@ $_courriel = identite_legale()['courriel'];
         n’emporte pas.</li>
       </ul>
 
-      <h2>4. Les contacts d’un organisateur</h2>
-      <p>Un organisateur peut constituer un carnet d’adresses et des listes pour écrire à
+      <h2>4. Les contacts d’un Partenaire</h2>
+      <p>Un Partenaire peut constituer un carnet d’adresses et des listes pour écrire à
       son audience. Ces adresses sont les siennes : c’est lui qui décide à qui il écrit, qui
       doit avoir obtenu leur accord, et qui répond de l’exactitude de ses listes. Nous les
       hébergeons et les lui servons, rien de plus. Nous ne les mélangeons pas entre
-      organisateurs, nous ne nous en servons pas pour nos propres envois, et nous ne les
+      Partenaires, nous ne nous en servons pas pour nos propres envois, et nous ne les
       cédons à personne.</p>
       <p>Si vous avez reçu un message et souhaitez que vos coordonnées disparaissent,
-      écrivez à l’organisateur qui vous a écrit. Si vous n’arrivez pas à l’identifier,
+      écrivez au Partenaire qui vous a écrit. Si vous n’arrivez pas à l’identifier,
       écrivez-nous à <a href="mailto:<?= e($_courriel) ?>"><?= e($_courriel) ?></a> : nous
       transmettons, et nous écartons votre adresse des envois à venir.</p>
 
       <h2>5. Les notifications du navigateur</h2>
       <p>Si vous acceptez les notifications, votre navigateur nous remet une adresse
       d’abonnement et deux clés de chiffrement. Nous enregistrons ces trois éléments, le
-      nom de votre navigateur, et le décor sous lequel vous vous êtes abonné, pour savoir
+      nom de votre navigateur, et le badge sous lequel vous vous êtes abonné, pour savoir
       qui vous prévenir.</p>
       <p>Ce n’est pas une identité : il n’y a ni nom, ni adresse e-mail dans cet
       enregistrement, et le même navigateur sur deux appareils compte pour deux
@@ -124,7 +124,7 @@ $_courriel = identite_legale()['courriel'];
 
       <h2>6. Pourquoi, et sur quelle base</h2>
       <ul>
-        <li><strong>Faire fonctionner le service</strong> (votre compte, vos décors, vos
+        <li><strong>Faire fonctionner le service</strong> (votre compte, vos badges, vos
         badges, vos rapports) : l’exécution du contrat qui nous lie.</li>
         <li><strong>Vous prévenir</strong> d’une décision de modération, d’une échéance, de
         la confirmation d’une adresse : l’exécution du contrat.</li>
@@ -164,7 +164,7 @@ $_courriel = identite_legale()['courriel'];
         <li><strong>Les abonnements aux notifications</strong> : jusqu’au désabonnement, ou
         jusqu’à ce que le service de notifications les déclare périmés.</li>
         <li><strong>Les badges et leurs codes</strong> : la durée de la campagne, puis le
-        temps où son décor reste en ligne. Un code doit rester vérifiable aussi longtemps
+        temps où leur badge reste en ligne. Un code doit rester vérifiable aussi longtemps
         qu’un invité peut se présenter avec.</li>
       </ul>
 
@@ -189,9 +189,9 @@ $_courriel = identite_legale()['courriel'];
         <li><strong>Les services de notifications des navigateurs</strong> (ceux de Google,
         Mozilla ou Apple selon votre navigateur), qui transportent une notification jusqu’à
         vous. Son contenu leur est illisible : il est chiffré pour votre navigateur.</li>
-        <li><strong>Le serveur d’envoi e-mail</strong> configuré par l’organisateur ou par
+        <li><strong>Le serveur d’envoi e-mail</strong> configuré par un Partenaire ou par
         nous, qui achemine les messages.</li>
-        <li><strong>WhatsApp et Telegram</strong>, uniquement lorsqu’un organisateur branche
+        <li><strong>WhatsApp et Telegram</strong>, uniquement lorsqu’un Partenaire branche
         ces canaux, et seulement pour les messages qu’il y envoie.</li>
         <li><strong>Une autorité</strong>, si la loi nous l’impose. Nous vous en informons
         quand nous en avons le droit.</li>
@@ -209,8 +209,8 @@ $_courriel = identite_legale()['courriel'];
         <li><strong>Effacer</strong> : « Supprimer mon compte » dans votre profil. La
         suppression efface vos identifiants, vos liens courts, vos notifications, vos
         abonnements aux notifications et votre historique de koris. Elle <em>détache</em>
-        vos décors et les badges déjà émis au lieu de les détruire : un badge qu’un invité
-        garde doit rester vérifiable à l’entrée, et l’adresse d’un décor qui circule doit
+        vos badges et les badges déjà émis au lieu de les détruire : un badge qu’un invité
+        garde doit rester vérifiable à l’entrée, et l’adresse d’un badge qui circule doit
         continuer de répondre. Le journal garde la trace des actes, comme dit au point 8.</li>
         <li><strong>Rectifier</strong> : votre profil, directement.</li>
         <li><strong>Vous opposer</strong> aux notifications ou aux messages : le bouton de

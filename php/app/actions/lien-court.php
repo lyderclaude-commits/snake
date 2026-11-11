@@ -33,13 +33,14 @@ foreach (formules_actives() as $cle => $f) {
 }
 
 $erreur = null;
-$valeurs = ['cible' => '', 'titre' => ''];
+$valeurs = ['cible' => '', 'titre' => '', 'domaine' => ''];
 
 /** Ce qu'on avait commencé, s'il en reste quelque chose. */
 $avant = brouillon_prendre('lien');
 if ($avant) {
     $valeurs['cible'] = (string) ($avant['charge']['cible'] ?? '');
     $valeurs['titre'] = (string) ($avant['charge']['titre'] ?? '');
+    $valeurs['domaine'] = (string) ($avant['charge']['domaine'] ?? '');
 }
 
 /**
@@ -67,6 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifier_csrf();
     $valeurs['cible'] = trim((string) ($_POST['cible'] ?? ''));
     $valeurs['titre'] = trim((string) ($_POST['titre'] ?? ''));
+    // Le voyageur du domaine : il suit le brouillon jusqu'au moment où
+    // le lien se crée vraiment — chez un inscrit, dans la reprise.
+    $valeurs['domaine'] = domaine_lien_valide(trim((string) ($_POST['domaine'] ?? ''))) ?? '';
 
     /**
      * La cible est vérifiée ICI, avant même qu'un compte existe.
@@ -94,7 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          * connexion serait absurde : on pose le brouillon et on l'emmène
          * directement à l'écran de reprise.
          */
-        if (!brouillon_poser('lien', ['cible' => $valeurs['cible'], 'titre' => $valeurs['titre']])) {
+        if (!brouillon_poser('lien', ['cible' => $valeurs['cible'], 'titre' => $valeurs['titre'],
+                                      'domaine' => $valeurs['domaine']])) {
             $erreur = 'Trop de liens en attente depuis cette connexion. '
                     . 'Créez votre compte pour reprendre celui-ci.';
         } else {

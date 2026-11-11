@@ -75,7 +75,10 @@ if ($post) {
             'mot_de_passe' => $mdp,
             'nom' => $valeurs['nom'],
             'role' => $valeurs['role'],
-            'organisation' => $valeurs['organisation'] ?: null,
+            /* Le champ « Structure » n'existe que pour un Partenaire : le
+               formulaire le cachait déjà — ici on refuse de garder ce
+               qu'un formulaire trafiqué aurait posté pour un Utilisateur. */
+            'organisation' => $valeurs['role'] === 'partenaire' ? ($valeurs['organisation'] ?: null) : null,
             'ville' => $valeurs['ville'] ?: null,
         ]);
         // Toute inscription publique démarre en Découverte, quelle que soit

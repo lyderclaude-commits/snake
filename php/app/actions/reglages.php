@@ -59,7 +59,7 @@ if ($post) {
         $domaine = rtrim($domaine, '/');
         $hote = parse_url($domaine, PHP_URL_HOST);
         if (!$hote || !str_contains($hote, '.')) {
-            $erreur = 'Ce domaine ne ressemble pas à un domaine. Exemple : wkb.link';
+            $erreur = 'Ce domaine ne ressemble pas à un domaine. Exemple : wkb.tg';
         }
     }
     if ($erreur === null && $domaine !== null) {
@@ -82,6 +82,25 @@ if ($post) {
     if (isset($saisie['legal_courriel']) && $saisie['legal_courriel'] !== ''
         && !filter_var($saisie['legal_courriel'], FILTER_VALIDATE_EMAIL)) {
         $erreur = 'L’adresse pour les demandes de données n’est pas une adresse valide.';
+    }
+
+    /**
+     * Le contact WhatsApp, sous la même règle que l'identité légale :
+     * un champ ABSENT n'est pas un champ vidé — enregistrer le transport
+     * ne doit pas effacer le numéro. Le numéro est normalisé ICI plutôt
+     * qu'à la lecture : la base garde ce que le doigt a tapé, et wa.me
+     * reçoit des chiffres seuls, quoi qu'il arrive.
+     */
+    if (isset($_POST['whatsapp_numero'])) {
+        $numero_wa = preg_replace('~\D~', '', (string) $_POST['whatsapp_numero']);
+        if ($numero_wa !== '' && strlen($numero_wa) < 8) {
+            $erreur = 'Ce numéro WhatsApp est trop court pour être un numéro international.';
+        } else {
+            $saisie['whatsapp_numero'] = $numero_wa;
+        }
+    }
+    if (isset($_POST['whatsapp_message'])) {
+        $saisie['whatsapp_message'] = trim((string) $_POST['whatsapp_message']);
     }
     /* Une date illisible vaut mieux refusée qu'affichée de travers : elle
        figure en tête des deux pages légales, où une date fantaisiste fait

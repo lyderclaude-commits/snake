@@ -168,7 +168,7 @@ function rapport_portee(array $u, array $get): array
             return [
                 'cle' => 'campagne',
                 'titre' => (string) $c['titre'],
-                'detail' => $d ? 'Campagne du décor ' . $d['titre'] : 'Campagne',
+                'detail' => $d ? 'Campagne du badge ' . $d['titre'] : 'Campagne',
                 'auteur_id' => (string) ($c['auteur_id'] ?? '') ?: null,
                 'decor' => null,
                 'campagne' => $c,
@@ -200,7 +200,7 @@ function rapport_portee(array $u, array $get): array
         return [
             'cle' => 'organisateur',
             'titre' => (string) ($o['organisation'] ?: $o['nom']),
-            'detail' => 'Tous les décors et toutes les campagnes de ce compte',
+            'detail' => 'Tous les badges et toutes les campagnes de ce compte',
             'auteur_id' => (string) $o['id'],
             'decor' => null,
             'campagne' => null,
@@ -212,7 +212,7 @@ function rapport_portee(array $u, array $get): array
         return [
             'cle' => 'plateforme',
             'titre' => 'Toute la plateforme',
-            'detail' => 'Tous les décors, toutes les campagnes, tous les comptes',
+            'detail' => 'Tous les badges, toutes les campagnes, tous les comptes',
             'auteur_id' => null,
             'decor' => null,
             'campagne' => null,
@@ -230,7 +230,7 @@ function rapport_portee(array $u, array $get): array
     return [
         'cle' => 'organisateur',
         'titre' => (string) ($u['organisation'] ?: $u['nom']),
-        'detail' => 'Vos décors et vos campagnes',
+        'detail' => 'Vos badges et vos campagnes',
         'auteur_id' => $moi,
         'decor' => null,
         'campagne' => null,
@@ -474,7 +474,7 @@ function rapport_activite(array $bornes, array $portee): array
     [$ou_ev, $a_ev] = rapport_ou_decors($portee, 'decor_id');
 
     $mesures = [
-        'vues' => ['Vues de décors',
+        'vues' => ['Vues de badges',
             "SELECT COUNT(*) AS n FROM evenements WHERE genre = 'vue'
              AND cree_le >= ? AND cree_le < ?" . $ou_ev, $a_ev],
         'badges' => ['Badges créés',
@@ -513,7 +513,7 @@ function rapport_activite(array $bornes, array $portee): array
 function rapport_entonnoir(array $activite): array
 {
     $etapes = [
-        ['Vues de décors', $activite['vues']['valeur']],
+        ['Vues de badges', $activite['vues']['valeur']],
         ['Badges créés', $activite['badges']['valeur']],
         ['Badges téléchargés', $activite['telechargements']['valeur']],
         ['Présences à l’entrée', $activite['presences']['valeur']],
@@ -1202,7 +1202,7 @@ function rapport_pdf(array $r): string
             $y = $ouvrir();
         }
         $y = rapport_pdf_titre($pdf, $g, $y, $r['portee']['cle'] === 'decor'
-            ? 'Les rappels de ce décor' : 'Les campagnes de la période');
+            ? 'Les rappels de ce badge' : 'Les campagnes de la période');
         $y = rapport_pdf_entete_tableau($pdf, $g, $d, $y, [
             ['Campagne', $g, 'gauche', 0], ['Date', $g + 100, 'gauche', 0],
             ['Programmés', $g + 136, 'droite', 0], ['Partis', $g + 156, 'droite', 0],
@@ -1238,9 +1238,9 @@ function rapport_pdf(array $r): string
         if ($y > $bas - 50) {
             $y = $ouvrir();
         }
-        $y = rapport_pdf_titre($pdf, $g, $y, 'Les décors, classés sur la présence');
+        $y = rapport_pdf_titre($pdf, $g, $y, 'Les badges, classés sur la présence');
         $y = rapport_pdf_entete_tableau($pdf, $g, $d, $y, [
-            ['Décor', $g, 'gauche', 0], ['Vues', $g + 116, 'droite', 0],
+            ['Badge', $g, 'gauche', 0], ['Vues', $g + 116, 'droite', 0],
             ['Badges', $g + 136, 'droite', 0], ['Téléchargés', $g + 158, 'droite', 0],
             ['Présents', $g + 178, 'droite', 0],
         ]);

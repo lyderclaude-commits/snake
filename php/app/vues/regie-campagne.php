@@ -77,7 +77,7 @@ foreach ($mots as $k => [$un, $plusieurs]) {
 }
 ?>
 <div class="contenu etroit-large">
-  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>La régie</a></p>
+  <p class="fil"><a class="retour" href="<?= e(url('?p=regie')) ?>"><i>←</i>Campagne</a></p>
 
   <?php if ($message): ?><div class="msg ok" role="status"><?= e($message) ?></div><?php endif; ?>
   <?php if ($erreur): ?><div class="msg err" role="alert"><?= e($erreur) ?></div><?php endif; ?>

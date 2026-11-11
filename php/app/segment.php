@@ -59,7 +59,7 @@ const SEGMENTS = [
         'ou' => 'b.scanne_le IS NOT NULL',
     ],
     'sans-ouverture' => [
-        'nom' => 'N’a pas ouvert les messages de ce décor',
+        'nom' => 'N’a pas ouvert les messages de ce badge',
         'aide' => 'Une relance, sur un autre canal que l’e-mail',
         'ou' => 'b.utilisateur_id IS NOT NULL
                  AND EXISTS (SELECT 1 FROM envois_email se
@@ -76,7 +76,7 @@ const SEGMENTS = [
                                AND LOWER(se.email) = LOWER(su.email))',
     ],
     'tous' => [
-        'nom' => 'Tous les invités de ce décor',
+        'nom' => 'Tous les invités de ce badge',
         'aide' => 'Sans condition',
         'ou' => '1 = 1',
     ],
@@ -298,7 +298,7 @@ function segment_liste(string $cle, string $decor_id, int $limite = 5000): array
 function segment_csv(array $decor, string $cle, array $lignes): string
 {
     $out = [];
-    $out[] = ['Décor', (string) $decor['titre']];
+    $out[] = ['Badge', (string) $decor['titre']];
     $out[] = ['Segment', segment_nom($cle)];
     $out[] = ['Édité le', date_fr(maintenant())];
     $out[] = [];

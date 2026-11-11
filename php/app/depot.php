@@ -42,7 +42,11 @@ const DECORS_PAR_PAGE = 12;
  *
  * La recherche porte sur le titre, le sous-titre et la ville. On se
  * souvient rarement d'un titre exact, mais très bien de « Lomé » ou d'un
- * mot lu dessus.
+ * mot lu dessus. Elle s'accompagne de DEUX filtres — une ville, et une
+ * manière de trier — parce qu'un catalogue qui grandit ne se feuillette
+ * plus : on y revient pour « les badges de Cotonou, les plus pris ».
+ * Les filtres vivent dans L'ADRESSE : chaque combinaison se partage, et
+ * un moteur les parcourt comme autant de vues du catalogue.
  *
  * Le COMPTE est fait par une requête à part plutôt qu'en ramenant tout
  * pour compter : la table porte le gabarit de chaque décor, soit plusieurs
@@ -53,9 +57,11 @@ const DECORS_PAR_PAGE = 12;
  * en a dix-huit ramène la dix-huitième, et l'écran doit annoncer celle-là
  * plutôt que « page 999 sur 18 ».
  *
- * @return array{liste: array<int, array<string, mixed>>, total: int, pages: int, page: int}
+ * @return array{liste: array<int, array<string, mixed>>, total: int, pages: int, page: int,
+ *                ville: string, tri: string}
  */
-function decors_page(int $page, int $par_page, string $cherche = ''): array
+function decors_page(int $page, int $par_page, string $cherche = '',
+                     string $ville = '', string $tri = ''): array
 {
     $par_page = max(1, $par_page);
     $page = max(1, $page);
@@ -68,6 +74,30 @@ function decors_page(int $page, int $par_page, string $cherche = ''): array
         $m = '%' . $q . '%';
         array_push($args, $m, $m, $m);
     }
+    /* Le filtre par ville : une liste fermée, comme partout ailleurs.
+       Autre chose que Lomé, Cotonou ou Abidjan se lit comme « rien » — on
+       ne l'oppose pas à la base ; on l'ignore, et l'écran résume ce qui a
+       été servie, pas ce qu'on a demandé. */
+    $villes = ['lome', 'cotonou', 'abidjan'];
+    $ville = in_array($ville, $villes, true) ? $ville : '';
+    if ($ville !== '') {
+        $ou .= ' AND d.ville = ?';
+        $args[] = $ville;
+    }
+
+    /* Le tri, lui, se choisit parmi trois manières de regarder le même
+       catalogue : les plus récents d'abord (par défaut), les plus
+       téléchargés, et l'ordre alphabétique — celui qu'on tient quand on
+       sait exactement le titre cherché. Le compteur de téléchargements
+       n'existe PAS en colonne : c'est un compteur d'événements. L'ordre
+       porte donc la même sous-requête que `STATS_SQL` — on trie sur la
+       même source que celle qu'on affiche, jamais sur autre chose. */
+    $ordre = match ($tri) {
+        'populaires' => "(SELECT COUNT(*) FROM evenements e2 WHERE e2.decor_id = d.id
+                          AND e2.genre = 'telechargement') DESC, d.publie_le DESC",
+        'az' => 'd.titre ASC',
+        default => 'd.publie_le DESC',
+    };
 
     $c = db()->prepare("SELECT COUNT(*) n FROM decors d WHERE $ou");
     $c->execute($args);
@@ -81,10 +111,11 @@ function decors_page(int $page, int $par_page, string $cherche = ''): array
     $s = db()->prepare("SELECT d.*, " . STATS_SQL . "
         FROM decors d
         WHERE $ou
-        ORDER BY d.publie_le DESC
+        ORDER BY $ordre
         LIMIT $par_page OFFSET $debut");
     $s->execute($args);
-    return ['liste' => $s->fetchAll(), 'total' => $total, 'pages' => $pages, 'page' => $page];
+    return ['liste' => $s->fetchAll(), 'total' => $total, 'pages' => $pages, 'page' => $page,
+            'ville' => $ville, 'tri' => in_array($tri, ['populaires', 'az'], true) ? $tri : ''];
 }
 
 /**
@@ -218,7 +249,7 @@ function decor_transition(string $id, string $vers, array $acteur, ?string $moti
 {
     $d = decor_par_id($id);
     if (!$d) {
-        throw new TransitionRefusee('Décor introuvable.');
+        throw new TransitionRefusee('Badge introuvable.');
     }
     // Ce qui décide n'est pas le rôle mais le DROIT d'arbitrer : un
     // coordinateur publie, un éditeur propose. Comparer à « equipe » a
@@ -541,6 +572,54 @@ function marquer_vu(string $id): void
 /* ================= liens courts ================= */
 
 /**
+ * Les trois domaines sur lesquels un lien court peut s'écrire.
+ *
+ * Un seul domaine rendait chaque lien prisonnier d'un achat : si « .link »
+ * tombait un jour, tous les affiches du pays devenaient muettes. Trois
+ * domaines, trois pays — Togo, Bénin, Sénégal — que la personne choisit AU
+ * MOMENT de créer son lien, selon là où elle colle son affiche. Le code à
+ * six caractères, lui, reste le même quel que soit le domaine : un lien
+ * créé sur wkb.tg se lit aussi par wkb.bj.
+ */
+const DOMAINES_LIENS_COURTS = ['wkb.tg', 'wkb.bj', 'wkb.sn'];
+
+/**
+ * Le garde-fou des cibles : on ne raccourcit QUE du Wakabi.
+ *
+ * Un raccourcisseur d'URL est une passerelle : un lien wkb.tg/AbC123 porte
+ * notre marque, compte nos clics, et si sa cible était libre, il servirait
+ * à masquer n'importe quoi. La liste des cibles admises tient en deux
+ * domaines — la vitrine et le Boost — et elle est fermée : pas les autres
+ * sous-domaines (le studio, qui n'accueille pas de pages publiées), pas
+ * un `wakabileguide.com.evil.tg`. `www` reste un alias du domaine
+ * principal, parce que beaucoup le tapent sans y penser.
+ */
+const DOMAINES_CIBLES_LIENS = ['wakabileguide.com', 'boost.wakabileguide.com'];
+
+/** La cible d'un lien court passe-t-elle le garde-fou ? */
+function lien_cible_autorisee(string $url): bool
+{
+    $hote = strtolower((string) parse_url(trim($url), PHP_URL_HOST));
+    if ($hote === '') {
+        return false;
+    }
+    return in_array($hote, DOMAINES_CIBLES_LIENS, true)
+        || $hote === 'www.wakabileguide.com';
+}
+
+/**
+ * Le domaine choisi est-il un des trois nôtres ?
+ *
+ * La liste est fermée : un domaine tapé à la main dans un formulaire
+ * trafiqué ne doit pas pouvoir écrire une adresse qui ne nous appartient
+ * pas — le lien redirigerait, mais l'adresse affichée mentirait.
+ */
+function domaine_lien_valide(?string $d): ?string
+{
+    return $d !== null && in_array($d, DOMAINES_LIENS_COURTS, true) ? $d : null;
+}
+
+/**
  * Un code court, lisible à voix haute.
  *
  * Ni `0`/`O` ni `1`/`l`/`I` : un lien se dicte au téléphone et se recopie
@@ -567,19 +646,26 @@ function nouveau_code_lien(): string
  *
  * Trois formes, de la meilleure à la plus sûre :
  *
- *  1. `https://wkb.link/AbC123` — quand un domaine dédié est réglé. C'est
- *     la forme qu'on met sur une affiche : quinze caractères de moins que
- *     le domaine principal, et une marque à soi.
+ *  1. `https://wkb.tg/AbC123` — le domaine choisi pour CE lien, parmi les
+ *     trois nôtres (`wkb.tg`, `wkb.bj`, `wkb.sn`). C'est la forme qu'on met
+ *     sur une affiche : courte, et portant la marque.
  *  2. `https://boost.wakabileguide.com/AbC123` — quand la réécriture d'URL
- *     fonctionne mais qu'aucun domaine dédié n'est réglé.
+ *     fonctionne et que le lien n'a pas de domaine choisi (ou en visant un
+ *     domaine dédié réglé par l'équipe pour une installation à part).
  *  3. `…/index.php?p=l&c=AbC123` — le repli qui marche partout, même sans
  *     `mod_rewrite`. Moins joli, jamais cassé.
  *
- * Le choix ne se devine pas : l'équipe le règle, et l'écran des réglages
- * vérifie que la forme courte répond vraiment avant de la proposer.
+ * Le choix ne se devine pas : on relit le domaine enregistré sur le lien
+ * lui-même. Aussi, la redirection (`?p=l`) ignore la forme : c'est le CODE
+ * qui mène à la cible, pas le domaine par lequel on est arrivé.
  */
-function lien_court_url(string $code): string
+function lien_court_url(string $code, ?string $domaine = null): string
 {
+    // Un des trois domaines nôtres, et le seul niveau dont le lien se souvient.
+    if (domaine_lien_valide($domaine) !== null) {
+        return 'https://' . $domaine . '/' . rawurlencode($code);
+    }
+
     $r = reglages_bdd(['domaine_liens', 'liens_chemin_court']);
     $domaine = trim((string) ($r['domaine_liens'] ?? ''));
 
@@ -631,12 +717,14 @@ function compter_liens(string $auteur_id): int
     return compter('SELECT COUNT(*) AS n FROM liens WHERE auteur_id = ?', [$auteur_id]);
 }
 
-function creer_lien(string $auteur_id, string $cible, string $titre, ?string $decor_id = null): string
+function creer_lien(string $auteur_id, string $cible, string $titre, ?string $decor_id = null,
+                    ?string $domaine = null): string
 {
     $code = nouveau_code_lien();
-    db()->prepare('INSERT INTO liens (id, code, cible, titre, auteur_id, decor_id, clics, cree_le)
-                   VALUES (?,?,?,?,?,?,0,?)')
-        ->execute([nouvel_id(), $code, $cible, $titre ?: null, $auteur_id, $decor_id, maintenant()]);
+    db()->prepare('INSERT INTO liens (id, code, cible, titre, domaine, auteur_id, decor_id, clics, cree_le)
+                   VALUES (?,?,?,?,?,?,?,?,?)')
+        ->execute([nouvel_id(), $code, $cible, $titre ?: null, domaine_lien_valide($domaine),
+                   $auteur_id, $decor_id, 0, maintenant()]);
     return $code;
 }
 
@@ -697,7 +785,7 @@ function quota_telechargements(array $decor): array
         'ok' => $reste > 0,
         'message' => $reste > 0 ? '' :
             'Cette campagne a atteint son nombre de badges pour ce mois-ci. '
-            . 'Revenez le 1er du mois prochain, ou prévenez l’organisateur.',
+            . 'Revenez le 1er du mois prochain, ou prévenez le Partenaire.',
         'reste' => $reste,
         'quota' => $max,
         'consomme' => $consomme,
@@ -1055,22 +1143,32 @@ function indicateurs(int $jours = 7): array
     $mesures = [
         'badges' => ['Badges créés', 'SELECT COUNT(*) AS n FROM badges WHERE cree_le >= ? AND cree_le < ?'],
         'telechargements' => ['Téléchargements', "SELECT COUNT(*) AS n FROM evenements WHERE genre='telechargement' AND cree_le >= ? AND cree_le < ?"],
-        'presences' => ['Présences scannées', 'SELECT COUNT(*) AS n FROM badges WHERE scanne_le >= ? AND scanne_le < ?'],
-        'vues' => ['Vues de décors', "SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ? AND cree_le < ?"],
+        'campagnes' => ['Campagnes actives', "SELECT COUNT(*) AS n FROM campagnes_email WHERE statut IN ('en_relecture','corrections','prete','envoi')"],
+        'vues' => ['Vues de badges', "SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ? AND cree_le < ?"],
         'comptes' => ['Nouveaux comptes', 'SELECT COUNT(*) AS n FROM utilisateurs WHERE cree_le >= ? AND cree_le < ?'],
     ];
 
     $out = [];
     foreach ($mesures as $cle => [$titre, $sql]) {
-        $ici = compter($sql, $courant);
-        $la = compter($sql, $avant);
+        if (str_contains($sql, '?')) {
+            $ici = compter($sql, $courant);
+            $la = compter($sql, $avant);
+            $variation = $la > 0 ? (int) round(($ici - $la) / $la * 100) : null;
+        } else {
+            /* Une mesure de stock (ex. les campagnes actives) ne se compare
+               pas à la semaine d’avant : elle n’a ni période, ni variation. */
+            $ici = compter($sql);
+            $la = $ici;
+            $variation = null;
+        }
         $out[$cle] = [
             'titre' => $titre,
             'valeur' => $ici,
             'avant' => $la,
-            'variation' => $la > 0 ? (int) round(($ici - $la) / $la * 100) : null,
+            'variation' => $variation,
         ];
     }
+    return $out;
     return $out;
 }
 
@@ -1085,7 +1183,7 @@ function entonnoir(int $jours = 30): array
 {
     $d = il_y_a($jours);
     $etapes = [
-        ['Vues de décors', compter("SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ?", [$d])],
+        ['Vues de badges', compter("SELECT COUNT(*) AS n FROM evenements WHERE genre='vue' AND cree_le >= ?", [$d])],
         ['Badges créés', compter('SELECT COUNT(*) AS n FROM badges WHERE cree_le >= ?', [$d])],
         ['Téléchargés', compter("SELECT COUNT(*) AS n FROM evenements WHERE genre='telechargement' AND cree_le >= ?", [$d])],
         ['Présences à l’entrée', compter('SELECT COUNT(*) AS n FROM badges WHERE scanne_le >= ?', [$d])],
@@ -1413,7 +1511,7 @@ function decor_modifier(string $id, array $d): void
 {
     $ancien = decor_par_id($id);
     if (!$ancien) {
-        throw new TransitionRefusee('Décor introuvable.');
+        throw new TransitionRefusee('Badge introuvable.');
     }
 
     $g = $d['gabarit'];
@@ -1450,7 +1548,7 @@ function decor_supprimer(string $id): array
 {
     $d = decor_par_id($id);
     if (!$d) {
-        throw new TransitionRefusee('Décor introuvable.');
+        throw new TransitionRefusee('Badge introuvable.');
     }
 
     // Compté AVANT la suppression, pour pouvoir dire à l'équipe ce qu'elle a

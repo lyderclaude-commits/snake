@@ -14,7 +14,7 @@ if ($post) {
 }
 
 vue('scan', [
-    'titre' => 'Contrôle d’entrée',
+    'titre' => 'Scanner Qr',
     'resultat' => $resultat,
     'passages' => passages_recents(),
     'prerempli' => strtoupper(substr((string) ($_GET['code'] ?? ''), 0, 10)),

@@ -113,7 +113,7 @@ $_fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
           cela pose l’échéance et émet une facture numérotée que vous retrouvez seul depuis votre
           profil. Écrivez-nous pour convenir du moyen.</div></details>
         <details class="faq-item"><summary class="faq-q">Que devient mon compte si j’arrête de payer ?<span>+</span></summary>
-          <div class="faq-a">Il retombe sur l’offre gratuite. Rien n’est supprimé : vos décors, vos
+          <div class="faq-a">Il retombe sur l’offre gratuite. Rien n’est supprimé : vos badges, vos
           contacts et vos chiffres restent, et vous retrouvez vos droits au renouvellement. Les
           badges déjà entre les mains de vos invités continuent de fonctionner.</div></details>
         <details class="faq-item"><summary class="faq-q">Et si je veux partir pour de bon ?<span>+</span></summary>
@@ -131,7 +131,7 @@ $_fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
     <div class="colonne-etroite fade-up" style="text-align:center">
       <h2 class="headline">Essayez avec <span>une vraie campagne</span></h2>
       <p style="margin:14px 0 24px;line-height:1.8">
-        L’offre gratuite suffit pour publier un décor et voir ce que vos invités en font.
+        L’offre gratuite suffit pour publier un badge et voir ce que vos invités en font.
         On parle d’argent après.
       </p>
       <div class="hero-ctas" style="justify-content:center">

@@ -115,7 +115,7 @@ function installer_articles(string $admin_id): void
             'slug' => '400-personnes-sans-une-affiche',
             'titre' => '400 personnes, et pas une affiche imprimée',
             'chapo' => 'Au Maquis Akwaba, en mars, la salle était pleine. Le budget communication '
-                     . 'tenait dans un décor et un QR Code. Voici le détail, chiffres compris.',
+                     . 'tenait dans un badge et un QR Code. Voici le détail, chiffres compris.',
             'auteur' => $admin, 'statut' => 'publie',
             /**
              * Le récit mène à un décor, et le lecteur arrive sur celui-là
@@ -134,7 +134,7 @@ Le patron du Maquis Akwaba nous a appelés un mardi. Sa soirée live du samedi
 
 ## Ce qu’on a fait
 
-Un décor, une accroche, et le lien envoyé sur son statut WhatsApp. Rien d’autre.
+Un badge, une accroche, et le lien envoyé sur son statut WhatsApp. Rien d’autre.
 Chaque personne qui faisait son badge le partageait, et le badge portait le nom
 du maquis, la date, et un QR unique.
 
@@ -225,7 +225,7 @@ seconde zone.
 
 Nous avons lancé le premier mardi avec trois jours d’avance. C’était trop court :
 les gens organisent leur semaine le dimanche. À partir de la troisième semaine,
-nous avons publié le décor le vendredi précédent, et le nombre de badges créés
+nous avons publié le badge le vendredi précédent, et le nombre de badges créés
 avant le lundi a doublé.
 TXT,
         ],

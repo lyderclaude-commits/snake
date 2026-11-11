@@ -244,8 +244,13 @@ input, select, textarea { font-family: var(--font-body); }
    UTILITY
    ================================================================ */
 .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
-.section { padding: 96px 0; }
-.section-sm { padding: 64px 0; }
+/* L'air entre les sections tenait de l'ancien site statique : des
+   96 px pensés pour une page où tout se lit d'un écran. Les sections du
+   site fusionné sont plus denses, et l'accumulation laissait deux
+   écrans vides entre la moitié des pages. On serre : 96 → 64, et la
+   petite à 44 — les media queries plus bas suivent la même règle. */
+.section { padding: 64px 0; }
+.section-sm { padding: 44px 0; }
 
 .tag {
   display: inline-flex; align-items: center; gap: 6px;
@@ -337,8 +342,12 @@ html.js .fade-up.visible { opacity: 1; transform: none; }
    HERO
    ================================================================ */
 .hero {
-  padding: 130px 0 80px; background: var(--bg); position: relative; overflow: hidden;
-  min-height: 90vh; display: flex; align-items: center;
+  /* Le zip prévoyait 130 px de marge haute pour son header superposé
+     au hero ; ici la barre du site est un élément au-dessus, l'espace
+     se cumule. Le hero commence donc juste sous la barre, et sa
+     hauteur suit son contenu au lieu de viser 90vh d'écran. */
+  padding: 40px 0 72px; background: var(--bg); position: relative; overflow: hidden;
+  min-height: auto; display: flex; align-items: center;
 }
 .hero-bg-dots {
   position: absolute; inset: 0; z-index: 0;
@@ -376,6 +385,9 @@ html.js .fade-up.visible { opacity: 1; transform: none; }
 }
 .store-btn.secondary { background: var(--bg); color: var(--text); border-color: var(--border2); }
 .store-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+/* La version Apple, en attente de publication : se voit, ne se clique
+   pas. Le survol ne doit rien promettre — ni soulèvement, ni ombre. */
+.store-btn.est-grise { opacity: .55; cursor: default; pointer-events: none; }
 .store-btn-icon { font-size: 24px; line-height: 1; }
 .store-btn-text small { font-size: 10px; opacity: 0.6; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
 .store-btn-text strong { font-size: 15px; font-weight: 700; display: block; font-family: var(--font-display); }
@@ -618,8 +630,11 @@ footer { background: var(--text); color: rgba(255,255,255,0.85); padding: 70px 0
    INNER PAGE HEADER
    ================================================================ */
 .page-header {
+  /* Le zip prévoyait 130 px de marge haute pour son header superposé
+     à la bande ; ici la barre du site est un élément au-dessus. La
+     bande commence donc juste sous la barre (même logique que .hero). */
   background: linear-gradient(135deg, var(--blue-900), var(--blue-700));
-  padding: 130px 0 70px; color: #fff; text-align: center; position: relative; overflow: hidden;
+  padding: 40px 0 56px; color: #fff; text-align: center; position: relative; overflow: hidden;
 }
 .page-header::before {
   content:''; position:absolute; inset:0;
@@ -986,16 +1001,16 @@ img, video, iframe { max-width: 100%; height: auto; }
    TABLETTES (max-width: 1024px)
    ============================================ */
 @media (max-width: 1024px) {
-  .section { padding: 80px 0; }
-  .section-sm { padding: 56px 0; }
-  .hero { padding: 110px 0 60px; min-height: auto; }
+  .section { padding: 52px 0; }
+  .section-sm { padding: 40px 0; }
+  .hero { padding: 40px 0 60px; min-height: auto; }
   .hero-inner { gap: 40px; }
   .hero-title { font-size: clamp(2.4rem, 5vw, 4rem); }
   .hero-phone-wrap { width: 240px; }
   .hfc-left { left: -20px; min-width: 140px; padding: 10px 12px; }
   .hfc-right { right: -20px; min-width: 130px; padding: 10px 12px; }
   .hfc-val { font-size: 17px; }
-  .page-header { padding: 110px 0 60px; }
+  .page-header { padding: 40px 0 56px; }
   .legal-content, .article-body { padding: 50px 24px; }
   .article-header { padding: 100px 0 50px; }
   .modal { max-width: 90%; padding: 24px; }
@@ -1008,11 +1023,11 @@ img, video, iframe { max-width: 100%; height: auto; }
    ============================================ */
 @media (max-width: 900px) {
   .container { padding: 0 20px; }
-  .section { padding: 70px 0; }
-  .section-sm { padding: 48px 0; }
+  .section { padding: 48px 0; }
+  .section-sm { padding: 36px 0; }
   
   /* Hero */
-  .hero { padding: 100px 0 50px; }
+  .hero { padding: 36px 0 50px; }
   .hero-blue-blob { width: 400px; height: 400px; top: -80px; right: -80px; }
   
   /* Footer */
@@ -1050,7 +1065,7 @@ img, video, iframe { max-width: 100%; height: auto; }
   .subhead { font-size: 0.98rem; }
   
   /* Hero */
-  .hero { padding: 90px 0 40px; }
+  .hero { padding: 32px 0 40px; }
   .hero-inner { gap: 30px; }
   .hero-title { font-size: clamp(2rem, 8vw, 3rem); margin-bottom: 18px; }
   .hero-sub { font-size: 1rem; margin-bottom: 28px; }
@@ -1062,7 +1077,7 @@ img, video, iframe { max-width: 100%; height: auto; }
   .hero-blue-blob { display: none; }
   
   /* Page header */
-  .page-header { padding: 100px 0 50px; }
+  .page-header { padding: 36px 0 48px; }
   .page-header h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); }
   .page-header p { font-size: 1rem; padding: 0 12px; }
   
@@ -1194,7 +1209,7 @@ img, video, iframe { max-width: 100%; height: auto; }
   .nav-mark img { height: 24px !important; }
   
   /* Hero */
-  .hero { padding: 80px 0 30px; }
+  .hero { padding: 28px 0 30px; }
   .hero-title { font-size: clamp(1.7rem, 9vw, 2.4rem); line-height: 1.1; }
   .hero-eyebrow { font-size: 12px; padding: 5px 12px; margin-bottom: 18px; }
   .hero-sub { font-size: 0.95rem; margin-bottom: 24px; }
@@ -1203,7 +1218,7 @@ img, video, iframe { max-width: 100%; height: auto; }
   .store-btn { width: 100%; }
   
   /* Page header */
-  .page-header { padding: 90px 0 40px; }
+  .page-header { padding: 32px 0 40px; }
   .page-header h1 { font-size: clamp(1.6rem, 7vw, 2.2rem); }
   .page-header p { font-size: 0.95rem; }
   .breadcrumb { font-size: 12px; flex-wrap: wrap; }
@@ -1373,7 +1388,7 @@ img, video, iframe { max-width: 100%; height: auto; }
    ORIENTATION PAYSAGE SUR PETITS ÉCRANS
    ============================================ */
 @media (max-height: 500px) and (orientation: landscape) {
-  .hero { min-height: auto; padding: 90px 0 40px; }
+  .hero { min-height: auto; padding: 32px 0 40px; }
   .mobile-menu { padding-top: 70px; overflow-y: auto; }
   .modal { max-height: 88vh; }
 }
@@ -1976,6 +1991,176 @@ img, video, iframe { max-width: 100%; height: auto; }
   color: var(--accent-n, var(--blue-300));
 }
 
+/* ================================================================
+   L'ACCUEIL — ce que la page d'accueil ajoute au guide
+   ================================================================
+
+   L'accueil reprend la page d'accueil de wakabileguide.com, section
+   par section, et porte donc la feuille du guide. Celle-ci couvrait
+   déjà le hero, les chiffres, les cartes, les étapes, le Kori, les
+   témoignages, le blog et les partenaires ; ne reste à écrire ici que
+   ce qu'elle ne connaissait pas : la section Boost (son téléphone est
+   dessiné en CSS, pas en image), les cartes « Nos solutions » et leur
+   bouton, les boutons stores du hero posés côte à côte, et
+   l'invitation aux notifications — le partiel est servi par le layout
+   sur toute la site, mais sa feuille à lui n'est pas chargée ici. */
+
+/* ---- Nos solutions : pastille, note, bouton --------------------
+   Les six canaux de Boost reprennent la carte du guide ; l'icône y
+   gagne une pastille bleue, la note un filet, et trois cartes un
+   bouton qui mène quelque part. */
+.feat-ico { width: 44px; height: 44px; border-radius: 12px; background: var(--blue-50);
+  color: var(--primary); display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; }
+.feat-ico svg { width: 22px; height: 22px; }
+/* Les quatre cartes « Une app. Un univers entier » gardent l'icône NUE
+   du zip — la pastille bleue est réservée aux canaux de Boost. */
+.feat-ico-nu { margin-bottom: 14px; }
+.feat-ico-nu svg { display: block; }
+.feat-card.feat-cta { border-color: var(--blue-200); box-shadow: 0 0 0 1px var(--blue-100); }
+.feat-note { font-size: 12.5px; font-weight: 700; color: var(--primary);
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.bouton-solution { display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 14px; background: var(--primary); color: #fff; font-size: 13.5px;
+  font-weight: 700; padding: 11px 18px; border-radius: var(--r-md);
+  text-decoration: none; transition: all .18s; }
+.bouton-solution:hover { background: var(--primary-d); }
+
+/* ---- Les boutons stores du hero, côte à côte -------------------
+   Le guide les empile dès 769 px ; l'accueil les garde côte à côte
+   sur desktop, comme la maquette validée. En dessous, les règles du
+   guide reprennent la main : une media query MIN ne les écrase pas. */
+@media (min-width: 769px) {
+  .hero .store-btns { flex-direction: row; flex-wrap: nowrap; gap: 12px; }
+  .hero .store-btn { flex: 0 1 auto; width: auto; min-width: 170px; justify-content: flex-start; }
+}
+
+/* ---- La section Boost ------------------------------------------
+   Le même argument que la vitrine Boost, posé au milieu de la page
+   d'accueil : le téléphone est dessiné en CSS — aucune image à
+   télécharger pour ce qu'un dégradé et deux bordures savent dire. */
+.boost-sec { background: linear-gradient(180deg, var(--bg) 0%, var(--blue-50) 100%); }
+.boost-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 60px; align-items: center; }
+.boost-eyebrow { display: inline-flex; align-items: center; gap: 10px; background: #fff;
+  border: 1px solid var(--blue-200); padding: 7px 16px; border-radius: 100px;
+  margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+.boost-eyebrow b { font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--primary); }
+.boost-eyebrow span { font-size: 13px; color: var(--text2); font-weight: 600; }
+/* Sur téléphone, la pastille tient sur UNE ligne : le texte se serre
+   au viewport au lieu de replier en deux lignes, ce qui dénaturait la
+   capsule — un badge « NOUVEAU » coupé en deux ne fait plus badge. */
+@media (max-width: 620px) {
+  .boost-eyebrow { gap: 7px; padding: 6px 12px; }
+  .boost-eyebrow b { font-size: clamp(9px, 2.4vw, 11px); }
+  .boost-eyebrow span { font-size: clamp(9px, 2.55vw, 13px); white-space: nowrap; }
+}
+.boost-content .headline { margin-bottom: 0; }
+.boost-p { font-size: 1.02rem; color: var(--text2); line-height: 1.75; margin: 18px 0 30px; max-width: 480px; }
+.boost-p strong { color: var(--text); }
+.boost-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
+.boost-btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--primary);
+  color: #fff; padding: 12px 22px; border-radius: var(--r-md); font-weight: 700;
+  font-size: 14.5px; transition: all .18s; }
+.boost-btn-primary:hover { background: var(--primary-d); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.boost-btn-ghost { display: inline-flex; align-items: center; background: #fff; color: var(--text);
+  border: 1px solid var(--border2); padding: 12px 22px; border-radius: var(--r-md);
+  font-weight: 700; font-size: 14.5px; transition: all .18s; }
+.boost-btn-ghost:hover { border-color: var(--blue-300); color: var(--primary); }
+.boost-checks { display: flex; gap: 22px; flex-wrap: wrap; }
+.boost-checks span { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px;
+  font-weight: 600; color: var(--text2); }
+.boost-checks svg { color: var(--green); flex: 0 0 auto; }
+.boost-visual { position: relative; display: flex; justify-content: center; padding: 10px 0; }
+.boost-phone { width: 272px; background: #0F172A; border-radius: 36px; padding: 10px;
+  box-shadow: 0 32px 64px rgba(15,23,42,.22); }
+.boost-phone-in { background: var(--bg); border-radius: 27px; padding: 16px 14px 18px; }
+.boost-phone-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.boost-phone-logo { width: 26px; height: 26px; border-radius: 8px; background: var(--primary);
+  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.boost-phone-bars { display: flex; flex-direction: column; gap: 3px; }
+.boost-phone-bars i { display: block; width: 16px; height: 2px; border-radius: 2px; background: var(--text2); }
+.boost-phone-t { margin-bottom: 12px; }
+.boost-phone-t b { display: block; font-family: var(--font-display); font-size: 16px;
+  font-weight: 800; color: var(--text); }
+.boost-phone-t small { font-size: 11px; color: var(--text3); }
+.boost-badge { position: relative; background: linear-gradient(135deg, var(--blue-800), var(--blue-600));
+  border-radius: 16px; padding: 18px 14px 46px; text-align: center; overflow: hidden; }
+.boost-badge::before { content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.14) 1px, transparent 1px); background-size: 16px 16px; }
+.boost-badge-ava { position: relative; width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 50%;
+  background: #B5764A; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }
+.boost-badge-ava i { width: 26px; height: 26px; border-radius: 50%; background: #8A4F2D;
+  display: block; margin-top: -14px; }
+.boost-badge-name { position: relative; font-family: var(--font-display); font-size: 19px;
+  font-weight: 800; letter-spacing: .08em; color: #fff; }
+.boost-badge-qr { position: absolute; left: 12px; bottom: 10px; width: 30px; height: 30px;
+  border-radius: 6px; opacity: .85;
+  background-image: linear-gradient(90deg, #0F172A 25%, transparent 25%, transparent 50%,
+    #0F172A 50%, #0F172A 75%, transparent 75%); background-size: 8px 8px; }
+.boost-badge::after { content: 'WAKABI'; position: absolute; right: 12px; bottom: 14px;
+  font-size: 8px; font-weight: 800; letter-spacing: .12em; color: rgba(255,255,255,.75); }
+.boost-photo { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 12px; }
+.boost-photo small { display: block; font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+.boost-photo span { display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--primary); color: #fff; font-size: 12px; font-weight: 700;
+  padding: 9px 0; border-radius: 8px; }
+.boost-float { position: absolute; background: #fff; border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow-lg); z-index: 2; }
+.boost-float b { display: block; font-family: var(--font-display); font-size: 17px;
+  font-weight: 800; color: var(--text); }
+.boost-float span { font-size: 10.5px; color: var(--text3); font-weight: 600; }
+.boost-float-l { top: 36px; left: calc(50% - 218px); }
+.boost-float-r { bottom: 44px; right: calc(50% - 224px); background: var(--primary);
+  border-color: var(--primary); }
+.boost-float-r b { color: #fff; }
+.boost-float-r span { color: rgba(255,255,255,.75); }
+@media (max-width: 900px) {
+  .boost-grid { grid-template-columns: 1fr; gap: 40px; }
+  .boost-float-l { left: 6px; }
+  .boost-float-r { right: 6px; }
+}
+
+/* ---- L'invitation aux notifications ----------------------------
+   Le partiel est partagé par tout le site ; sa feuille à lui vit dans
+   celle de Boost, qui n'est PAS chargée ici. Le même dessin est donc
+   réécrit avec les variables du guide — mêmes mesures, mêmes ombres,
+   autre famille de noms. Les boutons portent les classes de Boost
+   (`.bouton`, `.fant`) : ils n'existaient pas pour cette feuille
+   non plus, et sont habillés SCOPÉS au partiel, sans jamais toucher
+   aux pages qui chargent l'autre feuille. */
+.push-invite { position: fixed; left: 18px; bottom: 18px; z-index: 39; width: 380px;
+  max-width: calc(100vw - 36px); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px 16px 14px;
+  box-shadow: 0 24px 48px rgba(15,23,42,.16), 0 8px 16px rgba(15,23,42,.07);
+  opacity: 0; transform: translateY(10px);
+  transition: opacity .22s ease, transform .22s ease; }
+.push-invite.vue { opacity: 1; transform: none; }
+.push-invite-h { display: flex; gap: 12px; align-items: flex-start; padding-right: 22px; }
+.push-invite-ico { flex: none; width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center; background: var(--blue-50); color: var(--primary); }
+.push-invite b { display: block; font-size: .98rem; color: var(--text); line-height: 1.3; }
+.push-invite p { margin: 4px 0 0; font-size: .84rem; line-height: 1.5; color: var(--text2); }
+.push-invite-b { display: flex; gap: 8px; margin-top: 14px; }
+.push-invite-b .bouton { flex: 1 1 auto; justify-content: center; padding: 10px 12px;
+  font-size: .86rem; background: var(--primary); color: #fff; border: 0;
+  border-radius: var(--r-md); font-weight: 600; cursor: pointer; }
+.push-invite-b .bouton.fant { flex: 0 0 auto; padding: 10px 14px; font-size: .86rem;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border2);
+  border-radius: var(--r-md); font-weight: 600; cursor: pointer; }
+.push-invite-x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--text3);
+  cursor: pointer; display: grid; place-items: center; padding: 0; }
+.push-invite-x:hover { background: var(--bg2); color: var(--text2); }
+
+/* ---- Les témoignages, quatre cartes de la même taille ----------
+   Le guide poussait la 2e et la 4e carte vers le bas, en escalier :
+   quatre hauteurs différentes pour quatre citations de longueurs
+   différentes. Le rang s'aligne, chaque carte étire la sienne et
+   l'auteur se cale en bas — quatre cartes jumelles. */
+.testi-card:nth-child(2), .testi-card:nth-child(4) { margin-top: 0; }
+.testi-card { display: flex; flex-direction: column; }
+.testi-quote { flex: 1 1 auto; }
+
 /* ---- Les quatre étapes, reliées ---------------------------------
    Le trait pointillé passe DERRIÈRE les cartes, à la hauteur du
    centre des pastilles (36 px de marge haute + 26 px de demi-pastille).
@@ -2110,3 +2295,381 @@ img, video, iframe { max-width: 100%; height: auto; }
 @media (max-width: 620px) {
   .pricing-grid.pricing-auto { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
 }
+
+/* ---- Le retour en tête de page -------------------------------------
+   Le bouton ne se rend que sur l'accueil — une page de CETTE feuille —
+   et ses règles vivaient pourtant dans wakabi.css, qui n'est pas
+   chargée ici : après un écran de défilement, le bouton se montrait
+   nu, sans rond ni ombre. Elles vivent ici désormais, aux couleurs du
+   guide. Le bas d'écran est partagé avec le bouton WhatsApp : quand il
+   est présent, le sélecteur frère de entete.css (`.wk-wa ~ ...`) fait
+   monter celui-ci au-dessus de lui. */
+.haut-de-page { position: fixed; right: 18px; bottom: 18px; z-index: 40;
+  width: 46px; height: 46px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 10px 24px -14px rgba(15,23,42,.2);
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s, background .18s; }
+.haut-de-page svg { width: 20px; height: 20px; }
+/* Le bouton naît `hidden` et le script ne le révèle qu'après un écran
+   de défilement. Sans cette ligne, le `display:flex` d'au-dessus
+   l'emportait sur l'attribut, et le bouton se montrait dès le haut de
+   page — là où il n'a encore rien à faire. */
+.haut-de-page[hidden] { display: none; }
+.haut-de-page:hover { background: var(--primary); color: #fff;
+  transform: translateY(-2px); box-shadow: 0 6px 20px -6px rgba(37,99,235,.5); }
+.haut-de-page:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.haut-de-page:active { transform: translateY(0); }
+@media (max-width: 620px) {
+  /* Plus bas et plus petit : le pouce y arrive sans traverser l'écran,
+     et le bouton ne recouvre pas la dernière ligne du pied de page. */
+  .haut-de-page { right: 14px; bottom: 14px; width: 42px; height: 42px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .haut-de-page { transition: none; }
+  .haut-de-page:hover { transform: none; }
+}
+/* L'invitation aux notifications, sur téléphone, prend toute la
+   largeur : elle pousse le retour en tête au-dessus d'elle — le bouton
+   reste atteignable au pouce, et la carte ne recouvre rien de ce qu'on
+   lisait. La hauteur est posée par le script au moment où la carte
+   s'ouvre : elle dépend du texte, qui dépend de la largeur de l'écran. */
+@media (max-width: 560px) {
+  body.push-invite-ouverte .haut-de-page { bottom: calc(26px + var(--push-invite-h, 180px)); }
+}
+
+/* ---- La grille « Nos solutions » de l'accueil ----------------------
+   Trois canaux mis en avant, pas quatre. Le style INLINE qui posait
+   ses trois colonnes écrasait les media queries de la feuille (les
+   règles inline l'emportent toujours) : sur téléphone, les trois
+   cartes refusaient de s'empiler. La variante porte ses propres
+   rappels, plus spécifiques que les règles générales. */
+.features-grid.trois { grid-template-columns: repeat(3,1fr); }
+@media (max-width: 1024px) {
+  .features-grid.trois { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 480px) {
+  .features-grid.trois { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Sortir à Lomé et à Cotonou, l'agenda, la billetterie                */
+/*                                                                     */
+/* Les données de ces pages viennent de l'API du backend officiel      */
+/* (app/guide-api.php) : les visuels n'existent pas toujours, et la    */
+/* dégradé-plus-initiale tient la place de la photo le temps qu'elle   */
+/* arrive. Cinq dégradés, tournés par l'initiale — cf. api_visuel().   */
+/* ------------------------------------------------------------------ */
+
+.visuel-bleu  { background: linear-gradient(135deg, #1E3A8A, #2563EB); }
+.visuel-vert  { background: linear-gradient(135deg, #0F766E, #0D9488); }
+.visuel-orange{ background: linear-gradient(135deg, #C2410C, #EA580C); }
+.visuel-violet{ background: linear-gradient(135deg, #6D28D9, #8B5CF6); }
+.visuel-rouge { background: linear-gradient(135deg, #B91C1C, #EF4444); }
+
+/* ---- puces de filtre ---- */
+.filtre-chips{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 38px}
+.filtre-chip{padding:8px 16px;border:1.5px solid var(--border);border-radius:100px;
+  font-size:14px;font-weight:600;color:var(--text2);background:#fff;text-decoration:none}
+.filtre-chip:hover{border-color:var(--blue-200);color:var(--primary)}
+.filtre-chip.actif{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* ---- titre de rangée + lien « Voir tout » ---- */
+.rangee-tete{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 22px}
+.rangee-tete h2{margin:0}
+.lien-voir-tout{font-size:14px;font-weight:700;color:var(--primary);text-decoration:none;white-space:nowrap}
+.lien-voir-tout:hover{text-decoration:underline}
+
+/* ---- carte événement ---- */
+.evt-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:60px}
+.evt-carte{display:block;background:#fff;border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;text-decoration:none;color:inherit;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.evt-carte:hover{border-color:var(--blue-200);box-shadow:var(--shadow)}
+.evt-visuel{position:relative;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center}
+.evt-initiale{font-family:var(--font-display);font-size:58px;font-weight:800;color:rgba(255,255,255,.92)}
+.evt-date{position:absolute;top:12px;left:12px;background:#fff;border-radius:10px;
+  padding:5px 11px;text-align:center;line-height:1.1;box-shadow:0 2px 6px rgba(15,23,42,.18)}
+.evt-date b{display:block;font-size:18px;font-weight:800;color:var(--text)}
+.evt-date span{font-size:10.5px;font-weight:700;color:var(--primary);letter-spacing:.08em}
+.evt-corps{padding:16px 18px 18px}
+.evt-corps h3{font-family:var(--font-display);font-size:17px;font-weight:700;margin:0 0 7px}
+.evt-ligne{display:flex;align-items:center;gap:7px;color:var(--text2);font-size:13.5px;margin:0 0 12px}
+.evt-ligne svg{flex:none;color:#94A3B8}
+.evt-pied{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.evt-jours{font-size:12px;font-weight:700;color:var(--teal);background:var(--teal-l);
+  border:1px solid #99F6E4;border-radius:100px;padding:3px 10px;white-space:nowrap}
+
+/* ---- rangée lieu ---- */
+.lieu-liste{display:grid;gap:14px;margin-bottom:60px}
+.lieu-carte{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--border);
+  border-radius:14px;padding:14px 18px;text-decoration:none;color:inherit;
+  box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.lieu-carte:hover{border-color:var(--blue-200);box-shadow:var(--shadow)}
+.lieu-visuel{flex:none;width:64px;height:64px;border-radius:12px;display:flex;overflow:hidden;
+  align-items:center;justify-content:center;color:#fff;
+  font-family:var(--font-display);font-weight:800;font-size:26px}
+.lieu-corps{flex:1;min-width:0}
+.lieu-corps h3{margin:0 0 6px;font-size:16px;font-weight:700;font-family:var(--font-display);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lieu-adresse{display:flex;align-items:center;gap:7px;color:var(--text2);font-size:13.5px;margin:0}
+.lieu-adresse svg{flex:none;color:#94A3B8}
+.lieu-info{color:#94A3B8;font-size:12.5px;margin:4px 0 0}
+.lieu-carte .btn{flex:none}
+
+/* ---- encart d'appel, sur le bleu des pages de ville ---- */
+.encart-ville{background:var(--blue-50);border:1px solid var(--blue-200);
+  border-radius:var(--r-2xl);padding:44px;text-align:center}
+.encart-ville h3{font-family:var(--font-display);font-size:1.5rem;font-weight:800;margin:0 0 10px}
+.encart-ville p{color:var(--text2);margin:0 auto 22px;max-width:60ch}
+
+/* ---- agenda ---- */
+.agenda-mois{display:flex;align-items:center;gap:14px;margin:40px 0 16px;
+  font-family:var(--font-display);font-size:21px;font-weight:800;color:var(--text)}
+.agenda-mois::after{content:'';flex:1;height:1px;background:var(--border)}
+.agenda-ligne{display:flex;align-items:center;gap:18px;background:#fff;border:1px solid var(--border);
+  border-radius:14px;padding:15px 20px;margin-bottom:12px;text-decoration:none;color:inherit;
+  box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.agenda-ligne:hover{border-color:var(--blue-200);box-shadow:var(--shadow)}
+.agenda-date{flex:none;width:64px;text-align:center;background:var(--blue-50);border-radius:12px;
+  padding:9px 0;line-height:1.1}
+.agenda-date b{display:block;font-size:22px;font-weight:800;color:var(--primary)}
+.agenda-date span{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--primary)}
+.agenda-corps{flex:1;min-width:0}
+.agenda-corps h3{margin:0 0 4px;font-size:16px;font-weight:700;font-family:var(--font-display)}
+.agenda-corps p{margin:0;color:var(--text2);font-size:13.5px;display:flex;align-items:center;gap:6px}
+.agenda-corps p svg{flex:none;color:#94A3B8}
+.agenda-prix{flex:none;font-weight:700;color:var(--teal);font-size:14px;white-space:nowrap}
+.agenda-ligne .btn{flex:none}
+
+/* ---- billetterie ---- */
+.vente-etat{position:absolute;top:12px;right:12px;font-size:11.5px;font-weight:700;
+  border-radius:100px;padding:4px 11px}
+.etat-en-vente{background:var(--teal);color:#fff}
+.etat-bientot{background:#fff;color:var(--text2);border:1px solid var(--border)}
+
+.billet-panneau{display:grid;grid-template-columns:380px 1fr;background:#fff;
+  border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow);
+  margin-bottom:60px}
+.billet-visuel{min-height:440px;display:flex;align-items:center;justify-content:center;position:relative}
+.billet-initiale{font-size:110px;color:rgba(255,255,255,.92);font-family:var(--font-display);font-weight:800}
+.billet-corps{padding:34px 38px}
+.billet-corps h2{font-family:var(--font-display);font-size:24px;font-weight:800;margin:0 0 6px}
+.billet-quand{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:14px;margin:0 0 4px}
+.billet-quand svg{flex:none;color:#94A3B8}
+.billet-tiers{display:grid;gap:12px;margin:24px 0 18px}
+.billet-tier{display:flex;align-items:center;gap:14px;border:1.5px solid var(--border);
+  border-radius:14px;padding:15px 18px}
+.billet-tier.choisi{border-color:var(--primary);background:var(--blue-50)}
+.billet-radio{width:20px;height:20px;border-radius:50%;border:2px solid #CBD5E1;flex:none}
+.choisi .billet-radio{border-color:var(--primary);background:var(--primary);box-shadow:inset 0 0 0 4px #fff}
+.billet-nom{flex:1;min-width:0}
+.billet-nom b{display:block;font-size:15px;font-weight:700}
+.billet-nom small{color:var(--text2);font-size:12.5px;line-height:1.4;display:block;margin-top:2px}
+.billet-prix{font-weight:800;font-size:17px;color:var(--text);white-space:nowrap}
+.billet-total{display:flex;justify-content:space-between;align-items:center;
+  padding:16px 2px;border-top:1px dashed #CBD5E1;margin-bottom:18px}
+.billet-total b{font-size:20px;font-weight:800;font-family:var(--font-display)}
+.billet-total span{font-size:14px;font-weight:600;color:var(--text2)}
+.billet-note{display:flex;gap:11px;align-items:flex-start;background:#F0FDFA;border:1px solid #99F6E4;
+  border-radius:12px;padding:13px 15px;font-size:13.5px;color:#134E4A;margin-top:18px;line-height:1.5}
+.billet-note svg{flex:none;margin-top:1px;color:var(--teal)}
+.billet-note a{color:#0F766E;font-weight:600}
+
+/* ---- mobile : les grilles se replient ---- */
+@media (max-width:900px){
+  .evt-grille{grid-template-columns:1fr 1fr}
+  .billet-panneau{grid-template-columns:1fr}
+  .billet-visuel{min-height:260px}
+}
+@media (max-width:640px){
+  .evt-grille{grid-template-columns:1fr}
+  .lieu-carte{flex-wrap:wrap}
+  .lieu-carte .btn{display:none}
+  .agenda-ligne{flex-wrap:wrap}
+  .agenda-ligne .btn{display:none}
+  .encart-ville{padding:28px 20px}
+  .billet-corps{padding:24px 20px}
+}
+
+/* ---- fiche d'un lieu ---- */
+.fiche-heros{position:relative;min-height:400px;display:flex;align-items:flex-end;overflow:hidden}
+.fiche-heros img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fiche-heros-voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(15,23,42,.44) 0%,rgba(15,23,42,.16) 42%,rgba(15,23,42,.74))}
+.fiche-heros-contenu{position:relative;z-index:1;width:100%;padding:34px 0 30px}
+.fiche-fil{justify-content:flex-start;margin-bottom:14px}
+.fiche-heros-contenu h1{color:#fff;font-family:var(--font-display);font-size:2.3rem;font-weight:800;
+  margin:0 0 14px;text-shadow:0 2px 14px rgba(15,23,42,.5)}
+.fiche-heros-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tag-clair{background:rgba(255,255,255,.94);color:var(--primary);border-color:transparent;font-size:12px}
+.fiche-ou{display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:13.5px;font-weight:600;
+  background:rgba(15,23,42,.38);border:1px solid rgba(255,255,255,.28);border-radius:100px;padding:6px 14px;
+  backdrop-filter:blur(4px)}
+.fiche-ou svg{flex:none}
+
+.fiche-grille{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px;align-items:start;padding-top:8px}
+.fiche-info{display:flex;align-items:center;gap:9px;background:var(--blue-50);border:1px solid var(--blue-200);
+  color:var(--primary);font-size:14px;font-weight:700;border-radius:12px;padding:11px 16px;margin:0 0 26px}
+.fiche-info svg{flex:none}
+.fiche-bloc{margin:0 0 34px}
+.fiche-bloc:last-child{margin-bottom:0}
+.fiche-titre{font-family:var(--font-display);font-size:1.3rem;font-weight:800;margin:0 0 14px}
+.fiche-texte{color:#475569;font-size:15px;line-height:1.75;margin:0 0 14px}
+
+.fiche-commodites{display:grid;grid-template-columns:1fr 1fr;gap:10px;list-style:none;margin:0;padding:0}
+.fiche-commodites li{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);
+  border-radius:12px;padding:10px 14px;color:#334155;font-size:14px;font-weight:600}
+.fiche-commodites li svg{flex:none;color:var(--green)}
+
+.fiche-cote{position:sticky;top:90px}
+.fiche-infos{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;
+  box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.fiche-infos h3{font-family:var(--font-display);font-size:1.05rem;font-weight:800;margin:0 0 14px}
+.fiche-infos-ligne{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#475569;margin:0 0 12px}
+.fiche-infos-ligne svg{flex:none;margin-top:2px;color:#94A3B8}
+.fiche-infos-ligne a{color:var(--text);font-weight:600;text-decoration:none}
+.fiche-infos-ligne b{color:var(--text);font-weight:700}
+.fiche-infos-ligne span{line-height:1.55}
+.fiche-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 0}
+.fiche-actions .btn{justify-content:center}
+.fiche-sep{border:0;border-top:1px solid var(--border);margin:18px 0 14px}
+.fiche-horaires h4{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#94A3B8;margin:0 0 6px}
+.fiche-horaires-row{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  font-size:13.5px;color:#475569;padding:8px 0}
+.fiche-horaires-row + .fiche-horaires-row{border-top:1px dashed var(--border)}
+.fiche-horaires-row b{color:var(--primary);font-weight:700;white-space:nowrap}
+
+.fiche-carte-tete{margin-top:12px}
+.fiche-carte{border:1px solid var(--border);border-radius:16px;overflow:hidden;height:340px;
+  background:var(--surface2);box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.fiche-carte iframe{width:100%;height:100%;border:0;display:block}
+
+@media (max-width:960px){
+  .fiche-grille{grid-template-columns:1fr;gap:30px}
+  .fiche-cote{position:static}
+}
+@media (max-width:640px){
+  .fiche-heros{min-height:300px}
+  .fiche-heros-contenu h1{font-size:1.6rem}
+  .fiche-commodites{grid-template-columns:1fr}
+  .fiche-carte{height:240px}
+}
+/* ---- recherche, filtres, bascule de vue ---- */
+.guide-recherche{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--border);
+  border-radius:14px;padding:6px 6px 6px 16px;margin:0 0 26px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.guide-recherche:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--blue-100)}
+.guide-recherche svg{flex:none;color:#94A3B8}
+.guide-recherche input[type="search"]{flex:1;border:0;outline:0;font:inherit;font-size:15px;color:var(--text);
+  background:transparent;min-width:0;-webkit-appearance:none}
+.guide-recherche .btn{flex:none}
+
+.filtre-groupe{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.filtre-label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94A3B8;min-width:80px}
+.filtre-groupe .filtre-chips{margin:0}
+
+.guide-compte{font-size:14px;color:var(--text2);margin:0}
+
+.rangee-outils{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.guide-bascule{display:inline-flex;background:#fff;border:1.5px solid var(--border);border-radius:100px;padding:3px;gap:2px}
+.guide-bascule a{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:100px;
+  font-size:13px;font-weight:600;color:var(--text2);text-decoration:none}
+.guide-bascule a:hover{color:var(--primary)}
+.guide-bascule a.actif{background:var(--primary);color:#fff}
+.guide-bascule svg{width:14px;height:14px}
+
+/* ---- lieux, vue grille ---- */
+.lieu-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:60px}
+.lieu-tuile{display:block;background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  text-decoration:none;color:inherit;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.lieu-tuile:hover{border-color:var(--blue-200);box-shadow:var(--shadow)}
+.lieu-tuile-visuel{position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+.lieu-tuile-visuel .tag-clair{position:absolute;top:12px;left:12px}
+.lieu-tuile-corps{padding:16px 18px 18px}
+.lieu-tuile-corps h3{font-family:var(--font-display);font-size:16.5px;font-weight:700;margin:0 0 7px}
+.lieu-tuile-corps .btn{margin-top:10px}
+
+@media (max-width:900px){
+  .lieu-grille{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  .lieu-grille{grid-template-columns:1fr}
+  .guide-recherche{padding-left:12px}
+  .guide-recherche .btn{padding:7px 14px;font-size:13px}
+  .filtre-label{min-width:100%}
+}
+/* ---- les sélecteurs de la barre de recherche ---- */
+.guide-recherche select{flex:none;max-width:190px;border:1.5px solid var(--border);border-radius:10px;
+  padding:9px 32px 9px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--text);background:#fff;
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;background-size:12px}
+.guide-recherche select:focus{outline:0;border-color:var(--primary)}
+
+@media (max-width:640px){
+  .guide-recherche{flex-wrap:wrap;gap:8px;padding:10px}
+  .guide-recherche svg{display:none}
+  .guide-recherche input[type="search"]{flex:1 1 100%;border-bottom:1px solid var(--border);padding-bottom:10px}
+  .guide-recherche select{flex:1 1 45%;max-width:none}
+  .guide-recherche .btn{flex:1 1 100%}
+}
+/* ---- les selecteurs sans choix se lisent comme des placeholders ---- */
+.guide-recherche select.vide{color:#94A3B8;font-weight:500}
+.guide-recherche select option{color:#0F172A;font-weight:600}
+/* ---- l'encart respire toujours apres la section qui le precede ---- */
+.encart-ville{margin-top:60px}
+/* ---- les puces posees EN LIGNE s'alignent sur leurs voisines ---- */
+/* La marge basse de .tag sert aux libelles poses seuls au-dessus d'un
+   titre. Dans une rangee flex (agenda) ou dans un titre de fiche de
+   liste, elle remonte la puce hors axe : on l'annule ici, pour que la
+   categorie s'aligne sur le prix et les boutons. */
+.agenda-ligne .tag{margin-bottom:0}
+.lieu-carte h3 .tag{margin-bottom:0;vertical-align:middle}
+/* ---- le panneau de billetterie respire avant la section suivante ---- */
+.billet-panneau{margin-bottom:60px}
+/* ---- titres de section de la billetterie, plus discrets ---- */
+/* Le clamp de .headline vise les grands titres de page ; les tetes de
+   section de la billetterie restent des intertitres. */
+.headline-sm{font-size:clamp(1.5rem,3vw,2.1rem)}
+.rangee-tete.centre{justify-content:center}
+/* ---- le titre des trois gestes respire avant les cartes ---- */
+.rangee-tete.centre{margin-bottom:44px}
+/* ---- titres de section des pages de ville, 33px ---- */
+.headline-md{font-size:clamp(1.7rem,5vw,33px)}
+
+/* ---- galerie de la fiche lieu ---- */
+.fiche-galerie{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fiche-photo{padding:0;border:0;background:none;border-radius:12px;overflow:hidden;cursor:zoom-in;
+  aspect-ratio:4/3;display:block;position:relative}
+.fiche-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease}
+.fiche-photo:hover img{transform:scale(1.05)}
+.fiche-photo::after{content:'';position:absolute;inset:0;border-radius:12px;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.08);pointer-events:none}
+
+/* ---- la visionneuse ouverte par la galerie ---- */
+.fiche-lumiere{position:fixed;inset:0;z-index:300;background:rgba(15,23,42,.92);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px}
+.fiche-lumiere[hidden]{display:none}
+.fiche-lumiere img{max-width:min(1100px,92vw);max-height:78vh;border-radius:14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);object-fit:contain}
+.fiche-lumiere-legende{color:rgba(255,255,255,.85);font-size:13.5px;margin:0}
+.fiche-lumiere-ferme{position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.35);background:rgba(15,23,42,.5);color:#fff;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fiche-lumiere-ferme:hover{background:rgba(15,23,42,.75)}
+.fiche-lumiere-avant,.fiche-lumiere-apres{position:absolute;top:50%;transform:translateY(-50%);
+  width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.35);
+  background:rgba(15,23,42,.5);color:#fff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.fiche-lumiere-avant{left:18px}
+.fiche-lumiere-apres{right:18px}
+.fiche-lumiere-avant:hover,.fiche-lumiere-apres:hover{background:rgba(15,23,42,.75)}
+
+@media (max-width:640px){
+  .fiche-galerie{grid-template-columns:1fr 1fr}
+  .fiche-lumiere-avant{left:10px}
+  .fiche-lumiere-apres{right:10px}
+}
+/* ---- la puce du heros s'aligne sur la pastille d'adresse ---- */
+.fiche-heros-meta .tag{margin-bottom:0}

@@ -8,7 +8,6 @@
  * de lui, c'est-à-dire au moment où l'on cherche à lire ce qu'il montre.
  */
 $onglet = '';
-$a_traiter = 0;
 $nouveau = [];
 $total = array_sum(array_map(fn(array $f): int => count($f['lignes']), $familles));
 ?>
@@ -17,7 +16,7 @@ $total = array_sum(array_map(fn(array $f): int => count($f['lignes']), $familles
     <div class="bord-qui">
       <h1>Rechercher</h1>
       <p><?= $cherche === ''
-        ? 'Un décor, un compte, un article, un lien.'
+        ? 'Un badge, un compte, un article, un lien.'
         : ($total ? $total . ' résultat' . ($total > 1 ? 's' : '') . ' pour « ' . e($cherche) . ' »'
                   : 'Rien pour « ' . e($cherche) . ' »') ?></p>
     </div>

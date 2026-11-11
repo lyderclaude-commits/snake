@@ -18,14 +18,14 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
   <section class="entete">
     <div class="rangee" style="justify-content:space-between;align-items:flex-start">
       <div>
-        <h1>Tous les décors</h1>
+        <h1>Tous les badges</h1>
         <p><?= $total ?> au total, tous statuts confondus : les vôtres et ceux des partenaires.
         <?php if ($filtre !== '' || $cherche !== ''): ?>
           <br><span class="aide"><?= (int) $combien ?> correspond<?= $combien > 1 ? 'ent' : '' ?>
           à ce que vous regardez.</span>
         <?php endif; ?></p>
       </div>
-      <a class="bouton" href="<?= e(url('?p=creer')) ?>">+ Nouveau décor</a>
+      <a class="bouton" href="<?= e(url('?p=creer')) ?>">+ Nouveau badge</a>
     </div>
   </section>
 
@@ -51,9 +51,9 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
 
   <?php if (!$liste): ?>
     <div class="carte" style="text-align:center">
-      <h3>Aucun décor ici</h3>
+      <h3>Aucun badge ici</h3>
       <p style="color:var(--text2);margin:.4em 0 0">
-        <?= $cherche ? 'Aucun résultat pour « ' . e($cherche) . ' ».' : 'Ce statut ne contient aucun décor.' ?>
+        <?= $cherche ? 'Aucun résultat pour « ' . e($cherche) . ' ».' : 'Ce statut ne contient aucun badge.' ?>
       </p>
     </div>
   <?php else: foreach ($liste as $d):
@@ -77,7 +77,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
       <?php if ($_sans_fichier): ?>
         <p class="msg err" style="margin:0 0 12px">
           <b>Cadre introuvable sur le serveur.</b>
-          Ce décor pointe vers un fichier qui n’existe plus : le badge ne peut pas être
+          Ce badge pointe vers un fichier qui n’existe plus : le badge ne peut pas être
           fabriqué. Téléversez le cadre à nouveau depuis « Modifier », ou restaurez une
           sauvegarde.
         </p>
@@ -147,7 +147,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
                 leurs QR ne mèneront plus nulle part, et les entrées correspondantes ne
                 pourront plus être validées.
               <?php else: ?>
-                Aucun badge n’a encore été émis pour ce décor.
+                Aucun badge n’a encore été émis pour celui-ci.
               <?php endif; ?>
               <br>Préférez <strong>Archiver</strong> si vous voulez seulement le retirer du catalogue.
             </p>
@@ -182,7 +182,7 @@ $onglet = function (string $cle, string $nom) use ($filtre, $compteurs, $cherche
         <a class="bouton fant petit" href="<?= e($vers($page_n - 1)) ?>">← Précédents</a>
       <?php endif; ?>
       <span class="aide">Page <?= (int) $page_n ?> sur <?= (int) $pages ?> ·
-        <?= (int) $combien ?> décor<?= $combien > 1 ? 's' : '' ?></span>
+        <?= (int) $combien ?> badge<?= $combien > 1 ? 's' : '' ?></span>
       <?php if ($page_n < $pages): ?>
         <a class="bouton fant petit" href="<?= e($vers($page_n + 1)) ?>">Suivants →</a>
       <?php endif; ?>

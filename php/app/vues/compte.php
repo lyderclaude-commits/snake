@@ -15,7 +15,7 @@
       <h3 style="margin-bottom:12px">Mes créations</h3>
       <?php if (!$creations): ?>
         <p style="color:var(--text2);margin:0">Aucune création pour l’instant.
-        <a href="<?= e(url('?p=decors')) ?>">Choisir un décor</a>.</p>
+        <a href="<?= e(url('?p=decors')) ?>">Choisir un badge</a>.</p>
       <?php else: foreach ($creations as $c): ?>
         <div class="rangee" style="justify-content:space-between;border-top:1px solid var(--border);padding:9px 0">
           <a href="<?= e(url('?p=decor&slug=' . urlencode($c['slug']))) ?>"><?= e($c['titre']) ?></a>
@@ -39,7 +39,7 @@
   </div>
 
   <p class="aide" style="margin-top:18px">
-    Ce qui est enregistré : le décor utilisé et la date. <strong>Pas votre photo</strong> :
+    Ce qui est enregistré : le badge utilisé et la date. <strong>Pas votre photo</strong> :
     elle est traitée dans votre navigateur et n’arrive jamais sur nos serveurs.
   </p>
 </div>

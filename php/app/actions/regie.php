@@ -381,6 +381,14 @@ if ($page === 'regie-ecrire') {
         }
         $valeurs['cible'] = (string) ($_POST['cible'] ?? '');
         /**
+         * Le composer de la page « Campagne Email » n'a pas de champ
+         * « Titre » : c'est un écran d'e-mail, et l'objet sert partout.
+         * Le titre interne prend donc l'objet quand on ne l'a pas donné.
+         */
+        if ($valeurs['titre'] === '' && $valeurs['sujet'] !== '') {
+            $valeurs['titre'] = $valeurs['sujet'];
+        }
+        /**
          * Le segment et son décor voyagent en champs cachés.
          *
          * Ils ne se choisissent pas ici : l’écran des segments les a déjà
@@ -415,7 +423,7 @@ if ($page === 'regie-ecrire') {
                 && (string) ($_POST['liste_id'] ?? '') === '' =>
                 'Choisissez une liste de votre carnet, ou collez les adresses.',
             $valeurs['cible'] === 'segment' && $valeurs['decor_id'] === '' =>
-                'Un segment se choisit depuis un décor : ouvrez « À qui j’écris » '
+                'Un segment se choisit depuis un badge : ouvrez « À qui j’écris » '
                 . 'depuis le rapport de l’événement.',
             default => null,
         };
@@ -541,6 +549,45 @@ if ($page === 'regie-ecrire') {
                 $id = (string) $c['id'];
             } else {
                 $id = campagne_email_creer($valeurs + ['auteur_id' => $u['id']]);
+
+                /**
+                 * Le composer de « Campagne Email » avance d'un pas de plus
+                 * que l'atelier : tout l'écran est sous les yeux, et le
+                 * détour par le détail ne sert à rien pour un message écrit
+                 * d'un trait.
+                 *
+                 * L'équipe part direct : elle se relit elle-même, comme à la
+                 * soumission. Un organisateur passe par sa page de campagne
+                 * comme avant — la relecture est le dernier moment où son
+                 * texte est relu par quelqu'un d'autre, elle ne s'esquive
+                 * pas.
+                 */
+                if (($_POST['composer'] ?? '') === '1') {
+                    if ($equipe) {
+                        $portee = regie_portee(campagne_email($id), $u);
+                        $q = quota_emails($u, (int) $portee['email']);
+                        if (!$q['ok']) {
+                            rediriger('?p=regie-campagne&id=' . rawurlencode($id) . '&err='
+                                . rawurlencode($q['message']));
+                        }
+                        campagne_email_transition($id, 'en_relecture', $u);
+                        campagne_email_transition($id, 'prete', $u);
+                        $n = regie_figer($id, $u);
+                        if (!empty($valeurs['planifie_le'])) {
+                            rediriger('?p=regie-campagne&id=' . rawurlencode($id) . '&ok='
+                                . rawurlencode('Programmée : ' . $n . ' destinataire(s), partira à l’heure '
+                                . 'choisie par la tâche automatique.'));
+                        }
+                        $lot = regie_envoyer_lot($id);
+                        rediriger('?p=regie-campagne&id=' . rawurlencode($id) . '&ok='
+                            . rawurlencode(sprintf('Envoyée : %d/%d destinataire(s).', (int) $lot['envoyes'], $n)
+                            . ((int) $lot['restants'] > 0
+                                ? ' Le reste suit par la tâche automatique.'
+                                : '')));
+                    }
+                    rediriger('?p=regie-campagne&id=' . rawurlencode($id) . '&ok='
+                        . rawurlencode('Enregistrée. Relisez-la, puis soumettez-la.'));
+                }
             }
             rediriger('?p=regie-campagne&id=' . rawurlencode($id) . '&ok='
                 . rawurlencode('Enregistrée. Relisez-la, puis soumettez-la.'));
@@ -651,12 +698,27 @@ if ($page === 'regie-echecs-export') {
 
 /* ---------------- la liste ---------------- */
 
+/**
+ * Le carnet du visiteur, rangé par identifiant.
+ *
+ * Le composer a besoin des listes pour son sélecteur, et la page doit
+ * vérifier la liste demandée par « Écrire à cette liste » : une table
+ * indicée par identifiant sert aux deux d'un seul calcul.
+ */
+$listes_vue = array_column(carnet_listes((string) $u['id']), null, 'id') ?: [];
+
 vue('regie', [
-    'titre' => 'Régie e-mail',
+    'titre' => 'Campagne Email',
     // La même clé que les sauvegardes : une seule à garder, une seule à
     // faire tourner si elle fuit.
     'url_cron' => base_url() . '/index.php?p=regie-cron&cle=' . cle_sauvegarde(),
     'liste' => $equipe ? campagnes_email_toutes() : campagnes_email_de((string) $u['id']),
+    'listes' => $listes_vue,
+    // « Écrire à cette liste » du carnet arrive ici : la liste demandée
+    // n'est présélectionnée que si elle appartient bien au visiteur, une
+    // adresse reçue de la requête se vérifie comme toute saisie.
+    'liste_choisie' => isset($listes_vue[(string) ($_GET['l'] ?? '')])
+        ? (string) $_GET['l'] : '',
     'equipe' => $equipe,
     'quota' => quota_emails($u),
     'branche' => courriel_branche(),

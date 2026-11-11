@@ -19,7 +19,7 @@
 ?>
 <div class="page-header">
     <div class="container"><div class="page-header-inner">
-      <div class="breadcrumb"><a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">›</span><span>Contact</span></div>
+      <div class="breadcrumb"><a href="<?= e(url('?p=accueil')) ?>">Accueil</a><span class="breadcrumb-sep">›</span><span>Contacts</span></div>
       <h1>Contactez-nous</h1>
       <p>Notre équipe vous répond sous 24h. Partenariats, support, presse, on gère tout.</p>
     </div></div>
@@ -92,7 +92,7 @@
                 <input type="text" id="c-ville" name="ville" placeholder="Lomé, Togo"
                        value="<?= e($valeurs['ville']) ?>" maxlength="80"></div>
               <div class="form-group"><label for="c-tel">Téléphone (optionnel)</label>
-                <input type="tel" id="c-tel" name="telephone" placeholder="+228 XX XX XX XX"
+                <input type="tel" id="c-tel" name="telephone" placeholder="+229 xx xx xx xx xx"
                        value="<?= e($valeurs['telephone']) ?>" maxlength="40" inputmode="tel"></div>
             </div>
             <div class="form-group"><label for="c-message">Message</label>

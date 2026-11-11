@@ -1,12 +1,12 @@
 <?php
 /**
- * La barre de commande du tableau de bord, et ses deux onglets.
+ * La barre de commande du tableau de bord, partagée par les deux vues.
  *
- * Écrite une fois : les deux onglets la portent à l'identique, et deux
+ * Écrite une fois : les deux vues la portent à l'identique, et deux
  * copies auraient divergé au premier ajout — une recherche présente d'un
  * côté, absente de l'autre, sans que personne sache si c'est voulu.
  *
- * Attend $me, $onglet ('faire' ou 'chiffres'), $a_traiter (le nombre) et
+ * Attend $me, $onglet ('faire' ou 'chiffres') et
  * $nouveau (ce qu'on a le droit de créer).
  */
 ?>
@@ -50,23 +50,23 @@
              stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </summary>
       <div class="volet">
-        <?php foreach ($nouveau as [$ou, $quoi, $_d]): ?>
-          <a href="<?= e(url($ou)) ?>"><?= e($quoi) ?></a>
+        <?php
+        /* Une icone par intention, le même jeu que le reste du bord : le
+           coup d'œil vise la bonne création avant même de lire le texte. */
+        $icone_nouveau = [
+            'decors_siens' => 'ticket',
+            'articles' => 'affiche',
+            'regie' => 'avion',
+            'liens' => 'lien',
+            'comptes' => 'user',
+        ];
+        foreach ($nouveau as [$ou, $quoi, $droit]): ?>
+          <a href="<?= e(url($ou)) ?>"><?= (icone_guide($icone_nouveau[$droit] ?? 'ticket', 16) ?: icone($icone_nouveau[$droit] ?? 'ticket')) ?><?= e($quoi) ?></a>
         <?php endforeach; ?>
       </div>
     </details>
   <?php endif; ?>
 </div>
-
-<nav class="bord-onglets" aria-label="Sections du tableau de bord">
-  <a href="<?= e(url('?p=admin')) ?>"<?= $onglet === 'faire' ? ' aria-current="page"' : '' ?>>
-    À faire
-    <?php if ($a_traiter > 0): ?><span class="bord-compte"><?= (int) $a_traiter ?></span><?php endif; ?>
-  </a>
-  <a href="<?= e(url('?p=admin&vue=chiffres')) ?>"<?= $onglet === 'chiffres' ? ' aria-current="page"' : '' ?>>
-    Les chiffres
-  </a>
-</nav>
 
 <script>
 /**

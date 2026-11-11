@@ -42,17 +42,17 @@ $depart = ($_GET['depart'] ?? $_POST['depart'] ?? '') === 'fichier' ? 'fichier' 
 $modifie = $page === 'modifier' ? decor_par_id((string) ($_GET['id'] ?? $_POST['id'] ?? '')) : null;
 if ($page === 'modifier') {
     if (!$modifie) {
-        rediriger(droit($u, 'decors_tous') ? '?p=catalogue&err=' . urlencode('Décor introuvable.') : '?p=partenaire');
+        rediriger(droit($u, 'decors_tous') ? '?p=catalogue&err=' . urlencode('Badge introuvable.') : '?p=partenaire');
     }
     // Un partenaire ne modifie que ses propres décors — ou ceux qu'on lui a
     // confiés — et pas après publication.
     if (!droit($u, 'decors_tous')) {
         if (!decor_accessible($u, $modifie)) {
-            rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
+            rediriger('?p=partenaire&err=' . urlencode('Ce badge ne vous appartient pas.'));
         }
         if (in_array($modifie['statut'], ['publie', 'en_relecture'], true)) {
             rediriger('?p=partenaire&err=' . urlencode(
-                'Un décor publié ou en relecture ne se modifie plus. Demandez à l’équipe Wakabi.'
+                'Un badge publié ou en relecture ne se modifie plus. Demandez à l’équipe Wakabi.'
             ));
         }
     }
@@ -64,7 +64,7 @@ if ($page === 'equipier') {
     verifier_csrf();
     $d = decor_par_id((string) ($_POST['id'] ?? ''));
     if (!$d) {
-        rediriger('?p=partenaire&err=' . urlencode('Décor introuvable.'));
+        rediriger('?p=partenaire&err=' . urlencode('Badge introuvable.'));
     }
     /**
      * Seul l'AUTEUR invite, jamais un équipier.
@@ -109,10 +109,10 @@ if ($page === 'soumettre') {
     verifier_csrf();
     $d = decor_par_id((string) ($_POST['id'] ?? ''));
     if (!$d) {
-        rediriger('?p=partenaire&err=' . urlencode('Décor introuvable.'));
+        rediriger('?p=partenaire&err=' . urlencode('Badge introuvable.'));
     }
     if (!droit($u, 'decors_tous') && !decor_accessible($u, $d)) {
-        rediriger('?p=partenaire&err=' . urlencode('Ce décor ne vous appartient pas.'));
+        rediriger('?p=partenaire&err=' . urlencode('Ce badge ne vous appartient pas.'));
     }
 
     /**
@@ -172,7 +172,7 @@ if ($page === 'soumettre') {
     }
 
     // La file d'attente ne se surveille pas toute seule.
-    notifier_equipe('relecture', 'Un décor attend votre relecture', $d['titre'], '?p=relecture');
+    notifier_equipe('relecture', 'Un badge attend votre relecture', $d['titre'], '?p=relecture');
     rediriger('?p=partenaire&ok=' . urlencode('Soumis : réponse sous 24 h ouvrées.'));
 }
 
@@ -472,7 +472,7 @@ if ($post) {
             $charge = $valeurs;
             $charge['depart'] = $depart;
             if (!brouillon_poser('decor', $charge)) {
-                $erreur = 'Trop de décors en attente depuis cette connexion. '
+                $erreur = 'Trop de badges en attente depuis cette connexion. '
                         . 'Créez votre compte pour reprendre celui-ci.';
             } else {
                 // `vers` dit à quelle porte on frappe. Le brouillon est posé
@@ -550,7 +550,7 @@ if ($post) {
     }
 
     if (!$erreur && $valeurs['titre'] === '') {
-        $erreur = 'Donnez un titre à votre décor.';
+        $erreur = 'Donnez un titre à votre badge.';
     } elseif (!$erreur && $valeurs['cadre_url'] === '' && $par_fichier) {
         /**
          * Le chemin « cadre fini » EXIGE le fichier, page blanche ou non.
@@ -561,7 +561,7 @@ if ($post) {
          * entièrement vide. L'écran ne le propose pas, mais un formulaire
          * se poste à la main, et le verrou d'étapes est un script.
          */
-        $erreur = 'Déposez le fichier de votre décor : c’est lui qui fait ce décor-là.';
+        $erreur = 'Déposez le fichier de votre badge : c’est lui qui fait ce badge-là.';
     } elseif (!$erreur && $valeurs['cadre_url'] === '' && $valeurs['disposition'] !== 'vierge') {
         // La page blanche est le seul gabarit qui se passe de cadre : son
         // décor tient au fond, à la fenêtre photo et au texte.
@@ -628,7 +628,7 @@ if ($post) {
             ]);
             rediriger(droit($u, 'decors_tous')
                 ? '?p=catalogue&ok=' . urlencode('« ' . $valeurs['titre'] . ' » créé. Publiez-le quand il vous convient.' . $allege)
-                : '?p=partenaire&ok=' . urlencode('Décor créé. Soumettez-le à la relecture quand il vous convient.' . $allege));
+                : '?p=partenaire&ok=' . urlencode('Badge créé. Soumettez-le à la relecture quand il vous convient.' . $allege));
         } catch (GabaritInvalide $e) {
             // Le message vient du contrat : c'est lui qui sait pourquoi.
             $erreur = $e->getMessage();
@@ -637,7 +637,7 @@ if ($post) {
 }
 
 vue('nouveau', [
-    'titre' => $modifie ? 'Modifier « ' . $modifie['titre'] . ' »' : 'Nouveau décor',
+    'titre' => $modifie ? 'Modifier « ' . $modifie['titre'] . ' »' : 'Nouveau badge',
     'erreur' => $erreur,
     'valeurs' => $valeurs,
     'modifie' => $modifie,

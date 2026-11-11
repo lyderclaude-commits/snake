@@ -199,6 +199,11 @@
   transition:background .15s,color .15s}
 .wk-menu a:hover,.wk-menu>li>button:hover{background:#EFF6FF;color:#2563EB}
 .wk-menu a[aria-current],.wk-menu>li.wk-ici>button{font-weight:600;color:#2563EB;background:#EFF6FF}
+/* Un groupe dont un membre est la page courante reste en surbrillance,
+   fermé compris : sinon le repère ne vivait que dans le volet, et le
+   voyant s'allumait un instant puis mourait au moment précis où l'on en
+   a besoin — savoir où l'on est dans le site. */
+.wk-grp.wk-ici>summary{font-weight:600;color:#2563EB;background:#EFF6FF}
 .wk-menu :focus-visible{outline:2px solid #2563EB;outline-offset:2px}
 
 /* ---------------- un déroulant, sans une ligne de script ----------------
@@ -226,19 +231,51 @@
 .wk-volet a:hover{background:#F8FAFF}
 .wk-volet svg{flex:none;margin-top:1px}
 .wk-volet small{display:block;font-size:12px;font-weight:400;color:#475569;margin-top:1px}
+/* Une entrée « en attente » : la page n'existe pas encore. Elle se
+   montre sans lien, en gris — présente pour annoncer, muette pour ne
+   pas mener nulle part. Le curseur ne promet pas ce qui ne vient pas. */
+.wk-volet a.wk-attente{opacity:.55;cursor:default}
+.wk-volet a.wk-attente:hover{background:none}
 
 /* ---------------- la droite : deux boutons et le compte ---------------- */
 
 .wk-droite{flex:none;display:flex;align-items:center;gap:8px;position:relative}
-.wk-b-out,.wk-b-pri{display:inline-flex;align-items:center;font-size:13px;font-weight:600;
+.wk-b-pri{display:inline-flex;align-items:center;font-size:13px;font-weight:600;
   border-radius:10px;white-space:nowrap;text-decoration:none;transition:all .18s}
-.wk-b-out{padding:7px 15px;color:#2563EB;background:transparent;border:1.5px solid #2563EB}
-.wk-b-out:hover{background:#EFF6FF}
 .wk-b-pri{padding:8px 16px;color:#fff;background:#2563EB;border:0;
   box-shadow:0 2px 8px rgba(37,99,235,.25)}
 .wk-b-pri:hover{background:#1D4ED8;box-shadow:0 6px 20px rgba(37,99,235,.35)}
+/* « Connexion » en simple lien : une porte, pas un meuble. Il pèse
+   moins qu'un bouton, et le bouton unique reste le seul cri de la
+   barre. Au doigt, il garde une cible honnête. */
+.wk-lien-connexion{font-size:13px;font-weight:600;color:#334155;
+  text-decoration:none;padding:8px 10px;border-radius:8px;white-space:nowrap;
+  transition:color .18s}
+.wk-lien-connexion:hover{color:#2563EB;background:#EFF6FF}
 
-.wk-compte{position:relative;list-style:none}
+/* « Telecharger » ouvre un volet de choix, pas un magasin : deux portes,
+   dont une peut ne pas exister encore. Le resume garde l'habillage du
+   bouton bleu, et le volet reprend celui des menus de navigation. La
+   classe `menu` (dans le gabarit) le fait replier au clic dehors et a
+   l'echap, comme les autres. */
+.wk-stores{position:relative}
+.wk-stores>summary{list-style:none;cursor:pointer}
+.wk-stores>summary::-webkit-details-marker{display:none}
+.wk-stores[open]>summary{background:#1D4ED8}
+.wk-stores-volet{position:absolute;top:calc(100% + 8px);right:0;z-index:6;
+  min-width:230px;background:#fff;border:1px solid #E2E8F0;border-radius:14px;
+  box-shadow:0 20px 40px rgba(15,23,42,.1),0 8px 16px rgba(15,23,42,.06);
+  padding:7px;display:flex;flex-direction:column;gap:1px}
+.wk-stores-volet a{display:flex;align-items:center;gap:10px;padding:10px 11px;
+  border-radius:9px;font-size:14px;font-weight:600;color:#0F172A;text-decoration:none}
+.wk-stores-volet a:hover{background:#F8FAFF}
+.wk-stores-attente{padding:10px 11px;font-size:13px;color:#94A3B8;cursor:default}
+.wk-stores>summary:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+
+/* flex:none : quand la barre manque de place, les objets flexibles
+   voisins se partagent la compression — sans lui, le bouton du compte
+   s'étrangle et son contenu se déforme. Il garde sa largeur naturelle. */
+.wk-compte{position:relative;list-style:none;flex:none}
 .wk-compte>summary{display:inline-flex;align-items:center;gap:3px;padding:6px 7px;
   background:transparent;border:1.5px solid #E2E8F0;border-radius:10px;cursor:pointer;
   color:#0F172A;list-style:none}
@@ -248,8 +285,14 @@
 .wk-compte>summary:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
 /* Connecté : l'initiale remplace la silhouette, et le bouton s'arrondit. */
 .wk-compte.wk-sien>summary{padding:4px 7px 4px 4px;border-radius:999px;gap:5px}
-.wk-pastille{width:28px;height:28px;border-radius:999px;background:#2563EB;color:#fff;
+/* flex:none, ici pour de bon : la pastille est un objet flexible du
+   summary, et sans lui la compression de la barre l'écrasait de 28 px
+   à 13 px de large — un rond devenait une capsule verticale. */
+.wk-pastille{width:28px;height:28px;flex:none;border-radius:999px;background:#2563EB;color:#fff;
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+/* Même calibre que les chevrons des groupes du menu : sans règle ici,
+   le svg héritait de 20 px de haut et déséquilibrait le bouton. */
+.wk-compte .wk-chev{width:11px;height:11px;flex:none}
 
 .wk-volet-u{position:absolute;top:calc(100% + 10px);right:0;width:258px;background:#fff;
   border:1px solid #E2E8F0;border-radius:16px;
@@ -303,7 +346,6 @@
   .wk-in{height:60px;gap:10px}
   .wk-menu{display:none}
   .wk-burger{display:block}
-  .wk-b-out{display:none}
   .wk-droite{gap:6px}
 
   /* Le bouton et la pastille du compte restent VISABLES AU DOIGT.
@@ -321,6 +363,22 @@
     max-height:calc(100vh - 60px);overflow-y:auto}
   .wk-burger .wk-volet a{font-size:15px;padding:13px 12px}
   .wk-burger .wk-volet .wk-sous{padding-left:34px}
+  .wk-burger .wk-volet a.wk-attente{opacity:.55;cursor:default}
+
+  /* L'invitation aux notifications a déménagé ici : le volet du compte
+     n'existe plus pour un visiteur, et c'était son seul toit. Elle
+     reprenait les styles de .wk-volet-u — les mêmes, réécrits pour ce
+     panneau. Le filet qui la sépare du menu est SA bordure : le jour où
+     le script retire le bouton, la ligne s'en va avec lui. */
+  .wk-burger .wk-volet .wk-push{display:flex;align-items:flex-start;gap:11px;
+    margin-top:5px;padding:13px 12px 0;text-align:left;background:none;border:0;
+    border-top:1px solid #F1F5F9;border-radius:0;font:inherit;color:inherit;
+    cursor:pointer;width:100%}
+  .wk-burger .wk-volet .wk-push[hidden]{display:none}
+  .wk-burger .wk-volet .wk-push svg{flex:none;margin-top:1px;color:#2563EB}
+  .wk-burger .wk-volet .wk-push b{display:block;font-weight:600;font-size:15px}
+  .wk-burger .wk-volet .wk-push small{display:block;font-size:12px;font-weight:400;
+    color:#475569;margin-top:2px;line-height:1.4}
 }
 
 @media (max-width:520px){
@@ -331,7 +389,7 @@
 }
 
 @media (prefers-reduced-motion:reduce){
-  .wk-grp .wk-chev,.wk-burger>summary span,.wk-b-pri,.wk-b-out,.wk-menu a{transition:none}
+  .wk-grp .wk-chev,.wk-burger>summary span,.wk-b-pri,.wk-menu a{transition:none}
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -393,13 +451,31 @@
 .pg-liens a{font-size:.82rem;color:rgba(255,255,255,.6);text-decoration:none;
   transition:color .2s}
 .pg-liens a:hover{color:#fff;text-decoration:underline}
+/* Le choix des magasins derrière « Télécharger ». Le summary prend la
+   même tenue qu'un lien du pied : c'est un résumé, ici, qui ressemble à
+   ce qu'il remplace. La liste s'ouvre SOUS lui, dans le fil des liens —
+   une bulle posée par-dessus le pied se serait perdue, ou aurait fini
+   hors de l'écran sur un téléphone. */
+.pg-stores.menu{position:relative;display:block}
+.pg-stores.menu > summary{font-size:.82rem;color:rgba(255,255,255,.6);
+  cursor:pointer;list-style:none;transition:color .2s}
+.pg-stores.menu > summary::-webkit-details-marker{display:none}
+.pg-stores.menu > summary:hover{color:#fff;text-decoration:underline}
+.pg-stores[open] > summary{color:#fff}
+.pg-stores-liste{display:flex;flex-direction:column;gap:8px;
+  margin:10px 0 4px 12px;padding:10px 12px;border-left:2px solid rgba(255,255,255,.15)}
+.pg-stores-liste a{font-size:.82rem;color:rgba(255,255,255,.85);
+  text-decoration:none;transition:color .2s}
+.pg-stores-liste a:hover{color:#fff;text-decoration:underline}
+/* L'App Store n'est pas encore publié : le choix se voit, mais ne
+   promet pas un clic qui mènerait nulle part. */
+.pg-stores-attente{font-size:.82rem;color:rgba(255,255,255,.3)}
 .pg-bas{display:flex;align-items:center;justify-content:space-between;
   padding-top:24px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;gap:12px}
 .pg-copy{font-size:.75rem;color:rgba(255,255,255,.35)}
 .pg-legal{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .pg-legal a{font-size:.75rem;color:rgba(255,255,255,.35);text-decoration:none}
 .pg-legal a:hover{color:rgba(255,255,255,.7);text-decoration:underline}
-.pg-version{font-size:.75rem;color:rgba(255,255,255,.25)}
 
 @media (max-width:900px){
   .pg-grille{grid-template-columns:1fr 1fr;gap:32px}
@@ -419,17 +495,61 @@
   .pg-legal{justify-content:center}
 
   /* Le pied de page est le plan du site sur un téléphone : c'est par
-     là qu'on retrouve « Partenaires » ou « CGU » quand le menu est
-     refermé. Mesuré : ses liens faisaient 21 px de haut pour 13 px de
-     texte — on vise à côté une fois sur trois. On leur donne de la
-     hauteur et une taille qui se lit, sans toucher au pied des grands
-     écrans, où la souris ne rate pas. */
+     là qu'on retrouve « Contacts » ou « Mentions légales » quand le
+     menu est refermé. Mesuré : ses liens faisaient 21 px de haut pour
+     13 px de texte — on vise à côté une fois sur trois. On leur donne
+     de la hauteur et une taille qui se lit, sans toucher au pied des
+     grands écrans, où la souris ne rate pas. */
   .pg-col h2{font-size:.8rem}
   .pg-liens{gap:2px}
   .pg-liens a{font-size:.9rem;padding:8px 0;display:block}
+  /* Le résumé du volet des magasins, taillé comme les liens voisins. */
+  .pg-stores.menu > summary{font-size:.9rem;padding:8px 0;display:block}
+  .pg-stores-liste{margin:4px 0 4px 12px}
+  .pg-stores-attente{font-size:.9rem;padding:8px 0}
   .pg-legal{gap:6px 18px}
   .pg-legal a{font-size:.8rem;padding:7px 0;display:inline-block}
-  .pg-copy,.pg-version{font-size:.8rem}
+  .pg-copy{font-size:.8rem}
   /* Le logo du pied est lui aussi un retour à l'accueil. */
   .pied-guide a:has(>.pg-logo){display:inline-block;padding:5px 0}
+}
+
+/* ---------------- le bouton WhatsApp ----------------
+   Flottant en bas à droite, sur tout le site public — jamais dans
+   l'atelier : la vue ne le rend que là où la barre de vitrine se
+   montre (voir `layout.php` et `barre_vitrine()`). Le vert est celui
+   de WhatsApp, pas celui de la maison : un bouton qu'on reconnaît
+   avant de savoir lire. */
+.wk-wa{position:fixed;right:18px;bottom:18px;z-index:41;width:52px;height:52px;
+  border-radius:999px;background:#25D366;color:#fff;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 10px 24px rgba(37,211,102,.4),0 2px 8px rgba(15,23,42,.16);
+  transition:transform .18s,box-shadow .18s}
+.wk-wa svg{width:26px;height:26px;display:block}
+.wk-wa:hover{transform:translateY(-2px);
+  box-shadow:0 14px 28px rgba(37,211,102,.5),0 4px 10px rgba(15,23,42,.2)}
+.wk-wa:focus-visible{outline:2px solid #fff;outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(37,211,102,.55)}
+.wk-wa:active{transform:translateY(0)}
+
+/* Sur l'accueil, le retour en tête partage ce bas d'écran : placé
+   APRÈS le bouton WhatsApp dans le DOM, il monte au-dessus de lui par
+   le sélecteur frère — sans script, sans classe en plus. */
+.wk-wa ~ .haut-de-page{bottom:84px}
+
+@media (max-width:620px){
+  .wk-wa{right:14px;bottom:14px;width:48px;height:48px}
+  .wk-wa svg{width:24px;height:24px}
+  .wk-wa ~ .haut-de-page{bottom:74px}
+}
+/* L'invitation aux notifications, sur téléphone, prend toute la
+   largeur : elle pousse le bouton WhatsApp au-dessus d'elle, et le
+   retour en tête au-dessus du bouton — la règle existante, plus
+   courte, serait rattrapée par celle-ci. */
+@media (max-width:560px){
+  body.push-invite-ouverte .wk-wa{bottom:calc(22px + var(--push-invite-h,180px))}
+  body.push-invite-ouverte .wk-wa ~ .haut-de-page{bottom:calc(88px + var(--push-invite-h,180px))}
+}
+@media (prefers-reduced-motion:reduce){
+  .wk-wa{transition:none}
+  .wk-wa:hover{transform:none}
 }

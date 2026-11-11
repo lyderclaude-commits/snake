@@ -65,7 +65,7 @@ $lien = static function (array $change) use ($decor): string {
 
       <?php if ((int) $ici['correspondent'] === 0): ?>
         <p class="aide" style="margin-top:12px">
-          Personne ne correspond à cette règle sur ce décor. Ce n’est pas une panne :
+          Personne ne correspond à cette règle sur ce badge. Ce n’est pas une panne :
           c’est une bonne nouvelle pour « n’a jamais téléchargé », et une mauvaise
           pour « est venu ».
         </p>

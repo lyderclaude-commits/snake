@@ -41,7 +41,7 @@ $staff = droit($me, 'scan');
     <?php else: ?>
       <a class="bouton fant" style="margin-top:20px"
          href="<?= e($b ? url('?p=decor&slug=' . urlencode($b['decor_slug'])) : url('?p=decors')) ?>">
-        <?= $b ? 'Voir ce décor' : 'Voir les décors' ?>
+        <?= $b ? 'Voir ce badge' : 'Voir les badges' ?>
       </a>
     <?php endif; ?>
   </div>
