@@ -407,13 +407,44 @@ $articles = blog_fusionne(1, 3)['liste'];
 <?php endif; ?>
 
 <!-- ---------- les partenaires ---------- -->
+<?php
+/**
+ * LES LOGOS SONT SERVIS PAR NOUS, et plus par le guide.
+ *
+ * Ils venaient de `admin.wakabileguide.com` : trois requêtes vers un
+ * domaine que ce site ne tient pas, sur des connexions où le mégaoctet
+ * se compte, et trois images qui disparaissent le jour où ce domaine
+ * bouge, passe en maintenance ou change ses adresses de médias. La
+ * règle vaut ici comme elle valait pour les captures de l'application :
+ * ce que la page montre, la page le sert.
+ *
+ * Ils sont aussi RÉDUITS À LEUR TAILLE D'AFFICHAGE. Les originaux font
+ * 768 pixels de côté pour paraître à 44 : neuf dixièmes du poids
+ * téléchargé ne servaient qu'à être jetés par le navigateur.
+ *
+ * Un logo dont le fichier manque n'est pas affiché, et la section
+ * entière disparaît s'il n'en reste aucun. Une rangée de carrés brisés
+ * sous « Ils nous font confiance » dit exactement le contraire de ce
+ * qu'elle veut dire — et c'est l'état d'une installation où le
+ * rapatriement n'a pas encore été fait.
+ */
+$_logos = array_values(array_filter([
+    ['partenaires/sudcom.webp',    'Sudcom',    44],
+    ['partenaires/gnadoe.webp',    'Gnadoe',    36],
+    ['partenaires/actu-lome.webp', 'Actu Lomé', 36],
+], static fn(array $l): bool => is_file(RACINE . '/public/' . $l[0])));
+?>
+<?php if ($_logos): ?>
 <section class="section-sm" style="background:var(--bg2);">
   <div class="container" style="text-align:center;">
     <p style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);font-weight:700;margin-bottom:28px;">Ils nous font confiance</p>
     <div style="display:flex;gap:32px;align-items:center;justify-content:center;flex-wrap:wrap;opacity:0.5;filter:grayscale(1);">
-      <img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/SUDCOM-1-768x768-1.webp" alt="Sudcom" style="height:44px;width:auto;object-fit:contain;" loading="lazy">
-      <img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/LOGO-GNADOE-768x345-1-1.webp" alt="Gnadoe" style="height:36px;width:auto;object-fit:contain;" loading="lazy">
-      <img src="https://admin.wakabileguide.com/wp-content/uploads/2026/05/logo-actu-lome-01_1_11zon-scaled-1.webp" alt="Actu Lomé" style="height:36px;width:auto;object-fit:contain;" loading="lazy">
+      <?php foreach ($_logos as [$_f, $_nom, $_h]): ?>
+        <img src="<?= e(url('public/' . $_f)) ?>" alt="<?= e($_nom) ?>"
+             style="height:<?= (int) $_h ?>px;width:auto;object-fit:contain;"
+             loading="lazy" decoding="async">
+      <?php endforeach; ?>
     </div>
   </div>
 </section>
+<?php endif; ?>

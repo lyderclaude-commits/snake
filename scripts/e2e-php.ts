@@ -10016,6 +10016,38 @@ const run = async () => {
      magasins.play && magasins.protege, JSON.stringify(magasins));
   ok('et la page renvoie aussi vers la fiche de l’application', magasins.versApp);
 
+  /**
+   * CE QUE LA PAGE MONTRE, LA PAGE LE SERT.
+   *
+   * Les logos des partenaires venaient du WordPress du guide : trois
+   * requêtes vers un domaine que ce site ne tient pas, sur des
+   * connexions où le mégaoctet se compte, et trois images qui
+   * disparaissent le jour où ce domaine bouge. Ils vivent maintenant
+   * dans `public/partenaires/`, et la section ne paraît pas tant qu'ils
+   * n'y sont pas.
+   *
+   * UNE DETTE RESTE, et elle est nommée ici plutôt que tue : la capture
+   * du bandeau. C'est la plus grosse image de la page et la seule en
+   * `loading="eager"` — donc celle qui décide du temps d'affichage
+   * ressenti. `scripts/rapatrier-logos.ts` sait déjà descendre et
+   * réduire ce genre de fichier ; le jour où on la rapatrie, cette liste
+   * se vide et l'assertion devient « aucune ».
+   *
+   * Les cartes du blog sont hors du compte : leurs images viennent de la
+   * base, et un article importé porte les siennes.
+   */
+  const DETTE_IMAGES = ['MOKE-1.png'];
+  const etrangeres = await pAcc.evaluate(() => [...document.querySelectorAll('img')]
+    .filter((i) => !i.closest('.blog-grid'))
+    .map((i) => i.getAttribute('src') ?? '')
+    .filter((src) => /^https?:\/\//i.test(src) && !src.startsWith(location.origin)));
+  const inattendues = etrangeres.filter(
+    (src) => !DETTE_IMAGES.some((connue) => src.includes(connue)));
+  ok('l’accueil sert ses images, à la dette près qui est nommée',
+     inattendues.length === 0,
+     inattendues.map((s) => s.split('/').pop()).join(' · ')
+       || `${etrangeres.length} dette(s) connue(s)`);
+
 
   /**
    * LE VOCABULAIRE DE LA PAGE, mesuré sur le texte rendu.

@@ -1,0 +1,11 @@
+Les logos des partenaires de la page d'accueil.
+
+Ils ne sont pas dans le dépôt : ce sont les marques de tiers, et elles
+changent sans nous prévenir. Pour les (re)descendre, depuis une machine
+qui atteint admin.wakabileguide.com :
+
+    npx tsx scripts/rapatrier-logos.ts
+
+Le script les réduit à deux fois leur hauteur d'affichage et les écrit
+ici en WebP. Tant qu'un fichier manque, la page n'affiche pas ce
+logo-là ; s'il n'y en a aucun, la section entière disparaît.
