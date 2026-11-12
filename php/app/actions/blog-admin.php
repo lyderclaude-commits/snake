@@ -143,7 +143,7 @@ if ($page === 'blog-import') {
     }
     if ($m > 0) {
         $err_msg = $m . ' article' . ($m > 1 ? 's' : '') . ' n’' . ($m > 1 ? 'ont' : 'a')
-            . ' pas pu être ' . ($m > 1 ? 'importés' : 'importé') . ' — '
+            . ' pas pu être ' . ($m > 1 ? 'importés' : 'importé') . ' : '
             . implode(', ', array_slice($rates, 0, 3)) . ($m > 3 ? ' et d’autres' : '')
             . '. WordPress a pu être injoignable : réessayez — un article déjà entré n’est jamais importé deux fois.';
     }
@@ -448,8 +448,15 @@ vue('blog-admin', [
     /* Un chiffre vaut mieux qu'une case cochée : « 42 articles » dit que
        l'adresse répond, que le format est le bon et que le cache est
        chaud. Une case « source active » n'aurait dit que ce qu'on a tapé. */
-    'wp_etat' => $equipe ? ['total' => $guide ? (int) $guide['total'] : 0,
-                           'frais' => $guide ? (bool) $guide['frais'] : false] : null,
+    /* NULL quand la source est débranchée, et pas seulement quand on
+       n'est pas de l'équipe : sans `wp_actif()`, l'écran annonçait « Le
+       guide ne répond pas. Vérifiez l'adresse » à qui venait justement
+       de vider le champ exprès, et le message « Source débranchée »
+       n'était jamais atteint. */
+    'wp_etat' => $equipe && wp_actif()
+        ? ['total' => $guide ? (int) $guide['total'] : 0,
+           'frais' => $guide ? (bool) $guide['frais'] : false]
+        : null,
     'liste_guide' => $liste_guide,
     'liste' => $equipe ? articles_tous() : articles_de((string) $u['id']),
     'equipe' => $equipe,

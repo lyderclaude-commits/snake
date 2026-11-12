@@ -176,8 +176,8 @@ $branche = courriel_branche();
   <div class="carte" style="margin-top:16px">
     <h3 style="margin:0 0 4px">Les liens courts</h3>
     <p class="aide" style="margin:0 0 16px">Trois domaines hébergent vos liens :
-    <strong>wkb.tg</strong>, <strong>wkb.bj</strong> et <strong>wkb.sn</strong> — Togo, Bénin,
-    Sénégal. La personne choisit le sien au moment de créer un lien, sur l'écran de création.
+    <strong>wkb.tg</strong>, <strong>wkb.bj</strong> et <strong>wkb.sn</strong>, pour le Togo,
+    le Bénin et le Sénégal. La personne choisit le sien au moment de créer un lien, sur l'écran de création.
     Aujourd'hui, un lien sans domaine choisi s'écrit <code><?= e($exemple_lien) ?></code>.</p>
 
     <form method="post" action="<?= e(url('?p=reglages')) ?>">
@@ -217,7 +217,7 @@ $branche = courriel_branche();
         <p style="margin:0 0 8px"><strong>Le domaine ne s'invente pas côté logiciel :</strong> il faut
         le posséder et le faire pointer ici. Trois gestes, une fois pour toutes.</p>
         <ol style="margin:0;padding-left:1.2em">
-          <li>Achetez chaque domaine chez un registraire — wkb.tg, wkb.bj et wkb.sn
+          <li>Achetez chaque domaine chez un registraire : wkb.tg, wkb.bj et wkb.sn
           se règlent l'un après l'autre, avec le même soin.</li>
           <li>Chez LWS, dans cPanel → <strong>Domaines</strong>, ajoutez-les comme
           <em>domaines additionnels</em> et faites-les pointer vers <strong>ce même dossier</strong>,

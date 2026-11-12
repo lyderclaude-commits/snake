@@ -121,7 +121,7 @@ $supprimer = static function (array $c): string {
       <?php if ($listes): ?>
         <?php $choisie = (string) ($liste_choisie ?? ''); ?>
         <div class="champ">
-          <label for="rc-liste">Carnet destinataire<?= $choisie !== '' ? ' — liste choisie depuis le carnet' : '' ?></label>
+          <label for="rc-liste">Carnet destinataire<?= $choisie !== '' ? ' · liste choisie depuis le carnet' : '' ?></label>
           <select id="rc-liste" name="liste_id">
             <?php foreach ($listes as $li): ?>
               <option value="<?= e((string) $li['id']) ?>" <?= $choisie === (string) $li['id'] ? 'selected' : '' ?>>

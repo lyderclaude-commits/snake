@@ -31,6 +31,11 @@ h3{font-size:1rem;font-weight:700}
 p{margin:0 0 .9em}
 a{color:var(--primary-d);text-underline-offset:3px}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.8rem}
+/* `code`, `kbd`, `samp`, `pre` : sans cette ligne ils retombent sur le
+   `monospace` du navigateur, et le produit sert alors DEUX piles à chasse
+   fixe sur la même page. Celle de l'écran des liens montrait l'exemple
+   d'adresse dans une police que rien d'autre n'utilisait. */
+code,kbd,samp,pre{font-family:var(--mono)}
 
 .contenu{max-width:1100px;margin:0 auto;padding:0 20px 80px}
 .etroit{max-width:440px;margin:0 auto;padding:48px 20px}

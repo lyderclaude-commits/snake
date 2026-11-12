@@ -301,7 +301,7 @@ $articles = blog_fusionne(1, 3)['liste'];
         <div class="kori-balance-lbl">Solde disponible</div>
         <div class="kori-balance-val"><sub>₵</sub> 2 450</div>
         <div class="kori-dots"><div class="kori-dot on"></div><div class="kori-dot on"></div><div class="kori-dot on"></div><div class="kori-dot"></div><div class="kori-dot"></div></div>
-        <div class="kori-card-label">Carte Wakabi — QR Code Actif</div>
+        <div class="kori-card-label">Carte Wakabi · QR Code Actif</div>
         <div class="kori-perks">
           <div class="kori-perk"><span class="kori-perk-icon">★</span> 50 Koris gagnés ce mois</div>
           <div class="kori-perk"><span class="kori-perk-icon">🎁</span> −20% chez 12 partenaires</div>
@@ -311,7 +311,7 @@ $articles = blog_fusionne(1, 3)['liste'];
       <div class="kori-content fade-up fade-up-d2">
         <div class="tag">Exclusivité Wakabi</div>
         <h2 class="headline">La Carte Wakabi <span>&amp; le Kori.</span></h2>
-        <p>Plus tu explores, plus tu gagnes. Chaque visite chez un partenaire te rapporte des Koris — la monnaie virtuelle Wakabi. Utilise-les pour des réductions, des accès VIP et des privilèges exclusifs.</p>
+        <p>Plus tu explores, plus tu gagnes. Chaque visite chez un partenaire te rapporte des Koris, la monnaie virtuelle Wakabi. Utilise-les pour des réductions, des accès VIP et des privilèges exclusifs.</p>
         <div class="kori-benefits">
           <div class="kb-item"><div class="kb-icon">🪙</div><div class="kb-text"><strong>Gagne des Koris à chaque sortie</strong><span>Chaque achat chez un partenaire te crédite automatiquement</span></div></div>
           <div class="kb-item"><div class="kb-icon">💳</div><div class="kb-text"><strong>QR Code unique sur ton téléphone</strong><span>Présente-le chez n'importe quel partenaire pour activer tes avantages</span></div></div>

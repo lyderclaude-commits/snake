@@ -121,10 +121,10 @@ $etats = [
     <div class="carte" style="margin-top:16px">
       <h3 style="margin:0 0 6px">Importer les articles du guide</h3>
       <p class="aide" style="margin:0 0 14px">Le blog public ne lit plus le WordPress du guide :
-      ce qui paraît ici est écrit dans notre base. Un article du guide S’IMPORTE — texte
-      converti au format de la maison, images téléchargées et hébergées ici, dates du guide gardées —
+      ce qui paraît ici est écrit dans notre base. Un article du guide S’IMPORTE (texte
+      converti au format de la maison, images téléchargées et hébergées ici, dates du guide gardées),
       puis il vit comme un article à vous, modifiable et relectable. Un article déjà importé ne se
-      réimporte jamais : cochez, cliquez, et si un chargement tombe à court de temps, relancez —
+      réimporte jamais : cochez, cliquez, et si un chargement tombe à court de temps, relancez,
       le travail achevé est gardé, il ne reste que ce qui manque.</p>
 
       <?php if ($wp_etat === null): ?>
@@ -133,12 +133,12 @@ $etats = [
       <?php elseif ($_ok): ?>
         <p class="msg ok" style="margin:0 0 14px" role="status">
           <strong><?= (int) $wp_etat['total'] ?> article<?= (int) $wp_etat['total'] > 1 ? 's' : '' ?> au catalogue</strong>
-          du guide<?= $_nb_importes > 0 ? ' — déjà ' . $_nb_importes . ' chez nous' : ''
+          du guide<?= $_nb_importes > 0 ? ' · déjà ' . $_nb_importes . ' chez nous' : ''
           ?><?= $wp_etat['frais'] ? '' : ', d’après la dernière lecture réussie' ?>.
         </p>
       <?php else: ?>
         <p class="msg err" style="margin:0 0 14px" role="alert">
-          <strong>Le guide ne répond pas.</strong> Vérifiez l’adresse ci-dessous — le blog public,
+          <strong>Le guide ne répond pas.</strong> Vérifiez l’adresse ci-dessous ; le blog public,
           lui, reste en ligne sans rien réclamer à personne.
         </p>
       <?php endif; ?>
@@ -164,7 +164,7 @@ $etats = [
                       <?php endif; ?>
                     </td>
                     <td class="aide"><?= $g['publie_le'] ? e(gmdate('d/m/Y', strtotime((string) $g['publie_le']))) : '?' ?></td>
-                    <td class="aide"><?= e($g['auteur_nom'] ?: '—') ?></td>
+                    <td class="aide"><?= e($g['auteur_nom'] ?: '·') ?></td>
                     <td><?php if ($_imp): ?>
                       <a class="pastille publie" href="<?= e(url('?p=blog&a=' . urlencode($g['slug_local']))) ?>">Importé · voir</a>
                     <?php else: ?>
@@ -179,7 +179,7 @@ $etats = [
             <button class="bouton" type="submit"
                     onclick="return confirm('Importer les articles cochés : leurs textes et leurs images seront recopiés ici, puis publiés. Continuer ?')">
               Importer la sélection</button>
-            <span class="aide">25 articles au plus par clic — relancez pour la suite.</span>
+            <span class="aide">25 articles au plus par clic : relancez pour la suite.</span>
           </div>
         </form>
       <?php endif; ?>

@@ -82,7 +82,7 @@ $fr = static fn(int $n): string => number_format($n, 0, ',', ' ');
       <div class="champ">
         <label for="domaine">Domaine du lien</label>
         <select id="domaine" name="domaine">
-          <option value="">Automatique — le domaine du site</option>
+          <option value="">Automatique · le domaine du site</option>
           <?php foreach (DOMAINES_LIENS_COURTS as $_d): ?>
             <option value="<?= e($_d) ?>" <?= $valeurs['domaine'] === $_d ? 'selected' : '' ?>><?= e($_d) ?></option>
           <?php endforeach; ?>

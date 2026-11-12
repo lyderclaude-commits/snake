@@ -144,7 +144,12 @@ function ouvrirWordpress(port: number): { fermer: () => void; arreter: () => voi
       date_gmt: '2025-12-01T08:00:00', modified_gmt: '2025-12-01T08:00:00',
       link: 'https://wakabileguide.com/blog/abidjan-ouverture',
       title: { rendered: 'Abidjan ouvre' }, excerpt: { rendered: '' },
-      content: { rendered: '<p>La troisième ville du guide.</p>' },
+      /* Un corps d'au moins quarante signes : l'importeur refuse les
+         articles vides, à raison, et un entrefilet de vingt-huit
+         caractères faisait échouer l'import sans que ce soit un défaut
+         du produit. */
+      content: { rendered: '<p>La troisième ville du guide ouvre ses pages : Abidjan rejoint '
+        + 'Lomé et Cotonou, avec ses maquis, ses plages et ses salles de concert.</p>' },
       _embedded: { 'wp:term': [[{ name: 'Villes' }]], author: [{ name: 'La rédaction' }] },
     },
   ];
@@ -159,6 +164,22 @@ function ouvrirWordpress(port: number): { fermer: () => void; arreter: () => voi
         'base64'));
       return;
     }
+    /**
+     * UN ARTICLE SEUL : `/posts/<id>`.
+     *
+     * L'import les demande un par un. Sans cette route, le serveur
+     * rendait la liste entière pour chaque identifiant, et l'importeur y
+     * voyait un article sans titre : trois échecs, et un panneau qui
+     * accusait WordPress d'être injoignable alors qu'il répondait.
+     */
+    const seul = /\/posts\/(\d+)$/.exec(u.pathname);
+    if (seul) {
+      const un = posts.find((x) => String(x.id) === seul[1]);
+      res.writeHead(un ? 200 : 404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(un ?? { code: 'rest_post_invalid_id', message: 'Invalid post ID.' }));
+      return;
+    }
+
     let liste = posts;
     const cherche = u.searchParams.get('search') ?? '';
     if (cherche) {
@@ -506,7 +527,10 @@ const run = async () => {
 
   console.log('\n━━ 1. Vitrine et catalogue ━━');
   await p.goto(BASE, { waitUntil: 'domcontentloaded' });
-  ok('vitrine chargée', /Wakabi Boost/.test(await p.title()));
+  /* La racine du site n'est plus Boost : c'est LE GUIDE, et Boost y tient
+     une section. On vérifie donc que la page est bien la nôtre, sans
+     river l'assertion au nom exact, qui vient d'un réglage SEO. */
+  ok('vitrine chargée', /Wakabi/.test(await p.title()), await p.title());
   ok('la vitrine présente le produit', (await p.locator('section').count()) >= 8,
      `${await p.locator('section').count()} sections`);
   /* Les offres ont quitté l'accueil pour `?p=tarifs`, où elles se
@@ -581,9 +605,11 @@ const run = async () => {
   ok('les neuf pages du guide servent la MÊME police, et non celle du système',
      replis.length === 0, replis.join(', ') || '9 pages mesurées');
   await p.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  /* Les six cartes ont pris le dessin du guide (`.feat-card`) en gardant
+     les icônes de Boost : dessinées ici, jamais chargées chez un tiers. */
   ok('les canaux portent de vraies icônes',
-     (await p.locator('.canal .ico svg').count()) === 6,
-     `${await p.locator('.canal .ico svg').count()} icônes dessinées`);
+     (await p.locator('.feat-card .feat-ico svg').count()) === 6,
+     `${await p.locator('.feat-card .feat-ico svg').count()} icônes dessinées`);
 
   /**
    * LE LOGO NE PÈSE PLUS CENT KILOOCTETS.
@@ -641,7 +667,7 @@ const run = async () => {
    * On mesure l'adresse ET le libellé : la carte a déjà changé de nom une
    * fois, et c'est en changeant de nom qu'un bouton se remet à mentir.
    */
-  const portes = await p.locator('.canal.actif a.bouton').evaluateAll(
+  const portes = await p.locator('.feat-card.feat-cta a.bouton-solution').evaluateAll(
     (n) => n.map((e) => `${(e.getAttribute('href') ?? '').split('?')[1] ?? ''} → ${(e.textContent ?? '').trim()}`));
   ok('trois cartes mènent quelque part', portes.length === 3, portes.join(' · '));
   ok('les liens courts vont au raccourcisseur, pas à la connexion',
@@ -1444,7 +1470,7 @@ const run = async () => {
   // Le rangement lui-même est éprouvé à la section 29 ; ici on vérifie
   // seulement que rien n'a débordé des groupes ni disparu.
   ok('toutes les destinations d’administration sont rangées dans un groupe',
-     (await p.locator('.barre .deroulant .volet a').count()) === 12,
+     (await p.locator('.barre .deroulant .volet a').count()) === 14,
      `${await p.locator(".barre .deroulant .volet a").count()} entrées en groupe`);
   ok('notifications et déconnexion restent hors des déroulants',
      (await p.locator('.barre nav > a[href*="notifications"]').count()) === 1
@@ -1543,8 +1569,21 @@ const run = async () => {
                                 const src = i && i.getAttribute('src') || '';
                                 return !!i && /logo\.(svg|png)/.test(src)
                                   && !document.querySelector('.wk-tete .logo-texte'); })()`));
-  ok('les témoignages portent un portrait, pas des initiales',
-     await t.evaluate(`(() => document.querySelectorAll('.avis .qui svg.avatar').length)()`) === 3);
+  /* Les témoignages sont revenus aux INITIALES, et c'est un choix de la
+     refonte : on n'éprouve donc plus le portrait, mais ce qu'une citation
+     doit porter pour valoir quelque chose — un nom et une qualité. Une
+     parole sans personne derrière n'est pas un témoignage. */
+  const temoins = await t.evaluate(`(() => [...document.querySelectorAll('.testi-card')]
+    .map((c) => ({
+      cite: !!c.querySelector('.testi-quote'),
+      nom: (c.querySelector('.testi-name')?.textContent ?? '').trim(),
+      role: (c.querySelector('.testi-role')?.textContent ?? '').trim(),
+      figure: (c.querySelector('.av')?.textContent ?? '').trim(),
+    })))()`) as { cite: boolean; nom: string; role: string; figure: string }[];
+  ok('chaque témoignage porte un nom, une qualité et sa figure',
+     temoins.length >= 3
+     && temoins.every((x) => x.cite && x.nom !== '' && x.role !== '' && x.figure !== ''),
+     temoins.map((x) => `${x.figure} ${x.nom}`).join(' · ') || 'aucun témoignage');
   await tel.close();
 
   console.log('\n━━ 16. Le menu déplié sur grand écran ━━');
@@ -1560,7 +1599,12 @@ const run = async () => {
      ouvert : c'est une liste, cachée sur téléphone et montrée au-delà.
      Le défaut qu'on guette est l'inverse de l'ancien — une barre vide
      sur grand écran parce que la règle d'affichage a sauté. */
-  ok('et les sept entrées sont là', (await g.locator('.wk-menu > li').count()) === 7);
+  /* Cinq entrées de premier rang depuis que le guide a repris ses pages :
+     le tiroir « Sortir », les Badges, le tiroir « Boost », les
+     partenaires et l'application. Ce qu'on guette n'a pas changé : une
+     barre vide sur grand écran, parce que la règle d'affichage a sauté. */
+  ok('et les cinq entrées sont là', (await g.locator('.wk-menu > li').count()) === 5,
+     `${await g.locator('.wk-menu > li').count()} entrées`);
   await large.close();
 
   console.log('\n━━ 17. Le navigateur intégré de WhatsApp ━━');
@@ -2783,28 +2827,37 @@ const run = async () => {
   const groupes = await pm.locator('.barre .deroulant > summary').evaluateAll(
     (n) => n.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
   ok('l’administration tient en trois groupes nommés',
-     groupes.length === 3 && groupes.join('|') === 'Contenus|Audience|Système',
+     groupes.length === 3 && groupes.join('|') === 'Contenus|Campagnes|Système',
      groupes.join(' · '));
-  ok('le tableau de bord, l’entrée et les rapports restent hors des groupes — un clic',
-     (await pm.locator('.barre nav > a[href*="p=admin"]').count()) === 1
-     && (await pm.locator('.barre nav > a[href*="p=scan"]').count()) === 1
-     && (await pm.locator('.barre nav > a[href*="p=rapports"]').count()) === 1);
-  ok('aucun groupe ne dépasse quatre destinations',
+  /* Le scanner a rejoint « Campagnes » et les rapports « Système » : seul
+     le tableau de bord reste hors des tiroirs, parce qu'un point de
+     départ ne se cherche pas. */
+  ok('le tableau de bord reste hors des groupes — un clic',
+     (await pm.locator('.barre nav > a[href*="p=admin"]').count()) === 1);
+  /* Cinq, et non quatre : la règle a changé avec le menu. Ce qu'on tient
+     encore est qu'un tiroir reste un rangement et ne devienne pas une
+     liste qu'on parcourt. */
+  ok('aucun groupe ne dépasse cinq destinations',
      (await pm.locator('.barre .deroulant').evaluateAll(
-       (n) => n.every((e) => e.querySelectorAll('.volet a').length <= 4))));
+       (n) => n.every((e) => e.querySelectorAll('.volet a').length <= 5))));
 
   /**
-   * « Où aller » remplace douze raccourcis en trois colonnes par une
-   * rangée de pastilles chiffrées. Ce qu'on éprouve reste le même : le
-   * tableau de bord mène PARTOUT en un clic, sans rien proposer qui
-   * refuserait ensuite.
+   * Les quatre chiffres d'action ont remplacé la rangée de pastilles.
+   *
+   * Ce qu'on éprouve n'a pas changé : un chiffre affiché sur un tableau
+   * de bord doit MENER quelque part. Un nombre qu'on ne peut pas ouvrir
+   * laisse son lecteur devant une question sans porte.
    */
-  ok('le tableau de bord mène partout en un clic',
-     (await pm.locator('.bord-pastilles a').count()) === 13,
-     `${await pm.locator('.bord-pastilles a').count()} pastilles`);
-  ok('et chaque pastille porte son chiffre quand il y en a un',
-     (await pm.locator('.bord-pastilles a span').count()) >= 5,
-     `${await pm.locator('.bord-pastilles a span').count()} chiffres`);
+  const kpis = await pm.locator('.bord-kpi').evaluateAll((n) => n.map((e) => ({
+    vers: e.getAttribute('href') ?? '',
+    valeur: (e.querySelector('.bord-kpi-valeur')?.textContent ?? '').trim(),
+  })));
+  ok('le tableau de bord ouvre ses chiffres d’un clic',
+     kpis.length >= 3 && kpis.every((k) => k.vers !== ''),
+     kpis.map((k) => k.vers.split('?')[1] ?? k.vers).join(' · ') || 'aucun chiffre');
+  ok('et chaque chiffre en est un',
+     kpis.every((k) => /^[\d  ]+$/.test(k.valeur)),
+     kpis.map((k) => k.valeur).join(' · '));
 
   /**
    * La file dit QUOI, et non COMBIEN.
@@ -2813,11 +2866,11 @@ const run = async () => {
    * savoir lesquels. Chaque ligne porte donc son genre, son titre, son
    * auteur, son âge et son bouton.
    */
-  const file = await pm.locator('.bord-file').first().innerText().catch(() => '');
+  const file = await pm.locator('.bord-table').first().innerText().catch(() => '');
+  const vide = await pm.locator('.bord-vide').count();
   ok('la file du tableau de bord nomme les objets, avec leur genre',
-     /Rien n’attend/.test(file)
-     || (await pm.locator('.bord-ligne .bord-genre').count()) >= 1,
-     file.split('\n').slice(0, 3).join(' · ').slice(0, 70));
+     vide > 0 || (await pm.locator('.bord-t-badge').count()) >= 1,
+     (file.split('\n').slice(0, 3).join(' · ') || 'file vide').slice(0, 70));
 
   // Sur téléphone, les groupes deviennent des intitulés, pas des tiroirs.
   const ctxTel = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -2827,7 +2880,7 @@ const run = async () => {
   await pt2.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
   await pt2.click('.menu > summary');
   ok('sur téléphone, tous les liens sont atteignables sans second tiroir',
-     (await pt2.locator('.menu[open] nav .volet a:visible').count()) === 12,
+     (await pt2.locator('.menu[open] nav .volet a:visible').count()) === 14,
      `${await pt2.locator('.menu[open] nav .volet a:visible').count()} liens visibles`);
   ok('les intitulés de groupe restent lisibles, et ne se cliquent pas',
      (await pt2.locator('.menu[open] .deroulant > summary').first().isVisible())
@@ -2864,16 +2917,15 @@ const run = async () => {
 
   // Et le style s'applique VRAIMENT : c'est ce que le rendu doit prouver,
   // pas la présence d'un attribut.
-  const style = await pfix.locator('.bord-pastilles a').first().evaluate((e) => {
+  const style = await pfix.locator('.bord-kpi').first().evaluate((e) => {
     const c = getComputedStyle(e);
     return { display: c.display, decoration: c.textDecorationLine, radius: c.borderRadius };
   });
-  /* `inline-flex` posé sur l'enfant d'un conteneur flex se CALCULE en
-     `flex` : c'est une règle de CSS, pas un défaut. Ce qu'on éprouve est
-     la forme — une boîte entièrement arrondie, sans soulignement. */
-  ok('les pastilles sont des pastilles, pas du texte au fil de l’eau',
-     /^(inline-)?flex$/.test(style.display) && style.decoration === 'none'
-     && parseFloat(style.radius) > 20,
+  /* La forme, pas l'attribut : une carte dessinée, jamais un lien bleu
+     souligné au fil de l'eau. C'est ce qui tombe en premier quand la
+     feuille de style n'arrive pas. */
+  ok('les chiffres sont des cartes, pas du texte au fil de l’eau',
+     style.decoration === 'none' && parseFloat(style.radius) > 6,
      `${style.display} / ${style.decoration} / ${style.radius}`);
 
   /* 2. Le déroulant se referme quand on clique ailleurs. */
@@ -2884,7 +2936,7 @@ const run = async () => {
   ok('il se referme quand on clique ailleurs', (await ouverts()) === 0);
 
   await pfix.click('.deroulant:has(summary:has-text("Contenus")) > summary');
-  await pfix.click('.deroulant:has(summary:has-text("Audience")) > summary');
+  await pfix.click('.deroulant:has(summary:has-text("Campagnes")) > summary');
   ok('un seul déroulant reste ouvert à la fois', (await ouverts()) === 1);
   await pfix.keyboard.press('Escape');
   ok('Échap referme aussi', (await ouverts()) === 0);
@@ -3347,7 +3399,20 @@ const run = async () => {
   await pre.waitForTimeout(300);
   const scene = await pre.locator('.recadrage-scene').boundingBox();
   const coin = await pre.locator('.recadrage-cadre [data-coin=ho]').boundingBox();
-  await pre.mouse.move(coin!.x + 9, coin!.y + 9);
+  /**
+   * ON VISE LE CENTRE DE LA POIGNÉE, décalé vers l'intérieur.
+   *
+   * La poignée de 18 px est centrée SUR le coin du cadre : la moitié
+   * d'elle déborde hors de la scène. Viser `coin + 9` tombait donc pile
+   * sur la frontière, et le navigateur y trouvait tantôt la poignée,
+   * tantôt la boîte derrière — selon un demi-pixel de mise en page (la
+   * scène commence à 197,78). Le jour où l'image du conteneur a changé
+   * de Chromium, le point est tombé du mauvais côté : `elementFromPoint`
+   * rendait `.recadrage-boite`, le geste devenait un déplacement de
+   * cadre déjà plein écran, et rien ne bougeait. Trois pixels vers
+   * l'intérieur, et la poignée est touchée sans ambiguïté.
+   */
+  await pre.mouse.move(coin!.x + coin!.width / 2 + 3, coin!.y + coin!.height / 2 + 3);
   await pre.mouse.down();
   await pre.mouse.move(scene!.x + scene!.width * 0.3, scene!.y + scene!.height * 0.25, { steps: 10 });
   await pre.mouse.up();
@@ -4557,6 +4622,13 @@ const run = async () => {
     // c'est leur raison d'être. Les refuser à un éditeur voudrait dire
     // qu'on les cache à un visiteur.
     'cgu', 'confidentialite',
+    // Les pages du guide nourries par l'API : Sortir, les lieux, l'agenda
+    // et la billetterie. Elles ne lisent rien de la base locale et ne
+    // demandent aucun compte — un éditeur qui les ouvre fait ce que fait
+    // n'importe quel visiteur.
+    // `lieu` n'y est pas : la fiche d'un lieu demande son identifiant, et
+    // l'adresse nue ne rend pas de page.
+    'sortir-lome', 'sortir-cotonou', 'lieux', 'agenda', 'tickets',
     // Son travail.
     'partenaire', 'nouveau', 'blog-admin', 'blog-editer', 'liens',
     // Son compte.
@@ -5242,43 +5314,71 @@ const run = async () => {
    */
   const menu = await pAnon.locator('.wk-menu > li > a, .wk-menu > li > details > summary')
     .evaluateAll((n) => n.map((x) => (x.textContent ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean));
-  ok('la vitrine porte les sept entrées du site fusionné',
-     menu.join(' · ') === 'L’Application · Boost · Les Badges · Partenaires · Nos Villes · Blog · À Propos',
+  ok('la vitrine porte les cinq entrées du site fusionné',
+     menu.join(' · ') === 'Sortir · Badges · Boost · Partenaires · L’app',
      menu.join(' · '));
-  /* Trois outils, et la page des tarifs : le prix se décide au même
-     endroit que le choix de l'outil, et le chercher ailleurs était le
-     seul chemin que ce menu ne donnait pas. */
-  ok('« Boost » ouvre ses trois outils et ses tarifs',
-     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a').count()) === 4,
-     (await pAnon.locator('.wk-menu .wk-grp .wk-volet a')
-       .evaluateAll((n) => n.map((x) => (x.querySelector('strong') ?? x).textContent?.trim()))).join(' · '));
+  /* DEUX tiroirs depuis que le guide a repris ses pages : « Sortir »
+     ouvre les villes et l'agenda, « Boost » les outils et leurs tarifs.
+     On les compte séparément — additionnés, ils ne disaient plus rien. */
+  const tiroirs = await pAnon.locator('.wk-menu .wk-grp').evaluateAll((n) => n.map((e) => ({
+    nom: (e.querySelector('summary')?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 12),
+    entrees: [...e.querySelectorAll('.wk-volet a')]
+      .map((a) => ((a.querySelector('strong') ?? a).textContent ?? '').trim()),
+  })));
+  ok('le menu ouvre ses deux tiroirs, le guide et les outils',
+     tiroirs.length === 2 && tiroirs.every((t) => t.entrees.length >= 4),
+     tiroirs.map((t) => `${t.nom} (${t.entrees.length})`).join(' · '));
+  ok('et « Boost » mène aux tarifs comme à ses outils',
+     tiroirs.some((t) => t.entrees.some((x) => /tarifs/i.test(x))),
+     tiroirs.map((t) => t.entrees.join(', ')).join(' | ').slice(0, 90));
   ok('les pages du guide sont des routes, pas des liens sortants',
      (await pAnon.locator('.wk-menu a[href^="https://wakabileguide.com"]').count()) === 0);
-  /* Enfants DIRECTS de `.wk-droite` : le volet du hamburger y vit aussi,
-     et il reprend « Devenir Partenaire » à plat pour le téléphone. Sans
-     le `>`, on compterait deux fois le même bouton. */
-  ok('les deux boutons du guide restent à droite',
-     (await pAnon.locator('.wk-droite > a.wk-b-out').count()) === 1
-     && (await pAnon.locator('.wk-droite > a.wk-b-pri').count()) === 1);
+  /* Le bouton du magasin est devenu un TIROIR : un sommaire « Télécharger
+     l'app » et, dedans, Google Play plus la mention d'attente pour l'App
+     Store. Ce qu'on éprouve reste le même — la porte de l'application et
+     celle du compte se tiennent à droite, hors du menu, et le magasin
+     s'ouvre dans un onglet protégé. */
+  ok('la droite de la barre porte le magasin et le compte',
+     (await pAnon.locator('.wk-droite > details.wk-stores > summary.wk-b-pri').count()) === 1
+     && (await pAnon.locator('.wk-droite > a.wk-lien-connexion').count()) === 1);
+  const magasin = pAnon.locator('.wk-stores-volet a[href*="play.google.com"]').first();
   ok('« Télécharger » sort vers le magasin, avec rel="noopener"',
-     ((await pAnon.locator('.wk-droite > a.wk-b-pri').getAttribute('href')) ?? '')
-       .startsWith('https://play.google.com')
-     && ((await pAnon.locator('.wk-droite > a.wk-b-pri').getAttribute('rel')) ?? '')
-       .includes('noopener'));
-  ok('l’entrée se fait par le volet du compte, et non par le menu',
+     ((await magasin.getAttribute('href')) ?? '').startsWith('https://play.google.com')
+     && ((await magasin.getAttribute('rel')) ?? '').includes('noopener'),
+     (await magasin.getAttribute('href') ?? '').slice(0, 48));
+  /* Et l'App Store ne se clique pas : envoyer quelqu'un chercher une
+     application qui n'existe pas sur son téléphone, c'est gagner une
+     mauvaise note. */
+  ok('« App Store bientôt disponible » n’est pas un lien',
+     (await pAnon.locator('.wk-stores-volet .wk-stores-attente').count()) === 1
+     && (await pAnon.locator('.wk-stores-volet a[href*="apple.com"]').count()) === 0);
+  /* La connexion a quitté le volet du compte pour un lien à droite de la
+     barre. Ce qu'on éprouve ne change pas : elle ne traîne pas dans le
+     menu du site, qui est fait pour découvrir, pas pour entrer. */
+  ok('l’entrée se fait à droite de la barre, et non par le menu',
      (await pAnon.locator('.wk-menu a:has-text("Connexion")').count()) === 0
-     && (await pAnon.locator('.wk-volet-u a[href*="p=connexion"]').count()) === 1
-     && (await pAnon.locator('.wk-volet-u a[href*="p=inscription"]').count()) === 1);
+     && (await pAnon.locator('.wk-droite a[href*="p=connexion"]').count()) >= 1,
+     `${await pAnon.locator('.wk-droite a[href*="p=connexion"]').count()} entrée(s) à droite`);
 
   /**
-   * Les en-têtes de section sont TOUS centrés. Deux d'entre eux ne
-   * l'étaient pas, et la page tirait à gauche deux fois sur neuf — le
-   * genre de décalage qu'on ne nomme pas mais qu'on voit.
+   * Les en-têtes de section, et la règle qui a changé.
+   *
+   * L'accueil exigeait autrefois que TOUS soient centrés, et deux
+   * échappaient à la règle. La refonte alterne maintenant à dessein :
+   * quatre en-têtes centrés pour les sections pleine largeur, trois
+   * alignés à gauche pour celles qui portent un visuel à côté. Il n'y a
+   * donc plus de règle automatique à éprouver, et une assertion qui
+   * exigerait le centrage ferait échouer un choix de dessin.
+   *
+   * Reste ce qui se vérifie : la page porte bien ses en-têtes, et aucun
+   * n'est vide — une section sans titre est une section qu'on a cassée
+   * en la déplaçant.
    */
-  const tetes = await pAnon.locator('.tete').count();
-  const centrees = await pAnon.locator('.tete.centre').count();
-  ok('tous les en-têtes de section sont centrés', tetes === centrees && tetes >= 6,
-     `${centrees} centrés sur ${tetes}`);
+  const tetes = await pAnon.locator('section h2.headline').evaluateAll(
+    (n) => n.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
+  ok('chaque section de l’accueil porte un en-tête qui dit quelque chose',
+     tetes.length >= 5 && tetes.every((t) => t.length > 3),
+     `${tetes.length} en-têtes`);
 
   ok('la vitrine porte le pied de page du guide',
      (await pAnon.locator('footer.pied-guide').count()) === 1);
@@ -5310,11 +5410,11 @@ const run = async () => {
      (await pAnon.locator('.pg-col a[href*="p=application"]').count()) === 1
      && (await pAnon.locator('.pg-col a[href*="p=villes"]').count()) === 1
      && (await pAnon.locator('.pg-col a[href*="p=a-propos"]').count()) === 1);
-  ok('les conditions et la confidentialité sont ici, haut et bas du pied',
-     (await pAnon.locator('.pg-col a[href*="p=cgu"]').count()) === 1
-     && (await pAnon.locator('.pg-col a[href*="p=confidentialite"]').count()) === 1
-     && (await pAnon.locator('.pg-legal a[href*="p=cgu"]').count()) === 1
-     && (await pAnon.locator('.pg-legal a[href*="p=confidentialite"]').count()) === 1);
+  /* Elles ne sont plus répétées dans une colonne ET dans le bandeau du
+     bas : une seule fois, dans le bandeau légal, là où on les cherche. */
+  ok('les conditions et la confidentialité se trouvent dans le pied',
+     (await pAnon.locator('footer.pied-guide a[href*="p=cgu"]').count()) >= 1
+     && (await pAnon.locator('footer.pied-guide a[href*="p=confidentialite"]').count()) >= 1);
   ok('plus rien du pied ne renvoie à l’ancien domaine',
      (await pAnon.locator('footer.pied-guide a[href*="wakabileguide.com"]').count()) === 0,
      (await pAnon.locator('footer.pied-guide a[href*="wakabileguide.com"]')
@@ -6235,7 +6335,7 @@ const run = async () => {
    * utilisateur.
    */
   await pAnon.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
-  const guide = pAnon.locator('.wk-droite > a.wk-b-pri');
+  const guide = pAnon.locator('.wk-stores-volet a[href*="play.google.com"]').first();
   ok('« Télécharger » s’ouvre dans un nouvel onglet',
      (await guide.getAttribute('target')) === '_blank',
      `target="${await guide.getAttribute('target')}"`);
@@ -6245,6 +6345,9 @@ const run = async () => {
    * onglet. Un `target` posé dans le HTML peut être défait par un script,
    * et c'est le clic, pas l'attribut, que fait le visiteur.
    */
+  /* Le magasin vit dans un tiroir : il faut l'ouvrir avant de cliquer,
+     comme le visiteur le fait. Un clic sur un lien replié ne part pas. */
+  await pAnon.click('.wk-droite > details.wk-stores > summary');
   const [neuf] = await Promise.all([
     pAnon.context().waitForEvent('page', { timeout: 15_000 }).catch(() => null),
     guide.click(),
@@ -6673,8 +6776,14 @@ const run = async () => {
    * un organisateur qui demande le décor d'un autre.
    */
   await pe.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
-  ok('les rapports ont leur entrée, hors des trois groupes',
-     (await pe.locator('.barre nav > a[href*="p=rapports"]').count()) === 1);
+  /* Les rapports ont rejoint le tiroir « Système » : on ne les ouvre pas
+     tous les jours, et le menu range désormais par intention plutôt que
+     par fréquence. Ce qu'on tient encore, c'est qu'ils restent
+     ATTEIGNABLES depuis la barre, et en un clic depuis le tableau de
+     bord. */
+  ok('les rapports restent atteignables depuis la barre',
+     (await pe.locator('.barre a[href*="p=rapports"]').count()) >= 1,
+     `${await pe.locator('.barre a[href*="p=rapports"]').count()} entrée(s)`);
   ok('et le tableau de bord y mène en un clic',
      (await pe.locator('main a[href*="p=rapports"]').count()) >= 1);
   await pe.goto(`${BASE}/index.php?p=admin&vue=chiffres`, { waitUntil: 'domcontentloaded' });
@@ -6823,8 +6932,16 @@ const run = async () => {
     /* --- le sponsor --- */
     await pe.goto(`${BASE}/index.php?p=sponsor&decor=${encodeURIComponent(slugSeg)}`,
                   { waitUntil: 'domcontentloaded' });
+    /**
+     * Le lien du sponsor mène désormais CHEZ NOUS, et pour tout le monde.
+     *
+     * Il devient un lien court Wakabi : il ne peut donc mener que vers du
+     * Wakabi, l'équipe comprise. Un sponsor n'y perd rien depuis que le
+     * guide porte les fiches de lieux — la Brasserie du Golfe a la
+     * sienne, et c'est elle que le badge fait visiter.
+     */
     await pe.fill('#s-nom', 'Brasserie du Golfe');
-    await pe.fill('#s-lien', 'https://brasseriedugolfe.tg');
+    await pe.fill('#s-lien', 'https://wakabileguide.com/lieu/brasserie-du-golfe');
     await pe.locator('main form button[type=submit]').first().click();
     await pe.waitForLoadState('domcontentloaded');
     ok('l’équipe pose un sponsor, et son lien n’attend personne',
@@ -7494,7 +7611,7 @@ const run = async () => {
     return await r.text();
   }, BASE);
   ok('posté à la main sans fichier, le serveur refuse',
-     /Déposez le fichier de votre décor/.test(sansFichier),
+     /Déposez le fichier de votre badge/.test(sansFichier),
      sansFichier.length > 0 ? 'réponse reçue' : 'aucune réponse');
 
   rmSync(cadre45, { force: true });
@@ -7538,11 +7655,19 @@ const run = async () => {
   await connexion(pWp, ADMIN.email, ADMIN.mdp);
 
   /* --- brancher la source depuis l'écran, comme le ferait la rédaction --- */
+  /**
+   * `waitForLoadState` ne suffit pas : la page EST déjà chargée, et
+   * l'attente rend la main avant que l'envoi soit parti. On capture donc
+   * la navigation elle-même — sans quoi la lecture suivante montre
+   * l'écran d'avant, et l'on croit que l'enregistrement n'a rien fait.
+   */
   const brancher = async (adresse: string) => {
     await pWp.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
     await pWp.fill('#wp_racine', adresse);
-    await pWp.locator('form[action*="blog-admin"] button[type=submit]').first().click();
-    await pWp.waitForLoadState('domcontentloaded');
+    await Promise.all([
+      pWp.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      pWp.locator('form[action*="blog-admin"] button[type=submit]').first().click(),
+    ]);
   };
 
   await brancher(RACINE_WP);
@@ -7554,29 +7679,54 @@ const run = async () => {
   ok('la rédaction branche la source du guide depuis son écran',
      /\b3 articles\b/.test(carteSource), carteSource.replace(/\s+/g, ' ').slice(0, 90));
 
-  /* --- la liste : une seule, triée par date --- */
+  /**
+   * L'IMPORT a remplacé la lecture au vol.
+   *
+   * Le blog ne lit plus WordPress à l'affichage : la rédaction importe ce
+   * qu'elle veut garder, et l'article devient un article D'ICI — son
+   * texte converti, ses images rapatriées, sa date gardée. Ce que la
+   * section éprouve n'a pas changé de nature : c'est la frontière entre
+   * un WordPress qu'on ne tient pas et un site qui doit rester sain.
+   * Elle a seulement changé de moment — la frontière se franchit une
+   * fois, à l'import, au lieu d'à chaque affichage.
+   */
+  pWp.on('dialog', (d) => { void d.accept(); });
+  await pWp.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  const aCocher = pWp.locator('form[action*="blog-import"] input[name="ids[]"]');
+  const aImporter = await aCocher.count();
+  for (let i = 0; i < aImporter; i++) await aCocher.nth(i).check();
+  await Promise.all([
+    pWp.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    pWp.locator('form[action*="blog-import"] button[type=submit]').click(),
+  ]);
+  /* La base n'est pas remise à zéro entre deux passages : ce qui a été
+     importé hier ne se propose plus. On éprouve donc le RÉSULTAT — plus
+     rien à importer — et non le nombre de cases cochées. */
+  const resteAImporter = await pWp.locator('form[action*="blog-import"] input[name="ids[]"]').count();
+  const direImport = (await pWp.locator('.msg').allInnerTexts().catch(() => []))
+    .join(' | ').replace(/\s+/g, ' ').slice(0, 150);
+  ok('la rédaction importe ce que le guide propose', resteAImporter === 0,
+     `${aImporter} coché(s), ${resteAImporter} restant(s) · ${direImport}`);
+  ok('et le panneau les compte désormais chez nous',
+     /chez nous/.test(await pWp.locator('.carte', { hasText: 'Les articles du guide' })
+       .first().innerText()),
+     `${direImport || 'aucun message'} @ ${pWp.url().split('index.php')[1] ?? ''}`);
+
+  /* --- la liste : une seule, et les importés y sont des articles d'ici --- */
   const pBlog = await browser.newPage();
   surveiller(pBlog);
   await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
-  ok('un article du guide paraît dans le blog de Boost',
-     await pBlog.locator('a[href*="p=blog&g=villa-karo-trois-cents"]').first().isVisible());
+  ok('l’article importé paraît dans le blog, sous une adresse d’ici',
+     await pBlog.locator('a[href*="p=blog&a=villa-karo-trois-cents"]').first().isVisible());
   ok('son titre arrive décodé, pas en entités HTML',
      (await pBlog.locator('.vignette.article b').first().textContent() ?? '')
        .includes('Trois cents personnes à la Villa Karo'));
-
-  /**
-   * La recherche interroge LES DEUX sources.
-   *
-   * Sans le `search=` passé à WordPress, une recherche n'aurait fouillé
-   * que la moitié du blog, en silence : le lecteur aurait conclu que
-   * l'article n'existe pas.
-   */
-  ok('la recherche du blog atteint aussi le guide',
+  ok('la recherche du blog le trouve',
      (await pBlog.locator('.vignette.article').count()) === 1,
      `${await pBlog.locator('.vignette.article').count()} carte(s)`);
 
   /* --- l'article, et la traduction du HTML --- */
-  await pBlog.goto(`${BASE}/index.php?p=blog&g=villa-karo-trois-cents`,
+  await pBlog.goto(`${BASE}/index.php?p=blog&a=villa-karo-trois-cents`,
                    { waitUntil: 'domcontentloaded' });
   const corpsArt = await pBlog.locator('.corps-article').innerHTML();
   ok('le corps est rendu par le serveur, mis en forme',
@@ -7584,8 +7734,14 @@ const run = async () => {
      && /<blockquote>/.test(corpsArt), corpsArt.slice(0, 60));
   ok('la figure du guide garde sa légende',
      /<figcaption>La Villa Karo, 21 h\.<\/figcaption>/.test(corpsArt));
-  ok('l’image hébergée par le guide est rendue',
-     new RegExp(`<img src="http://127\\.0\\.0\\.1:${WP_PORT}/wp-content`).test(corpsArt));
+  /* L'image ne vient PLUS de WordPress : elle a été rapatriée ici, et
+     c'est tout l'intérêt de l'import — le jour où le guide ferme, les
+     articles gardés restent entiers. */
+  const imagesArt = await pBlog.locator('.corps-article img').evaluateAll(
+    (n) => n.map((e) => e.getAttribute('src') ?? ''));
+  ok('l’image du guide est rapatriée chez nous, pas chargée chez lui',
+     imagesArt.length >= 1 && imagesArt.every((src) => !src.includes(`:${WP_PORT}`)),
+     imagesArt.join(' · ').slice(0, 90));
   ok('le lien sortant porte noopener et nofollow',
      /rel="noopener noreferrer nofollow"/.test(corpsArt));
 
@@ -7601,49 +7757,60 @@ const run = async () => {
   ok('un href javascript: redevient du texte',
      !/javascript:/i.test(corpsArt) && /ne doit pas devenir un lien/.test(corpsArt));
 
-  await pBlog.goto(`${BASE}/index.php?p=blog&g=cotonou-marche-de-nuit`,
+  await pBlog.goto(`${BASE}/index.php?p=blog&a=cotonou-marche-de-nuit`,
                    { waitUntil: 'domcontentloaded' });
   ok('une image hébergée AILLEURS ne passe pas',
      !(await pBlog.content()).includes('exemple-tiers.net'));
-
-  ok('l’adresse qui fait foi est celle de Boost, pas celle de WordPress',
+  ok('l’adresse qui fait foi est celle d’ici',
      (await pBlog.locator('link[rel=canonical]').getAttribute('href') ?? '')
-       .includes('p=blog&g=cotonou-marche-de-nuit'));
+       .includes('p=blog&a=cotonou-marche-de-nuit'));
 
   /**
-   * Le slug inconnu se demande SANS le navigateur.
+   * L'ancienne adresse du guide ne meurt pas : elle REDIRIGE.
    *
-   * Ce qu'on veut savoir est le code de réponse, et une page ouverte à la
-   * main pour ça journaliserait un 404 dans la console — que la recette
-   * traiterait ensuite comme une panne, alors qu'elle vient de le
-   * provoquer.
+   * Des liens `&g=` ont circulé. Ils mènent maintenant, en 301, à
+   * l'article tel qu'il vit ici — et un slug jamais importé rend un 404,
+   * comme n'importe quoi d'inconnu.
    */
+  const r301 = await fetch(`${BASE}/index.php?p=blog&g=villa-karo-trois-cents`,
+                           { redirect: 'manual' });
+  ok('une ancienne adresse du guide redirige vers l’article d’ici',
+     r301.status === 301 && (r301.headers.get('location') ?? '').includes('p=blog&a=villa-karo'),
+     `HTTP ${r301.status} → ${(r301.headers.get('location') ?? '').split('index.php')[1] ?? ''}`);
   const r404 = await fetch(`${BASE}/index.php?p=blog&g=jamais-publie-ici`);
-  ok('un slug inconnu rend un 404, pas une page vide',
+  ok('un slug jamais importé rend un 404, pas une page vide',
      r404.status === 404 && (await r404.text()).includes('introuvable'),
      `HTTP ${r404.status}`);
 
-  /* --- le plan du site : la première indexation de ces articles --- */
+  /* --- le plan du site : les articles importés s'y rangent comme les autres --- */
   const plan = await (await fetch(`${BASE}/index.php?p=sitemap`)).text();
-  ok('les articles du guide entrent enfin dans le plan du site',
-     plan.includes('p=blog&amp;g=villa-karo-trois-cents'));
+  ok('les articles importés entrent dans le plan du site',
+     plan.includes('p=blog&amp;a=villa-karo-trois-cents'));
 
-  /* --- WordPress tombe : le blog reste debout --- */
+  /**
+   * WORDPRESS TOMBE, ET PLUS RIEN NE BOUGE.
+   *
+   * C'est la preuve que l'import valait la peine. Avant, un guide muet
+   * faisait servir un cache périmé ; maintenant, il ne se passe
+   * strictement rien, parce que le blog ne lui demande plus rien.
+   */
   wp.arreter();
   await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
-  ok('WordPress muet, le cache périmé sert quand même',
-     await pBlog.locator('a[href*="p=blog&g=villa-karo-trois-cents"]').first().isVisible());
+  ok('WordPress muet, l’article reste entier',
+     await pBlog.locator('a[href*="p=blog&a=villa-karo-trois-cents"]').first().isVisible());
 
-  /* --- débrancher : plus un seul appel ne part --- */
+  /* --- débrancher la source ne retire rien de ce qui est déjà ici --- */
   await brancher('');
   await pBlog.goto(`${BASE}/index.php?p=blog&q=Villa`, { waitUntil: 'domcontentloaded' });
-  ok('source débranchée, le blog ne montre plus que les articles d’ici',
-     (await pBlog.locator('a[href*="p=blog&g="]').count()) === 0);
+  ok('source débranchée, les articles importés restent',
+     await pBlog.locator('a[href*="p=blog&a=villa-karo-trois-cents"]').first().isVisible());
 
   await pWp.goto(`${BASE}/index.php?p=blog-admin`, { waitUntil: 'domcontentloaded' });
+  const champRacine = await pWp.locator('#wp_racine').inputValue().catch(() => '(absent)');
   ok('et l’écran de la rédaction le dit',
-     (await pWp.locator('.carte', { hasText: 'Les articles du guide' }).textContent() ?? '')
-       .includes('débranchée'));
+     champRacine === '' && /débranchée/.test(await pWp.locator('main').innerText()),
+     `champ=${JSON.stringify(champRacine)} · ${(await pWp.locator('.msg').first()
+       .innerText().catch(() => 'aucun message')).replace(/\s+/g, ' ').slice(0, 60)}`);
 
   wp.fermer();
   await pWp.close();
@@ -7667,8 +7834,13 @@ const run = async () => {
   await connexion(pBord, ADMIN.email, ADMIN.mdp);
   await pBord.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
 
-  ok('le tableau de bord s’ouvre sur « À faire »',
-     (await pBord.locator('.bord-onglets a[aria-current]').innerText()).includes('À faire'));
+  /* Les deux onglets ont disparu avec la refonte : le tableau de bord
+     tient maintenant sur une seule page, qui va des quatre chiffres
+     d'action à la semaine. « Les chiffres » reste une page à part, où
+     chaque chiffre mène. */
+  ok('le tableau de bord s’ouvre sur ses chiffres d’action',
+     (await pBord.locator('.bord-kpis .bord-kpi').count()) >= 3,
+     `${await pBord.locator('.bord-kpis .bord-kpi').count()} chiffres`);
   ok('et il annonce qui regarde, et à quel titre',
      /Super administrateur/.test(await pBord.locator('.bord-qui p').innerText()));
 
@@ -7676,17 +7848,33 @@ const run = async () => {
    * La hauteur est le sujet, pas un détail de mise en page : c'est elle
    * qui décidait qu'on ne voyait jamais le bas de l'écran.
    */
-  const hautFaire = await pBord.evaluate(() => document.documentElement.scrollHeight);
-  ok('l’onglet « À faire » tient bien au-dessus des 1 760 px d’avant',
-     hautFaire < 1500, `${hautFaire} px`);
+  /**
+   * La refonte a RALLONGÉ la page, et ce n'est pas le sujet.
+   *
+   * Le défaut d'origine n'était pas la hauteur mais ce qu'il fallait
+   * faire défiler pour voir l'essentiel. On mesure donc ce qui compte :
+   * les chiffres d'action et le haut de la file tiennent dans le premier
+   * écran, sans toucher à la molette.
+   */
+  await pBord.setViewportSize({ width: 1280, height: 900 });
+  await pBord.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
+  const premierEcran = await pBord.evaluate(() => {
+    const k = document.querySelector('.bord-kpis')?.getBoundingClientRect();
+    const f = document.querySelector('.bord-file')?.getBoundingClientRect();
+    return { chiffres: k ? Math.round(k.bottom) : -1, file: f ? Math.round(f.top) : -1 };
+  });
+  ok('les chiffres et le haut de la file tiennent dans le premier écran',
+     premierEcran.chiffres > 0 && premierEcran.chiffres < 900
+     && premierEcran.file > 0 && premierEcran.file < 900,
+     `chiffres jusqu’à ${premierEcran.chiffres} px, file à ${premierEcran.file} px`);
 
   /* --- la file dit QUOI, et depuis quand --- */
-  const lignes = await pBord.locator('.bord-ligne').count();
+  const lignes = await pBord.locator('.bord-file .bord-table tbody tr').count();
   if (lignes > 0) {
-    const premiere = await pBord.locator('.bord-ligne').first();
+    const premiere = await pBord.locator('.bord-file .bord-table tbody tr').first();
     ok('chaque ligne porte son genre, son titre et son bouton',
        (await premiere.locator('.bord-genre').count()) === 1
-       && (await premiere.locator('.bord-titre').innerText()).trim() !== ''
+       && (await premiere.locator('.bord-t-td').innerText()).trim() !== ''
        && (await premiere.locator('.bouton').count()) === 1);
     ok('et son âge, dit en français',
        /il y a |hier|min|h$/.test((await premiere.locator('.bord-age').innerText()).trim()),
@@ -7697,7 +7885,7 @@ const run = async () => {
      * voit qu'en comparant deux lignes : un tri par genre grouperait les
      * décors et cacherait l'article qui attend depuis huit jours.
      */
-    const ages = await pBord.locator('.bord-ligne .bord-age').evaluateAll(
+    const ages = await pBord.locator('.bord-file .bord-table .bord-age').evaluateAll(
       (n) => n.map((e) => (e.textContent ?? '').trim()));
     const jours = ages.map((a) => {
       const m = /il y a (\d+) jours/.exec(a);
@@ -7718,17 +7906,17 @@ const run = async () => {
    * corriger puis republier le même décor remplirait sinon les quatre
    * places avec le même titre.
    */
-  const repris = await pBord.locator('.bord-reprendre a').evaluateAll(
+  const repris = await pBord.locator('.bord-reprendre-ligne').evaluateAll(
     (n) => n.map((e) => (e.getAttribute('href') ?? '')));
   ok('« Reprendre » ne répète jamais deux fois le même objet',
      repris.length === new Set(repris).size, `${repris.length} cartes`);
   ok('et chacune mène quelque part',
      repris.every((h) => h !== '' && !h.endsWith('#')), repris.slice(0, 2).join(' · '));
 
-  /* --- la semaine, en une bande qui mène aux chiffres --- */
-  ok('la semaine tient en une bande, et mène à l’onglet des chiffres',
-     (await pBord.locator('a.bord-semaine[href*="vue=chiffres"]').count()) === 1
-     && (await pBord.locator('.bord-semaine .bord-mesure').count()) === 5);
+  /* --- la semaine, en une bande qui mène aux rapports --- */
+  ok('la semaine tient en une bande, et mène aux rapports',
+     (await pBord.locator('a.bord-activite[href*="p=rapports"]').count()) === 1
+     && (await pBord.locator('.bord-semaine-titre').count()) === 1);
 
   /* --- l'onglet des chiffres porte TOUT le reste --- */
   await pBord.goto(`${BASE}/index.php?p=admin&vue=chiffres`, { waitUntil: 'domcontentloaded' });
@@ -7737,7 +7925,7 @@ const run = async () => {
      quel aurait déclaré perdu un bloc qui est là. */
   const chiffres = (await pBord.locator('main').innerText()).toLowerCase();
   const attendus = ['Les 7 derniers jours', 'La boucle, sur 30 jours', 'Derniers inscrits',
-                    'Les offres', 'Téléchargements, 14 derniers jours', 'Les décors qui portent'];
+                    'Les offres', 'Téléchargements, 14 derniers jours', 'Les badges qui portent'];
   const perdus = attendus.filter((t) => !chiffres.includes(t.toLowerCase()));
   ok('rien de l’ancien écran n’a été perdu : tout est dans « Les chiffres »',
      perdus.length === 0, perdus.join(', ') || `${attendus.length} blocs retrouvés`);
@@ -7758,7 +7946,9 @@ const run = async () => {
   surveiller(pCoord);
   await connexion(pCoord, `coordinateur-${marque}@wakabileguide.com`, MDP_INTERNE);
   await pCoord.goto(`${BASE}/index.php?p=admin`, { waitUntil: 'domcontentloaded' });
-  const pastillesC = await pCoord.locator('.bord-pastilles a').evaluateAll(
+  /* Les pastilles ont disparu : ce qu'on PROPOSE à quelqu'un vit
+     maintenant dans la barre, tiroirs compris. */
+  const pastillesC = await pCoord.locator('.barre nav a, .barre .volet a').evaluateAll(
     (n) => n.map((e) => (e.getAttribute('href') ?? '').split('?')[1] ?? ''));
   ok('un coordinateur ne se voit proposer aucun écran qui le refuserait',
      !pastillesC.some((h) => /p=(comptes|reglages|sauvegardes|offres|journal)/.test(h)),
@@ -7886,6 +8076,22 @@ const run = async () => {
 
 
   /* ================================================================== */
+  /**
+   * Le tiroir où vit l'entrée d'abonnement D'UN VISITEUR.
+   *
+   * Le volet du compte n'existe plus pour qui n'est pas connecté : la
+   * proposition de notifications a déménagé dans le tiroir du menu, qui
+   * ne se montre qu'en largeur téléphone. Les trois épreuves qui suivent
+   * passent donc par là, et c'est aussi ce que fait le visiteur.
+   */
+  const ouvrirMenuVisiteur = async (page: Page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(900);
+    await page.locator('details.wk-burger > summary').click();
+    await page.waitForTimeout(250);
+  };
+
   console.log('\n━━ 57. S’abonner aux notifications sans créer de compte ━━');
 
   /**
@@ -7934,20 +8140,36 @@ const run = async () => {
   await pPu.waitForTimeout(1100);
 
   /* --- la barre --- */
-  await pPu.locator('details.wk-compte > summary').click();
+  /**
+   * Le volet du compte a disparu de la barre : la connexion est devenue
+   * un lien à droite, et l'entrée d'abonnement vit maintenant dans le
+   * volet du menu, en dernier. Ce qu'on éprouve n'a pas bougé : elle est
+   * RÉVÉLÉE PAR LE SCRIPT (le serveur la rend cachée), elle vient après
+   * les portes du compte, et elle dit ce qu'elle apporte.
+   */
+  /* Le tiroir du menu n'existe qu'en largeur téléphone : au-delà, la
+     barre se déplie et son bouton disparaît. On mesure donc là où
+     l'entrée se trouve vraiment. */
+  await pPu.setViewportSize({ width: 390, height: 844 });
+  await pPu.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
+  await pPu.waitForTimeout(1100);
+  await pPu.locator('details.wk-burger > summary').click();
   await pPu.waitForTimeout(250);
-  const entree = pPu.locator('.wk-volet-u .wk-push');
-  ok('le script révèle l’entrée d’abonnement dans le volet du compte',
+  const entree = pPu.locator('.wk-burger .wk-volet .wk-push');
+  ok('le script révèle l’entrée d’abonnement dans le volet du menu',
      await entree.isVisible());
-  ok('elle se tient SOUS « Connexion » et « Créer un compte »', await pPu.evaluate(() => {
-    const v = document.querySelector('.wk-volet-u')!;
-    const rangs = (Array.from(v.children) as HTMLElement[])
-      .filter((e) => e.getBoundingClientRect().height > 0);
-    const bas = rangs[rangs.length - 1];
+  /* L'ordre du DOM, et non les pixels : c'est lui que suivent le clavier
+     et le lecteur d'écran, et il ne dépend pas d'une marge. */
+  ok('elle se tient APRÈS la porte du compte', await pPu.evaluate(() => {
+    /* `.wk-volet` sert AUSSI aux tiroirs du menu : sans le préfixe, on
+       interrogeait celui de « Sortir », qui ne contient évidemment ni
+       bouton d'abonnement ni porte du compte. */
+    const v = document.querySelector('.wk-burger .wk-volet')!;
+    const bouton = v.querySelector('.wk-push');
     const compte = Array.from(v.querySelectorAll('a'))
-      .find((a) => /Créer un compte/.test(a.textContent || '')) as HTMLElement;
-    return bas.classList.contains('wk-push')
-      && bas.getBoundingClientRect().top >= compte.getBoundingClientRect().bottom;
+      .find((a) => /Connexion|Créer un compte/.test(a.textContent || ''));
+    if (!bouton || !compte) return false;
+    return (compte.compareDocumentPosition(bouton) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }));
   ok('et elle dit ce qu’elle apporte, pas seulement ce qu’elle est',
      (await entree.innerText()).includes('Recevoir les notifications')
@@ -7955,7 +8177,7 @@ const run = async () => {
      (await entree.innerText()).replace(/\n/g, ' · '));
   ok('et le volet ne porte que des entrées : le contexte vit en fin de page',
      await pPu.evaluate(() =>
-       document.querySelector('.wk-volet-u')!.querySelector('script') === null
+       document.querySelector('.wk-burger .wk-volet')!.querySelector('script') === null
        && document.querySelector('#push-contexte')!.parentElement!.tagName === 'BODY'));
   await pPu.keyboard.press('Escape');
 
@@ -8020,11 +8242,9 @@ const run = async () => {
   await pAilleurs.goto(`${BASE}/index.php?p=decors`, { waitUntil: 'domcontentloaded' });
   ok('elle ne paraît que sur la page d’accueil',
      (await pAilleurs.locator('#push-invite').count()) === 0);
-  await pAilleurs.waitForTimeout(800);
-  await pAilleurs.locator('details.wk-compte > summary').click();
-  await pAilleurs.waitForTimeout(250);
+  await ouvrirMenuVisiteur(pAilleurs);
   ok('l’entrée de la barre, elle, suit le visiteur partout',
-     await pAilleurs.locator('.wk-volet-u .wk-push').isVisible());
+     await pAilleurs.locator('.wk-burger .wk-volet .wk-push').isVisible());
   await pAilleurs.close();
   await pPu.close();
 
@@ -8056,10 +8276,9 @@ const run = async () => {
   await pRefus.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   await pRefus.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
   await pRefus.waitForTimeout(900);
-  await pRefus.locator('details.wk-compte > summary').click();
-  await pRefus.waitForTimeout(250);
+  await ouvrirMenuVisiteur(pRefus);
   ok('un navigateur qui a déjà refusé ne voit pas l’entrée : un bouton mort n’apprend rien',
-     (await pRefus.locator('.wk-volet-u .wk-push').count()) === 0);
+     (await pRefus.locator('.wk-burger .wk-volet .wk-push:visible').count()) === 0);
   ok('ni l’invitation', (await pRefus.locator('#push-invite').count()) === 0);
   await ctxRefus.close();
 
@@ -8089,10 +8308,9 @@ const run = async () => {
   surveiller(pAbo);
   await pAbo.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   await pAbo.waitForTimeout(900);
-  await pAbo.locator('details.wk-compte > summary').click();
-  await pAbo.waitForTimeout(250);
+  await ouvrirMenuVisiteur(pAbo);
   ok('un appareil déjà abonné lit « Ne plus recevoir » dans la barre',
-     (await pAbo.locator('.wk-volet-u .wk-push').innerText()).includes('Ne plus recevoir'));
+     (await pAbo.locator('.wk-burger .wk-volet .wk-push').innerText()).includes('Ne plus recevoir'));
   await pAbo.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight * 0.6));
   await pAbo.waitForTimeout(700);
   ok('et l’invitation ne s’ouvre pas devant lui : il a déjà dit oui',
@@ -8931,31 +9149,34 @@ const run = async () => {
   await pAp.waitForTimeout(200);
   ok('un menu du haut s’ouvre au clic', (await voletsOuverts()).join() === 'wk-grp');
 
-  await pAp.locator('details.wk-compte > summary').click();
+  /* Le SECOND tiroir du menu, et non le volet du compte : celui-ci
+     n'existe plus pour un visiteur. Ce qu'on éprouve est inchangé — en
+     ouvrir un referme l'autre. */
+  await pAp.locator('details.wk-grp > summary').nth(1).click();
   await pAp.waitForTimeout(250);
   ok('en ouvrir un autre ferme le premier : jamais deux volets à la fois',
-     (await voletsOuverts()).join() === 'wk-compte', (await voletsOuverts()).join(' · '));
+     (await voletsOuverts()).join() === 'wk-grp', (await voletsOuverts()).join(' · '));
 
   /* Dans le volet, et non sur un de ses liens : un lien navigue. */
-  const boite = await pAp.locator('details.wk-compte .wk-volet-u').boundingBox();
+  const boite = await pAp.locator('details.wk-grp[open] .wk-volet').boundingBox();
   await pAp.mouse.click((boite?.x ?? 0) + 4, (boite?.y ?? 0) + 4);
   await pAp.waitForTimeout(250);
   ok('un clic DANS le volet ne le referme pas',
-     (await voletsOuverts()).join() === 'wk-compte', (await voletsOuverts()).join(' · '));
+     (await voletsOuverts()).join() === 'wk-grp', (await voletsOuverts()).join(' · '));
 
   await pAp.mouse.click(670, 700);
   await pAp.waitForTimeout(250);
   ok('un clic ailleurs sur la page ferme le volet ouvert',
      (await voletsOuverts()).length === 0, (await voletsOuverts()).join(' · '));
 
-  await pAp.locator('details.wk-compte > summary').click();
+  await pAp.locator('details.wk-grp > summary').nth(1).click();
   await pAp.waitForTimeout(200);
   await pAp.keyboard.press('Escape');
   await pAp.waitForTimeout(250);
   ok('Échap le ferme aussi', (await voletsOuverts()).length === 0);
   ok('et rend le clavier au bouton qui l’avait ouvert, pas au haut de la page',
      await pAp.evaluate(() => document.activeElement?.tagName === 'SUMMARY'
-       && (document.activeElement.parentElement as HTMLElement)?.classList.contains('wk-compte')));
+       && (document.activeElement.parentElement as HTMLElement)?.classList.contains('wk-grp')));
 
   /**
    * Et les `<details>` de CONTENU n'ont rien à voir là-dedans.
@@ -9062,7 +9283,7 @@ const run = async () => {
   await pCat.waitForTimeout(500);
   const parVille = await pCat.evaluate(() => ({
     vignettes: document.querySelectorAll('.vignette').length,
-    dit: /décors? pour/.test(document.querySelector('main')?.textContent ?? ''),
+    dit: /badges? pour/.test(document.querySelector('main')?.textContent ?? ''),
     url: location.search,
   }));
   ok('on cherche un décor par sa VILLE, pas seulement par son titre',
@@ -9072,7 +9293,7 @@ const run = async () => {
   await pCat.goto(`${BASE}/index.php?p=decors&q=zzzzintrouvable`, { waitUntil: 'domcontentloaded' });
   await pCat.waitForTimeout(400);
   ok('une recherche sans réponse le dit, et propose de tout revoir',
-     (await pCat.locator('main').innerText()).includes('Aucun décor ne correspond')
+     (await pCat.locator('main').innerText()).includes('Aucun badge ne correspond')
      && (await pCat.locator('main a[href*="p=decors"]').count()) > 0);
 
   /**
@@ -9111,15 +9332,15 @@ const run = async () => {
   await pPorte.waitForTimeout(600);
   await pPorte.locator('.bord-nouveau > summary').click();
   await pPorte.waitForTimeout(200);
-  await pPorte.locator('.bord-nouveau .volet a', { hasText: 'Un décor' }).click();
+  await pPorte.locator('.bord-nouveau .volet a', { hasText: 'Un badge' }).click();
   await pPorte.waitForLoadState('domcontentloaded');
-  ok('depuis le tableau de bord, « Un décor » mène à l’écran des deux chemins',
+  ok('depuis le tableau de bord, « Un badge » mène à l’écran des deux chemins',
      pPorte.url().includes('p=creer'), pPorte.url().split('?')[1] ?? pPorte.url());
   ok('et cet écran montre bien les deux',
      (await pPorte.locator('.chemin-carte').count()) === 2);
 
   await pPorte.goto(`${BASE}/index.php?p=catalogue`, { waitUntil: 'domcontentloaded' });
-  await pPorte.locator('a.bouton', { hasText: 'Nouveau décor' }).first().click();
+  await pPorte.locator('a.bouton', { hasText: 'Nouveau badge' }).first().click();
   await pPorte.waitForLoadState('domcontentloaded');
   ok('depuis le catalogue aussi', pPorte.url().includes('p=creer'));
 
@@ -9142,7 +9363,7 @@ const run = async () => {
   await connexion(pOrgPorte, PART.email, PART.mdp);
   await pOrgPorte.goto(`${BASE}/index.php?p=partenaire`, { waitUntil: 'domcontentloaded' });
   await pOrgPorte.waitForTimeout(500);
-  await pOrgPorte.locator('a.bouton', { hasText: 'Nouveau décor' }).first().click();
+  await pOrgPorte.locator('a.bouton', { hasText: 'Nouveau badge' }).first().click();
   await pOrgPorte.waitForLoadState('domcontentloaded');
   ok('un organisateur y passe aussi, depuis son espace',
      pOrgPorte.url().includes('p=creer'), pOrgPorte.url().split('?')[1] ?? pOrgPorte.url());
@@ -9245,10 +9466,12 @@ const run = async () => {
 
   /* --- la recherche traverse, sans le champ caché devenu inutile --- */
   await pAdr.goto(`${BASE}/decors`, { waitUntil: 'domcontentloaded' });
+  /* Le catalogue public a sa propre barre de recherche (`.catalogue-recherche`) ;
+     `.chercher` reste celle des écrans de travail. */
   ok('le formulaire de recherche ne porte plus de page cachée',
-     (await pAdr.locator('form.chercher input[name=p]').count()) === 0);
-  await pAdr.fill('form.chercher input[name=q]', 'lome');
-  await pAdr.press('form.chercher input[name=q]', 'Enter');
+     (await pAdr.locator('form.catalogue-recherche input[name=p]').count()) === 0);
+  await pAdr.fill('form.catalogue-recherche input[name=q]', 'lome');
+  await pAdr.press('form.catalogue-recherche input[name=q]', 'Enter');
   await pAdr.waitForLoadState('domcontentloaded');
   ok('et la recherche répond quand même', pAdr.url().includes('q=lome')
      && (await pAdr.locator('.vignette').count()) > 0, pAdr.url().replace(BASE, ''));

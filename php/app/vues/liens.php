@@ -85,7 +85,7 @@ foreach ($liste as $l) {
       <h3 style="margin:0 0 4px">Créer un lien</h3>
       <p class="aide" style="margin:0 0 16px">On ne raccourcit que des liens Wakabi :
       l’adresse doit mener vers <strong>wakabileguide.com</strong> ou
-      <strong>boost.wakabileguide.com</strong> — la vitrine, le Boost, ou une de leurs
+      <strong>boost.wakabileguide.com</strong> : la vitrine, le Boost, ou une de leurs
       pages. Le lien, lui, reste court et se compte.</p>
 
       <?php if ($plein): ?>
@@ -127,7 +127,7 @@ foreach ($liste as $l) {
             <div class="champ" style="grid-column:1/-1">
               <label for="domaine">Domaine du lien</label>
               <select id="domaine" name="domaine">
-                <option value="">Automatique — le domaine du site</option>
+                <option value="">Automatique · le domaine du site</option>
                 <?php foreach (DOMAINES_LIENS_COURTS as $_d): ?>
                   <option value="<?= e($_d) ?>"><?= e($_d) ?></option>
                 <?php endforeach; ?>
