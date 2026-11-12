@@ -3,302 +3,330 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wakabi — Maquette 2.0</title>
+<title>Wakabi 2.0 — Maquette complète</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{
-  --blue:#2453C4; --blue-d:#1A3E9A; --blue-50:#EEF3FF; --blue-100:#DCE6FF;
-  --ink:#0F1A33; --muted:#6B7590; --line:#E8ECF5; --bg:#F5F7FC;
-  --lav:#ECEAFF; --lav-ink:#6C63FF; --ok:#16A34A; --warm:#FF8A3D;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Poppins,Inter,system-ui,sans-serif;background:linear-gradient(160deg,#E9EFFD 0%,#F7F8FC 50%,#E6ECFB 100%);color:var(--ink);padding:56px 40px 72px}
-.head{max-width:1720px;margin:0 auto 44px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
-.brand{display:flex;align-items:center;gap:14px}
-.brand .logo{width:52px;height:52px;border-radius:16px;background:var(--blue);display:grid;place-items:center;box-shadow:0 10px 24px -8px rgba(36,83,196,.6)}
-.head h1{font-size:34px;font-weight:700;letter-spacing:-.02em}
-.head p{color:var(--muted);font-size:15px;margin-top:2px}
-.swatches{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
-.sw{width:28px;height:28px;border-radius:9px;border:1px solid rgba(0,0,0,.06)}
-.row{max-width:1720px;margin:0 auto;display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;align-items:center;gap:18px}
-.label{font-size:14px;font-weight:600;color:var(--blue-d);background:#fff;padding:6px 14px;border-radius:99px;box-shadow:0 2px 10px rgba(15,26,51,.06)}
-
-/* phone */
-.phone{width:390px;height:844px;border-radius:52px;background:#0B0F1A;padding:11px;box-shadow:0 40px 80px -30px rgba(15,26,51,.45),0 0 0 1px rgba(0,0,0,.2)}
-.screen{position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:var(--bg)}
-.scroll{position:absolute;inset:0;overflow:hidden}
-.fade{-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent 93%)}
-.status{position:absolute;top:0;left:0;right:0;height:46px;display:flex;justify-content:space-between;align-items:center;padding:0 28px 0 34px;font-size:14px;font-weight:600;z-index:30}
-.status.light{color:#fff}
-.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:31px;border-radius:20px;background:#000;z-index:31}
-.sicons{display:flex;gap:6px;align-items:center}
-svg{display:block}
-.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-
-/* tabbar */
-.tabbar{position:absolute;left:14px;right:14px;bottom:18px;height:70px;border-radius:26px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);box-shadow:0 12px 30px -10px rgba(15,26,51,.25),0 0 0 1px rgba(15,26,51,.04);display:flex;align-items:center;justify-content:space-around;z-index:20}
-.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:#9AA3B8;font-weight:500;width:56px}
-.tab.on{color:var(--blue)}
-.tab.on .dot{width:4px;height:4px;border-radius:2px;background:var(--blue)}
-.fab{width:54px;height:54px;border-radius:18px;background:var(--blue);display:grid;place-items:center;color:#fff;box-shadow:0 10px 22px -6px rgba(36,83,196,.7);margin-top:-30px;border:4px solid #fff}
-
-/* home */
-.h-top{background:var(--blue);padding:56px 20px 74px;color:#fff;position:relative}
-.h-top:before{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);right:-90px;top:-70px}
-.hello{display:flex;justify-content:space-between;align-items:center}
-.hello small{opacity:.75;font-size:12.5px;display:flex;align-items:center;gap:4px}
-.hello h2{font-size:22px;font-weight:600;letter-spacing:-.01em;margin-top:2px}
-.iconbtn{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.16);display:grid;place-items:center;position:relative}
-.iconbtn .badge{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--warm);border:2px solid var(--blue)}
-.search{position:absolute;left:20px;right:20px;bottom:-26px;height:54px;background:#fff;border-radius:18px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;color:var(--muted);font-size:14px;box-shadow:0 14px 30px -14px rgba(15,26,51,.35)}
-.search .flt{margin-left:auto;width:40px;height:40px;border-radius:13px;background:var(--blue);color:#fff;display:grid;place-items:center}
-.chips{display:flex;gap:8px;padding:44px 20px 0;overflow:hidden}
-.chip{flex:none;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:14px;background:#fff;font-size:13px;font-weight:500;color:var(--ink);box-shadow:0 0 0 1px var(--line)}
-.chip.on{background:var(--ink);color:#fff;box-shadow:none}
-.sec{display:flex;justify-content:space-between;align-items:baseline;padding:22px 20px 12px}
-.sec h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
-.sec a{font-size:13px;color:var(--blue);font-weight:500;text-decoration:none}
-.hero{margin:0 20px;height:150px;border-radius:24px;overflow:hidden;position:relative;background:url(img/woodin.jpg) center/cover}
-.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(10,18,40,.85),rgba(10,18,40,0) 60%)}
-.hero .tx{position:absolute;left:16px;bottom:14px;right:16px;color:#fff;z-index:2}
-.tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:8px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px)}
-.hero b{display:block;font-size:17px;font-weight:600;margin-top:6px}
-.dots{position:absolute;right:16px;bottom:18px;display:flex;gap:4px;z-index:2}
-.dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.5)}
-.dots i.on{width:18px;background:#fff}
-.hs{display:flex;gap:14px;padding:0 20px;overflow:hidden}
-.ev{flex:none;width:200px;background:#fff;border-radius:22px;padding:8px;box-shadow:0 8px 24px -16px rgba(15,26,51,.4)}
-.ev .im{height:130px;border-radius:16px;background-size:cover;background-position:center;position:relative}
-.date{position:absolute;left:8px;top:8px;background:#fff;border-radius:12px;padding:4px 9px;text-align:center;line-height:1.05}
-.date b{display:block;font-size:17px;font-weight:700}
-.date span{font-size:10px;font-weight:600;color:var(--blue);text-transform:uppercase}
-.like{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:11px;background:rgba(255,255,255,.85);display:grid;place-items:center;color:var(--ink)}
-.ev h4{font-size:14px;font-weight:600;margin:10px 6px 4px}
-.meta{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);margin:0 6px 6px}
-.price{display:flex;justify-content:space-between;align-items:center;margin:8px 6px 4px}
-.price b{font-size:13px;color:var(--blue);font-weight:600}
-.pill-s{font-size:11px;padding:3px 8px;border-radius:8px;background:var(--blue-50);color:var(--blue);font-weight:500}
-.pl{display:flex;gap:12px;align-items:center;background:#fff;margin:0 20px 10px;padding:10px;border-radius:20px;box-shadow:0 8px 24px -18px rgba(15,26,51,.4)}
-.pl .th{width:66px;height:66px;border-radius:16px;background-size:cover;background-position:center;flex:none}
-.pl h4{font-size:14px;font-weight:600}
-.pl .meta{margin:3px 0 0}
-.open{font-size:11px;font-weight:600;color:var(--ok);display:flex;align-items:center;gap:4px}
-.open:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
-.star{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:600}
-
-/* detail */
-.cover{height:360px;background-size:cover;background-position:center;position:relative}
-.cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 60%,rgba(0,0,0,.4) 100%)}
-.topbar{position:absolute;top:52px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:5}
-.glass{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.22);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;color:#fff}
-.grp{display:flex;gap:8px}
-.gal{position:absolute;right:16px;bottom:44px;z-index:5;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:12px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);color:#fff;font-size:12px;font-weight:500}
-.sheet{position:relative;margin-top:-30px;background:#fff;border-radius:30px 30px 0 0;padding:22px 20px 140px;z-index:6;min-height:600px}
-.sheet h2{font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
-.cats{display:flex;gap:6px;margin:10px 0 0;flex-wrap:wrap}
-.cat{font-size:12px;font-weight:500;padding:5px 11px;border-radius:10px;background:var(--blue-50);color:var(--blue)}
-.seg{display:flex;background:var(--bg);border-radius:14px;padding:4px;margin:18px 0 16px}
-.seg div{flex:1;text-align:center;font-size:13px;font-weight:500;padding:9px 0;border-radius:11px;color:var(--muted)}
-.seg .on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 2px 8px rgba(15,26,51,.08)}
-.info{display:flex;align-items:center;gap:12px;padding:10px 0}
-.info .sq{width:46px;height:46px;border-radius:14px;background:var(--lav);color:var(--lav-ink);display:grid;place-items:center;flex:none}
-.info b{display:block;font-size:14.5px;font-weight:600}
-.info span{font-size:12.5px;color:var(--muted)}
-.info .r{margin-left:auto}
-.info .cd,.cd{font-size:12px;font-weight:600;color:#fff;background:var(--blue);padding:6px 10px;border-radius:10px}
-.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
-.tier{border:1.5px solid var(--line);border-radius:16px;padding:10px 10px 11px}
-.tier.on{border-color:var(--blue);background:var(--blue-50)}
-.tier small{font-size:11px;color:var(--muted);font-weight:500}
-.tier b{display:block;font-size:14px;font-weight:700;margin-top:2px}
-.tier.on small{color:var(--blue)}
-.h5{font-size:15px;font-weight:600;margin:18px 0 8px}
-.p{font-size:13px;line-height:1.6;color:var(--muted)}
-.p a{color:var(--blue);font-weight:600;text-decoration:none}
-.org{display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;background:var(--bg);margin-top:14px}
-.av{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#FF4D4D,#B3122E);color:#fff;display:grid;place-items:center;font-weight:700}
-.follow{margin-left:auto;font-size:12px;font-weight:600;color:var(--blue);border:1.5px solid var(--blue);border-radius:11px;padding:6px 12px}
-.cta{position:absolute;left:0;right:0;bottom:0;padding:14px 20px 30px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;z-index:20}
-.cta .sec-btn{width:54px;height:54px;border-radius:17px;border:1.5px solid var(--line);display:grid;place-items:center;color:var(--ink);flex:none}
-.cta .from{font-size:11px;color:var(--muted)}
-.cta .from b{display:block;font-size:17px;color:var(--ink);font-weight:700}
-.btn{flex:1;height:54px;border-radius:17px;background:var(--blue);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 12px 24px -10px rgba(36,83,196,.8)}
-
-/* place */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0 4px}
-.stat{background:var(--bg);border-radius:16px;padding:10px 12px}
-.stat small{font-size:11px;color:var(--muted)}
-.stat b{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700;margin-top:2px}
-.addr{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:var(--ink)}
-.addr .sq{width:38px;height:38px;border-radius:12px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;flex:none}
-.amen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.am{border:1px solid var(--line);border-radius:16px;padding:12px 6px;text-align:center;font-size:11.5px;font-weight:500;color:var(--ink)}
-.am svg{margin:0 auto 6px;color:var(--blue)}
-.hours{border:1px solid var(--line);border-radius:18px;padding:4px 14px}
-.hr{display:flex;justify-content:space-between;font-size:13px;padding:10px 0;border-bottom:1px dashed var(--line)}
-.hr:last-child{border:0}
-.hr b{font-weight:600}
-.hr.today{color:var(--blue)}
-.map{height:150px;border-radius:20px;position:relative;overflow:hidden;background:#EAF0F7}
-.mapsvg{position:absolute;inset:0}
-.pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:44px;height:44px;border-radius:14px 14px 14px 4px;rotate:-45deg;background:var(--blue);display:grid;place-items:center;box-shadow:0 8px 16px -4px rgba(36,83,196,.7)}
-.pin div{rotate:45deg;width:28px;height:28px;border-radius:9px;background:url(img/bestlogo.jpg) center/cover;border:2px solid #fff}
-.mapbtn{position:absolute;right:10px;bottom:10px;background:#fff;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;color:var(--blue);display:flex;gap:6px;align-items:center;box-shadow:0 4px 12px rgba(15,26,51,.12)}
-
-/* ticket */
-.tk-top{background:var(--blue);height:300px;padding:56px 20px 0;color:#fff;position:relative;overflow:hidden}
-.tk-top:before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);left:-110px;top:-60px}
-.tk-head{display:flex;justify-content:space-between;align-items:center}
-.tk-head h2{font-size:20px;font-weight:600}
-.tabs2{display:flex;gap:6px;margin-top:18px}
-.tabs2 div{font-size:13px;padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.14);font-weight:500}
-.tabs2 .on{background:#fff;color:var(--blue);font-weight:600}
-.ticket{position:absolute;left:20px;right:20px;top:170px;background:#fff;border-radius:26px;box-shadow:0 30px 50px -24px rgba(15,26,51,.45);overflow:hidden}
-.tk-im{height:120px;background:url(img/senzaa.jpg) center 30%/cover;position:relative}
-.tk-im:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.6),transparent 70%)}
-.tk-im .tag{position:absolute;left:14px;bottom:12px;z-index:2;color:#fff;background:var(--warm)}
-.tk-b{padding:16px 18px 6px}
-.tk-b h3{font-size:18px;font-weight:700}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;margin-top:12px}
-.grid2 small{font-size:11px;color:var(--muted);display:block}
-.grid2 b{font-size:13.5px;font-weight:600}
-.perf{position:relative;height:28px;margin:6px 0}
-.perf:before{content:"";position:absolute;left:18px;right:18px;top:50%;border-top:2px dashed var(--line)}
-.perf i{position:absolute;top:0;width:28px;height:28px;border-radius:50%;background:var(--bg)}
-.perf i:first-child{left:-14px}.perf i:last-child{right:-14px}
-.qr{display:flex;flex-direction:column;align-items:center;padding:4px 0 18px}
-.qr .code{width:150px;height:150px;padding:10px;border-radius:18px;border:1.5px solid var(--line)}
-.qr small{font-size:11.5px;color:var(--muted);margin-top:8px;letter-spacing:.12em}
-.tk-actions{position:absolute;left:20px;right:20px;bottom:104px;display:flex;gap:10px}
-.tk-actions div{flex:1;height:50px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;box-shadow:0 0 0 1px var(--line)}
-.tk-actions .pri{background:var(--ink);color:#fff;box-shadow:none}
-
-.notes{max-width:1720px;margin:56px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.note{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 10px 30px -22px rgba(15,26,51,.4)}
-.note h4{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--blue-d)}
-.note ul{padding-left:18px;font-size:13px;line-height:1.7;color:var(--muted)}
-</style>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <symbol id="pinlogo" viewBox="0 0 40 40"><path d="M20 3c-7.2 0-13 5.6-13 12.6C7 25 20 37 20 37s13-12 13-21.4C33 8.6 27.2 3 20 3z" fill="none" stroke="#fff" stroke-width="3"/><path d="M12.5 12l3.6 10.5L20 14l3.9 8.5L27.5 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  </defs>
-</svg>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="pinlogo" viewBox="0 0 40 40"><path d="M20 3c-7.2 0-13 5.6-13 12.6C7 25 20 37 20 37s13-12 13-21.4C33 8.6 27.2 3 20 3z" fill="none" stroke="#fff" stroke-width="3"/><path d="M12.5 12l3.6 10.5L20 14l3.9 8.5L27.5 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg>
 
 <div class="head">
   <div class="brand">
     <div class="logo"><svg width="30" height="30"><use href="#pinlogo"/></svg></div>
-    <div><h1>Wakabi 2.0 — Proposition de refonte</h1><p>Même ADN (bleu Wakabi, blanc, Poppins, pin « W »), interface plus immersive et plus rapide à scanner.</p></div>
+    <div><h1>Wakabi 2.0 — Maquette complète de l'application</h1><p>29 écrans · même ADN (bleu Wakabi, blanc, Poppins, pin « W »), interface immersive, billetterie intégrée.</p></div>
   </div>
   <div class="swatches">
-    <div class="sw" style="background:#2453C4"></div><div class="sw" style="background:#1A3E9A"></div><div class="sw" style="background:#EEF3FF"></div><div class="sw" style="background:#ECEAFF"></div><div class="sw" style="background:#0F1A33"></div><div class="sw" style="background:#FF8A3D"></div>
+    <div class="sw" style="background:#2453C4"></div><div class="sw" style="background:#1A3E9A"></div><div class="sw" style="background:#EEF3FF"></div><div class="sw" style="background:#ECEAFF"></div><div class="sw" style="background:#0F1A33"></div><div class="sw" style="background:#FF8A3D"></div><div class="sw" style="background:#16A34A"></div>
   </div>
 </div>
+<div class="toc">
+  <a href="#g1"><b>A</b>Démarrage & connexion</a><a href="#g2"><b>B</b>Découverte</a><a href="#g3"><b>C</b>Événement</a><a href="#g3b"><b>D</b>Billetterie</a><a href="#g4"><b>E</b>Lieux</a><a href="#g5"><b>F</b>Compte</a><a href="#g6"><b>G</b>Créer & organisateur</a>
+</div>
 
+<!-- =============================== A. DÉMARRAGE =============================== -->
+<div class="group" id="g1"><span class="n">A</span><h2>Démarrage & connexion</h2><p>Connexion par numéro de téléphone + code SMS (le plus naturel au Togo), puis personnalisation du fil.</p></div>
 <div class="row">
 
-<!-- ========== 1. ACCUEIL ========== -->
-<div class="col"><div class="label">01 · Accueil</div>
-<div class="phone"><div class="screen"><div class="island"></div>
-  <div class="status light"><span>13:45</span><span class="sicons"><svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+<section class="ph" data-l="Splash">
+  <div class="splash">
+    <div class="ring" style="width:520px;height:520px"></div><div class="ring" style="width:360px;height:360px"></div>
+    <div class="lg"><svg width="64" height="64"><use href="#pinlogo"/></svg></div>
+    <h1>wakabi</h1><p>Sortez. Vivez. Partagez.</p>
+    <div class="loader"><i class="on"></i><i></i><i></i></div>
+  </div>
+  <div class="sb" data-t="09:41" data-m="l"></div>
+</section>
+
+<section class="ph" data-l="Onboarding" data-bg="#fff">
+  <div class="sb" data-t="09:41"></div>
+  <div style="position:absolute;top:56px;right:20px;font-size:13px;font-weight:600;color:var(--muted)">Passer</div>
+  <div class="collage" style="margin-top:80px">
+    <div class="c" style="width:190px;height:250px;left:24px;top:30px;rotate:-8deg;background-image:url(img/senzaa.jpg);background-position:70% center"></div>
+    <div class="c" style="width:180px;height:230px;right:22px;top:10px;rotate:7deg;background-image:url(img/best.jpg)"></div>
+    <div class="c" style="width:200px;height:150px;left:90px;top:220px;rotate:-2deg;background-image:url(img/mckey.jpg)"></div>
+    <div class="float" style="left:18px;top:250px"><span class="badge2 or">18 DÉC</span>Senzaa · Lomé</div>
+    <div class="float" style="right:14px;top:220px"><span class="open">Ouvert</span>⭐ 4.6</div>
+  </div>
+  <div class="pad">
+    <div class="pg"><i class="on"></i><i></i><i></i></div>
+    <div class="t1">Tous les bons plans de Lomé, au même endroit</div>
+    <div class="t2">Concerts, bars, restos, festivals… Découvrez, réservez et achetez vos billets en quelques secondes.</div>
+  </div>
+  <div class="bottom"><div class="btn w">Commencer <i class="i" data-i="arrow" data-s="18"></i></div><div class="link" style="margin-top:14px">J'ai déjà un compte</div></div>
+</section>
+
+<section class="ph" data-l="Connexion" data-bg="#fff">
+  <div class="sb" data-t="09:42"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1></h1></div>
+  <div class="pad">
+    <div style="width:64px;height:64px;border-radius:20px;background:var(--blue);display:grid;place-items:center;margin:8px 0 18px"><svg width="38" height="38"><use href="#pinlogo"/></svg></div>
+    <div class="t1">Bon retour 👋</div>
+    <div class="t2">Entrez votre numéro, on vous envoie un code par SMS.</div>
+    <span class="lbl" style="margin-top:24px">Numéro de téléphone</span>
+    <div class="inp f"><span style="font-size:18px">🇹🇬</span><span class="v">+228</span><span class="sep"></span><span class="v" style="letter-spacing:.04em">91 09 21 21</span></div>
+    <div class="btn w" style="margin-top:18px">Recevoir le code</div>
+    <div class="divider">ou continuer avec</div>
+    <div style="display:flex;gap:10px">
+      <div class="btn ghost sm"><b style="color:#EA4335;font-size:17px">G</b> Google</div>
+      <div class="btn ghost sm"><svg width="16" height="18" viewBox="0 0 16 19"><path fill="#0F1A33" d="M13.3 10c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8-.7 0-1.8-.8-3-.8C3.8 4.6 2.4 5.500 1.600 6.900c-1.700 2.900-.4 7.200 1.200 9.600.8 1.100 1.700 2.400 2.900 2.300 1.200 0 1.600-.7 3-.7s1.800.7 3 .7c1.300 0 2.100-1.200 2.800-2.300.9-1.300 1.300-2.500 1.300-2.600 0 0-2.500-1-2.500-3.900zM11 3c.6-.8 1.100-1.800 1-2.900-.9 0-2.100.6-2.700 1.400-.6.700-1.100 1.800-1 2.800 1 .1 2.100-.5 2.700-1.300z"/></svg> Apple</div>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);text-align:center;line-height:1.6;margin-top:90px">En continuant, vous acceptez nos <span style="color:var(--blue)">Conditions</span> et notre <span style="color:var(--blue)">Politique de confidentialité</span>.</p>
+  </div>
+</section>
+
+<section class="ph" data-l="Code SMS" data-bg="#fff">
+  <div class="sb" data-t="09:42"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1></h1></div>
+  <div class="pad" style="text-align:center">
+    <div style="width:72px;height:72px;border-radius:24px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;margin:4px auto 16px"><i class="i" data-i="msg" data-s="32"></i></div>
+    <div class="t1">Vérification</div>
+    <div class="t2">Code envoyé au <b style="color:var(--ink)">+228 91 •• •• 21</b></div>
+    <div class="otp"><div>5</div><div>8</div><div class="f"></div><div></div></div>
+    <div style="font-size:13px;color:var(--muted);margin-top:20px">Renvoyer le code dans <b style="color:var(--blue)">0:42</b></div>
+  </div>
+  <div class="kbd">
+    <div>1<small>&nbsp;</small></div><div>2<small>ABC</small></div><div>3<small>DEF</small></div>
+    <div>4<small>GHI</small></div><div>5<small>JKL</small></div><div>6<small>MNO</small></div>
+    <div>7<small>PQRS</small></div><div>8<small>TUV</small></div><div>9<small>WXYZ</small></div>
+    <div class="n"></div><div>0</div><div class="n"><i class="i" data-i="del" data-s="24"></i></div>
+  </div>
+</section>
+
+<section class="ph" data-l="Centres d'intérêt" data-bg="#fff">
+  <div class="sb" data-t="09:43"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><div style="flex:1" class="prog"><i style="width:66%"></i></div><span style="font-size:13px;font-weight:600;color:var(--muted)">2/3</span></div>
+  <div class="pad">
+    <div class="t1" style="margin-top:10px">Qu'est-ce qui vous fait vibrer ?</div>
+    <div class="t2">Choisissez au moins 3 thèmes pour un fil 100 % à votre goût.</div>
+    <div class="interest">
+      <div class="on"><span>🎤</span>Concerts live</div>
+      <div class="on"><span>🍸</span>Bars & lounges</div>
+      <div><span>🍽️</span>Restaurants</div>
+      <div class="on"><span>💃</span>Afro & coupé-décalé</div>
+      <div><span>🏖️</span>Plage & chill</div>
+      <div><span>🎷</span>Jazz</div>
+      <div class="on"><span>🎉</span>Festivals</div>
+      <div><span>😂</span>Stand-up</div>
+    </div>
+  </div>
+  <div class="bottom" style="bottom:30px"><div class="btn w">Continuer · 4 sélectionnés</div></div>
+</section>
+
+</div>
+
+<!-- =============================== B. DÉCOUVERTE =============================== -->
+<div class="group" id="g2"><span class="n">B</span><h2>Découverte</h2><p>Accueil personnalisé, recherche avec filtres, agenda visuel et carte interactive des lieux.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Accueil">
+  <div class="sb" data-t="13:45" data-m="l"></div>
   <div class="scroll fade">
     <div class="h-top">
       <div class="hello">
-        <div><small><svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Lomé, Togo ▾</small><h2>Bonsoir Kofi 👋</h2></div>
-        <div class="grp" style="display:flex;gap:8px"><div class="iconbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i class="badge"></i></div></div>
+        <div><small><i class="i" data-i="pin" data-s="14"></i>Lomé, Togo ▾</small><h2>Bonsoir Kofi 👋</h2></div>
+        <div style="display:flex;gap:8px"><div class="iconbtn"><i class="i" data-i="bell"></i><i class="badge"></i></div><div class="iconbtn avatar g2" style="width:42px;height:42px">K</div></div>
       </div>
-      <div class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Concerts, bars, restos…<div class="flt"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></div></div>
+      <div class="search"><i class="i" data-i="search"></i>Concerts, bars, restos…<div class="flt"><i class="i" data-i="filter" data-s="18"></i></div></div>
     </div>
     <div class="chips"><div class="chip on">🔥 Tendances</div><div class="chip">🎤 Concerts</div><div class="chip">🍸 Bars</div><div class="chip">🍽️ Restos</div></div>
     <div class="sec" style="padding-top:18px"><h3>À la une</h3></div>
-    <div class="hero"><div class="tx"><span class="tag">Sponsorisé</span><b>Woodin — Nouvelle collection</b></div><div class="dots"><i></i><i></i><i class="on"></i><i></i></div></div>
+    <div class="hero" style="height:150px"><div class="tx"><span class="tag">Sponsorisé</span><b>Woodin — Nouvelle collection</b></div><div class="dots"><i></i><i></i><i class="on"></i><i></i></div></div>
     <div class="sec"><h3>Ce week-end</h3><a href="#">Voir tout</a></div>
     <div class="hs">
-      <div class="ev"><div class="im" style="background-image:url(img/senzaa.jpg);background-position:70% center"><div class="date"><b>18</b><span>Déc</span></div><div class="like"><svg class="ic" style="width:17px" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div><h4>Senzaa En Concert</h4><div class="meta">📍 Palais des Congrès</div><div class="price"><b>dès 5 000 F</b><span class="pill-s">Concert</span></div></div>
-      <div class="ev"><div class="im" style="background-image:url(img/mckey.jpg)"><div class="date"><b>31</b><span>Oct</span></div><div class="like" style="color:#E11D48"><svg class="ic" style="width:17px;fill:#E11D48" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div><h4>Mc Key En Concert</h4><div class="meta">📍 Scène Bella Bellow</div><div class="price"><b>dès 2 000 F</b><span class="pill-s">Live</span></div></div>
+      <div class="ev"><div class="im" style="background-image:url(img/senzaa.jpg);background-position:70% center"><div class="date"><b>18</b><span>Déc</span></div><div class="like"><i class="i" data-i="heart" data-s="17"></i></div></div><h4>Senzaa En Concert</h4><div class="meta">📍 Palais des Congrès</div><div class="price"><b>dès 5 000 F</b><span class="pill-s">Concert</span></div></div>
+      <div class="ev"><div class="im" style="background-image:url(img/mckey.jpg)"><div class="date"><b>31</b><span>Oct</span></div><div class="like" style="color:#E11D48"><i class="i fill" data-i="heart" data-s="17"></i></div></div><h4>Mc Key En Concert</h4><div class="meta">📍 Scène Bella Bellow</div><div class="price"><b>dès 2 000 F</b><span class="pill-s">Live</span></div></div>
     </div>
     <div class="sec"><h3>Lieux près de vous</h3><a href="#">Carte</a></div>
     <div class="pl"><div class="th" style="background-image:url(img/bestlogo.jpg)"></div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><h4>Best.t Lounge Bar</h4><span class="star">⭐ 4.6</span></div><div class="meta">Bars · Avedji · 1,2 km</div><div class="open" style="margin-top:4px">Ouvert · jusqu'à 05:00</div></div></div>
   </div>
-  <div class="tabbar">
-    <div class="tab on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Accueil<i class="dot"></i></div>
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</div>
-    <div class="fab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Explorer</div>
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v14" stroke-dasharray="2 2"/></svg>Tickets</div>
-  </div>
-</div></div></div>
+  <nav class="tabbar" data-on="home"></nav>
+</section>
 
-<!-- ========== 2. EVENEMENT ========== -->
-<div class="col"><div class="label">02 · Détail événement</div>
-<div class="phone"><div class="screen" style="background:#fff"><div class="island"></div>
-  <div class="status light"><span>13:45</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+<section class="ph" data-l="Recherche" data-bg="#fff">
+  <div class="sb" data-t="13:48"></div>
+  <div class="hdr" style="gap:10px"><div class="inp f" style="flex:1;height:48px"><i class="i" data-i="search" data-s="18"></i><span class="v">concert</span><span style="width:2px;height:20px;background:var(--blue);margin-left:-8px"></span><i class="i" data-i="close" data-s="16" style="margin-left:auto"></i></div><div class="bk"><i class="i" data-i="filter" data-s="18"></i></div></div>
+  <div class="pad">
+    <div class="chips2" style="margin-top:6px;flex-wrap:nowrap"><div class="c2 on">Tout</div><div class="c2 out">Évènements · 12</div><div class="c2 out">Lieux · 3</div></div>
+    <div class="sh">Récent</div>
+    <div class="li" style="padding:9px 0"><i class="i" data-i="clock" data-s="18" style="color:var(--muted)"></i><span class="tx">bar lounge avedji</span><i class="i" data-i="close" data-s="14" style="color:#B6BDCF"></i></div>
+    <div class="li" style="padding:9px 0"><i class="i" data-i="clock" data-s="18" style="color:var(--muted)"></i><span class="tx">plage week-end</span><i class="i" data-i="close" data-s="14" style="color:#B6BDCF"></i></div>
+    <div class="sh" style="display:flex;justify-content:space-between">Résultats<span style="color:var(--blue);text-transform:none;letter-spacing:0">Trier : Date ▾</span></div>
+    <div class="res"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div style="flex:1"><b>Senzaa En Concert</b><small>Ven. 18 déc. · Palais des Congrès</small><div class="pr">5 000 – 50 000 F</div></div><i class="i" data-i="heart" data-s="20" style="color:#B6BDCF"></i></div>
+    <div class="res"><div class="th" style="background-image:url(img/mckey.jpg)"></div><div style="flex:1"><b>Mc Key En Concert</b><small>Sam. 31 oct. · Scène Bella Bellow</small><div class="pr">2 000 – 5 000 F</div></div><i class="i fill" data-i="heart" data-s="20" style="color:#E11D48"></i></div>
+    <div class="res"><div class="th pz a"><span class="pzt" style="font-size:11px">Afro<br>Night</span></div><div style="flex:1"><b>Afro Night Live Band</b><small>Ven. 13 nov. · Best.t Lounge</small><div class="pr">Entrée libre</div></div><i class="i" data-i="heart" data-s="20" style="color:#B6BDCF"></i></div>
+    <div class="res"><div class="th pz b"><span class="pzt" style="font-size:11px">Jazz<br>sea</span></div><div style="flex:1"><b>Jazz au bord de mer</b><small>Dim. 22 nov. · Plage de Lomé</small><div class="pr">3 000 F</div></div><i class="i" data-i="heart" data-s="20" style="color:#B6BDCF"></i></div>
+  </div>
+</section>
+
+<section class="ph" data-l="Filtres">
+  <div class="sb" data-t="13:48" data-m="l"></div>
+  <div class="scroll" style="background:url(img/woodin.jpg) center/cover;filter:blur(6px)"></div>
+  <div class="dim"></div>
+  <div class="bs" style="top:96px">
+    <div class="grab"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:19px;font-weight:700">Filtres</b><i class="i" data-i="close" data-s="20"></i></div>
+    <span class="lbl">Quand ?</span>
+    <div class="chips2"><div class="c2">Aujourd'hui</div><div class="c2">Demain</div><div class="c2 on">Ce week-end</div><div class="c2 out"><i class="i" data-i="cal" data-s="15"></i>Choisir</div></div>
+    <span class="lbl">Ville</span>
+    <div class="chips2"><div class="c2 on">Lomé</div><div class="c2">Kara</div><div class="c2">Kpalimé</div><div class="c2">Aného</div><div class="c2">Atakpamé</div></div>
+    <span class="lbl" style="display:flex;justify-content:space-between">Budget <span style="color:var(--blue)">0 – 20 000 F</span></span>
+    <div class="range"><i></i><b style="left:-4px"></b><b style="left:58%"></b></div>
+    <span class="lbl">Catégories</span>
+    <div class="chips2"><div class="c2 on">🎤 Concerts</div><div class="c2 on">🎉 Festivals</div><div class="c2">🍸 Soirées</div><div class="c2">😂 Stand-up</div><div class="c2">🎨 Expos</div></div>
+    <div class="li" style="margin-top:8px"><span class="tx"><b>Gratuit uniquement</b></span><span class="sw2"></span></div>
+    <div class="li"><span class="tx"><b>Billets disponibles</b></span><span class="sw2 on"></span></div>
+    <div style="display:flex;gap:10px;margin-top:10px"><div class="btn ghost" style="flex:.6">Réinitialiser</div><div class="btn">Voir 24 résultats</div></div>
+  </div>
+</section>
+
+<section class="ph" data-l="Agenda" data-bg="#fff">
+  <div class="sb" data-t="13:50"></div>
+  <div class="hdr"><h1 class="l" style="font-size:24px;font-weight:700">Agenda</h1><div class="seg" style="margin:0;width:110px"><div class="on" style="padding:6px 0"><i class="i" data-i="cal" data-s="16"></i></div><div style="padding:6px 0"><i class="i" data-i="list" data-s="16"></i></div></div></div>
+  <div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px"><b style="font-size:16px;font-weight:600">Décembre 2026</b><div style="display:flex;gap:6px"><div class="bk ghost" style="width:34px;height:34px;border-radius:11px"><i class="i" data-i="back" data-s="16"></i></div><div class="bk ghost" style="width:34px;height:34px;border-radius:11px"><i class="i" data-i="chev" data-s="16"></i></div></div></div>
+    <div class="cal" id="cal"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 4px"><b style="font-size:15px;font-weight:600">Ven. 18 décembre</b><span style="font-size:12px;color:var(--muted)">3 évènements</span></div>
+    <div class="tl"><div class="time">18:00</div><div class="card"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div style="flex:1"><b style="font-size:13.5px;font-weight:600;display:block">Senzaa En Concert</b><small style="font-size:11.5px;color:var(--muted)">Palais des Congrès</small></div><span class="badge2 gr">Billet ✓</span></div></div>
+    <div class="tl"><div class="time">21:00</div><div class="card"><div class="th pz c"><span class="pzt" style="font-size:9px">Gold<br>party</span></div><div style="flex:1"><b style="font-size:13.5px;font-weight:600;display:block">Gold Party Night</b><small style="font-size:11.5px;color:var(--muted)">Best.t Lounge Bar</small></div></div></div>
+  </div>
+  <nav class="tabbar" data-on="cal"></nav>
+</section>
+
+<section class="ph" data-l="Explorer (carte)">
+  <div class="sb" data-t="13:52"></div>
+  <div class="mapfill"></div>
+  <div style="position:absolute;top:54px;left:16px;right:16px;z-index:8">
+    <div class="inp" style="border:0;box-shadow:0 10px 24px -12px rgba(15,26,51,.35);height:52px"><i class="i" data-i="search" data-s="18"></i>Rechercher un lieu…<div style="margin-left:auto;width:38px;height:38px;border-radius:12px;background:var(--blue);color:#fff;display:grid;place-items:center;margin-right:-8px"><i class="i" data-i="filter" data-s="16"></i></div></div>
+    <div class="chips2" style="margin-top:10px;flex-wrap:nowrap;overflow:hidden"><div class="c2 on" style="box-shadow:0 4px 12px -4px rgba(36,83,196,.6)">🍸 Bars</div><div class="c2" style="background:#fff">🍽️ Restos</div><div class="c2" style="background:#fff">🏨 Hôtels</div><div class="c2" style="background:#fff">🏖️ Plages</div><div class="c2" style="background:#fff">🎤 Salles</div></div>
+  </div>
+  <div style="position:absolute;top:186px;left:50%;transform:translateX(-50%);z-index:7;background:#fff;border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--blue);box-shadow:0 6px 14px -6px rgba(15,26,51,.3);white-space:nowrap">↻ Rechercher dans cette zone</div>
+  <div class="mpin" style="left:96px;top:300px">🍸 Le Patio</div>
+  <div class="mpin on" style="left:220px;top:380px"><span class="lo" style="background-image:url(img/bestlogo.jpg)"></span>Best.t ⭐4.6</div>
+  <div class="mpin" style="left:300px;top:270px">🍽️ Saveurs</div>
+  <div class="mpin" style="left:110px;top:470px">🏖️ Coco Beach</div>
+  <div class="mpin" style="left:290px;top:520px">🍸 Code Bar</div>
+  <div class="me" style="left:170px;top:430px"></div>
+  <div class="bk" style="position:absolute;right:16px;bottom:226px;z-index:8;border:0;box-shadow:0 6px 14px -6px rgba(15,26,51,.4);color:var(--blue)"><i class="i" data-i="target" data-s="20"></i></div>
+  <div class="mapcard"><div class="th" style="background-image:url(img/best.jpg)"></div><div style="flex:1;min-width:0;padding:2px 0"><div style="display:flex;justify-content:space-between"><b style="font-size:14.5px;font-weight:600">Best.t Lounge Bar</b><i class="i fill" data-i="heart" data-s="18" style="color:#E11D48"></i></div><div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Bars · Avedji · 1,2 km</div><div style="display:flex;gap:8px;align-items:center"><span class="open">Ouvert</span><span class="star">⭐ 4.6 <span style="color:var(--muted);font-weight:400">(128)</span></span></div></div></div>
+  <nav class="tabbar" data-on="pin"></nav>
+</section>
+
+
+
+</div>
+
+<!-- =============================== C. ÉVÉNEMENT & BILLETTERIE =============================== -->
+<div class="group" id="g3"><span class="n">C</span><h2>Événement</h2><p>Fiche immersive, galerie photos/vidéos et « Le Mur », l'espace social de chaque évènement.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Détail événement" data-bg="#fff">
+  <div class="sb" data-t="13:45" data-m="l"></div>
   <div class="scroll">
-    <div class="cover" style="background-image:url(img/senzaa.jpg);height:300px;background-position:center"></div>
-    <div class="topbar"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div><div class="grp"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></div><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div></div>
-    <div class="gal"><svg class="ic" style="width:15px" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>1/12 · Galerie</div>
+    <div class="cover" style="height:300px;background-image:url(img/senzaa.jpg)"></div>
+    <div class="topbar"><div class="glass"><i class="i" data-i="back"></i></div><div class="grp"><div class="glass"><i class="i" data-i="share"></i></div><div class="glass"><i class="i" data-i="heart"></i></div></div></div>
+    <div class="gal"><i class="i" data-i="img" data-s="15"></i>1/12 · Galerie</div>
     <div class="sheet">
       <div class="cats"><span class="cat">Concert live</span><span class="cat">Afro</span><span class="cat" style="background:#FFF1E7;color:#D9611A">🔥 1,2k intéressés</span></div>
       <h2 style="margin-top:10px">Senzaa En Concert</h2>
       <div class="seg"><div class="on">Infos</div><div>Le Mur</div><div>Galerie</div></div>
-      <div class="info"><div class="sq"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><div><b>Ven. 18 Déc. 2026</b><span>18:00 · + 2 autres dates</span></div><div class="r"><span class="cd">J-36</span></div></div>
-      <div class="info"><div class="sq"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><div><b>Palais des Congrès</b><span>Lomé · Kara 26/12 · Aného 02/01</span></div></div>
+      <div class="info"><div class="sq"><i class="i" data-i="cal"></i></div><div><b>Ven. 18 Déc. 2026</b><span>18:00 · + 2 autres dates</span></div><div class="r"><span class="cd">J-36</span></div></div>
+      <div class="info"><div class="sq"><i class="i" data-i="pin"></i></div><div><b>Palais des Congrès</b><span>Lomé · Kara 26/12 · Aného 02/01</span></div></div>
       <div class="h5">Choisissez votre pass</div>
       <div class="tiers"><div class="tier"><small>Standard</small><b>5 000 F</b></div><div class="tier on"><small>VIP</small><b>10 000 F</b></div><div class="tier"><small>VVIP</small><b>50 000 F</b></div></div>
-      <div class="h5">À propos</div>
-      <p class="p">🎤 Une tournée musicale à ne pas manquer ! Senzaa vous donne rendez-vous dans 3 villes du Togo pour une soirée… <a href="#">Lire plus</a></p>
-      <div class="org"><div class="av">S</div><div><b style="font-size:13.5px;font-weight:600;display:block">Senzaa Concert</b><span style="font-size:12px;color:var(--muted)">Organisateur · 4 évènements</span></div><div class="follow">Suivre</div></div>
     </div>
   </div>
-  <div class="cta"><div class="sec-btn"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg></div><div class="from">VIP<b>10 000 F</b></div><div class="btn">Acheter mon ticket <svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></div>
-</div></div></div>
+  <div class="cta"><div class="sec-btn"><i class="i" data-i="cal"></i></div><div class="from">VIP<b>10 000 F</b></div><div class="btn">Acheter mon ticket <i class="i" data-i="arrow" data-s="18"></i></div></div>
+</section>
 
-<!-- ========== 3. LIEU ========== -->
-<div class="col"><div class="label">03 · Détail lieu</div>
-<div class="phone"><div class="screen" style="background:#fff"><div class="island"></div>
-  <div class="status light"><span>13:46</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
-  <div class="scroll">
-    <div class="cover" style="height:300px;background-image:url(img/best.jpg);background-position:center 35%"></div>
-    <div class="topbar"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div><div class="grp"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></div><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div></div>
-    <div class="gal"><svg class="ic" style="width:15px" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>1/24 · Galerie</div>
-    <div class="sheet" style="padding-bottom:120px">
-      <div style="display:flex;justify-content:space-between;align-items:center"><div class="cats" style="margin:0"><span class="cat">Bar lounge</span><span class="cat">Restaurant</span></div><span class="open">Ouvert</span></div>
-      <h2 style="margin-top:10px">Best.t Lounge Bar Restaurant</h2>
-      <div class="addr"><div class="sq"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><div>Carrefour Elavagnon, Avedji Ceg<br><span style="color:var(--muted);font-size:12px">Lomé, Togo · 1,2 km</span></div></div>
-      <div class="stats"><div class="stat"><small>Note</small><b>⭐ 4.6</b></div><div class="stat"><small>Capacité</small><b>100 pers.</b></div><div class="stat"><small>Ferme à</small><b>05:00</b></div></div>
-      <div class="seg" style="margin-top:14px"><div class="on">Infos</div><div>Le Mur</div><div>Menu</div><div>Avis</div></div>
-      <div class="h5" style="margin-top:4px">Commodités</div>
-      <div class="amen">
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 17V8h4a3 3 0 0 1 0 6H9"/></svg>Parking</div>
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18M17 21V3c-2 1-3 4-3 8h3"/></svg>Restauration</div>
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7h13l5 3-5 3H3zM6 13v6"/></svg>Vidéosurveillance</div>
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Éclairage</div>
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".5"/></svg>Instagrammable</div>
-        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Premium</div>
-      </div>
-      <div class="h5">Horaires</div>
-      <div class="hours"><div class="hr today"><b>Aujourd'hui (jeu.)</b><b>11:00 – 05:00</b></div><div class="hr"><span>Lun – Ven</span><span>11:00 – 05:00</span></div><div class="hr"><span>Dimanche</span><span>01:00 – 05:00</span></div></div>
-      <div class="h5">Localisation</div>
-      <div class="map">
-        <svg class="mapsvg" viewBox="0 0 350 150" preserveAspectRatio="xMidYMid slice"><rect width="350" height="150" fill="#EAF0F7"/><path d="M-10 110 L360 60" stroke="#fff" stroke-width="14"/><path d="M120 -10 L180 160" stroke="#fff" stroke-width="10"/><path d="M-10 30 L360 20" stroke="#fff" stroke-width="6"/><path d="M260 -10 L300 160" stroke="#fff" stroke-width="6"/><rect x="20" y="45" width="70" height="40" rx="8" fill="#DCE8D5"/><rect x="200" y="85" width="50" height="50" rx="8" fill="#DCE8D5"/></svg>
-        <div class="pin"><div></div></div>
-        <div class="mapbtn">Itinéraire <svg class="ic" style="width:15px" viewBox="0 0 24 24"><path d="M3 11 21 3l-8 18-2-8z"/></svg></div>
-      </div>
-    </div>
+<section class="ph" data-l="Galerie" data-bg="#0B0F1A">
+  <div class="sb" data-t="13:55" data-m="l"></div>
+  <div class="hdr" style="color:#fff"><div class="bk" style="background:rgba(255,255,255,.1);border:0;color:#fff"><i class="i" data-i="close"></i></div><h1>Galerie <span style="opacity:.5;font-weight:500">· 24</span></h1><div class="bk" style="background:rgba(255,255,255,.1);border:0;color:#fff"><i class="i" data-i="upload" data-s="20"></i></div></div>
+  <div class="pad"><div class="seg" style="background:rgba(255,255,255,.08);margin:6px 0 14px"><div class="on">Photos · 18</div><div style="color:rgba(255,255,255,.6)">Vidéos · 6</div><div style="color:rgba(255,255,255,.6)">Des fans</div></div></div>
+  <div class="galg">
+    <div class="big" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div>
+    <div style="background-image:url(img/mckey.jpg)"></div>
+    <div class="vid" style="background-image:url(img/woodin.jpg)"></div>
+    <div class="pz a"></div>
+    <div style="background-image:url(img/best.jpg)"></div>
+    <div class="vid pz c"></div>
+    <div class="tall" style="background-image:url(img/senzaa.jpg);background-position:5% center"></div>
+    <div class="big" style="background-image:url(img/woodin.jpg)"></div>
+    <div class="pz d"></div>
   </div>
-  <div class="cta"><div class="sec-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div><div class="sec-btn" style="color:#16A34A"><svg class="ic" viewBox="0 0 24 24"><path d="M3 21l1.6-4.8A8.5 8.5 0 1 1 8 19.6z"/></svg></div><div class="btn">Réserver une table</div></div>
-</div></div></div>
+</section>
 
-<!-- ========== 4. TICKET ========== -->
-<div class="col"><div class="label">04 · Mes tickets (nouveau)</div>
-<div class="phone"><div class="screen"><div class="island"></div>
-  <div class="status light"><span>13:47</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+<section class="ph" data-l="Le Mur">
+  <div class="sb" data-t="13:56"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Le Mur<br><small style="font-size:12px;color:var(--muted);font-weight:400">Senzaa En Concert</small></h1><div class="bk"><i class="i" data-i="more" data-s="20"></i></div></div>
+  <div class="pad">
+    <div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:4px 0 14px"><div class="avatar g2" style="width:36px;height:36px;border-radius:12px">K</div><span style="flex:1;font-size:13px;color:var(--muted)">Partagez quelque chose…</span><i class="i" data-i="cam" data-s="20" style="color:var(--blue)"></i></div>
+    <div class="post"><div class="who"><div class="avatar" style="background:linear-gradient(135deg,#FF4D4D,#B3122E)">S</div><div style="flex:1"><b>Senzaa Concert <span class="verified">✓</span></b><small>Organisateur · il y a 2 h</small></div><span class="badge2">📌 Épinglé</span></div><p>🎤 J-36 ! Les pass VIP partent vite… Plus que <b>120 places</b> pour Lomé. Rendez-vous au Palais des Congrès 🔥</p><div class="pim" style="background-image:url(img/senzaa.jpg);background-position:75% 20%"></div><div class="act"><span style="color:#E11D48"><i class="i fill" data-i="heart" data-s="16"></i>348</span><span><i class="i" data-i="msg" data-s="16"></i>42</span><span><i class="i" data-i="share" data-s="16"></i>Partager</span></div></div>
+    <div class="post"><div class="who"><div class="avatar g3">A</div><div style="flex:1"><b>Ama K.</b><small>il y a 5 h</small></div></div><p>Qui vient de Kara pour la date du 26 ? On organise un covoiturage 🚗</p><div class="act"><span><i class="i" data-i="heart" data-s="16"></i>24</span><span><i class="i" data-i="msg" data-s="16"></i>11</span></div></div>
+  </div>
+</section>
+
+</div>
+
+<div class="group" id="g3b"><span class="n">D</span><h2>Billetterie</h2><p>Choix des billets, paiement Mobile Money (Flooz, Mixx by Yas) ou carte, confirmation et billet QR hors-ligne.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Choix des billets" data-bg="#fff">
+  <div class="sb" data-t="13:58"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Billets</h1><div style="width:42px"></div></div>
+  <div class="pad">
+    <div class="minitk"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div><b style="font-size:14px;font-weight:600;display:block">Senzaa En Concert</b><small style="font-size:12px;color:var(--muted)">Palais des Congrès · Lomé</small></div></div>
+    <span class="lbl">Date</span>
+    <div class="chips2"><div class="c2 on">Lomé · 18 déc.</div><div class="c2 out">Kara · 26 déc.</div><div class="c2 out">Aného · 2 janv.</div></div>
+    <span class="lbl">Type de billet</span>
+    <div class="tt"><div class="tx"><b>Standard</b><small>Accès fosse</small><div class="p">5 000 F</div></div><div class="qty"><span>−</span>0<span class="p">+</span></div></div>
+    <div class="tt on"><div class="tx"><b>VIP</b><small>Places assises · zone dédiée</small><div class="p">10 000 F</div></div><div class="qty"><span>−</span>2<span class="p">+</span></div></div>
+    <div class="tt"><div class="tx"><b>VVIP <span class="badge2 or" style="margin-left:4px">Plus que 12</span></b><small>Carré + boissons + meet & greet</small><div class="p">50 000 F</div></div><div class="qty"><span>−</span>0<span class="p">+</span></div></div>
+    <div class="inp" style="height:48px;margin-top:4px"><i class="i" data-i="tag" data-s="18"></i>Code promo<span style="margin-left:auto;color:var(--blue);font-weight:600;font-size:13px">Appliquer</span></div>
+  </div>
+  <div class="cta"><div class="from">2 billets<b>20 000 F</b></div><div class="btn">Continuer <i class="i" data-i="arrow" data-s="18"></i></div></div>
+</section>
+
+<section class="ph" data-l="Paiement Mobile Money" data-bg="#fff">
+  <div class="sb" data-t="13:59"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Paiement</h1><div style="width:42px;display:flex;justify-content:flex-end;color:var(--ok)"><i class="i" data-i="shield" data-s="22"></i></div></div>
+  <div class="pad">
+    <span class="lbl" style="margin-top:6px">Moyen de paiement</span>
+    <div class="pay on"><div class="lg" style="background:linear-gradient(135deg,#0072CE,#F58220)">Fz</div><div class="tx"><b>Flooz</b><small>Moov Africa</small></div><div class="radio on"></div></div>
+    <div class="pay"><div class="lg" style="background:linear-gradient(135deg,#FACC15,#EAB308);color:#0F1A33">Yas</div><div class="tx"><b>Mixx by Yas</b><small>ex T-Money</small></div><div class="radio"></div></div>
+    <div class="pay"><div class="lg" style="background:var(--ink)"><i class="i" data-i="card" data-s="20"></i></div><div class="tx"><b>Carte bancaire</b><small>Visa · Mastercard</small></div><div class="radio"></div></div>
+    <span class="lbl">Numéro Flooz</span>
+    <div class="inp f"><span style="font-size:18px">🇹🇬</span><span class="v">+228 99 45 12 08</span></div>
+    <div class="card flat" style="margin-top:16px">
+      <div class="sum"><span>2 × Pass VIP</span><b>20 000 F</b></div>
+      <div class="sum"><span>Frais de service</span><b>500 F</b></div>
+      <div class="sum tot"><span>Total</span><b>20 500 F</b></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);margin-top:10px;display:flex;gap:6px;align-items:center"><i class="i" data-i="lock" data-s="14"></i>Vous recevrez une demande de confirmation sur votre téléphone.</p>
+  </div>
+  <div class="cta"><div class="btn">Payer 20 500 F</div></div>
+</section>
+
+<section class="ph" data-l="Confirmation" data-bg="#fff">
+  <div class="sb" data-t="14:00"></div>
+  <div class="conf" style="background:#FF8A3D;left:60px;top:120px;rotate:20deg"></div><div class="conf" style="background:#2453C4;left:300px;top:140px;rotate:-30deg"></div><div class="conf" style="background:#16A34A;left:120px;top:250px;rotate:60deg"></div><div class="conf" style="background:#6C63FF;left:280px;top:270px;rotate:10deg"></div><div class="conf" style="background:#FACC15;left:40px;top:200px;rotate:-50deg"></div><div class="conf" style="background:#E11D48;left:330px;top:210px;rotate:40deg"></div>
+  <div class="pad" style="text-align:center;padding-top:150px">
+    <div class="okc"><i class="i" data-i="check" data-s="54"></i></div>
+    <div class="t1" style="margin-top:40px">Paiement réussi !</div>
+    <div class="t2">Vos 2 billets VIP sont prêts.<br>Un reçu a été envoyé par SMS.</div>
+    <div class="minitk" style="text-align:left;margin-top:26px"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div style="flex:1"><b style="font-size:14px;font-weight:600;display:block">Senzaa En Concert</b><small style="font-size:12px;color:var(--muted)">Ven. 18 déc. · 18:00 · VIP × 2</small></div></div>
+  </div>
+  <div class="bottom"><div class="btn w">Voir mes billets</div><div style="display:flex;gap:10px;margin-top:10px"><div class="btn ghost sm"><i class="i" data-i="cal" data-s="17"></i>Calendrier</div><div class="btn ghost sm"><i class="i" data-i="share" data-s="17"></i>Inviter</div></div></div>
+</section>
+
+<section class="ph" data-l="Mes tickets">
+  <div class="sb" data-t="13:47" data-m="l"></div>
   <div class="tk-top">
-    <div class="tk-head"><h2>Mes tickets</h2><div class="iconbtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div></div>
-    <div class="tabs2"><div class="on">À venir · 2</div><div>Passés</div><div>Favoris</div></div>
+    <div class="tk-head"><h2>Mes tickets</h2><div class="iconbtn"><i class="i" data-i="search"></i></div></div>
+    <div class="tabs2"><div class="on">À venir · 2</div><div>Passés</div><div>Réservations</div></div>
   </div>
   <div class="ticket">
     <div class="tk-im"><span class="tag">Dans 36 jours</span></div>
@@ -307,36 +335,338 @@ svg{display:block}
       <div class="grid2"><div><small>Date</small><b>Ven. 18 Déc.</b></div><div><small>Heure</small><b>18:00</b></div><div><small>Lieu</small><b>Palais des Congrès</b></div><div><small>Pass</small><b style="color:var(--blue)">VIP × 2</b></div></div>
     </div>
     <div class="perf"><i></i><i></i></div>
-    <div class="qr">
-      <svg class="code" viewBox="0 0 29 29" shape-rendering="crispEdges" id="qr"></svg>
-      <small>WKB · 7F3K · 92QX</small>
-    </div>
+    <div class="qr"><svg class="code qrc" viewBox="0 0 29 29" shape-rendering="crispEdges"></svg><small>WKB · 7F3K · 92QX</small></div>
   </div>
-  <div class="tk-actions"><div><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Wallet</div><div class="pri"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Transférer</div></div>
-  <div class="tabbar">
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</div>
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</div>
-    <div class="fab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
-    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Explorer</div>
-    <div class="tab on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v14" stroke-dasharray="2 2"/></svg>Tickets<i class="dot"></i></div>
-  </div>
-</div></div></div>
+  <div class="tk-actions"><div><i class="i" data-i="wallet" data-s="18"></i>Wallet</div><div class="pri"><i class="i" data-i="send" data-s="18"></i>Transférer</div></div>
+  <nav class="tabbar" data-on="ticket"></nav>
+</section>
 
 </div>
 
-<div class="notes">
-  <div class="note"><h4>Accueil</h4><ul><li>Salutation + ville : plus personnel</li><li>Recherche flottante avec filtres</li><li>Catégories en chips (accès en 1 tap)</li><li>Cartes évènement avec prix et date lisibles</li><li>Lieux : note, distance, statut « Ouvert »</li></ul></div>
-  <div class="note"><h4>Détail évènement</h4><ul><li>Visuel plein écran, actions en verre dépoli</li><li>« Mur / Galerie » regroupés en onglets</li><li>Choix du pass directement sur la page</li><li>Prix + CTA collants en bas</li><li>Organisateur avec bouton « Suivre »</li></ul></div>
-  <div class="note"><h4>Détail lieu</h4><ul><li>Infos clés en 3 tuiles (note, capacité, fermeture)</li><li>Commodités avec icônes, sans texte tronqué</li><li>Horaire du jour mis en évidence</li><li>Carte stylisée + itinéraire</li><li>Appel / WhatsApp / Réserver en un tap</li></ul></div>
-  <div class="note"><h4>Mes tickets</h4><ul><li>Billet QR consultable hors-ligne</li><li>Compte à rebours avant l'évènement</li><li>Ajout au Wallet et transfert de billet</li><li>Nouvel onglet « Tickets » dans la navbar</li></ul></div>
+<!-- =============================== D. LIEUX =============================== -->
+<div class="group" id="g4"><span class="n">E</span><h2>Lieux</h2><p>Fiche lieu riche, réservation de table en 3 taps et avis vérifiés avec photos.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Liste des lieux">
+  <div class="sb" data-t="13:53"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Bars & lounges <span style="color:var(--muted);font-weight:500">· 48</span></h1><div class="bk"><i class="i" data-i="map" data-s="20"></i></div></div>
+  <div class="pad">
+    <div class="chips2" style="flex-wrap:nowrap;margin:4px 0 14px"><div class="c2 on">📍 Près de moi</div><div class="c2 out">⭐ Mieux notés</div><div class="c2 out">🟢 Ouverts</div></div>
+    <div class="pc"><div class="im" style="background-image:url(img/best.jpg)"><div class="like" style="right:10px;top:10px"><i class="i fill" data-i="heart" data-s="17" style="color:#E11D48"></i></div><span class="tag" style="position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.45);color:#fff">🔥 Populaire</span></div><div class="bd"><div style="display:flex;justify-content:space-between"><b>Best.t Lounge Bar Restaurant</b><span class="star">⭐ 4.6</span></div><div style="display:flex;gap:8px;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)">Avedji · 1,2 km · <span class="open">Ouvert</span></div></div></div>
+    <div class="pc"><div class="im pz e" style="height:120px"><span class="pzt" style="font-size:16px">Code<br>Bar</span><div class="like" style="right:10px;top:10px"><i class="i" data-i="heart" data-s="17"></i></div></div><div class="bd"><div style="display:flex;justify-content:space-between"><b>Le Code Bar</b><span class="star">⭐ 4.4</span></div><div style="display:flex;gap:8px;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)">Bè · 2,8 km · <span class="open" style="color:#D9611A">Ouvre à 18:00</span></div></div></div>
+    
+  </div>
+</section>
+
+<section class="ph" data-l="Détail lieu" data-bg="#fff">
+  <div class="sb" data-t="13:46" data-m="l"></div>
+  <div class="scroll">
+    <div class="cover" style="height:300px;background-image:url(img/best.jpg);background-position:center 35%"></div>
+    <div class="topbar"><div class="glass"><i class="i" data-i="back"></i></div><div class="grp"><div class="glass"><i class="i" data-i="share"></i></div><div class="glass"><i class="i" data-i="heart"></i></div></div></div>
+    <div class="gal"><i class="i" data-i="img" data-s="15"></i>1/24 · Galerie</div>
+    <div class="sheet" style="padding-bottom:120px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div class="cats" style="margin:0"><span class="cat">Bar lounge</span><span class="cat">Restaurant</span></div><span class="open">Ouvert</span></div>
+      <h2 style="margin-top:10px">Best.t Lounge Bar Restaurant</h2>
+      <div class="addr"><div class="sq"><i class="i" data-i="pin" data-s="18"></i></div><div>Carrefour Elavagnon, Avedji Ceg<br><span style="color:var(--muted);font-size:12px">Lomé, Togo · 1,2 km</span></div></div>
+      <div class="stats"><div class="stat"><small>Note</small><b>⭐ 4.6</b></div><div class="stat"><small>Capacité</small><b>100 pers.</b></div><div class="stat"><small>Ferme à</small><b>05:00</b></div></div>
+      <div class="seg" style="margin-top:14px"><div class="on">Infos</div><div>Le Mur</div><div>Menu</div><div>Avis</div></div>
+      <div class="h5" style="margin-top:4px">Commodités</div>
+      <div class="amen">
+        <div class="am"><i class="i" data-i="parking"></i><br>Parking</div>
+        <div class="am"><i class="i" data-i="fork"></i><br>Restauration</div>
+        <div class="am"><i class="i" data-i="cam"></i><br>Vidéosurveillance</div>
+      </div>
+    </div>
+  </div>
+  <div class="cta"><div class="sec-btn"><i class="i" data-i="phone"></i></div><div class="sec-btn" style="color:#16A34A"><i class="i" data-i="wa"></i></div><div class="btn">Réserver une table</div></div>
+</section>
+
+<section class="ph" data-l="Réserver une table" data-bg="#fff">
+  <div class="sb" data-t="14:05"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Réserver une table</h1><div style="width:42px"></div></div>
+  <div class="pad">
+    <div class="minitk"><div class="th" style="background-image:url(img/bestlogo.jpg)"></div><div><b style="font-size:14px;font-weight:600;display:block">Best.t Lounge Bar</b><small style="font-size:12px;color:var(--muted)">Confirmation immédiate · gratuit</small></div></div>
+    <span class="lbl">Date</span>
+    <div class="days"><div>Jeu<b>12</b></div><div class="on">Ven<b>13</b></div><div>Sam<b>14</b></div><div>Dim<b>15</b></div><div>Lun<b>16</b></div></div>
+    <span class="lbl">Heure</span>
+    <div class="slots"><div>19:00</div><div>20:00</div><div class="on">21:00</div><div>21:30</div><div class="x">22:00</div><div>22:30</div><div>23:00</div><div class="x">00:00</div></div>
+    <div class="li" style="margin-top:10px"><span class="sq lav"><i class="i" data-i="users" data-s="18"></i></span><span class="tx"><b>Personnes</b><small>Jusqu'à 12 par table</small></span><div class="qty"><span>−</span>4<span class="p">+</span></div></div>
+    <span class="lbl" style="margin-top:6px">Espace</span>
+    <div class="chips2"><div class="c2 out">🌿 Terrasse</div><div class="c2 on">✨ Salon VIP</div><div class="c2 out">🍸 Bar</div></div>
+    <div class="inp" style="margin-top:14px;height:50px">✍️ Une occasion spéciale ?</div>
+  </div>
+  <div class="cta"><div class="from">Ven. 13 · 21:00<b>4 pers.</b></div><div class="btn">Confirmer</div></div>
+</section>
+
+<section class="ph" data-l="Avis" data-bg="#fff">
+  <div class="sb" data-t="14:07"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Avis</h1><div style="width:42px"></div></div>
+  <div class="pad">
+    <div class="card flat" style="display:flex;gap:18px;align-items:center">
+      <div style="text-align:center"><b style="font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1">4.6</b><div class="stars">★★★★★</div><small style="font-size:11px;color:var(--muted)">128 avis</small></div>
+      <div class="rbars"><div>5<i style="--w:72%"></i></div><div>4<i style="--w:18%"></i></div><div>3<i style="--w:6%"></i></div><div>2<i style="--w:3%"></i></div><div>1<i style="--w:1%"></i></div></div>
+    </div>
+    <div class="chips2" style="margin-top:14px;flex-wrap:nowrap"><div class="c2 on">Tous</div><div class="c2 out">📷 Photos</div><div class="c2 out">Ambiance</div><div class="c2 out">Service</div></div>
+    <div class="rev"><div class="who"><div class="avatar g1">E</div><div style="flex:1"><b>Edem A. <span class="badge2 gr" style="margin-left:4px">Vérifié</span></b><small>il y a 3 jours</small></div><span class="stars">★★★★★</span></div><p>Super ambiance le vendredi soir, DJ au top et cocktails bien dosés. Le salon VIP vaut le coup pour un anniversaire 🎂</p><div class="ph"><div style="background-image:url(img/best.jpg)"></div><div style="background-image:url(img/bestlogo.jpg)"></div><div class="pz c"></div></div></div>
+    <div class="rev" style="border:0"><div class="who"><div class="avatar g4">F</div><div style="flex:1"><b>Fafa M.</b><small>il y a 1 semaine</small></div><span class="stars">★★★★<span style="color:#D7DCE8">★</span></span></div><p>Cadre très joli et service rapide. Un peu de monde après minuit, pensez à réserver.</p></div>
+  </div>
+  <div class="cta"><div class="btn"><i class="i" data-i="edit" data-s="18"></i>Écrire un avis</div></div>
+</section>
+
+</div>
+
+<!-- =============================== E. COMPTE =============================== -->
+<div class="group" id="g5"><span class="n">F</span><h2>Compte</h2><p>Profil, favoris, notifications intelligentes (rappels J-1, nouveautés des organisateurs suivis) et réglages.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Profil">
+  <div class="sb" data-t="14:10" data-m="l"></div>
+  <div class="ptop">
+    <div style="display:flex;justify-content:space-between"><div class="iconbtn"><i class="i" data-i="back"></i></div><div class="iconbtn"><i class="i" data-i="settings"></i></div></div>
+    <div class="avatar av g2" style="margin-top:-24px">K</div>
+    <h2>Kofi Mensah</h2><small>@kofi.m · Lomé</small>
+  </div>
+  <div class="pstats"><div><b>8</b><small>Tickets</small></div><div><b>23</b><small>Favoris</small></div><div><b>5</b><small>Avis</small></div></div>
+  <div class="pad" style="margin-top:16px">
+    <div class="promo"><div style="width:46px;height:46px;border-radius:15px;background:rgba(255,255,255,.15);display:grid;place-items:center;flex:none"><i class="i" data-i="mega"></i></div><div style="flex:1"><b>Devenir organisateur</b><small>Publiez et vendez vos billets sur Wakabi</small></div><i class="i" data-i="chev"></i></div>
+    <div style="margin-top:8px">
+      <div class="li"><span class="sq"><i class="i" data-i="ticket" data-s="18"></i></span><span class="tx"><b>Mes billets</b></span><span class="badge2">2 à venir</span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq lav"><i class="i" data-i="cal" data-s="18"></i></span><span class="tx"><b>Mes réservations</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq rd"><i class="i" data-i="heart" data-s="18"></i></span><span class="tx"><b>Favoris</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq gr"><i class="i" data-i="wallet" data-s="18"></i></span><span class="tx"><b>Moyens de paiement</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq or"><i class="i" data-i="gift" data-s="18"></i></span><span class="tx"><b>Parrainage</b><small>Gagnez 1 000 F par ami</small></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+    </div>
+  </div>
+</section>
+
+<section class="ph" data-l="Favoris">
+  <div class="sb" data-t="14:11"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Favoris</h1><div class="bk"><i class="i" data-i="search" data-s="18"></i></div></div>
+  <div class="pad">
+    <div class="seg" style="background:#E9EDF6;margin-top:4px"><div class="on">Évènements · 9</div><div>Lieux · 14</div></div>
+    <div class="favg">
+      <div class="ev"><div class="im" style="background-image:url(img/senzaa.jpg);background-position:75% center"><div class="date" style="padding:3px 7px"><b style="font-size:14px">18</b><span>Déc</span></div><div class="like" style="color:#E11D48;width:28px;height:28px"><i class="i fill" data-i="heart" data-s="15"></i></div></div><h4>Senzaa En Concert</h4><div class="meta">Palais des Congrès</div></div>
+      <div class="ev"><div class="im" style="background-image:url(img/mckey.jpg)"><div class="date" style="padding:3px 7px"><b style="font-size:14px">31</b><span>Oct</span></div><div class="like" style="color:#E11D48;width:28px;height:28px"><i class="i fill" data-i="heart" data-s="15"></i></div></div><h4>Mc Key En Concert</h4><div class="meta">Bella Bellow</div></div>
+      <div class="ev"><div class="im pz a"><span class="pzt" style="font-size:15px">Afro<br>Night</span><div class="date" style="padding:3px 7px"><b style="font-size:14px">13</b><span>Nov</span></div><div class="like" style="color:#E11D48;width:28px;height:28px"><i class="i fill" data-i="heart" data-s="15"></i></div></div><h4>Afro Night Live</h4><div class="meta">Best.t Lounge</div></div>
+      <div class="ev"><div class="im pz b"><span class="pzt" style="font-size:15px">Jazz<br>au bord<br>de mer</span><div class="date" style="padding:3px 7px"><b style="font-size:14px">22</b><span>Nov</span></div><div class="like" style="color:#E11D48;width:28px;height:28px"><i class="i fill" data-i="heart" data-s="15"></i></div></div><h4>Jazz au bord de mer</h4><div class="meta">Plage de Lomé</div></div>
+      <div class="ev"><div class="im" style="background-image:url(img/best.jpg)"></div><h4>Best.t Lounge</h4></div>
+      <div class="ev"><div class="im pz d"></div><h4>Coco Beach</h4></div>
+    </div>
+  </div>
+</section>
+
+<section class="ph" data-l="Notifications" data-bg="#fff">
+  <div class="sb" data-t="14:12"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Notifications</h1><span style="font-size:12.5px;font-weight:600;color:var(--blue)">Tout lire</span></div>
+  <div class="pad">
+    <div class="chips2" style="margin:4px 0 6px"><div class="c2 on">Toutes</div><div class="c2 out">Billets</div><div class="c2 out">Social</div><div class="c2 out">Promos</div></div>
+    <div class="sh">Aujourd'hui</div>
+    <div class="nt new"><span class="avatar g1" style="width:44px;height:44px"><i class="i" data-i="ticket" data-s="20"></i></span><div class="tx"><b>Rappel :</b> Afro Night Live Band c'est demain à 21:00 🎶<small>il y a 10 min</small></div></div>
+    <div class="nt new"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div class="tx"><b>Senzaa Concert</b> a publié sur Le Mur : « J-36 ! Les pass VIP partent vite… »<small>il y a 2 h</small></div></div>
+    <div class="nt"><span class="avatar g3" style="width:44px;height:44px"><i class="i" data-i="check" data-s="20"></i></span><div class="tx">Votre table au <b>Best.t Lounge</b> est confirmée · Ven. 13 à 21:00<small>il y a 4 h</small></div></div>
+    <div class="sh">Cette semaine</div>
+    <div class="nt"><div class="th" style="background-image:url(img/mckey.jpg)"></div><div class="tx"><b>Mc Key</b> : nouvelles places disponibles à 2 000 F<small>Lun.</small></div></div>
+    <div class="nt"><span class="avatar g4" style="width:44px;height:44px"><i class="i" data-i="star" data-s="20"></i></span><div class="tx">Comment s'est passée votre soirée au <b>Best.t</b> ? Laissez un avis ⭐<small>Dim.</small></div></div>
+  </div>
+</section>
+
+<section class="ph" data-l="Paramètres">
+  <div class="sb" data-t="14:13"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="back"></i></div><h1>Paramètres</h1><div style="width:42px"></div></div>
+  <div class="pad">
+    <div class="sh">Compte</div>
+    <div class="card" style="padding:2px 16px">
+      <div class="li"><span class="sq"><i class="i" data-i="user" data-s="18"></i></span><span class="tx"><b>Informations personnelles</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq"><i class="i" data-i="phone" data-s="18"></i></span><span class="tx"><b>Numéro de téléphone</b><small>+228 91 •• •• 21</small></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq"><i class="i" data-i="lock" data-s="18"></i></span><span class="tx"><b>Sécurité</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+    </div>
+    <div class="sh">Préférences</div>
+    <div class="card" style="padding:2px 16px">
+      <div class="li"><span class="sq lav"><i class="i" data-i="bell" data-s="18"></i></span><span class="tx"><b>Notifications push</b></span><span class="sw2 on"></span></div>
+      <div class="li"><span class="sq lav"><i class="i" data-i="moon" data-s="18"></i></span><span class="tx"><b>Mode sombre</b></span><span class="sw2"></span></div>
+      <div class="li"><span class="sq lav"><i class="i" data-i="globe" data-s="18"></i></span><span class="tx"><b>Langue</b></span><span style="font-size:13px;color:var(--muted)">Français</span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li"><span class="sq lav"><i class="i" data-i="pin" data-s="18"></i></span><span class="tx"><b>Ville par défaut</b></span><span style="font-size:13px;color:var(--muted)">Lomé</span><i class="i chev" data-i="chev" data-s="18"></i></div>
+    </div>
+    <div class="sh">Aide</div>
+    <div class="card" style="padding:2px 16px">
+      <div class="li"><span class="sq gr"><i class="i" data-i="help" data-s="18"></i></span><span class="tx"><b>Centre d'aide</b></span><i class="i chev" data-i="chev" data-s="18"></i></div>
+      <div class="li" style="color:#DC2626"><span class="sq rd"><i class="i" data-i="logout" data-s="18"></i></span><span class="tx"><b>Déconnexion</b></span></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<!-- =============================== F. CRÉER / ORGANISATEUR =============================== -->
+<div class="group" id="g6"><span class="n">G</span><h2>Créer & espace organisateur</h2><p>Le bouton « + » ouvre la publication. Les organisateurs suivent leurs ventes et scannent les billets à l'entrée.</p></div>
+<div class="row">
+
+<section class="ph" data-l="Créer (+)">
+  <div class="sb" data-t="13:45" data-m="l"></div>
+  <div class="scroll" style="filter:blur(4px)"><div class="h-top" style="height:200px"></div><div class="hero" style="margin-top:60px"></div></div>
+  <div class="dim"></div>
+  <div class="bs" style="padding-bottom:120px">
+    <div class="grab"></div>
+    <b style="font-size:19px;font-weight:700;display:block">Que voulez-vous publier ?</b>
+    <p class="t2" style="margin:2px 0 16px">Visible par toute la communauté Wakabi.</p>
+    <div class="ctile">
+      <div><span class="sq" style="background:var(--blue);color:#fff"><i class="i" data-i="cal"></i></span><b>Un évènement</b><small>Concert, soirée, festival… avec billetterie</small></div>
+      <div><span class="sq" style="background:var(--lav-ink);color:#fff"><i class="i" data-i="pin"></i></span><b>Un lieu</b><small>Bar, resto, hôtel, salle…</small></div>
+      <div><span class="sq" style="background:var(--warm);color:#fff"><i class="i" data-i="cam"></i></span><b>Un post</b><small>Photo ou vidéo sur un Mur</small></div>
+      <div><span class="sq" style="background:var(--ok);color:#fff"><i class="i" data-i="tag"></i></span><b>Un bon plan</b><small>Happy hour, promo, offre</small></div>
+    </div>
+  </div>
+  <div class="fab" style="position:absolute;left:50%;bottom:34px;transform:translateX(-50%);z-index:20;margin:0;background:var(--ink)"><i class="i" data-i="close"></i></div>
+</section>
+
+<section class="ph" data-l="Créer un évènement" data-bg="#fff">
+  <div class="sb" data-t="14:20"></div>
+  <div class="hdr"><div class="bk"><i class="i" data-i="close"></i></div><h1>Nouvel évènement</h1><span style="font-size:12.5px;font-weight:600;color:var(--muted)">Brouillon</span></div>
+  <div class="pad">
+    <div style="display:flex;gap:6px;margin:2px 0 6px"><div class="prog" style="flex:1"><i style="width:100%"></i></div><div class="prog" style="flex:1"><i style="width:100%"></i></div><div class="prog" style="flex:1"></div><div class="prog" style="flex:1"></div></div>
+    <div style="font-size:12px;color:var(--muted)">Étape 2/4 · <b style="color:var(--ink)">Infos & billetterie</b></div>
+    <div class="upload" style="margin-top:14px"><div class="th" style="background-image:url(img/senzaa.jpg);background-position:75% center"></div><div><b style="font-size:14px;font-weight:600;display:block">Affiche ajoutée ✓</b><small style="font-size:12px;color:var(--muted);display:block;margin:2px 0 8px">Format 4:5 recommandé</small><span class="badge2">+ Ajouter des photos</span></div></div>
+    <span class="lbl">Titre</span>
+    <div class="inp f"><span class="v">Senzaa En Concert</span></div>
+    <div style="display:flex;gap:10px"><div style="flex:1"><span class="lbl">Date</span><div class="inp"><i class="i" data-i="cal" data-s="18"></i><span class="v">18/12/2026</span></div></div><div style="width:120px"><span class="lbl">Heure</span><div class="inp"><i class="i" data-i="clock" data-s="18"></i><span class="v">18:00</span></div></div></div>
+    <div class="li" style="margin-top:10px"><span class="sq"><i class="i" data-i="ticket" data-s="18"></i></span><span class="tx"><b>Billetterie Wakabi</b><small>3 types de billets · 1 500 places</small></span><span class="sw2 on"></span></div>
+  </div>
+  <div class="cta"><div class="btn ghost" style="flex:.5">Retour</div><div class="btn">Suivant</div></div>
+</section>
+
+<section class="ph" data-l="Tableau de bord organisateur">
+  <div class="sb" data-t="14:25" data-m="l"></div>
+  <div class="h-top" style="padding-bottom:84px">
+    <div class="hello"><div><small>Espace organisateur</small><h2 style="display:flex;align-items:center;gap:6px">Senzaa En Concert <i class="i" data-i="down" data-s="18"></i></h2></div><div class="iconbtn"><i class="i" data-i="bell"></i></div></div>
+  </div>
+  <div class="pad" style="margin-top:-62px;position:relative">
+    <div class="card" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><small style="font-size:12px;color:var(--muted)">Billets vendus</small><span style="font-size:11.5px;color:var(--ok);font-weight:600">+18 % cette semaine</span></div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin:2px 0 10px"><b style="font-size:30px;font-weight:700;letter-spacing:-.03em">842</b><span style="color:var(--muted);font-size:14px">/ 1 500</span></div>
+      <div class="prog" style="height:8px"><i style="width:56%"></i></div>
+    </div>
+    <div class="kpis" style="margin-top:10px">
+      <div class="kpi"><small><i class="i" data-i="wallet" data-s="14"></i>Revenus</small><b>6,4 M F</b><span class="up">↑ 1,1 M</span></div>
+      <div class="kpi"><small><i class="i" data-i="eye" data-s="14"></i>Vues</small><b>12,3 k</b><span class="up">↑ 24 %</span></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between"><b style="font-size:14px;font-weight:600">Ventes · 7 jours</b><span style="font-size:12px;color:var(--muted)">Semaine ▾</span></div>
+      <div class="chart"><div><i style="height:30%"></i>L</div><div><i style="height:45%"></i>M</div><div><i style="height:38%"></i>M</div><div><i style="height:60%"></i>J</div><div class="on"><i style="height:92%"></i>V</div><div><i style="height:74%"></i>S</div><div><i style="height:50%"></i>D</div></div>
+    </div>
+    <div class="qa" style="margin-top:16px">
+      <div><span class="sq"><i class="i" data-i="scan"></i></span>Scanner</div>
+      <div><span class="sq"><i class="i" data-i="tag"></i></span>Promo</div>
+      <div><span class="sq"><i class="i" data-i="mega"></i></span>Booster</div>
+      <div><span class="sq"><i class="i" data-i="edit"></i></span>Modifier</div>
+    </div>
+  </div>
+</section>
+
+<section class="ph" data-l="Scanner les billets" data-bg="#000">
+  <div class="cam"></div>
+  <div class="sb" data-t="17:52" data-m="l"></div>
+  <div class="hdr" style="color:#fff"><div class="glass"><i class="i" data-i="close"></i></div><h1>Scanner les billets</h1><div class="glass"><i class="i" data-i="flash"></i></div></div>
+  <div style="position:absolute;top:120px;left:0;right:0;text-align:center;z-index:5"><span style="background:rgba(255,255,255,.18);backdrop-filter:blur(10px);color:#fff;font-size:12.5px;font-weight:500;padding:7px 14px;border-radius:12px">Entrés : <b>312</b> / 842</span></div>
+  <div class="frame"><i></i><i></i><i></i><i></i><svg class="q qrc" viewBox="0 0 29 29" shape-rendering="crispEdges" data-light></svg><div class="line"></div></div>
+  <div class="bs" style="padding-top:16px;z-index:10">
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="okc" style="width:54px;height:54px;margin:0;box-shadow:0 0 0 8px rgba(22,163,74,.12)"><i class="i" data-i="check" data-s="28"></i></div>
+      <div style="flex:1"><b style="font-size:17px;font-weight:700;color:var(--ok);display:block">Billet valide</b><small style="font-size:12.5px;color:var(--muted)">Scanné à 17:52 · Porte A</small></div>
+    </div>
+    <div class="card flat" style="margin-top:14px;display:flex;justify-content:space-between">
+      <div><small style="font-size:11px;color:var(--muted);display:block">Titulaire</small><b style="font-size:14px;font-weight:600">Ama Koffi</b></div>
+      <div><small style="font-size:11px;color:var(--muted);display:block">Pass</small><b style="font-size:14px;font-weight:600;color:var(--blue)">VIP · 1/2</b></div>
+      <div><small style="font-size:11px;color:var(--muted);display:block">Code</small><b style="font-size:14px;font-weight:600">7F3K</b></div>
+    </div>
+    <div class="btn w" style="margin-top:14px">Scanner le suivant</div>
+  </div>
+</section>
+
 </div>
 
 <script>
-// decorative QR-like pattern
-(function(){const s=document.getElementById('qr');let h='';const N=29;let seed=7;const r=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
-const finder=(x,y)=>{h+=`<rect x="${x}" y="${y}" width="7" height="7" fill="#0F1A33"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#2453C4"/>`};
-for(let y=0;y<N;y++)for(let x=0;x<N;x++){const inF=(x<8&&y<8)||(x>20&&y<8)||(x<8&&y>20);if(!inF&&r()>.52)h+=`<rect x="${x}" y="${y}" width="1" height="1" fill="#0F1A33"/>`}
-finder(0,0);finder(22,0);finder(0,22);s.innerHTML=h})();
+const P={
+home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+cal:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+pin:'<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+ticket:'<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v14" stroke-dasharray="2 2"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+filter:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+back:'<path d="m15 18-6-6 6-6"/>',chev:'<path d="m9 6 6 6-6 6"/>',down:'<path d="m6 9 6 6 6-6"/>',
+share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
+heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+star:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+wa:'<path d="M3 21l1.6-4.8A8.5 8.5 0 1 1 8 19.6z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 0 1-1.8-1.8l.8-1-1-2z"/>',
+arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',check:'<path d="M5 12.5l4.5 4.5L19 7"/>',close:'<path d="M6 6l12 12M18 6 6 18"/>',
+img:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+msg:'<path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12z"/>',
+settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+list:'<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+fork:'<path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18M17 21V3c-2 1-3 4-3 8h3"/>',
+moon:'<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',
+globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+lock:'<rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+logout:'<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>',
+card:'<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>',
+scan:'<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10"/>',
+edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+upload:'<path d="M12 15V3M7 8l5-5 5 5M5 21h14"/>',
+send:'<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
+flash:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+gift:'<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10 3 7.5 4 9 8 12 8zM12 8s2-5 4.5-4S15 8 12 8z"/>',
+help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>',
+shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+target:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+wallet:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/>',
+users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/>',
+mega:'<path d="M3 11v2a1 1 0 0 0 1 1h3l7 5V5L7 10H4a1 1 0 0 0-1 1z"/><path d="M18 9a4 4 0 0 1 0 6"/>',
+tag:'<path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+cam:'<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/>',
+parking:'<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 17V8h4a3 3 0 0 1 0 6H9"/>',
+del:'<path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m12 9 6 6M18 9l-6 6"/>'
+};
+const svg=(n,s=22,f=false)=>`<svg class="ic" viewBox="0 0 24 24" style="width:${s}px;height:${s}px${f?';fill:currentColor':''}">${P[n]||''}</svg>`;
+
+let NUM=0;document.querySelectorAll('section.ph').forEach(sec=>{NUM++;
+  const col=document.createElement('div');col.className='col';
+  col.innerHTML=`<div class="label">${String(NUM).padStart(2,"0")} · ${sec.dataset.l}</div><div class="phone"><div class="screen" style="${sec.dataset.bg?'background:'+sec.dataset.bg:''}"><div class="island"></div></div></div>`;
+  const scr=col.querySelector('.screen');while(sec.firstChild)scr.appendChild(sec.firstChild);
+  sec.replaceWith(col);
+});
+document.querySelectorAll('.sb').forEach(e=>{
+  const l=e.dataset.m==='l',c=l?'#fff':'#0F1A33';
+  e.className='status '+(l?'light':'dark');
+  e.innerHTML=`<span>${e.dataset.t}</span><span class="sicons"><svg width="18" height="12" viewBox="0 0 18 12" fill="${c}"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="${c}" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="2" fill="${c}"/></svg></span>`;
+});
+document.querySelectorAll('nav.tabbar').forEach(n=>{
+  const t=[['home','Accueil'],['cal','Agenda'],null,['pin','Explorer'],['ticket','Tickets']];
+  n.innerHTML=t.map(x=>x?`<div class="tab ${n.dataset.on===x[0]?'on':''}">${svg(x[0])}${x[1]}${n.dataset.on===x[0]?'<i class="dot"></i>':''}</div>`:`<div class="fab">${svg('plus')}</div>`).join('');
+});
+document.querySelectorAll('i.i[data-i]').forEach(e=>{e.innerHTML=svg(e.dataset.i,+e.dataset.s||22,e.classList.contains('fill'))});
+(function(){const c=document.getElementById('cal');let h=['L','M','M','J','V','S','D'].map(d=>`<div class="h">${d}</div>`).join('');
+const ev=[4,5,11,12,13,18,19,24,26,31];h+=`<div class="d o">30</div>`;
+for(let d=1;d<=31;d++){let k='d';if(ev.includes(d))k+=' e';if(d===18)k+=' s';if(d===12)k+=' t';h+=`<div class="${k}">${d}</div>`}
+[1,2,3].forEach(d=>h+=`<div class="d o">${d}</div>`);c.innerHTML=h})();
+document.querySelectorAll('.qrc').forEach((s,idx)=>{let h='';const N=29;let seed=7+idx*13;const r=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+const L=s.hasAttribute('data-light'),dark=L?'#fff':'#0F1A33',acc=L?'#fff':'#2453C4';
+const f=(x,y)=>{h+=`<rect x="${x}" y="${y}" width="7" height="7" fill="${dark}"/>`+(L?`<rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#333"/>`:`<rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/>`)+`<rect x="${x+2}" y="${y+2}" width="3" height="3" fill="${acc}"/>`};
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const inF=(x<8&&y<8)||(x>20&&y<8)||(x<8&&y>20);if(!inF&&r()>.52)h+=`<rect x="${x}" y="${y}" width="1" height="1" fill="${dark}"/>`}
+f(0,0);f(22,0);f(0,22);s.innerHTML=h});
+document.querySelectorAll('.mapfill').forEach(m=>{m.innerHTML=`<svg width="100%" height="100%" viewBox="0 0 368 822" preserveAspectRatio="xMidYMid slice"><rect width="368" height="822" fill="#EDF1F7"/>
+<path d="M0 700 Q180 650 368 690 L368 822 L0 822Z" fill="#BFD8F2"/>
+<rect x="30" y="230" width="110" height="80" rx="14" fill="#DCEBD5"/><rect x="230" y="560" width="100" height="90" rx="14" fill="#DCEBD5"/><circle cx="300" cy="180" r="40" fill="#DCEBD5"/>
+<g stroke="#fff" fill="none" stroke-linecap="round"><path d="M-10 420 L380 340" stroke-width="18"/><path d="M150 -10 L230 830" stroke-width="14"/><path d="M-10 200 L380 250" stroke-width="9"/><path d="M-10 590 L380 520" stroke-width="9"/><path d="M60 -10 L20 830" stroke-width="7"/><path d="M320 -10 L340 830" stroke-width="7"/><path d="M-10 120 L380 90" stroke-width="5"/></g>
+<path d="M-10 420 L380 340" stroke="#FCD989" stroke-width="5" opacity=".7"/>
+<text x="230" y="760" font-family="Poppins" font-size="12" fill="#7AA3CC" font-weight="500">Golfe de Guinée</text>
+<text x="40" y="410" font-family="Poppins" font-size="9.5" fill="#9AA3B8" transform="rotate(-11 40 410)">Bd du 13 Janvier</text></svg>`});
 </script>
 </body>
 </html>
