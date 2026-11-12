@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wakabi — Maquette 2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#2453C4; --blue-d:#1A3E9A; --blue-50:#EEF3FF; --blue-100:#DCE6FF;
+  --ink:#0F1A33; --muted:#6B7590; --line:#E8ECF5; --bg:#F5F7FC;
+  --lav:#ECEAFF; --lav-ink:#6C63FF; --ok:#16A34A; --warm:#FF8A3D;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Poppins,Inter,system-ui,sans-serif;background:linear-gradient(160deg,#E9EFFD 0%,#F7F8FC 50%,#E6ECFB 100%);color:var(--ink);padding:56px 40px 72px}
+.head{max-width:1720px;margin:0 auto 44px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .logo{width:52px;height:52px;border-radius:16px;background:var(--blue);display:grid;place-items:center;box-shadow:0 10px 24px -8px rgba(36,83,196,.6)}
+.head h1{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.head p{color:var(--muted);font-size:15px;margin-top:2px}
+.swatches{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+.sw{width:28px;height:28px;border-radius:9px;border:1px solid rgba(0,0,0,.06)}
+.row{max-width:1720px;margin:0 auto;display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;align-items:center;gap:18px}
+.label{font-size:14px;font-weight:600;color:var(--blue-d);background:#fff;padding:6px 14px;border-radius:99px;box-shadow:0 2px 10px rgba(15,26,51,.06)}
+
+/* phone */
+.phone{width:390px;height:844px;border-radius:52px;background:#0B0F1A;padding:11px;box-shadow:0 40px 80px -30px rgba(15,26,51,.45),0 0 0 1px rgba(0,0,0,.2)}
+.screen{position:relative;width:100%;height:100%;border-radius:42px;overflow:hidden;background:var(--bg)}
+.scroll{position:absolute;inset:0;overflow:hidden}
+.fade{-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent 93%)}
+.status{position:absolute;top:0;left:0;right:0;height:46px;display:flex;justify-content:space-between;align-items:center;padding:0 28px 0 34px;font-size:14px;font-weight:600;z-index:30}
+.status.light{color:#fff}
+.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:31px;border-radius:20px;background:#000;z-index:31}
+.sicons{display:flex;gap:6px;align-items:center}
+svg{display:block}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* tabbar */
+.tabbar{position:absolute;left:14px;right:14px;bottom:18px;height:70px;border-radius:26px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);box-shadow:0 12px 30px -10px rgba(15,26,51,.25),0 0 0 1px rgba(15,26,51,.04);display:flex;align-items:center;justify-content:space-around;z-index:20}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:#9AA3B8;font-weight:500;width:56px}
+.tab.on{color:var(--blue)}
+.tab.on .dot{width:4px;height:4px;border-radius:2px;background:var(--blue)}
+.fab{width:54px;height:54px;border-radius:18px;background:var(--blue);display:grid;place-items:center;color:#fff;box-shadow:0 10px 22px -6px rgba(36,83,196,.7);margin-top:-30px;border:4px solid #fff}
+
+/* home */
+.h-top{background:var(--blue);padding:56px 20px 74px;color:#fff;position:relative}
+.h-top:before{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);right:-90px;top:-70px}
+.hello{display:flex;justify-content:space-between;align-items:center}
+.hello small{opacity:.75;font-size:12.5px;display:flex;align-items:center;gap:4px}
+.hello h2{font-size:22px;font-weight:600;letter-spacing:-.01em;margin-top:2px}
+.iconbtn{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.16);display:grid;place-items:center;position:relative}
+.iconbtn .badge{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--warm);border:2px solid var(--blue)}
+.search{position:absolute;left:20px;right:20px;bottom:-26px;height:54px;background:#fff;border-radius:18px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;color:var(--muted);font-size:14px;box-shadow:0 14px 30px -14px rgba(15,26,51,.35)}
+.search .flt{margin-left:auto;width:40px;height:40px;border-radius:13px;background:var(--blue);color:#fff;display:grid;place-items:center}
+.chips{display:flex;gap:8px;padding:44px 20px 0;overflow:hidden}
+.chip{flex:none;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:14px;background:#fff;font-size:13px;font-weight:500;color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.chip.on{background:var(--ink);color:#fff;box-shadow:none}
+.sec{display:flex;justify-content:space-between;align-items:baseline;padding:22px 20px 12px}
+.sec h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.sec a{font-size:13px;color:var(--blue);font-weight:500;text-decoration:none}
+.hero{margin:0 20px;height:150px;border-radius:24px;overflow:hidden;position:relative;background:url(img/woodin.jpg) center/cover}
+.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(10,18,40,.85),rgba(10,18,40,0) 60%)}
+.hero .tx{position:absolute;left:16px;bottom:14px;right:16px;color:#fff;z-index:2}
+.tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:8px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px)}
+.hero b{display:block;font-size:17px;font-weight:600;margin-top:6px}
+.dots{position:absolute;right:16px;bottom:18px;display:flex;gap:4px;z-index:2}
+.dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.5)}
+.dots i.on{width:18px;background:#fff}
+.hs{display:flex;gap:14px;padding:0 20px;overflow:hidden}
+.ev{flex:none;width:200px;background:#fff;border-radius:22px;padding:8px;box-shadow:0 8px 24px -16px rgba(15,26,51,.4)}
+.ev .im{height:130px;border-radius:16px;background-size:cover;background-position:center;position:relative}
+.date{position:absolute;left:8px;top:8px;background:#fff;border-radius:12px;padding:4px 9px;text-align:center;line-height:1.05}
+.date b{display:block;font-size:17px;font-weight:700}
+.date span{font-size:10px;font-weight:600;color:var(--blue);text-transform:uppercase}
+.like{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:11px;background:rgba(255,255,255,.85);display:grid;place-items:center;color:var(--ink)}
+.ev h4{font-size:14px;font-weight:600;margin:10px 6px 4px}
+.meta{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);margin:0 6px 6px}
+.price{display:flex;justify-content:space-between;align-items:center;margin:8px 6px 4px}
+.price b{font-size:13px;color:var(--blue);font-weight:600}
+.pill-s{font-size:11px;padding:3px 8px;border-radius:8px;background:var(--blue-50);color:var(--blue);font-weight:500}
+.pl{display:flex;gap:12px;align-items:center;background:#fff;margin:0 20px 10px;padding:10px;border-radius:20px;box-shadow:0 8px 24px -18px rgba(15,26,51,.4)}
+.pl .th{width:66px;height:66px;border-radius:16px;background-size:cover;background-position:center;flex:none}
+.pl h4{font-size:14px;font-weight:600}
+.pl .meta{margin:3px 0 0}
+.open{font-size:11px;font-weight:600;color:var(--ok);display:flex;align-items:center;gap:4px}
+.open:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.star{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:600}
+
+/* detail */
+.cover{height:360px;background-size:cover;background-position:center;position:relative}
+.cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 60%,rgba(0,0,0,.4) 100%)}
+.topbar{position:absolute;top:52px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:5}
+.glass{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.22);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;color:#fff}
+.grp{display:flex;gap:8px}
+.gal{position:absolute;right:16px;bottom:44px;z-index:5;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:12px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);color:#fff;font-size:12px;font-weight:500}
+.sheet{position:relative;margin-top:-30px;background:#fff;border-radius:30px 30px 0 0;padding:22px 20px 140px;z-index:6;min-height:600px}
+.sheet h2{font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.cats{display:flex;gap:6px;margin:10px 0 0;flex-wrap:wrap}
+.cat{font-size:12px;font-weight:500;padding:5px 11px;border-radius:10px;background:var(--blue-50);color:var(--blue)}
+.seg{display:flex;background:var(--bg);border-radius:14px;padding:4px;margin:18px 0 16px}
+.seg div{flex:1;text-align:center;font-size:13px;font-weight:500;padding:9px 0;border-radius:11px;color:var(--muted)}
+.seg .on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 2px 8px rgba(15,26,51,.08)}
+.info{display:flex;align-items:center;gap:12px;padding:10px 0}
+.info .sq{width:46px;height:46px;border-radius:14px;background:var(--lav);color:var(--lav-ink);display:grid;place-items:center;flex:none}
+.info b{display:block;font-size:14.5px;font-weight:600}
+.info span{font-size:12.5px;color:var(--muted)}
+.info .r{margin-left:auto}
+.info .cd,.cd{font-size:12px;font-weight:600;color:#fff;background:var(--blue);padding:6px 10px;border-radius:10px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
+.tier{border:1.5px solid var(--line);border-radius:16px;padding:10px 10px 11px}
+.tier.on{border-color:var(--blue);background:var(--blue-50)}
+.tier small{font-size:11px;color:var(--muted);font-weight:500}
+.tier b{display:block;font-size:14px;font-weight:700;margin-top:2px}
+.tier.on small{color:var(--blue)}
+.h5{font-size:15px;font-weight:600;margin:18px 0 8px}
+.p{font-size:13px;line-height:1.6;color:var(--muted)}
+.p a{color:var(--blue);font-weight:600;text-decoration:none}
+.org{display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;background:var(--bg);margin-top:14px}
+.av{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#FF4D4D,#B3122E);color:#fff;display:grid;place-items:center;font-weight:700}
+.follow{margin-left:auto;font-size:12px;font-weight:600;color:var(--blue);border:1.5px solid var(--blue);border-radius:11px;padding:6px 12px}
+.cta{position:absolute;left:0;right:0;bottom:0;padding:14px 20px 30px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;z-index:20}
+.cta .sec-btn{width:54px;height:54px;border-radius:17px;border:1.5px solid var(--line);display:grid;place-items:center;color:var(--ink);flex:none}
+.cta .from{font-size:11px;color:var(--muted)}
+.cta .from b{display:block;font-size:17px;color:var(--ink);font-weight:700}
+.btn{flex:1;height:54px;border-radius:17px;background:var(--blue);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 12px 24px -10px rgba(36,83,196,.8)}
+
+/* place */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0 4px}
+.stat{background:var(--bg);border-radius:16px;padding:10px 12px}
+.stat small{font-size:11px;color:var(--muted)}
+.stat b{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700;margin-top:2px}
+.addr{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:var(--ink)}
+.addr .sq{width:38px;height:38px;border-radius:12px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;flex:none}
+.amen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.am{border:1px solid var(--line);border-radius:16px;padding:12px 6px;text-align:center;font-size:11.5px;font-weight:500;color:var(--ink)}
+.am svg{margin:0 auto 6px;color:var(--blue)}
+.hours{border:1px solid var(--line);border-radius:18px;padding:4px 14px}
+.hr{display:flex;justify-content:space-between;font-size:13px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.hr:last-child{border:0}
+.hr b{font-weight:600}
+.hr.today{color:var(--blue)}
+.map{height:150px;border-radius:20px;position:relative;overflow:hidden;background:#EAF0F7}
+.mapsvg{position:absolute;inset:0}
+.pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:44px;height:44px;border-radius:14px 14px 14px 4px;rotate:-45deg;background:var(--blue);display:grid;place-items:center;box-shadow:0 8px 16px -4px rgba(36,83,196,.7)}
+.pin div{rotate:45deg;width:28px;height:28px;border-radius:9px;background:url(img/bestlogo.jpg) center/cover;border:2px solid #fff}
+.mapbtn{position:absolute;right:10px;bottom:10px;background:#fff;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600;color:var(--blue);display:flex;gap:6px;align-items:center;box-shadow:0 4px 12px rgba(15,26,51,.12)}
+
+/* ticket */
+.tk-top{background:var(--blue);height:300px;padding:56px 20px 0;color:#fff;position:relative;overflow:hidden}
+.tk-top:before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);left:-110px;top:-60px}
+.tk-head{display:flex;justify-content:space-between;align-items:center}
+.tk-head h2{font-size:20px;font-weight:600}
+.tabs2{display:flex;gap:6px;margin-top:18px}
+.tabs2 div{font-size:13px;padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.14);font-weight:500}
+.tabs2 .on{background:#fff;color:var(--blue);font-weight:600}
+.ticket{position:absolute;left:20px;right:20px;top:170px;background:#fff;border-radius:26px;box-shadow:0 30px 50px -24px rgba(15,26,51,.45);overflow:hidden}
+.tk-im{height:120px;background:url(img/senzaa.jpg) center 30%/cover;position:relative}
+.tk-im:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.6),transparent 70%)}
+.tk-im .tag{position:absolute;left:14px;bottom:12px;z-index:2;color:#fff;background:var(--warm)}
+.tk-b{padding:16px 18px 6px}
+.tk-b h3{font-size:18px;font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;margin-top:12px}
+.grid2 small{font-size:11px;color:var(--muted);display:block}
+.grid2 b{font-size:13.5px;font-weight:600}
+.perf{position:relative;height:28px;margin:6px 0}
+.perf:before{content:"";position:absolute;left:18px;right:18px;top:50%;border-top:2px dashed var(--line)}
+.perf i{position:absolute;top:0;width:28px;height:28px;border-radius:50%;background:var(--bg)}
+.perf i:first-child{left:-14px}.perf i:last-child{right:-14px}
+.qr{display:flex;flex-direction:column;align-items:center;padding:4px 0 18px}
+.qr .code{width:150px;height:150px;padding:10px;border-radius:18px;border:1.5px solid var(--line)}
+.qr small{font-size:11.5px;color:var(--muted);margin-top:8px;letter-spacing:.12em}
+.tk-actions{position:absolute;left:20px;right:20px;bottom:104px;display:flex;gap:10px}
+.tk-actions div{flex:1;height:50px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.tk-actions .pri{background:var(--ink);color:#fff;box-shadow:none}
+
+.notes{max-width:1720px;margin:56px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.note{background:#fff;border-radius:22px;padding:20px 22px;box-shadow:0 10px 30px -22px rgba(15,26,51,.4)}
+.note h4{font-size:15px;font-weight:600;margin-bottom:8px;color:var(--blue-d)}
+.note ul{padding-left:18px;font-size:13px;line-height:1.7;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="pinlogo" viewBox="0 0 40 40"><path d="M20 3c-7.2 0-13 5.6-13 12.6C7 25 20 37 20 37s13-12 13-21.4C33 8.6 27.2 3 20 3z" fill="none" stroke="#fff" stroke-width="3"/><path d="M12.5 12l3.6 10.5L20 14l3.9 8.5L27.5 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="head">
+  <div class="brand">
+    <div class="logo"><svg width="30" height="30"><use href="#pinlogo"/></svg></div>
+    <div><h1>Wakabi 2.0 — Proposition de refonte</h1><p>Même ADN (bleu Wakabi, blanc, Poppins, pin « W »), interface plus immersive et plus rapide à scanner.</p></div>
+  </div>
+  <div class="swatches">
+    <div class="sw" style="background:#2453C4"></div><div class="sw" style="background:#1A3E9A"></div><div class="sw" style="background:#EEF3FF"></div><div class="sw" style="background:#ECEAFF"></div><div class="sw" style="background:#0F1A33"></div><div class="sw" style="background:#FF8A3D"></div>
+  </div>
+</div>
+
+<div class="row">
+
+<!-- ========== 1. ACCUEIL ========== -->
+<div class="col"><div class="label">01 · Accueil</div>
+<div class="phone"><div class="screen"><div class="island"></div>
+  <div class="status light"><span>13:45</span><span class="sicons"><svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+  <div class="scroll fade">
+    <div class="h-top">
+      <div class="hello">
+        <div><small><svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Lomé, Togo ▾</small><h2>Bonsoir Kofi 👋</h2></div>
+        <div class="grp" style="display:flex;gap:8px"><div class="iconbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><i class="badge"></i></div></div>
+      </div>
+      <div class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Concerts, bars, restos…<div class="flt"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></div></div>
+    </div>
+    <div class="chips"><div class="chip on">🔥 Tendances</div><div class="chip">🎤 Concerts</div><div class="chip">🍸 Bars</div><div class="chip">🍽️ Restos</div></div>
+    <div class="sec" style="padding-top:18px"><h3>À la une</h3></div>
+    <div class="hero"><div class="tx"><span class="tag">Sponsorisé</span><b>Woodin — Nouvelle collection</b></div><div class="dots"><i></i><i></i><i class="on"></i><i></i></div></div>
+    <div class="sec"><h3>Ce week-end</h3><a href="#">Voir tout</a></div>
+    <div class="hs">
+      <div class="ev"><div class="im" style="background-image:url(img/senzaa.jpg);background-position:70% center"><div class="date"><b>18</b><span>Déc</span></div><div class="like"><svg class="ic" style="width:17px" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div><h4>Senzaa En Concert</h4><div class="meta">📍 Palais des Congrès</div><div class="price"><b>dès 5 000 F</b><span class="pill-s">Concert</span></div></div>
+      <div class="ev"><div class="im" style="background-image:url(img/mckey.jpg)"><div class="date"><b>31</b><span>Oct</span></div><div class="like" style="color:#E11D48"><svg class="ic" style="width:17px;fill:#E11D48" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div><h4>Mc Key En Concert</h4><div class="meta">📍 Scène Bella Bellow</div><div class="price"><b>dès 2 000 F</b><span class="pill-s">Live</span></div></div>
+    </div>
+    <div class="sec"><h3>Lieux près de vous</h3><a href="#">Carte</a></div>
+    <div class="pl"><div class="th" style="background-image:url(img/bestlogo.jpg)"></div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><h4>Best.t Lounge Bar</h4><span class="star">⭐ 4.6</span></div><div class="meta">Bars · Avedji · 1,2 km</div><div class="open" style="margin-top:4px">Ouvert · jusqu'à 05:00</div></div></div>
+  </div>
+  <div class="tabbar">
+    <div class="tab on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Accueil<i class="dot"></i></div>
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</div>
+    <div class="fab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Explorer</div>
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v14" stroke-dasharray="2 2"/></svg>Tickets</div>
+  </div>
+</div></div></div>
+
+<!-- ========== 2. EVENEMENT ========== -->
+<div class="col"><div class="label">02 · Détail événement</div>
+<div class="phone"><div class="screen" style="background:#fff"><div class="island"></div>
+  <div class="status light"><span>13:45</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+  <div class="scroll">
+    <div class="cover" style="background-image:url(img/senzaa.jpg);height:300px;background-position:center"></div>
+    <div class="topbar"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div><div class="grp"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></div><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div></div>
+    <div class="gal"><svg class="ic" style="width:15px" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>1/12 · Galerie</div>
+    <div class="sheet">
+      <div class="cats"><span class="cat">Concert live</span><span class="cat">Afro</span><span class="cat" style="background:#FFF1E7;color:#D9611A">🔥 1,2k intéressés</span></div>
+      <h2 style="margin-top:10px">Senzaa En Concert</h2>
+      <div class="seg"><div class="on">Infos</div><div>Le Mur</div><div>Galerie</div></div>
+      <div class="info"><div class="sq"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><div><b>Ven. 18 Déc. 2026</b><span>18:00 · + 2 autres dates</span></div><div class="r"><span class="cd">J-36</span></div></div>
+      <div class="info"><div class="sq"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><div><b>Palais des Congrès</b><span>Lomé · Kara 26/12 · Aného 02/01</span></div></div>
+      <div class="h5">Choisissez votre pass</div>
+      <div class="tiers"><div class="tier"><small>Standard</small><b>5 000 F</b></div><div class="tier on"><small>VIP</small><b>10 000 F</b></div><div class="tier"><small>VVIP</small><b>50 000 F</b></div></div>
+      <div class="h5">À propos</div>
+      <p class="p">🎤 Une tournée musicale à ne pas manquer ! Senzaa vous donne rendez-vous dans 3 villes du Togo pour une soirée… <a href="#">Lire plus</a></p>
+      <div class="org"><div class="av">S</div><div><b style="font-size:13.5px;font-weight:600;display:block">Senzaa Concert</b><span style="font-size:12px;color:var(--muted)">Organisateur · 4 évènements</span></div><div class="follow">Suivre</div></div>
+    </div>
+  </div>
+  <div class="cta"><div class="sec-btn"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg></div><div class="from">VIP<b>10 000 F</b></div><div class="btn">Acheter mon ticket <svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></div>
+</div></div></div>
+
+<!-- ========== 3. LIEU ========== -->
+<div class="col"><div class="label">03 · Détail lieu</div>
+<div class="phone"><div class="screen" style="background:#fff"><div class="island"></div>
+  <div class="status light"><span>13:46</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+  <div class="scroll">
+    <div class="cover" style="height:300px;background-image:url(img/best.jpg);background-position:center 35%"></div>
+    <div class="topbar"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div><div class="grp"><div class="glass"><svg class="ic" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></div><div class="glass"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></div></div></div>
+    <div class="gal"><svg class="ic" style="width:15px" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>1/24 · Galerie</div>
+    <div class="sheet" style="padding-bottom:120px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div class="cats" style="margin:0"><span class="cat">Bar lounge</span><span class="cat">Restaurant</span></div><span class="open">Ouvert</span></div>
+      <h2 style="margin-top:10px">Best.t Lounge Bar Restaurant</h2>
+      <div class="addr"><div class="sq"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><div>Carrefour Elavagnon, Avedji Ceg<br><span style="color:var(--muted);font-size:12px">Lomé, Togo · 1,2 km</span></div></div>
+      <div class="stats"><div class="stat"><small>Note</small><b>⭐ 4.6</b></div><div class="stat"><small>Capacité</small><b>100 pers.</b></div><div class="stat"><small>Ferme à</small><b>05:00</b></div></div>
+      <div class="seg" style="margin-top:14px"><div class="on">Infos</div><div>Le Mur</div><div>Menu</div><div>Avis</div></div>
+      <div class="h5" style="margin-top:4px">Commodités</div>
+      <div class="amen">
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 17V8h4a3 3 0 0 1 0 6H9"/></svg>Parking</div>
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18M17 21V3c-2 1-3 4-3 8h3"/></svg>Restauration</div>
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7h13l5 3-5 3H3zM6 13v6"/></svg>Vidéosurveillance</div>
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Éclairage</div>
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".5"/></svg>Instagrammable</div>
+        <div class="am"><svg class="ic" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Premium</div>
+      </div>
+      <div class="h5">Horaires</div>
+      <div class="hours"><div class="hr today"><b>Aujourd'hui (jeu.)</b><b>11:00 – 05:00</b></div><div class="hr"><span>Lun – Ven</span><span>11:00 – 05:00</span></div><div class="hr"><span>Dimanche</span><span>01:00 – 05:00</span></div></div>
+      <div class="h5">Localisation</div>
+      <div class="map">
+        <svg class="mapsvg" viewBox="0 0 350 150" preserveAspectRatio="xMidYMid slice"><rect width="350" height="150" fill="#EAF0F7"/><path d="M-10 110 L360 60" stroke="#fff" stroke-width="14"/><path d="M120 -10 L180 160" stroke="#fff" stroke-width="10"/><path d="M-10 30 L360 20" stroke="#fff" stroke-width="6"/><path d="M260 -10 L300 160" stroke="#fff" stroke-width="6"/><rect x="20" y="45" width="70" height="40" rx="8" fill="#DCE8D5"/><rect x="200" y="85" width="50" height="50" rx="8" fill="#DCE8D5"/></svg>
+        <div class="pin"><div></div></div>
+        <div class="mapbtn">Itinéraire <svg class="ic" style="width:15px" viewBox="0 0 24 24"><path d="M3 11 21 3l-8 18-2-8z"/></svg></div>
+      </div>
+    </div>
+  </div>
+  <div class="cta"><div class="sec-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div><div class="sec-btn" style="color:#16A34A"><svg class="ic" viewBox="0 0 24 24"><path d="M3 21l1.6-4.8A8.5 8.5 0 1 1 8 19.6z"/></svg></div><div class="btn">Réserver une table</div></div>
+</div></div></div>
+
+<!-- ========== 4. TICKET ========== -->
+<div class="col"><div class="label">04 · Mes tickets (nouveau)</div>
+<div class="phone"><div class="screen"><div class="island"></div>
+  <div class="status light"><span>13:47</span><span class="sicons"><svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" opacity=".6"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#fff"/></svg></span></div>
+  <div class="tk-top">
+    <div class="tk-head"><h2>Mes tickets</h2><div class="iconbtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div></div>
+    <div class="tabs2"><div class="on">À venir · 2</div><div>Passés</div><div>Favoris</div></div>
+  </div>
+  <div class="ticket">
+    <div class="tk-im"><span class="tag">Dans 36 jours</span></div>
+    <div class="tk-b">
+      <h3>Senzaa En Concert</h3>
+      <div class="grid2"><div><small>Date</small><b>Ven. 18 Déc.</b></div><div><small>Heure</small><b>18:00</b></div><div><small>Lieu</small><b>Palais des Congrès</b></div><div><small>Pass</small><b style="color:var(--blue)">VIP × 2</b></div></div>
+    </div>
+    <div class="perf"><i></i><i></i></div>
+    <div class="qr">
+      <svg class="code" viewBox="0 0 29 29" shape-rendering="crispEdges" id="qr"></svg>
+      <small>WKB · 7F3K · 92QX</small>
+    </div>
+  </div>
+  <div class="tk-actions"><div><svg class="ic" style="width:18px" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Wallet</div><div class="pri"><svg class="ic" style="width:18px" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Transférer</div></div>
+  <div class="tabbar">
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</div>
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</div>
+    <div class="fab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+    <div class="tab"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Explorer</div>
+    <div class="tab on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v14" stroke-dasharray="2 2"/></svg>Tickets<i class="dot"></i></div>
+  </div>
+</div></div></div>
+
+</div>
+
+<div class="notes">
+  <div class="note"><h4>Accueil</h4><ul><li>Salutation + ville : plus personnel</li><li>Recherche flottante avec filtres</li><li>Catégories en chips (accès en 1 tap)</li><li>Cartes évènement avec prix et date lisibles</li><li>Lieux : note, distance, statut « Ouvert »</li></ul></div>
+  <div class="note"><h4>Détail évènement</h4><ul><li>Visuel plein écran, actions en verre dépoli</li><li>« Mur / Galerie » regroupés en onglets</li><li>Choix du pass directement sur la page</li><li>Prix + CTA collants en bas</li><li>Organisateur avec bouton « Suivre »</li></ul></div>
+  <div class="note"><h4>Détail lieu</h4><ul><li>Infos clés en 3 tuiles (note, capacité, fermeture)</li><li>Commodités avec icônes, sans texte tronqué</li><li>Horaire du jour mis en évidence</li><li>Carte stylisée + itinéraire</li><li>Appel / WhatsApp / Réserver en un tap</li></ul></div>
+  <div class="note"><h4>Mes tickets</h4><ul><li>Billet QR consultable hors-ligne</li><li>Compte à rebours avant l'évènement</li><li>Ajout au Wallet et transfert de billet</li><li>Nouvel onglet « Tickets » dans la navbar</li></ul></div>
+</div>
+
+<script>
+// decorative QR-like pattern
+(function(){const s=document.getElementById('qr');let h='';const N=29;let seed=7;const r=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+const finder=(x,y)=>{h+=`<rect x="${x}" y="${y}" width="7" height="7" fill="#0F1A33"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#2453C4"/>`};
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const inF=(x<8&&y<8)||(x>20&&y<8)||(x<8&&y>20);if(!inF&&r()>.52)h+=`<rect x="${x}" y="${y}" width="1" height="1" fill="#0F1A33"/>`}
+finder(0,0);finder(22,0);finder(0,22);s.innerHTML=h})();
+</script>
+</body>
+</html>
