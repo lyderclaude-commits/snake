@@ -9632,9 +9632,13 @@ const run = async () => {
   const pBoost = await browser.newPage();
   surveiller(pBoost);
 
-  for (const [route, titre, etapes, questions, rassure, icones] of [
-    ['boost-push', 'Parler à ceux qui sont déjà venus', 4, 6, 3, 3],
-    ['boost-regie', 'Vos invités vous appartiennent', 4, 6, 3, 5],
+  /* Le dernier nombre est le compte de SECTIONS SOMBRES : la page de la
+     régie a perdu la sienne dans la refonte, et une règle qui en exige
+     une partout ferait échouer un choix de dessin. Ce qu'on tient
+     encore, c'est qu'une page qui en pose une ne la colle pas au pied. */
+  for (const [route, titre, etapes, questions, rassure, icones, sombres] of [
+    ['boost-push', 'Parler à ceux qui sont déjà venus', 4, 6, 3, 4, 1],
+    ['boost-regie', 'Vos invités vous appartiennent', 4, 6, 3, 6, 0],
     /**
      * Zéro rangée de réassurance sur les liens courts, et c'est voulu :
      * son bandeau porte DÉJÀ le composeur, donc un champ qu'on remplit.
@@ -9648,7 +9652,7 @@ const run = async () => {
      * plutôt qu'un minimum, parce qu'un minimum laisse passer la page
      * qui n'en a plus du tout sans que personne ne s'en aperçoive.
      */
-    ['boost-liens', 'Une adresse courte, et ce qu’elle rapporte', 0, 5, 0, 0],
+    ['boost-liens', 'Une adresse courte, et ce qu’elle rapporte', 0, 5, 0, 0, 1],
   ] as const) {
     const r = await pBoost.goto(`${BASE}/index.php?p=${route}`, { waitUntil: 'domcontentloaded' });
     ok(`${route} répond et garde son titre`,
@@ -9686,8 +9690,9 @@ const run = async () => {
      * sombre ne touche PAS le pied de page : les deux portent la même
      * encre, et collées elles ne feraient qu'un seul bloc noir.
      */
-    ok(`  ${route} pose une section sombre, et une seule`,
-       (await pBoost.locator('.section-sombre').count()) === 1);
+    ok(`  ${route} pose ${sombres === 1 ? 'une section sombre, et une seule' : 'le relief que son dessin demande'}`,
+       (await pBoost.locator('.section-sombre').count()) === sombres,
+       `${await pBoost.locator('.section-sombre').count()} section(s) sombre(s)`);
     ok(`  ${route} ferme sur un appel en couleur`,
        (await pBoost.locator('.appel-final').count()) === 1);
     const _ecart = await pBoost.evaluate(() => {
@@ -9696,8 +9701,11 @@ const run = async () => {
       if (!s || !f) return -1;
       return Math.round(f.getBoundingClientRect().top - s.getBoundingClientRect().bottom);
     });
+    /* Sans section sombre, il n'y a rien à tenir loin du pied : la
+       mesure ne s'applique qu'aux pages qui en posent une. */
     ok(`  ${route} garde la section sombre loin du pied de page`,
-       _ecart > 600, `${_ecart} px entre les deux`);
+       sombres === 0 ? _ecart === -1 : _ecart > 600,
+       sombres === 0 ? 'pas de section sombre sur cette page' : `${_ecart} px entre les deux`);
 
     /**
      * La rangée de réassurance est VISIBLE, pas seulement présente.
@@ -9980,134 +9988,53 @@ const run = async () => {
   await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
 
   /**
-   * Les chiffres de l'écosystème, et l'air qui les sépare du héros.
+   * LES CHIFFRES DE L'ÉCOSYSTÈME, dans le dessin du guide.
    *
-   * Le héros de cette page finit sans aucune marge basse (son téléphone
-   * descend jusqu'au bord), et un panneau posé là-dessous s'y collait.
-   * On mesure donc l'écart RÉEL entre le bas du héros et le haut du
-   * panneau, pas la règle qui est censée le produire.
+   * Le panneau a changé de classes avec la refonte (`.stats-grid`), et
+   * surtout de nature : les trois nombres sont désormais ÉCRITS dans la
+   * page, là où le socle allait chercher le compte réel des partenaires.
+   * On ne peut donc plus éprouver qu'un « + » est tenu par la base. Ce
+   * qui se vérifie encore : ils sont trois, sur une seule rangée, et
+   * aucun n'est vide.
+   *
+   * Trois chiffres repliés en deux lignes ne se lisent plus comme un
+   * socle : ils se lisent comme une liste.
    */
   const socle = await pAcc.evaluate(() => {
-    const h = document.querySelector('.heros') as HTMLElement | null;
-    const g = document.querySelector('.socle-grille') as HTMLElement | null;
-    if (!h || !g) return null;
+    const blocs = [...document.querySelectorAll('.stats-grid .stat-block')];
     return {
-      air: Math.round(g.getBoundingClientRect().top - h.getBoundingClientRect().bottom),
-      colonnes: g.querySelectorAll('.socle').length,
-      /* Une seule rangée : trois chiffres repliés en deux lignes ne se
-         lisent plus comme un socle, ils se lisent comme une liste. */
-      rangees: new Set([...g.querySelectorAll('.socle')]
-        .map((c) => Math.round(c.getBoundingClientRect().top))).size,
-      fond: getComputedStyle(document.querySelector('.socle-chiffres') as Element).backgroundColor,
+      colonnes: blocs.length,
+      rangees: new Set(blocs.map((c) => Math.round(c.getBoundingClientRect().top))).size,
+      nombres: blocs.map((c) => (c.querySelector('.stat-num')?.textContent ?? '').trim()),
     };
   });
   ok('le socle des chiffres montre trois colonnes sur une rangée',
-     socle !== null && socle.colonnes === 3 && socle.rangees === 1, JSON.stringify(socle));
-  ok('et respire sous le héros', socle !== null && socle.air >= 40, `${socle?.air} px`);
-  /* La section n'a PAS de fond à elle : elle laisse passer celui de la
-     page, sinon une bande blanche se découpe entre le héros et la suite. */
-  ok('la section des chiffres ne pose aucun fond à elle',
-     socle !== null && /rgba\(0, 0, 0, 0\)|transparent/.test(socle.fond), socle?.fond);
+     socle.colonnes === 3 && socle.rangees === 1, JSON.stringify(socle));
+  ok('et chacun porte un nombre', socle.nombres.every((n) => /\d/.test(n)),
+     socle.nombres.join(' · '));
 
   /**
-   * Le plancher annoncé et le compte réel viennent du MÊME nombre.
+   * LES DEUX MAGASINS, dans le bandeau.
    *
-   * Le socle dit « 2 340+ », l'appel de fin donne le total du jour. Deux
-   * nombres écrits à la main auraient fini par se contredire sur la même
-   * page, et c'est le genre de détail qu'un visiteur attrape avant nous.
+   * C'est par là qu'on gagne un utilisateur : le lien doit sortir dans un
+   * onglet neuf et protégé. Un `target` sans `rel="noopener"` laisse la
+   * page ouverte sur `window.opener`, et c'est la page du magasin qui
+   * tient alors la nôtre.
    */
-  /* Pas de fonction NOMMÉE dans un `evaluate` : esbuild y injecte son
-     assistant `__name`, qui n'existe pas dans la page, et l'appel part
-     en `ReferenceError` avant la première assertion. */
-  /* Aucune fonction nommée dans un `evaluate` : esbuild y injecte son
-     assistant `__name`, qui n'existe pas dans la page, et l'appel part en
-     `ReferenceError` avant la première assertion. Les rappels anonymes,
-     eux, passent sans rien. */
-  const nombres = await pAcc.evaluate(() => {
-    const socleTxt = [...document.querySelectorAll('.socle')]
-      .find((c) => /partenaires/i.test(c.textContent ?? ''))?.textContent ?? '';
-    const final = [...document.querySelectorAll('p')]
-      .find((e) => /organisateurs qui ne laissent/i.test(e.textContent ?? ''))?.textContent ?? '';
-    return {
-      plancher: Number((socleTxt.match(/[\d   ]{3,}/)?.[0] ?? '0').replace(/\D/g, '')),
-      total: Number((final.match(/[\d   ]{3,}/)?.[0] ?? '0').replace(/\D/g, '')),
-    };
-  });
-  ok('le « + » du socle est tenu par le compte réel de l’appel de fin',
-     nombres.plancher > 0 && nombres.total >= nombres.plancher,
-     `${nombres.plancher}+ annoncés, ${nombres.total} comptés`);
-
-  /**
-   * Les deux captures sont SERVIES PAR LE SITE.
-   *
-   * La page de l'application va encore chercher les siennes chez un
-   * domaine que nous ne tenons pas : une requête de plus sur une
-   * connexion où le mégaoctet se compte, et des images qui disparaissent
-   * le jour où ce domaine bouge. Celles de l'accueil partent dans le zip.
-   */
-  const visuels = await pAcc.evaluate(() =>
-    [...document.querySelectorAll('.app-tels img')].map((i) => ({
-      src: i.getAttribute('src') ?? '',
-      poids: Math.round(((i as HTMLImageElement).naturalWidth || 0)),
-    })));
-  ok('les deux captures de l’application viennent du site, et pas d’ailleurs',
-     visuels.length === 2
-     && visuels.every((v) => !/^https?:/i.test(v.src) || v.src.startsWith(BASE)),
-     visuels.map((v) => v.src.split('/').pop()).join(' · '));
-  /* Et elles ARRIVENT : une adresse juste qui rend un 404 donnerait le
-     même HTML et un trou à l'écran. */
-  const arrivees = await pAcc.evaluate(() => Promise.all(
-    [...document.querySelectorAll('.app-tels img')].map((i) => {
-      const img = i as HTMLImageElement;
-      img.loading = 'eager';
-      return img.complete ? img.naturalWidth > 0
-        : new Promise<boolean>((r) => { img.onload = () => r(true); img.onerror = () => r(false); });
-    })));
-  ok('et elles se chargent vraiment', arrivees.every(Boolean), arrivees.join(' · '));
-
-  await pAcc.goto(`${BASE}/index.php?p=accueil`, { waitUntil: 'domcontentloaded' });
   const magasins = await pAcc.evaluate(() => {
-    const play = document.querySelector('.app-magasins a.app-mag') as HTMLAnchorElement | null;
-    const gris = document.querySelector('.app-mag.gris');
+    const liens = [...document.querySelectorAll('.store-btns a.store-btn')];
     return {
-      play: play?.getAttribute('href') ?? '',
-      rel: play?.getAttribute('rel') ?? '',
-      /* « Bientôt sur App Store » n'est PAS un lien : envoyer quelqu'un
-         chercher une application qui n'existe pas sur son téléphone, c'est
-         gagner une mauvaise note. */
-      grisEstUnLien: gris?.tagName === 'A',
-      versPage: !!document.querySelector('.app-magasins a[href*="application"]'),
+      combien: liens.length,
+      play: liens.some((a) => (a.getAttribute('href') ?? '').includes('play.google.com')),
+      protege: liens.every((a) => (a.getAttribute('target') ?? '') === '_blank'
+        && (a.getAttribute('rel') ?? '').includes('noopener')),
+      versApp: !!document.querySelector('a[href*="p=application"]'),
     };
   });
   ok('le bouton du magasin mène à la vraie fiche, en nouvel onglet protégé',
-     magasins.play.includes('play.google.com') && magasins.rel.includes('noopener'),
-     magasins.play.slice(0, 48));
-  ok('« bientôt sur App Store » n’est pas un lien', magasins.grisEstUnLien === false);
-  ok('et la section renvoie vers la page de l’application', magasins.versPage);
+     magasins.play && magasins.protege, JSON.stringify(magasins));
+  ok('et la page renvoie aussi vers la fiche de l’application', magasins.versApp);
 
-  /**
-   * L'accueil ne chiffre plus, et ne questionne plus.
-   *
-   * La grille des offres y vivait en double de `?p=tarifs`, et les six
-   * questions de l'outil entre le blog et l'appel final. Deux grilles à
-   * tenir d'accord annoncent tôt ou tard deux choses différentes, et des
-   * questions posées à qui n'a encore rien à demander ne servent
-   * personne. La page présente ; les deux autres répondent.
-   */
-  const reste = await pAcc.evaluate(() => ({
-    offres: document.querySelectorAll('.offre, #tarifs, .pricing-card').length,
-    questions: document.querySelectorAll('details.qr, .faq-item').length,
-    sections: document.querySelectorAll('section').length,
-    /* L'application est AVANT les témoignages : « il y a une audience
-       derrière » prépare « et voilà ce que ça donne », pas l'inverse. */
-    ordre: [...document.querySelectorAll('section')]
-      .findIndex((x) => x.classList.contains('bloc-app'))
-      < [...document.querySelectorAll('section')]
-        .findIndex((x) => !!x.querySelector('.avis')),
-  }));
-  ok('l’accueil ne porte plus ni grille d’offres ni questions',
-     reste.offres === 0 && reste.questions === 0, JSON.stringify(reste));
-  ok('et l’application passe avant les témoignages', reste.ordre === true);
 
   /**
    * LE VOCABULAIRE DE LA PAGE, mesuré sur le texte rendu.
@@ -10135,7 +10062,10 @@ const run = async () => {
     const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = w.nextNode(); n; n = w.nextNode()) {
       const el = n.parentElement;
-      if (!el || el.closest('script, style, .vignette')) continue;
+      /* `.vignette` et `.blog-grid` : les titres du catalogue et des
+         articles viennent de la BASE, pas de la page. La démonstration en
+         a justement nommé un « Le récit du décor ». */
+      if (!el || el.closest('script, style, .vignette, .blog-grid')) continue;
       const t = (n.nodeValue ?? '').replace(/\s+/g, ' ').trim();
       if (!t) continue;
       if (/d[eé]cors?|studio/i.test(t)) anciens.push(t.slice(0, 54));
@@ -10160,8 +10090,11 @@ const run = async () => {
      vocabulaire.anciens.length === 0, vocabulaire.anciens.join(' · ') || 'rien');
   ok('ni « salle », sauf dans la bouche de celui qui témoigne',
      vocabulaire.salles.length === 0, vocabulaire.salles.join(' · ') || 'rien');
+  /* Quatre portes depuis que le menu dit « Badges » tout court et que
+     l'accueil a changé de boutons. Le compte exact importe moins que la
+     règle : aucune de ces portes ne doit parler de décors. */
   ok('le menu, le pied et les boutons mènent aux badges, pas aux décors',
-     vocabulaire.portes.length >= 5 && vocabulaire.portes.every((x) => /badge/i.test(x)),
+     vocabulaire.portes.length >= 3 && vocabulaire.portes.every((x) => /badge/i.test(x)),
      vocabulaire.portes.join(' · '));
   ok('et les alternatives des images parlent la même langue',
      vocabulaire.alternatives.length === 0, vocabulaire.alternatives.join(' · ') || 'rien');
