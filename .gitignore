@@ -14,3 +14,4 @@ php/config.php
 php/donnees/*
 !php/donnees/.htaccess
 !php/donnees/.gitignore
+wakabi-mockup/android/build/

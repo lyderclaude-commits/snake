@@ -1,0 +1,38 @@
+/* ===== Mode application (APK) : un écran à la fois, plein écran ===== */
+html,body.app{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0B0F1A;overscroll-behavior:none}
+body.app{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:none}
+body.app .head,body.app .toc,body.app .group,body.app .label,body.app .island,body.app .notes{display:none!important}
+body.app .row{display:contents}
+body.app .col{position:fixed;left:50%;top:50%;width:368px;height:822px;margin:0;display:none;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center}
+body.app .col.cur{display:block}
+body.app .col.in-r{animation:inR .28s cubic-bezier(.2,.8,.2,1)}
+body.app .col.in-l{animation:inL .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes inR{from{opacity:.4;transform:translate(calc(-50% + 60px),-50%) scale(var(--s,1))}to{opacity:1}}
+@keyframes inL{from{opacity:.4;transform:translate(calc(-50% - 60px),-50%) scale(var(--s,1))}to{opacity:1}}
+body.app .phone{width:368px;height:822px;padding:0;border-radius:0;box-shadow:none;background:none}
+body.app .screen{border-radius:0}
+body.app [data-go]{cursor:pointer}
+body.app [data-go]:active{filter:brightness(.92)}
+
+/* bouton menu des écrans */
+#wk-menu-btn{position:fixed;z-index:1000;top:calc(8px * var(--s,1));left:50%;transform:translateX(-50%);height:calc(28px * var(--s,1));padding:0 calc(12px * var(--s,1));border-radius:99px;background:rgba(15,26,51,.72);color:#fff;font:600 calc(11.5px * var(--s,1)) Poppins,sans-serif;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#wk-menu{position:fixed;inset:0;z-index:1001;background:rgba(11,15,26,.6);backdrop-filter:blur(6px);display:none}
+#wk-menu.open{display:block}
+#wk-menu .panel{position:absolute;left:0;right:0;bottom:0;max-height:86%;overflow-y:auto;background:#fff;border-radius:24px 24px 0 0;padding:14px 18px 28px;font-family:Poppins,sans-serif;color:#0F1A33;touch-action:pan-y}
+#wk-menu .grab{width:40px;height:5px;border-radius:3px;background:#D7DCE8;margin:0 auto 12px}
+#wk-menu h3{font-size:18px;font-weight:700;margin:0 0 2px}
+#wk-menu p{font-size:12.5px;color:#6B7590;margin:0 0 6px}
+#wk-menu h4{font-size:11.5px;font-weight:600;color:#2453C4;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px}
+#wk-menu .it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;font-size:14px;font-weight:500}
+#wk-menu .it b{width:30px;height:30px;border-radius:10px;background:#EEF3FF;color:#2453C4;display:grid;place-items:center;font-size:12px}
+#wk-menu .it.on{background:#EEF3FF}
+#wk-menu .it.on b{background:#2453C4;color:#fff}
+#wk-toast{position:fixed;z-index:1002;left:50%;bottom:12%;transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;background:#0F1A33;color:#fff;font:500 14px Poppins,sans-serif;padding:12px 18px;border-radius:14px;max-width:85%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3);pointer-events:none}
+#wk-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#wk-hint{position:fixed;inset:0;z-index:1003;background:rgba(11,15,26,.75);display:none;align-items:center;justify-content:center;padding:24px}
+#wk-hint.show{display:flex}
+#wk-hint .c{background:#fff;border-radius:24px;padding:24px 22px;font-family:Poppins,sans-serif;color:#0F1A33;max-width:340px}
+#wk-hint h3{margin:0 0 10px;font-size:19px}
+#wk-hint li{font-size:13.5px;line-height:1.55;color:#3B4560;margin-bottom:6px}
+#wk-hint ul{padding-left:18px;margin:0 0 16px}
+#wk-hint .ok{background:#2453C4;color:#fff;text-align:center;font-weight:600;padding:14px;border-radius:16px}
