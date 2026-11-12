@@ -7,8 +7,9 @@
  */
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
+import { chromiumExe } from './chromium';
 
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = chromiumExe();
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
 const SORTIE = process.env.SORTIE ?? '/tmp/claude-0/apercus';
 const ADMIN = {

@@ -563,7 +563,7 @@ const main = async () => {
        texteD.includes('Gala Akwaba 2026') && texteD.includes('Événement du'),
        pdfD.textes.slice(0, 5).join(' · '));
     ok('il parle de rappels, pas de campagnes',
-       texteD.includes('Les rappels de ce décor'));
+       texteD.includes('Les rappels de ce badge'));
     ok('et il ne nomme jamais le décor du voisin',
        !texteD.includes('Forum Tech'));
   } finally {

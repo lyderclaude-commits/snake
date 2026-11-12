@@ -14,8 +14,9 @@
  */
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
+import { chromiumExe } from './chromium';
 
-const EXE = process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = chromiumExe();
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3600';
 const OUT = process.argv[2] ?? 'apercus';
 

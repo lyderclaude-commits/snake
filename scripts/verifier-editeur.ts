@@ -32,8 +32,9 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { build } from 'esbuild';
+import { chromiumExe } from './chromium';
 
-const EXE = process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = chromiumExe();
 const lancerPhp = promisify(execFile);
 
 let pass = 0;

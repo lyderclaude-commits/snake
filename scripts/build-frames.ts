@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fenetreOuverte, fenetreArrondie } from '../src/core/photoWindow';
 import type { Fenetre } from '../src/core/photoWindow';
+import { chromiumExe } from './chromium';
 
 const SRC = 'scripts/frames-src';
 /**
@@ -21,7 +22,7 @@ const SRC = 'scripts/frames-src';
  * n'aient pas le même cadre — donc pas le même badge.
  */
 const OUT = ['public/frames', 'php/public/cadres'];
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = chromiumExe();
 
 /**
  * La police de la charte, embarquée en base64 dans la page de rendu.

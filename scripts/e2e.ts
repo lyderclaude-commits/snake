@@ -4,8 +4,9 @@
  */
 import { chromium } from 'playwright-core';
 import { writeFileSync } from 'node:fs';
+import { chromiumExe } from './chromium';
 
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = chromiumExe();
 const BASE = 'http://127.0.0.1:3210';
 const SHOT = process.env.SHOT_DIR!;
 

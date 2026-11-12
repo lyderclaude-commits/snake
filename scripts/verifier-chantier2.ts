@@ -226,11 +226,21 @@ $vue = db()->prepare('INSERT INTO evenements (decor_id, genre, cree_le) VALUES (
 for ($i = 0; $i < 40; $i++) { $vue->execute([$decorA, 'vue', $j(9)]); }
 
 $d = decor_par_id($decorA);
-$r1 = sponsor_enregistrer($d, $A, ['nom' => 'Brasserie du Golfe',
+/* LE GARDE-FOU A CHANGÉ DE RÉPONSE. Un lien hors de nos domaines ne part
+   plus en relecture : il est refusé sur-le-champ, pour tout le monde,
+   l'équipe comprise. Le sponsor n'y perd rien depuis que le guide porte
+   les fiches de lieux — la Brasserie du Golfe a la sienne. */
+$r0 = sponsor_enregistrer($d, $A, ['nom' => 'Brasserie du Golfe',
     'lien' => 'https://brasseriedugolfe.tg', 'logo' => '']);
+$sortie['sponsor_refuse'] = ['ok' => (bool) $r0['ok'],
+                             'dit' => (string) ($r0['message'] ?? ''),
+                             'statut' => (string) (decor_par_id($decorA)['sponsor_statut'] ?? '')];
+
+$r1 = sponsor_enregistrer($d, $A, ['nom' => 'Brasserie du Golfe',
+    'lien' => 'https://wakabileguide.com/lieu/brasserie-du-golfe', 'logo' => '']);
 $d = decor_par_id($decorA);
-$sortie['sponsor_relire'] = ['message' => $r1['relire'], 'statut' => $d['sponsor_statut'],
-                             'url' => (string) (sponsor_de($d)['url'] ?? '')];
+$sortie['sponsor_pose'] = ['statut' => (string) $d['sponsor_statut'],
+                           'url' => (string) (sponsor_de($d)['url'] ?? '')];
 
 /* Un lien chez nous ne demande aucune relecture : le garde-fou l'autorise déjà. */
 $d2 = decor_par_id($decorB);
@@ -249,7 +259,7 @@ for ($i = 0; $i < 3; $i++) { suivre_lien((string) $d['sponsor_code']); }
 /* Le code ne change pas quand on corrige le nom : le compteur non plus. */
 $avant = (string) $d['sponsor_code'];
 sponsor_enregistrer($d, $A, ['nom' => 'Brasserie du Golfe SA',
-    'lien' => 'https://brasseriedugolfe.tg', 'logo' => '']);
+    'lien' => 'https://wakabileguide.com/lieu/brasserie-du-golfe', 'logo' => '']);
 $d = decor_par_id($decorA);
 $sortie['sponsor_code_stable'] = $avant === (string) $d['sponsor_code'];
 sponsor_valider($d, ['id' => 'equipe', 'nom' => 'Lyder', 'role' => 'super_admin']);
@@ -424,14 +434,17 @@ const main = async () => {
 
     /* ---------------- le sponsor ---------------- */
     console.log('\n  ── le sponsor, et ce que son document promet ──');
-    ok('un lien hors de nos domaines part en relecture',
-       r.sponsor_relire?.message === true && r.sponsor_relire?.statut === 'a_relire',
-       `statut « ${r.sponsor_relire?.statut} »`);
-    ok('tant qu’il n’est pas relu, il n’a pas d’adresse cliquable',
-       r.sponsor_relire?.url === '');
+    ok('un lien hors de nos domaines est refusé, et le dit',
+       r.sponsor_refuse?.ok === false && /doit mener vers/.test(r.sponsor_refuse?.dit ?? ''),
+       r.sponsor_refuse?.dit ?? '(aucun message)');
+    ok('et rien ne se pose sur le badge tant qu’il est refusé',
+       r.sponsor_refuse?.statut !== 'valide', `statut « ${r.sponsor_refuse?.statut} »`);
+    ok('le même sponsor, par sa fiche du guide, passe d’emblée',
+       r.sponsor_pose?.statut === 'valide' && r.sponsor_pose?.url !== '',
+       `statut « ${r.sponsor_pose?.statut} », adresse ${r.sponsor_pose?.url ? 'posée' : 'vide'}`);
     ok('un lien qui mène chez nous n’attend personne',
        r.sponsor_maison === 'valide', `statut « ${r.sponsor_maison} »`);
-    ok('une fois relu, le lien court devient l’adresse du sponsor',
+    ok('et la relecture de la maison ne le défait pas',
        r.sponsor_valide?.statut === 'valide' && r.sponsor_valide?.url_non_vide === true);
     ok('corriger le nom du sponsor ne refabrique pas son lien, donc ne remet pas son compteur à zéro',
        r.sponsor_code_stable === true);
